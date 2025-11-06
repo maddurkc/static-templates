@@ -73,10 +73,16 @@ const TemplateEditor = () => {
       const sectionDef = sectionTypes.find(s => s.type === sectionType);
       
       if (sectionDef) {
+        const variables: Record<string, string | string[]> = {};
+        sectionDef.variables?.forEach(varDef => {
+          variables[varDef.name] = varDef.defaultValue;
+        });
+
         const newSection: Section = {
           id: `section-${Date.now()}-${Math.random()}`,
           type: sectionDef.type,
           content: sectionDef.defaultContent,
+          variables,
           styles: {
             fontSize: '16px',
             color: '#000000',
@@ -170,12 +176,16 @@ const TemplateEditor = () => {
   };
 
   const generateHTML = () => {
+    // Import at the top if not already imported
+    const { renderSectionContent } = require('@/lib/templateUtils');
+    
     return sections.map(section => {
       const styleString = Object.entries(section.styles || {})
         .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
         .join('; ');
       
-      return `<div style="${styleString}">\n  ${section.content}\n</div>`;
+      const content = renderSectionContent(section);
+      return `<div style="${styleString}">\n  ${content}\n</div>`;
     }).join('\n\n');
   };
 

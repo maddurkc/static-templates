@@ -1,4 +1,5 @@
 import { Section } from "@/types/section";
+import { renderSectionContent } from "@/lib/templateUtils";
 
 interface PreviewViewProps {
   sections: Section[];
@@ -21,14 +22,14 @@ export const PreviewView = ({ sections }: PreviewViewProps) => {
           </div>
         ) : (
           <div className="space-y-4">
-            {sections.map((section) => (
-              <div
-                key={section.id}
-                className="prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: section.content }}
-                style={section.styles as React.CSSProperties}
-              />
-            ))}
+        {sections.map((section) => (
+          <div
+            key={section.id}
+            className="prose max-w-none"
+            dangerouslySetInnerHTML={{ __html: renderSectionContent(section) }}
+            style={section.styles as React.CSSProperties}
+          />
+        ))}
           </div>
         )}
       </div>

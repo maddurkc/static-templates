@@ -19,10 +19,18 @@ export type SectionType =
   | 'button' 
   | 'grid';
 
+export interface SectionVariable {
+  name: string;
+  label: string;
+  type: 'text' | 'url' | 'list';
+  defaultValue: string | string[];
+}
+
 export interface Section {
   id: string;
   type: SectionType;
   content: string;
+  variables?: Record<string, string | string[]>;
   styles?: {
     fontSize?: string;
     color?: string;
@@ -43,4 +51,5 @@ export interface SectionDefinition {
   description: string;
   defaultContent: string;
   category: 'text' | 'media' | 'layout' | 'interactive';
+  variables?: SectionVariable[];
 }

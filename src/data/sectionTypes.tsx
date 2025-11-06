@@ -23,64 +23,88 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 1',
     icon: Heading1,
     description: 'Large heading for main titles',
-    defaultContent: '<h1>Main Title</h1>',
-    category: 'text'
+    defaultContent: '<h1>{{title}}</h1>',
+    category: 'text',
+    variables: [
+      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Main Title' }
+    ]
   },
   {
     type: 'heading2',
     label: 'Heading 2',
     icon: Heading2,
     description: 'Section heading',
-    defaultContent: '<h2>Section Title</h2>',
-    category: 'text'
+    defaultContent: '<h2>{{title}}</h2>',
+    category: 'text',
+    variables: [
+      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Section Title' }
+    ]
   },
   {
     type: 'heading3',
     label: 'Heading 3',
     icon: Heading3,
     description: 'Subsection heading',
-    defaultContent: '<h3>Subsection Title</h3>',
-    category: 'text'
+    defaultContent: '<h3>{{title}}</h3>',
+    category: 'text',
+    variables: [
+      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Subsection Title' }
+    ]
   },
   {
     type: 'heading4',
     label: 'Heading 4',
     icon: Heading4,
     description: 'Minor heading',
-    defaultContent: '<h4>Minor Title</h4>',
-    category: 'text'
+    defaultContent: '<h4>{{title}}</h4>',
+    category: 'text',
+    variables: [
+      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Minor Title' }
+    ]
   },
   {
     type: 'heading5',
     label: 'Heading 5',
     icon: Heading5,
     description: 'Small heading',
-    defaultContent: '<h5>Small Title</h5>',
-    category: 'text'
+    defaultContent: '<h5>{{title}}</h5>',
+    category: 'text',
+    variables: [
+      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Small Title' }
+    ]
   },
   {
     type: 'heading6',
     label: 'Heading 6',
     icon: Heading6,
     description: 'Smallest heading',
-    defaultContent: '<h6>Tiny Title</h6>',
-    category: 'text'
+    defaultContent: '<h6>{{title}}</h6>',
+    category: 'text',
+    variables: [
+      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Tiny Title' }
+    ]
   },
   {
     type: 'text',
     label: 'Text',
     icon: Type,
     description: 'Simple text element',
-    defaultContent: '<span>Your text here</span>',
-    category: 'text'
+    defaultContent: '<span>{{text}}</span>',
+    category: 'text',
+    variables: [
+      { name: 'text', label: 'Text', type: 'text', defaultValue: 'Your text here' }
+    ]
   },
   {
     type: 'paragraph',
     label: 'Paragraph',
     icon: AlignLeft,
     description: 'Text paragraph with spacing',
-    defaultContent: '<p>This is a paragraph with multiple lines of text. You can add more content here.</p>',
-    category: 'text'
+    defaultContent: '<p>{{text}}</p>',
+    category: 'text',
+    variables: [
+      { name: 'text', label: 'Text', type: 'text', defaultValue: 'This is a paragraph with multiple lines of text. You can add more content here.' }
+    ]
   },
   {
     type: 'table',
@@ -95,72 +119,101 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Bullet List (Circle)',
     icon: List,
     description: 'List with circle bullets',
-    defaultContent: '<ul style="list-style-type: circle;"><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>',
-    category: 'text'
+    defaultContent: '<ul style="list-style-type: circle;">{{items}}</ul>',
+    category: 'text',
+    variables: [
+      { name: 'items', label: 'List Items', type: 'list', defaultValue: ['Item 1', 'Item 2', 'Item 3'] }
+    ]
   },
   {
     type: 'bullet-list-disc',
     label: 'Bullet List (Disc)',
     icon: List,
     description: 'List with disc bullets',
-    defaultContent: '<ul style="list-style-type: disc;"><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>',
-    category: 'text'
+    defaultContent: '<ul style="list-style-type: disc;">{{items}}</ul>',
+    category: 'text',
+    variables: [
+      { name: 'items', label: 'List Items', type: 'list', defaultValue: ['Item 1', 'Item 2', 'Item 3'] }
+    ]
   },
   {
     type: 'bullet-list-square',
     label: 'Bullet List (Square)',
     icon: List,
     description: 'List with square bullets',
-    defaultContent: '<ul style="list-style-type: square;"><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>',
-    category: 'text'
+    defaultContent: '<ul style="list-style-type: square;">{{items}}</ul>',
+    category: 'text',
+    variables: [
+      { name: 'items', label: 'List Items', type: 'list', defaultValue: ['Item 1', 'Item 2', 'Item 3'] }
+    ]
   },
   {
     type: 'number-list-1',
     label: 'Numbered List (1,2,3)',
     icon: ListOrdered,
     description: 'List with numbers',
-    defaultContent: '<ol style="list-style-type: decimal;"><li>First item</li><li>Second item</li><li>Third item</li></ol>',
-    category: 'text'
+    defaultContent: '<ol style="list-style-type: decimal;">{{items}}</ol>',
+    category: 'text',
+    variables: [
+      { name: 'items', label: 'List Items', type: 'list', defaultValue: ['First item', 'Second item', 'Third item'] }
+    ]
   },
   {
     type: 'number-list-i',
     label: 'Numbered List (i,ii,iii)',
     icon: ListOrdered,
     description: 'List with roman numerals',
-    defaultContent: '<ol style="list-style-type: lower-roman;"><li>First item</li><li>Second item</li><li>Third item</li></ol>',
-    category: 'text'
+    defaultContent: '<ol style="list-style-type: lower-roman;">{{items}}</ol>',
+    category: 'text',
+    variables: [
+      { name: 'items', label: 'List Items', type: 'list', defaultValue: ['First item', 'Second item', 'Third item'] }
+    ]
   },
   {
     type: 'number-list-a',
     label: 'Numbered List (a,b,c)',
     icon: ListOrdered,
     description: 'List with letters',
-    defaultContent: '<ol style="list-style-type: lower-alpha;"><li>First item</li><li>Second item</li><li>Third item</li></ol>',
-    category: 'text'
+    defaultContent: '<ol style="list-style-type: lower-alpha;">{{items}}</ol>',
+    category: 'text',
+    variables: [
+      { name: 'items', label: 'List Items', type: 'list', defaultValue: ['First item', 'Second item', 'Third item'] }
+    ]
   },
   {
     type: 'image',
     label: 'Image',
     icon: Image,
     description: 'Image element',
-    defaultContent: '<img src="https://placehold.co/600x400" alt="Placeholder" />',
-    category: 'media'
+    defaultContent: '<img src="{{src}}" alt="{{alt}}" />',
+    category: 'media',
+    variables: [
+      { name: 'src', label: 'Image URL', type: 'url', defaultValue: 'https://placehold.co/600x400' },
+      { name: 'alt', label: 'Alt Text', type: 'text', defaultValue: 'Placeholder' }
+    ]
   },
   {
     type: 'link',
     label: 'Link',
     icon: Link,
     description: 'Hyperlink element',
-    defaultContent: '<a href="#">Click here</a>',
-    category: 'interactive'
+    defaultContent: '<a href="{{href}}">{{text}}</a>',
+    category: 'interactive',
+    variables: [
+      { name: 'href', label: 'Link URL', type: 'url', defaultValue: '#' },
+      { name: 'text', label: 'Link Text', type: 'text', defaultValue: 'Click here' }
+    ]
   },
   {
     type: 'button',
     label: 'Button',
     icon: MousePointerClick,
     description: 'Button element',
-    defaultContent: '<button>Click me</button>',
-    category: 'interactive'
+    defaultContent: '<button>{{text}}</button>',
+    category: 'interactive',
+    variables: [
+      { name: 'text', label: 'Button Text', type: 'text', defaultValue: 'Click me' }
+    ]
   },
   {
     type: 'grid',

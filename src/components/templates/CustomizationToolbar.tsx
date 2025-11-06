@@ -1,9 +1,10 @@
 import { Section } from "@/types/section";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VariableEditor } from "./VariableEditor";
 
 interface CustomizationToolbarProps {
   section: Section;
@@ -50,37 +51,22 @@ export const CustomizationToolbar = ({ section, onUpdate }: CustomizationToolbar
     });
   };
 
-  const updateContent = (content: string) => {
-    onUpdate({
-      ...section,
-      content,
-    });
-  };
-
-  // Strip HTML tags for text editing
-  const getTextContent = (html: string) => {
-    const temp = document.createElement('div');
-    temp.innerHTML = html;
-    return temp.textContent || temp.innerText || '';
-  };
-
   return (
     <div className="border-t bg-card/80 backdrop-blur-sm">
-      <div className="px-6 py-3 space-y-3">
-        {/* Content Editor */}
-        <div className="flex items-start gap-2">
-          <Label className="text-xs text-muted-foreground whitespace-nowrap mt-2">Content</Label>
-          <Textarea
-            value={getTextContent(section.content)}
-            onChange={(e) => updateContent(e.target.value)}
-            className="flex-1 min-h-[60px] text-sm"
-            placeholder="Edit section content..."
-          />
+      <Tabs defaultValue="variables" className="w-full">
+        <div className="px-6 pt-3 border-b">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="variables">Variables</TabsTrigger>
+            <TabsTrigger value="styles">Styles</TabsTrigger>
+          </TabsList>
         </div>
-        
-        <Separator />
 
-        <div className="flex items-center gap-6 flex-wrap">
+        <TabsContent value="variables" className="px-6 py-4 m-0">
+          <VariableEditor section={section} onUpdate={onUpdate} />
+        </TabsContent>
+
+        <TabsContent value="styles" className="px-6 py-3 m-0 space-y-3">
+          <div className="flex items-center gap-6 flex-wrap">
           {/* Font Size */}
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground whitespace-nowrap">Font Size</Label>
@@ -188,8 +174,9 @@ export const CustomizationToolbar = ({ section, onUpdate }: CustomizationToolbar
               />
             </div>
           </div>
-        </div>
-      </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

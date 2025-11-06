@@ -5,6 +5,7 @@ import { Section } from "@/types/section";
 import { Button } from "@/components/ui/button";
 import { GripVertical, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { renderSectionContent } from "@/lib/templateUtils";
 
 interface SortableSectionProps {
   section: Section;
@@ -65,7 +66,7 @@ const SortableSection = ({
       <div className="pl-8 pr-32">
         <div
           className="prose max-w-none"
-          dangerouslySetInnerHTML={{ __html: section.content }}
+          dangerouslySetInnerHTML={{ __html: renderSectionContent(section) }}
           style={section.styles as React.CSSProperties}
         />
       </div>
