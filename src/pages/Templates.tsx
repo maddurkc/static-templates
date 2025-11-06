@@ -45,7 +45,11 @@ const Templates = () => {
   );
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
+    const id = String(event.active.id);
+    setActiveId(id);
+    if (id.startsWith('library-')) {
+      setShowLibrary(false);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -56,8 +60,9 @@ const Templates = () => {
 
     // Check if dragging from library
     if (active.id.toString().startsWith('library-')) {
-      // Only add when dropped over the editor drop zone
-      if (over?.id !== 'editor-drop-zone') return;
+      const dropTargetId = String(over.id);
+      const isEditorArea = dropTargetId === 'editor-drop-zone' || sections.some(s => s.id === dropTargetId);
+      if (!isEditorArea) return;
 
       const sectionType = active.id.toString().replace('library-', '');
       const sectionDef = sectionTypes.find(s => s.type === sectionType);
@@ -185,7 +190,7 @@ const Templates = () => {
                   Section Library
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-96 p-0 overflow-y-auto">
+              <SheetContent side="left" onInteractOutside={(e) => e.preventDefault()} className="w-96 p-0 overflow-y-auto">
                 <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
                   <SheetTitle>Section Library</SheetTitle>
                   <p className="text-xs text-muted-foreground mt-1">
