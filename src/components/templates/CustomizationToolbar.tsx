@@ -1,6 +1,7 @@
 import { Section } from "@/types/section";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
@@ -49,9 +50,36 @@ export const CustomizationToolbar = ({ section, onUpdate }: CustomizationToolbar
     });
   };
 
+  const updateContent = (content: string) => {
+    onUpdate({
+      ...section,
+      content,
+    });
+  };
+
+  // Strip HTML tags for text editing
+  const getTextContent = (html: string) => {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || '';
+  };
+
   return (
     <div className="border-t bg-card/80 backdrop-blur-sm">
-      <div className="px-6 py-3">
+      <div className="px-6 py-3 space-y-3">
+        {/* Content Editor */}
+        <div className="flex items-start gap-2">
+          <Label className="text-xs text-muted-foreground whitespace-nowrap mt-2">Content</Label>
+          <Textarea
+            value={getTextContent(section.content)}
+            onChange={(e) => updateContent(e.target.value)}
+            className="flex-1 min-h-[60px] text-sm"
+            placeholder="Edit section content..."
+          />
+        </div>
+        
+        <Separator />
+
         <div className="flex items-center gap-6 flex-wrap">
           {/* Font Size */}
           <div className="flex items-center gap-2">

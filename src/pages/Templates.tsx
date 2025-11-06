@@ -191,11 +191,15 @@ const Templates = () => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" onInteractOutside={(e) => e.preventDefault()} className="w-96 p-0 overflow-y-auto">
-                <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
-                  <SheetTitle>Section Library</SheetTitle>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Drag sections to add them to your template
-                  </p>
+                <SheetHeader className="p-4 border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <SheetTitle>Section Library</SheetTitle>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Drag sections to add them to your template
+                      </p>
+                    </div>
+                  </div>
                 </SheetHeader>
                 <SectionLibrary />
               </SheetContent>
