@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -11,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, PlayCircle, Eye, Calendar, Copy, Trash2 } from "lucide-react";
+import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Template {
@@ -20,6 +22,7 @@ interface Template {
   html: string;
   createdAt: string;
   sectionCount: number;
+  archived?: boolean;
 }
 
 // Mock data - replace with actual data from database
@@ -30,6 +33,7 @@ const mockTemplates: Template[] = [
     html: "<h1>Welcome {{name}}!</h1><p>Thank you for joining us.</p>",
     createdAt: "2024-01-15",
     sectionCount: 2,
+    archived: false,
   },
   {
     id: "2",
@@ -37,6 +41,7 @@ const mockTemplates: Template[] = [
     html: "<h1>{{title}}</h1><p>{{content}}</p><p>Best regards, {{sender}}</p>",
     createdAt: "2024-01-20",
     sectionCount: 3,
+    archived: false,
   },
   {
     id: "3",
@@ -44,16 +49,19 @@ const mockTemplates: Template[] = [
     html: "<h1>Introducing {{productName}}</h1><p>{{description}}</p><button>Learn More</button>",
     createdAt: "2024-01-25",
     sectionCount: 3,
+    archived: true,
   },
 ];
 
 const Templates = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [templates] = useState<Template[]>(mockTemplates);
+  const [templates, setTemplates] = useState<Template[]>(mockTemplates);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
 
   const handleRunTemplate = (template: Template) => {
-    navigate('/run-templates', { state: { selectedTemplate: template } });
+    navigate('/run-templates', { state: { template } });
   };
 
   const handleCopyHTML = async (html: string, templateName: string) => {
@@ -72,19 +80,26 @@ const Templates = () => {
     }
   };
 
-  const handleDeleteTemplate = (id: string, name: string) => {
+  const handleArchiveTemplate = (id: string, name: string, currentlyArchived: boolean) => {
+    setTemplates(templates.map(t => 
+      t.id === id ? { ...t, archived: !currentlyArchived } : t
+    ));
+    
     toast({
-      title: "Template deleted",
-      description: `"${name}" has been removed.`,
+      title: currentlyArchived ? "Template restored" : "Template archived",
+      description: currentlyArchived 
+        ? `"${name}" has been restored.`
+        : `"${name}" has been archived.`,
     });
   };
 
   const handlePreviewTemplate = (template: Template) => {
-    toast({
-      title: "Preview",
-      description: "Opening template preview...",
-    });
+    setPreviewTemplate(template);
+    setShowPreviewDialog(true);
   };
+
+  const activeTemplates = templates.filter(t => !t.archived);
+  const archivedTemplates = templates.filter(t => t.archived);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
@@ -110,7 +125,10 @@ const Templates = () => {
         </div>
 
         {/* Templates Table */}
-        <Card className="border-2">
+        <Card className="border-2 mb-6">
+          <div className="p-4 border-b bg-muted/30">
+            <h2 className="font-semibold text-lg">Active Templates</h2>
+          </div>
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
@@ -121,7 +139,7 @@ const Templates = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {templates.length === 0 ? (
+              {activeTemplates.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-12">
                     <div className="flex flex-col items-center gap-3">
@@ -139,7 +157,7 @@ const Templates = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                templates.map((template) => (
+                activeTemplates.map((template) => (
                   <TableRow key={template.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -185,10 +203,10 @@ const Templates = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteTemplate(template.id, template.name)}
-                          className="hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => handleArchiveTemplate(template.id, template.name, false)}
+                          className="hover:bg-orange-100 hover:text-orange-700"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Archive className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -198,6 +216,95 @@ const Templates = () => {
             </TableBody>
           </Table>
         </Card>
+
+        {/* Archived Templates */}
+        {archivedTemplates.length > 0 && (
+          <Card className="border-2 border-orange-200 bg-orange-50/50">
+            <div className="p-4 border-b bg-orange-100/50">
+              <h2 className="font-semibold text-lg flex items-center gap-2">
+                <Archive className="h-5 w-5" />
+                Archived Templates
+              </h2>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-orange-100/30">
+                  <TableHead className="font-semibold">Template Name</TableHead>
+                  <TableHead className="font-semibold">Sections</TableHead>
+                  <TableHead className="font-semibold">Created Date</TableHead>
+                  <TableHead className="font-semibold text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {archivedTemplates.map((template) => (
+                  <TableRow key={template.id} className="hover:bg-orange-100/30 transition-colors opacity-60">
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{template.name}</span>
+                        <Badge variant="outline" className="text-xs">Archived</Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {template.sectionCount} sections
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(template.createdAt).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePreviewTemplate(template)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyHTML(template.html, template.name)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleArchiveTemplate(template.id, template.name, true)}
+                          className="text-green-700 hover:bg-green-100"
+                        >
+                          <ArchiveRestore className="h-4 w-4 mr-1" />
+                          Restore
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
+
+        {/* Preview Dialog */}
+        <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Template Preview: {previewTemplate?.name}</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="h-[70vh] w-full rounded-md border bg-white p-6">
+              {previewTemplate && (
+                <div
+                  dangerouslySetInnerHTML={{ __html: previewTemplate.html }}
+                  className="prose max-w-none"
+                />
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
