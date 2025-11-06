@@ -53,6 +53,9 @@ const Templates = () => {
 
     // Check if dragging from library
     if (active.id.toString().startsWith('library-')) {
+      // Only add when dropped over the editor drop zone
+      if (over?.id !== 'editor-drop-zone') return;
+
       const sectionType = active.id.toString().replace('library-', '');
       const sectionDef = sectionTypes.find(s => s.type === sectionType);
       
@@ -124,7 +127,13 @@ const Templates = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
       {/* Top Bar */}
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="flex items-center justify-between px-6 py-3">
@@ -182,12 +191,6 @@ const Templates = () => {
       </div>
 
       {/* Main Content */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
         <div className="flex h-[calc(100vh-120px)]">
           {/* Editor */}
           <div className={`flex-1 overflow-auto ${showPreview ? 'border-r' : ''}`}>
@@ -218,8 +221,8 @@ const Templates = () => {
             </div>
           ) : null}
         </DragOverlay>
-      </DndContext>
     </div>
+    </DndContext>
   );
 };
 
