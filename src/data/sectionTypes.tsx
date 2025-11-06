@@ -23,7 +23,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 1',
     icon: Heading1,
     description: 'Large heading for main titles',
-    defaultContent: 'Main Title',
+    defaultContent: '<h1>Main Title</h1>',
     category: 'text'
   },
   {
@@ -31,7 +31,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 2',
     icon: Heading2,
     description: 'Section heading',
-    defaultContent: 'Section Title',
+    defaultContent: '<h2>Section Title</h2>',
     category: 'text'
   },
   {
@@ -39,7 +39,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 3',
     icon: Heading3,
     description: 'Subsection heading',
-    defaultContent: 'Subsection Title',
+    defaultContent: '<h3>Subsection Title</h3>',
     category: 'text'
   },
   {
@@ -47,7 +47,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 4',
     icon: Heading4,
     description: 'Minor heading',
-    defaultContent: 'Minor Title',
+    defaultContent: '<h4>Minor Title</h4>',
     category: 'text'
   },
   {
@@ -55,7 +55,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 5',
     icon: Heading5,
     description: 'Small heading',
-    defaultContent: 'Small Title',
+    defaultContent: '<h5>Small Title</h5>',
     category: 'text'
   },
   {
@@ -63,7 +63,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 6',
     icon: Heading6,
     description: 'Smallest heading',
-    defaultContent: 'Tiny Title',
+    defaultContent: '<h6>Tiny Title</h6>',
     category: 'text'
   },
   {
@@ -71,7 +71,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Text',
     icon: Type,
     description: 'Simple text element',
-    defaultContent: 'Your text here',
+    defaultContent: '<span>Your text here</span>',
     category: 'text'
   },
   {
@@ -79,7 +79,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Paragraph',
     icon: AlignLeft,
     description: 'Text paragraph with spacing',
-    defaultContent: 'This is a paragraph with multiple lines of text. You can add more content here.',
+    defaultContent: '<p>This is a paragraph with multiple lines of text. You can add more content here.</p>',
     category: 'text'
   },
   {
