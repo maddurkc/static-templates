@@ -17,6 +17,7 @@ import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { saveTemplate } from "@/lib/templateStorage";
+import { renderSectionContent } from "@/lib/templateUtils";
 
 const TemplateEditor = () => {
   const navigate = useNavigate();
@@ -172,9 +173,6 @@ const TemplateEditor = () => {
   };
 
   const generateHTML = () => {
-    // Import at the top if not already imported
-    const { renderSectionContent } = require('@/lib/templateUtils');
-    
     return sections.map(section => {
       const styleString = Object.entries(section.styles || {})
         .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
