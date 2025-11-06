@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getTemplates, updateTemplate } from "@/lib/templateStorage";
 
 interface Template {
   id: string;
@@ -25,40 +26,17 @@ interface Template {
   archived?: boolean;
 }
 
-// Mock data - replace with actual data from database
-const mockTemplates: Template[] = [
-  {
-    id: "1",
-    name: "Welcome Email Template",
-    html: "<h1>Welcome {{name}}!</h1><p>Thank you for joining us.</p>",
-    createdAt: "2024-01-15",
-    sectionCount: 2,
-    archived: false,
-  },
-  {
-    id: "2",
-    name: "Newsletter Template",
-    html: "<h1>{{title}}</h1><p>{{content}}</p><p>Best regards, {{sender}}</p>",
-    createdAt: "2024-01-20",
-    sectionCount: 3,
-    archived: false,
-  },
-  {
-    id: "3",
-    name: "Product Launch Template",
-    html: "<h1>Introducing {{productName}}</h1><p>{{description}}</p><button>Learn More</button>",
-    createdAt: "2024-01-25",
-    sectionCount: 3,
-    archived: true,
-  },
-];
-
 const Templates = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [templates, setTemplates] = useState<Template[]>(mockTemplates);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+
+  // Load templates from localStorage on mount
+  useEffect(() => {
+    setTemplates(getTemplates());
+  }, []);
 
   const handleRunTemplate = (template: Template) => {
     navigate('/run-templates', { state: { template } });
@@ -81,9 +59,8 @@ const Templates = () => {
   };
 
   const handleArchiveTemplate = (id: string, name: string, currentlyArchived: boolean) => {
-    setTemplates(templates.map(t => 
-      t.id === id ? { ...t, archived: !currentlyArchived } : t
-    ));
+    updateTemplate(id, { archived: !currentlyArchived });
+    setTemplates(getTemplates());
     
     toast({
       title: currentlyArchived ? "Template restored" : "Template archived",

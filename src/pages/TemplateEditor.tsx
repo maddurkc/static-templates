@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { saveTemplate } from "@/lib/templateStorage";
 
 const TemplateEditor = () => {
   const navigate = useNavigate();
@@ -149,19 +150,14 @@ const TemplateEditor = () => {
 
     const html = generateHTML();
     
-    const templateData = {
+    // Save template to localStorage
+    const savedTemplate = saveTemplate({
       name: templateName,
       html,
-      sections: sections.map((s, index) => ({
-        sectionId: s.id,
-        orderIndex: index,
-        content: s.content,
-        styles: s.styles,
-      })),
       createdAt: new Date().toISOString(),
-    };
-
-    console.log("Template saved:", templateData);
+      sectionCount: sections.length,
+      archived: false,
+    });
 
     toast({
       title: "Template saved",
