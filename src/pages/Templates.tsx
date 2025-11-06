@@ -9,7 +9,9 @@ import { PreviewView } from "@/components/templates/PreviewView";
 import { CustomizationToolbar } from "@/components/templates/CustomizationToolbar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Save, Eye, EyeOff, Library } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Templates = () => {
@@ -31,6 +33,7 @@ const Templates = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -126,6 +129,35 @@ const Templates = () => {
     });
   };
 
+  const generateHTML = () => {
+    return sections.map(section => {
+      const styleString = Object.entries(section.styles || {})
+        .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
+        .join('; ');
+      
+      return `<div style="${styleString}">\n  ${section.content}\n</div>`;
+    }).join('\n\n');
+  };
+
+  const handleCopyHTML = async () => {
+    const html = generateHTML();
+    try {
+      await navigator.clipboard.writeText(html);
+      setCopied(true);
+      toast({
+        title: "HTML copied",
+        description: "Template HTML has been copied to clipboard.",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy HTML to clipboard.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -163,6 +195,47 @@ const Templates = () => {
                 <SectionLibrary />
               </SheetContent>
             </Sheet>
+            
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Code className="h-4 w-4 mr-2" />
+                  View HTML
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>Generated HTML</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCopyHTML}
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy HTML
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <ScrollArea className="h-[60vh] w-full rounded-md border">
+                    <pre className="p-4 text-sm">
+                      <code>{generateHTML()}</code>
+                    </pre>
+                  </ScrollArea>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Button
               variant="outline"
               size="sm"
