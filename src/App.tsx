@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
 import Sections from "./pages/Sections";
 import Templates from "./pages/Templates";
+import TemplateEditor from "./pages/TemplateEditor";
 import RunTemplates from "./pages/RunTemplates";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +38,7 @@ const App = () => (
                   <Route path="/" element={<Index />} />
                   <Route path="/sections" element={<Sections />} />
                   <Route path="/templates" element={<Templates />} />
+                  <Route path="/templates/editor" element={<TemplateEditor />} />
                   <Route path="/run-templates" element={<RunTemplates />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

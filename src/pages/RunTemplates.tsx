@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlayCircle, Calendar, Send } from "lucide-react";
+import { PlayCircle, Calendar, Send, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Template {
@@ -37,8 +38,12 @@ const mockTemplates: Template[] = [
 ];
 
 const RunTemplates = () => {
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-  const [showRunDialog, setShowRunDialog] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
+    location.state?.selectedTemplate || null
+  );
+  const [showRunDialog, setShowRunDialog] = useState(!!location.state?.selectedTemplate);
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [toEmails, setToEmails] = useState("");
   const [ccEmails, setCcEmails] = useState("");
@@ -117,13 +122,23 @@ const RunTemplates = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
       <div className="container mx-auto p-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
-            Run Templates
-          </h1>
-          <p className="text-muted-foreground">
-            Select a template to run and send via email
-          </p>
+        <div className="mb-8 flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/templates')}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Templates
+          </Button>
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+              Run Templates
+            </h1>
+            <p className="text-muted-foreground">
+              Select a template to run and send via email
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
