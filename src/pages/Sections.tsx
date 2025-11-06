@@ -161,11 +161,11 @@ const Sections = () => {
                             <Code className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
+                        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
                           <DialogHeader>
                             <DialogTitle>HTML Code - {section.label}</DialogTitle>
                           </DialogHeader>
-                          <div className="space-y-4">
+                          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                             <div className="flex justify-end">
                               <Button
                                 size="sm"
@@ -185,9 +185,11 @@ const Sections = () => {
                                 )}
                               </Button>
                             </div>
-                            <ScrollArea className="h-[300px] w-full rounded-md border">
-                              <pre className="p-4 text-sm">
-                                <code>{generateSectionHTML(section)}</code>
+                            <ScrollArea className="flex-1 rounded-md border bg-muted/30">
+                              <pre className="p-4 text-sm overflow-x-auto">
+                                <code className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+                                  {generateSectionHTML(section)}
+                                </code>
                               </pre>
                             </ScrollArea>
                           </div>
