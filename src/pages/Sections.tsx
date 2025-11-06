@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, Plus, Code, Copy, Check } from "lucide-react";
 import { sectionTypes } from "@/data/sectionTypes";
 import { Section } from "@/types/section";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 const Sections = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sections, setSections] = useState<Section[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const filteredSections = sectionTypes.filter((section) =>
@@ -43,6 +46,28 @@ const Sections = () => {
       title: "Section created",
       description: `${sectionDef.label} has been added to your collection.`,
     });
+  };
+
+  const generateSectionHTML = (sectionDef: typeof sectionTypes[0]) => {
+    return `<div class="section-${sectionDef.type}">\n  ${sectionDef.defaultContent}\n</div>`;
+  };
+
+  const handleCopyHTML = async (html: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(html);
+      setCopiedId(id);
+      toast({
+        title: "HTML copied",
+        description: "Section HTML has been copied to clipboard.",
+      });
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy HTML to clipboard.",
+        variant: "destructive",
+      });
+    }
   };
 
   const categoryColors: Record<string, string> = {
@@ -116,14 +141,59 @@ const Sections = () => {
                     <CardDescription className="text-sm min-h-[40px]">
                       {section.description}
                     </CardDescription>
-                    <Button 
-                      onClick={() => createSection(section)}
-                      className="w-full group-hover:shadow-md transition-shadow"
-                      size="sm"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Section
-                    </Button>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => createSection(section)}
+                        className="flex-1 group-hover:shadow-md transition-shadow"
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create
+                      </Button>
+                      
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Code className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>HTML Code - {section.label}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="flex justify-end">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCopyHTML(generateSectionHTML(section), section.type)}
+                              >
+                                {copiedId === section.type ? (
+                                  <>
+                                    <Check className="h-4 w-4 mr-2" />
+                                    Copied!
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Copy HTML
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            <ScrollArea className="h-[300px] w-full rounded-md border">
+                              <pre className="p-4 text-sm">
+                                <code>{generateSectionHTML(section)}</code>
+                              </pre>
+                            </ScrollArea>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
