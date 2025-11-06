@@ -1,4 +1,4 @@
-import { Layers, FileText } from "lucide-react";
+import { Layers, FileText, PlayCircle } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -15,6 +15,7 @@ import {
 const menuItems = [
   { title: "Sections", url: "/sections", icon: Layers },
   { title: "Templates", url: "/templates", icon: FileText },
+  { title: "Run Templates", url: "/run-templates", icon: PlayCircle },
 ];
 
 export function AppSidebar() {

@@ -10,6 +10,8 @@ import { CustomizationToolbar } from "@/components/templates/CustomizationToolba
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Save, Eye, EyeOff, Library, Code, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +36,8 @@ const Templates = () => {
   const [showPreview, setShowPreview] = useState(true);
   const [showLibrary, setShowLibrary] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [templateName, setTemplateName] = useState("");
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -128,10 +132,39 @@ const Templates = () => {
   };
 
   const handleSaveTemplate = () => {
+    if (!templateName.trim()) {
+      toast({
+        title: "Name Required",
+        description: "Please enter a template name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const html = generateHTML();
+    
+    // Save to database (mock)
+    const templateData = {
+      name: templateName,
+      html,
+      sections: sections.map((s, index) => ({
+        sectionId: s.id,
+        orderIndex: index,
+        content: s.content,
+        styles: s.styles,
+      })),
+      createdAt: new Date().toISOString(),
+    };
+
+    console.log("Template saved:", templateData);
+
     toast({
       title: "Template saved",
-      description: "Your template has been saved successfully.",
+      description: `"${templateName}" has been saved successfully.`,
     });
+
+    setShowSaveDialog(false);
+    setTemplateName("");
   };
 
   const generateHTML = () => {
@@ -253,14 +286,49 @@ const Templates = () => {
               {showPreview ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
               {showPreview ? 'Hide' : 'Show'} Preview
             </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveTemplate}
-              className="shadow-lg shadow-primary/20"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Template
-            </Button>
+            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  className="shadow-lg shadow-primary/20"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Template
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Save Template</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="template-name">Template Name</Label>
+                    <Input
+                      id="template-name"
+                      placeholder="Enter template name..."
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSaveTemplate();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowSaveDialog(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveTemplate}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         
