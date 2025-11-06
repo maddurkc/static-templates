@@ -52,33 +52,24 @@ export const SectionLibrary = () => {
   };
 
   return (
-    <div className="w-80 border-r bg-card/30 backdrop-blur-sm overflow-auto">
-      <div className="p-4 border-b sticky top-0 bg-card/80 backdrop-blur-sm z-10">
-        <h2 className="font-semibold text-lg">Section Library</h2>
-        <p className="text-xs text-muted-foreground mt-1">
-          Drag sections to add them
-        </p>
-      </div>
-
-      <div className="p-4 space-y-6">
-        {Object.entries(groupedSections).map(([category, categorySections]) => (
-          <div key={category} className="space-y-3">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                {categoryLabels[category]}
-              </h3>
-              <Badge variant="secondary" className="text-xs">
-                {categorySections.length}
-              </Badge>
-            </div>
-            <div className="space-y-2">
-              {categorySections.map((section) => (
-                <DraggableSection key={section.type} section={section} />
-              ))}
-            </div>
+    <div className="p-4 space-y-6">
+      {Object.entries(groupedSections).map(([category, categorySections]) => (
+        <div key={category} className="space-y-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              {categoryLabels[category]}
+            </h3>
+            <Badge variant="secondary" className="text-xs">
+              {categorySections.length}
+            </Badge>
           </div>
-        ))}
-      </div>
+          <div className="space-y-2">
+            {categorySections.map((section) => (
+              <DraggableSection key={section.type} section={section} />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { useSortable } from "@dnd-kit/sortable";
+import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Section } from "@/types/section";
 import { Button } from "@/components/ui/button";
@@ -133,16 +134,23 @@ export const EditorView = ({
   onMoveUp,
   onMoveDown
 }: EditorViewProps) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'editor-drop-zone',
+  });
+
   return (
-    <div className="p-8">
+    <div className="p-8" ref={setNodeRef}>
       <div className="max-w-4xl mx-auto">
         {sections.length === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed border-border rounded-lg bg-muted/20">
+          <div className={cn(
+            "text-center py-20 border-2 border-dashed rounded-lg transition-all",
+            isOver ? "border-primary bg-primary/10" : "border-border bg-muted/20"
+          )}>
             <p className="text-muted-foreground text-lg">
               Drop sections here to start building
             </p>
             <p className="text-muted-foreground text-sm mt-2">
-              Drag from the library on the left
+              Open Section Library and drag sections here
             </p>
           </div>
         ) : (

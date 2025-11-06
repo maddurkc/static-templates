@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors, useDroppable } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
 import { sectionTypes } from "@/data/sectionTypes";
@@ -8,7 +8,8 @@ import { EditorView } from "@/components/templates/EditorView";
 import { PreviewView } from "@/components/templates/PreviewView";
 import { CustomizationToolbar } from "@/components/templates/CustomizationToolbar";
 import { Button } from "@/components/ui/button";
-import { Save, Eye, EyeOff } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Save, Eye, EyeOff, Library } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Templates = () => {
@@ -29,6 +30,7 @@ const Templates = () => {
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
+  const [showLibrary, setShowLibrary] = useState(false);
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -135,6 +137,23 @@ const Templates = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Sheet open={showLibrary} onOpenChange={setShowLibrary}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Library className="h-4 w-4 mr-2" />
+                  Section Library
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-96 p-0 overflow-y-auto">
+                <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
+                  <SheetTitle>Section Library</SheetTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Drag sections to add them to your template
+                  </p>
+                </SheetHeader>
+                <SectionLibrary />
+              </SheetContent>
+            </Sheet>
             <Button
               variant="outline"
               size="sm"
@@ -170,10 +189,7 @@ const Templates = () => {
         onDragEnd={handleDragEnd}
       >
         <div className="flex h-[calc(100vh-120px)]">
-          {/* Left: Section Library */}
-          <SectionLibrary />
-
-          {/* Middle: Editor */}
+          {/* Editor */}
           <div className={`flex-1 overflow-auto ${showPreview ? 'border-r' : ''}`}>
             <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
               <EditorView
@@ -187,9 +203,9 @@ const Templates = () => {
             </SortableContext>
           </div>
 
-          {/* Right: Preview */}
+          {/* Preview */}
           {showPreview && (
-            <div className="w-1/3 overflow-auto bg-white">
+            <div className="w-1/2 overflow-auto bg-white">
               <PreviewView sections={sections} />
             </div>
           )}
