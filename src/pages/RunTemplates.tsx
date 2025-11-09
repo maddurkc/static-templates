@@ -9,38 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Send, Calendar, PlayCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Template {
-  id: string;
-  name: string;
-  html: string;
-  createdAt: string;
-  sectionCount: number;
-}
-
-// Mock data - replace with actual data from database
-const mockTemplates: Template[] = [
-  {
-    id: "1",
-    name: "Welcome Email Template",
-    html: "<h1>Welcome {{name}}!</h1><p>Thank you for joining us.</p>",
-    createdAt: "2024-01-15",
-    sectionCount: 2,
-  },
-  {
-    id: "2",
-    name: "Newsletter Template",
-    html: "<h1>{{title}}</h1><p>{{content}}</p><p>Best regards, {{sender}}</p>",
-    createdAt: "2024-01-20",
-    sectionCount: 3,
-  },
-];
+import { getTemplates, Template } from "@/lib/templateStorage";
+import { Section } from "@/types/section";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const templateFromState = location.state?.template;
   
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templateFromState || null);
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [toEmails, setToEmails] = useState("");
@@ -48,10 +25,16 @@ const RunTemplates = () => {
   const [bccEmails, setBccEmails] = useState("");
   const { toast } = useToast();
 
+  // Load templates from localStorage
+  useEffect(() => {
+    const loadedTemplates = getTemplates().filter(t => !t.archived);
+    setTemplates(loadedTemplates);
+  }, []);
+
   // Initialize variables when template is selected
   React.useEffect(() => {
     if (selectedTemplate) {
-      const vars = extractVariables(selectedTemplate.html);
+      const vars = extractAllVariables(selectedTemplate);
       const initialVars: Record<string, string> = {};
       vars.forEach(v => initialVars[v] = "");
       setVariables(initialVars);
@@ -64,6 +47,28 @@ const RunTemplates = () => {
     return Array.from(new Set(Array.from(matches, m => m[1])));
   };
 
+  // Extract variables from both HTML and sections
+  const extractAllVariables = (template: Template): string[] => {
+    const varsFromHtml = extractVariables(template.html);
+    const varsFromSections = new Set<string>();
+
+    // Extract from sections if available
+    if (template.sections) {
+      template.sections.forEach((section: Section) => {
+        // Extract variables from section content
+        const contentVars = extractVariables(section.content);
+        contentVars.forEach(v => varsFromSections.add(v));
+
+        // Extract from section variables definition
+        if (section.variables) {
+          Object.keys(section.variables).forEach(key => varsFromSections.add(key));
+        }
+      });
+    }
+
+    return Array.from(new Set([...varsFromHtml, ...varsFromSections]));
+  };
+
   const replaceVariables = (html: string, vars: Record<string, string>): string => {
     let result = html;
     Object.entries(vars).forEach(([key, value]) => {
@@ -74,7 +79,7 @@ const RunTemplates = () => {
 
   const handleRunTemplate = (template: Template) => {
     setSelectedTemplate(template);
-    const vars = extractVariables(template.html);
+    const vars = extractAllVariables(template);
     const initialVars: Record<string, string> = {};
     vars.forEach(v => initialVars[v] = "");
     setVariables(initialVars);
@@ -151,36 +156,49 @@ const RunTemplates = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockTemplates.map((template) => (
-              <Card key={template.id} className="p-6 hover:shadow-lg transition-all border-2 hover:border-primary/50">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">{template.name}</h3>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>{new Date(template.createdAt).toLocaleDateString()}</span>
+            {templates.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">No templates found. Create a template first.</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => navigate('/template-editor')}
+                >
+                  Create Template
+                </Button>
+              </div>
+            ) : (
+              templates.map((template) => (
+                <Card key={template.id} className="p-6 hover:shadow-lg transition-all border-2 hover:border-primary/50">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-xl font-semibold mb-2">{template.name}</h3>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>{new Date(template.createdAt).toLocaleDateString()}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      {template.sectionCount} sections
-                    </Badge>
-                    <Badge variant="outline">
-                      {extractVariables(template.html).length} variables
-                    </Badge>
-                  </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">
+                        {template.sectionCount} sections
+                      </Badge>
+                      <Badge variant="outline">
+                        {extractAllVariables(template).length} variables
+                      </Badge>
+                    </div>
 
-                  <Button
-                    onClick={() => handleRunTemplate(template)}
-                    className="w-full shadow-lg shadow-primary/20"
-                  >
-                    <PlayCircle className="h-4 w-4 mr-2" />
-                    Run Template
-                  </Button>
-                </div>
-              </Card>
-            ))}
+                    <Button
+                      onClick={() => handleRunTemplate(template)}
+                      className="w-full shadow-lg shadow-primary/20"
+                    >
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      Run Template
+                    </Button>
+                  </div>
+                </Card>
+              ))
+            )}
           </div>
         </div>
       ) : (
@@ -263,11 +281,11 @@ const RunTemplates = () => {
                   </Card>
 
                   {/* Template Variables */}
-                  {extractVariables(selectedTemplate.html).length > 0 && (
+                  {extractAllVariables(selectedTemplate).length > 0 && (
                     <Card className="p-6 border-2">
                       <h2 className="text-lg font-semibold mb-4">Template Variables</h2>
                       <div className="space-y-4">
-                        {extractVariables(selectedTemplate.html).map((varName) => (
+                        {extractAllVariables(selectedTemplate).map((varName) => (
                           <div key={varName} className="space-y-2">
                             <Label htmlFor={`var-${varName}`} className="flex items-center gap-2">
                               <Badge variant="outline" className="text-xs font-mono">
