@@ -1,10 +1,15 @@
-interface Template {
+import { Section } from "@/types/section";
+import { ApiConfig } from "@/types/api-config";
+
+export interface Template {
   id: string;
   name: string;
   html: string;
   createdAt: string;
   sectionCount: number;
   archived?: boolean;
+  apiConfig?: ApiConfig;
+  sections?: Section[];
 }
 
 const STORAGE_KEY = 'email_templates';

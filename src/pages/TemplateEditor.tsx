@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
+import { ApiConfig, DEFAULT_API_CONFIG } from "@/types/api-config";
 import { sectionTypes } from "@/data/sectionTypes";
 import { SectionLibrary } from "@/components/templates/SectionLibrary";
 import { EditorView } from "@/components/templates/EditorView";
@@ -17,7 +18,7 @@ import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X } from "luc
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { saveTemplate } from "@/lib/templateStorage";
-import { renderSectionContent } from "@/lib/templateUtils";
+import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils";
 
 const TemplateEditor = () => {
   const navigate = useNavigate();
@@ -62,6 +63,7 @@ const TemplateEditor = () => {
     }
   ]);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
+  const [apiConfig, setApiConfig] = useState<ApiConfig>(DEFAULT_API_CONFIG);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -195,6 +197,8 @@ const TemplateEditor = () => {
       createdAt: new Date().toISOString(),
       sectionCount: sections.length,
       archived: false,
+      apiConfig: apiConfig.enabled ? apiConfig : undefined,
+      sections: [...sections],
     });
 
     toast({
@@ -235,6 +239,61 @@ const TemplateEditor = () => {
       toast({
         title: "Copy failed",
         description: "Failed to copy HTML to clipboard.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTestApiFetch = async () => {
+    if (!apiConfig.enabled || !apiConfig.url) {
+      toast({
+        title: "API not configured",
+        description: "Please configure the API URL first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const options: RequestInit = {
+        method: apiConfig.method,
+        headers: apiConfig.headers || {},
+      };
+
+      if (apiConfig.method === 'POST' && apiConfig.body) {
+        options.body = apiConfig.body;
+        options.headers = { ...options.headers, 'Content-Type': 'application/json' };
+      }
+
+      const response = await fetch(apiConfig.url, options);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+
+      // Apply mappings to sections
+      const updatedSections = [...sections];
+      apiConfig.mappings.forEach(mapping => {
+        const sectionIndex = updatedSections.findIndex(s => s.id === mapping.sectionId);
+        if (sectionIndex !== -1) {
+          updatedSections[sectionIndex] = applyApiDataToSection(
+            updatedSections[sectionIndex],
+            data,
+            mapping
+          );
+        }
+      });
+
+      setSections(updatedSections);
+
+      toast({
+        title: "API data fetched",
+        description: "Successfully fetched and mapped data to sections.",
+      });
+    } catch (error) {
+      console.error('API fetch error:', error);
+      toast({
+        title: "Fetch failed",
+        description: error instanceof Error ? error.message : "Failed to fetch API data.",
         variant: "destructive",
       });
     }
@@ -394,12 +453,14 @@ const TemplateEditor = () => {
             </div>
           </div>
           
-          {selectedSection && (
-            <CustomizationToolbar
-              section={selectedSection}
-              onUpdate={handleUpdateSection}
-            />
-          )}
+          <CustomizationToolbar
+            section={selectedSection}
+            onUpdate={handleUpdateSection}
+            apiConfig={apiConfig}
+            sections={sections}
+            onApiConfigUpdate={setApiConfig}
+            onTestApiFetch={handleTestApiFetch}
+          />
         </div>
 
         {/* Main Content */}

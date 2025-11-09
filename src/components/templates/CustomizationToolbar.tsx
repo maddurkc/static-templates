@@ -1,16 +1,22 @@
 import { Section } from "@/types/section";
+import { ApiConfig } from "@/types/api-config";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Settings2 } from "lucide-react";
+import { Settings2, Plug } from "lucide-react";
 import { VariableEditor } from "./VariableEditor";
+import { ApiConfigPopover } from "./ApiConfigPopover";
 
 interface CustomizationToolbarProps {
-  section: Section;
+  section: Section | null;
   onUpdate: (section: Section) => void;
+  apiConfig: ApiConfig;
+  sections: Section[];
+  onApiConfigUpdate: (config: ApiConfig) => void;
+  onTestApiFetch: () => void;
 }
 
 const fontSizes = [
@@ -42,7 +48,14 @@ const textAlignments = [
   { label: "Justify", value: "justify" },
 ];
 
-export const CustomizationToolbar = ({ section, onUpdate }: CustomizationToolbarProps) => {
+export const CustomizationToolbar = ({ 
+  section, 
+  onUpdate, 
+  apiConfig, 
+  sections,
+  onApiConfigUpdate,
+  onTestApiFetch 
+}: CustomizationToolbarProps) => {
   const updateStyle = (key: string, value: string) => {
     onUpdate({
       ...section,
@@ -53,23 +66,82 @@ export const CustomizationToolbar = ({ section, onUpdate }: CustomizationToolbar
     });
   };
 
+  if (!section) {
+    return (
+      <div className="border-t bg-card/80 backdrop-blur-sm px-6 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold">Customize Template</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Select a section to customize its styles
+            </p>
+          </div>
+          
+          {/* API Integration Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Plug className="h-4 w-4" />
+                API Integration
+                {apiConfig.enabled && (
+                  <span className="ml-1 h-2 w-2 rounded-full bg-green-500" />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[500px]" align="end">
+              <ApiConfigPopover
+                apiConfig={apiConfig}
+                sections={sections}
+                onUpdate={onApiConfigUpdate}
+                onTestFetch={onTestApiFetch}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="border-t bg-card/80 backdrop-blur-sm px-6 py-3">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Customize Styles</h3>
         
-        {/* Quick access popover for variables */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Settings2 className="h-4 w-4" />
-              Edit Variables
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-96 max-h-[500px] overflow-y-auto" align="end">
-            <VariableEditor section={section} onUpdate={onUpdate} />
-          </PopoverContent>
-        </Popover>
+        <div className="flex items-center gap-2">
+          {/* Variables popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Settings2 className="h-4 w-4" />
+                Edit Variables
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 max-h-[500px] overflow-y-auto" align="end">
+              <VariableEditor section={section} onUpdate={onUpdate} />
+            </PopoverContent>
+          </Popover>
+
+          {/* API Integration Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Plug className="h-4 w-4" />
+                API Integration
+                {apiConfig.enabled && (
+                  <span className="ml-1 h-2 w-2 rounded-full bg-green-500" />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[500px]" align="end">
+              <ApiConfigPopover
+                apiConfig={apiConfig}
+                sections={sections}
+                onUpdate={onApiConfigUpdate}
+                onTestFetch={onTestApiFetch}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       <div className="space-y-3">
