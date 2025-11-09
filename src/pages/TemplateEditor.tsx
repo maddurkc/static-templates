@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { saveTemplate } from "@/lib/templateStorage";
@@ -286,6 +286,14 @@ const TemplateEditor = () => {
                           Drag sections to add them to your template
                         </p>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowLibrary(false)}
+                        className="h-8 w-8 hover:bg-muted"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   </SheetHeader>
                   <SectionLibrary />
