@@ -5,7 +5,7 @@ import { Section } from "@/types/section";
 import { Button } from "@/components/ui/button";
 import { GripVertical, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { renderSectionContent } from "@/lib/templateUtils";
+
 
 interface SortableSectionProps {
   section: Section;
@@ -66,7 +66,7 @@ const SortableSection = ({
       <div className="pl-8 pr-32">
         <div
           className="prose max-w-none"
-          dangerouslySetInnerHTML={{ __html: renderSectionContent(section) }}
+          dangerouslySetInnerHTML={{ __html: section.content }}
           style={section.styles as React.CSSProperties}
         />
       </div>
@@ -161,7 +161,8 @@ export const EditorView = ({
       </div>
       <div 
         className="prose prose-sm max-w-none"
-        dangerouslySetInnerHTML={{ __html: renderSectionContent(section) }}
+        dangerouslySetInnerHTML={{ __html: section.content }}
+        style={section.styles as React.CSSProperties}
       />
     </div>
   );
