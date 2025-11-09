@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send, Calendar, PlayCircle } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
 import { Section } from "@/types/section";
@@ -21,6 +21,7 @@ const RunTemplates = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templateFromState || null);
   const [variables, setVariables] = useState<Record<string, string>>({});
+  const [listVariables, setListVariables] = useState<Record<string, string[]>>({});
   const [toEmails, setToEmails] = useState("");
   const [ccEmails, setCcEmails] = useState("");
   const [bccEmails, setBccEmails] = useState("");
@@ -37,11 +38,19 @@ const RunTemplates = () => {
     if (selectedTemplate) {
       const vars = extractAllVariables(selectedTemplate);
       const initialVars: Record<string, string> = {};
+      const initialListVars: Record<string, string[]> = {};
+      
       vars.forEach(v => {
         const defaultVal = getDefaultValue(v);
-        initialVars[v] = Array.isArray(defaultVal) ? defaultVal.join('\n') : String(defaultVal);
+        if (Array.isArray(defaultVal)) {
+          initialListVars[v] = defaultVal.length > 0 ? defaultVal : [''];
+        } else {
+          initialVars[v] = String(defaultVal);
+        }
       });
+      
       setVariables(initialVars);
+      setListVariables(initialListVars);
     }
   }, [selectedTemplate]);
 
@@ -98,19 +107,20 @@ const RunTemplates = () => {
     return Array.from(new Set([...varsFromHtml, ...varsFromSections]));
   };
 
-  const replaceVariables = (html: string, vars: Record<string, string>): string => {
+  const replaceVariables = (html: string, vars: Record<string, string>, listVars: Record<string, string[]>): string => {
     let result = html;
-    Object.entries(vars).forEach(([key, value]) => {
-      // Check if this is a list variable
-      if (isListVariable(key)) {
-        // Split by newlines or commas and create list items
-        const items = value.split(/[\n,]/).map(item => item.trim()).filter(Boolean);
-        const listHtml = items.map(item => `<li>${item}</li>`).join('');
-        result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), listHtml);
-      } else {
-        result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
-      }
+    
+    // Replace list variables
+    Object.entries(listVars).forEach(([key, items]) => {
+      const listHtml = items.filter(item => item.trim()).map(item => `<li>${item}</li>`).join('');
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), listHtml);
     });
+    
+    // Replace regular variables
+    Object.entries(vars).forEach(([key, value]) => {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    });
+    
     return result;
   };
 
@@ -118,19 +128,19 @@ const RunTemplates = () => {
     setSelectedTemplate(template);
     const vars = extractAllVariables(template);
     const initialVars: Record<string, string> = {};
-    // Get default values from sections
+    const initialListVars: Record<string, string[]> = {};
+    
     vars.forEach(v => {
-      const sections = template.sections || [];
-      let defaultVal: string | string[] = '';
-      for (const section of sections) {
-        if (section.variables && section.variables[v] !== undefined) {
-          defaultVal = section.variables[v];
-          break;
-        }
+      const defaultVal = getDefaultValue(v);
+      if (Array.isArray(defaultVal)) {
+        initialListVars[v] = defaultVal.length > 0 ? defaultVal : [''];
+      } else {
+        initialVars[v] = String(defaultVal);
       }
-      initialVars[v] = Array.isArray(defaultVal) ? defaultVal.join('\n') : String(defaultVal);
     });
+    
     setVariables(initialVars);
+    setListVariables(initialListVars);
   };
 
   const handleSendTemplate = () => {
@@ -153,7 +163,8 @@ const RunTemplates = () => {
       ccEmails: ccEmails.split(',').map(e => e.trim()).filter(Boolean),
       bccEmails: bccEmails.split(',').map(e => e.trim()).filter(Boolean),
       variables,
-      htmlOutput: replaceVariables(selectedTemplate.html, variables),
+      listVariables,
+      htmlOutput: replaceVariables(selectedTemplate.html, variables, listVariables),
       runAt: new Date().toISOString(),
     };
 
@@ -173,10 +184,11 @@ const RunTemplates = () => {
     setCcEmails("");
     setBccEmails("");
     setVariables({});
+    setListVariables({});
   };
 
   const previewHtml = selectedTemplate
-    ? replaceVariables(selectedTemplate.html, variables)
+    ? replaceVariables(selectedTemplate.html, variables, listVariables)
     : "";
 
   return (
@@ -349,20 +361,61 @@ const RunTemplates = () => {
                                 )}
                               </Label>
                               {isList ? (
-                                <>
-                                  <Textarea
-                                    id={`var-${varName}`}
-                                    placeholder={`Enter ${varName} (one per line)`}
-                                    value={variables[varName] || ""}
-                                    onChange={(e) =>
-                                      setVariables({ ...variables, [varName]: e.target.value })
-                                    }
-                                    className="min-h-[100px] font-mono text-sm"
-                                  />
-                                  <p className="text-xs text-muted-foreground">
-                                    Enter one item per line
-                                  </p>
-                                </>
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs text-muted-foreground">List Items</span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setListVariables(prev => ({
+                                          ...prev,
+                                          [varName]: [...(prev[varName] || ['']), '']
+                                        }));
+                                      }}
+                                      className="h-7 px-2"
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add Item
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-2 pl-2 border-l-2 border-muted">
+                                    {(listVariables[varName] || ['']).map((item, index) => (
+                                      <div key={index} className="flex items-center gap-2 ml-2">
+                                        <Input
+                                          value={item}
+                                          onChange={(e) => {
+                                            setListVariables(prev => {
+                                              const newItems = [...(prev[varName] || [''])];
+                                              newItems[index] = e.target.value;
+                                              return { ...prev, [varName]: newItems };
+                                            });
+                                          }}
+                                          placeholder={`Item ${index + 1}`}
+                                          className="h-8 text-sm"
+                                        />
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setListVariables(prev => {
+                                              const newItems = [...(prev[varName] || [''])];
+                                              if (newItems.length > 1) {
+                                                newItems.splice(index, 1);
+                                                return { ...prev, [varName]: newItems };
+                                              }
+                                              return prev;
+                                            });
+                                          }}
+                                          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                                          disabled={(listVariables[varName]?.length || 0) <= 1}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               ) : (
                                 <Input
                                   id={`var-${varName}`}
@@ -394,7 +447,7 @@ const RunTemplates = () => {
               <ScrollArea className="h-[calc(100vh-180px)]">
                 <div className="p-8">
                   <div
-                    dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables) }}
+                    dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables, listVariables) }}
                     className="prose max-w-none"
                   />
                 </div>

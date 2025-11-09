@@ -1,0 +1,254 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, Merge } from "lucide-react";
+import { Section } from "@/types/section";
+
+interface TableEditorProps {
+  section: Section;
+  onUpdate: (section: Section) => void;
+}
+
+interface TableData {
+  rows: string[][];
+  showBorder: boolean;
+  mergedCells: Record<string, { rowSpan: number; colSpan: number }>;
+}
+
+export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
+  const parseTableData = (): TableData => {
+    try {
+      const data = section.variables?.tableData as any;
+      if (data && typeof data === 'object') {
+        return {
+          rows: data.rows || [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
+          showBorder: data.showBorder !== false,
+          mergedCells: data.mergedCells || {}
+        };
+      }
+    } catch (e) {
+      console.error('Error parsing table data:', e);
+    }
+    return {
+      rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
+      showBorder: true,
+      mergedCells: {}
+    };
+  };
+
+  const [tableData, setTableData] = useState<TableData>(parseTableData());
+  const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+
+  const updateTableData = (newData: TableData) => {
+    setTableData(newData);
+    onUpdate({
+      ...section,
+      variables: {
+        ...section.variables,
+        tableData: newData
+      }
+    });
+  };
+
+  const addRow = () => {
+    const newRow = new Array(tableData.rows[0]?.length || 2).fill('');
+    updateTableData({
+      ...tableData,
+      rows: [...tableData.rows, newRow]
+    });
+  };
+
+  const removeRow = (index: number) => {
+    if (tableData.rows.length <= 1) return;
+    const newRows = tableData.rows.filter((_, i) => i !== index);
+    updateTableData({
+      ...tableData,
+      rows: newRows
+    });
+  };
+
+  const addColumn = () => {
+    const newRows = tableData.rows.map(row => [...row, '']);
+    updateTableData({
+      ...tableData,
+      rows: newRows
+    });
+  };
+
+  const removeColumn = (colIndex: number) => {
+    if (tableData.rows[0]?.length <= 1) return;
+    const newRows = tableData.rows.map(row => row.filter((_, i) => i !== colIndex));
+    updateTableData({
+      ...tableData,
+      rows: newRows
+    });
+  };
+
+  const updateCell = (rowIndex: number, colIndex: number, value: string) => {
+    const newRows = [...tableData.rows];
+    newRows[rowIndex][colIndex] = value;
+    updateTableData({
+      ...tableData,
+      rows: newRows
+    });
+  };
+
+  const toggleBorder = () => {
+    updateTableData({
+      ...tableData,
+      showBorder: !tableData.showBorder
+    });
+  };
+
+  const mergeCells = () => {
+    if (!selectedCell) return;
+    
+    const cellKey = `${selectedCell.row}-${selectedCell.col}`;
+    const currentMerge = tableData.mergedCells[cellKey];
+    
+    if (currentMerge) {
+      // Unmerge
+      const newMergedCells = { ...tableData.mergedCells };
+      delete newMergedCells[cellKey];
+      updateTableData({
+        ...tableData,
+        mergedCells: newMergedCells
+      });
+    } else {
+      // Simple merge: 2 columns
+      updateTableData({
+        ...tableData,
+        mergedCells: {
+          ...tableData.mergedCells,
+          [cellKey]: { rowSpan: 1, colSpan: 2 }
+        }
+      });
+    }
+  };
+
+  const isCellMerged = (rowIndex: number, colIndex: number) => {
+    // Check if this cell is part of a merged cell
+    for (const [key, merge] of Object.entries(tableData.mergedCells)) {
+      const [mergeRow, mergeCol] = key.split('-').map(Number);
+      if (
+        rowIndex >= mergeRow && 
+        rowIndex < mergeRow + merge.rowSpan &&
+        colIndex >= mergeCol && 
+        colIndex < mergeCol + merge.colSpan &&
+        (rowIndex !== mergeRow || colIndex !== mergeCol)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const getCellMerge = (rowIndex: number, colIndex: number) => {
+    const cellKey = `${rowIndex}-${colIndex}`;
+    return tableData.mergedCells[cellKey];
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Table Editor</h3>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs">Show Border</Label>
+          <Switch checked={tableData.showBorder} onCheckedChange={toggleBorder} />
+        </div>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <Button size="sm" variant="outline" onClick={addRow} className="h-8 px-2">
+          <Plus className="h-3 w-3 mr-1" />
+          Add Row
+        </Button>
+        <Button size="sm" variant="outline" onClick={addColumn} className="h-8 px-2">
+          <Plus className="h-3 w-3 mr-1" />
+          Add Column
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={mergeCells}
+          disabled={!selectedCell}
+          className="h-8 px-2"
+        >
+          <Merge className="h-3 w-3 mr-1" />
+          Toggle Merge
+        </Button>
+      </div>
+
+      <div className="overflow-auto max-h-[400px]">
+        <table className={`w-full ${tableData.showBorder ? 'border border-border' : ''}`}>
+          <tbody>
+            {tableData.rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, colIndex) => {
+                  if (isCellMerged(rowIndex, colIndex)) {
+                    return null;
+                  }
+
+                  const merge = getCellMerge(rowIndex, colIndex);
+                  const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
+
+                  return (
+                    <td
+                      key={colIndex}
+                      rowSpan={merge?.rowSpan}
+                      colSpan={merge?.colSpan}
+                      className={`p-1 ${tableData.showBorder ? 'border border-border' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`}
+                      onClick={() => setSelectedCell({ row: rowIndex, col: colIndex })}
+                    >
+                      <Input
+                        value={cell}
+                        onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
+                        className="h-8 text-xs"
+                        placeholder={rowIndex === 0 ? `Header ${colIndex + 1}` : `Cell ${rowIndex},${colIndex + 1}`}
+                      />
+                    </td>
+                  );
+                })}
+                <td className="p-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeRow(rowIndex)}
+                    disabled={tableData.rows.length <= 1}
+                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            <tr>
+              {tableData.rows[0]?.map((_, colIndex) => (
+                <td key={colIndex} className="p-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeColumn(colIndex)}
+                    disabled={tableData.rows[0]?.length <= 1}
+                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {selectedCell && (
+        <p className="text-xs text-muted-foreground">
+          Selected: Row {selectedCell.row + 1}, Column {selectedCell.col + 1}
+          {getCellMerge(selectedCell.row, selectedCell.col) && ' (Merged)'}
+        </p>
+      )}
+    </div>
+  );
+};

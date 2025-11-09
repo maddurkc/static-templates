@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { TableEditor } from "./TableEditor";
 
 interface VariableEditorProps {
   section: Section;
@@ -14,6 +15,11 @@ interface VariableEditorProps {
 
 export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   const sectionDef = sectionTypes.find(s => s.type === section.type);
+  
+  // Show TableEditor for table sections
+  if (section.type === 'table') {
+    return <TableEditor section={section} onUpdate={onUpdate} />;
+  }
   
   if (!sectionDef?.variables || sectionDef.variables.length === 0) {
     return null;

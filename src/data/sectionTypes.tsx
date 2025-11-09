@@ -112,7 +112,19 @@ export const sectionTypes: SectionDefinition[] = [
     icon: Table,
     description: 'Data table',
     defaultContent: '<table><tr><th>Header 1</th><th>Header 2</th></tr><tr><td>Data 1</td><td>Data 2</td></tr></table>',
-    category: 'layout'
+    category: 'layout',
+    variables: [
+      { 
+        name: 'tableData', 
+        label: 'Table Data', 
+        type: 'table' as any, 
+        defaultValue: {
+          rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
+          showBorder: true,
+          mergedCells: {}
+        } as any
+      }
+    ]
   },
   {
     type: 'bullet-list-circle',

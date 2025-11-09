@@ -24,15 +24,15 @@ export type SectionType =
 export interface SectionVariable {
   name: string;
   label: string;
-  type: 'text' | 'url' | 'list';
-  defaultValue: string | string[];
+  type: 'text' | 'url' | 'list' | 'table';
+  defaultValue: string | string[] | any;
 }
 
 export interface Section {
   id: string;
   type: SectionType;
   content: string;
-  variables?: Record<string, string | string[]>;
+  variables?: Record<string, string | string[] | any>;
   styles?: {
     fontSize?: string;
     color?: string;

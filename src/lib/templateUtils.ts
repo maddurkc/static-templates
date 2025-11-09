@@ -1,8 +1,14 @@
 import { Section } from "@/types/section";
 import { ApiMapping } from "@/types/api-config";
+import { generateTableHTML, TableData } from "./tableUtils";
 
 export const renderSectionContent = (section: Section): string => {
   let content = section.content;
+  
+  // Handle table sections specially
+  if (section.type === 'table' && section.variables?.tableData) {
+    return generateTableHTML(section.variables.tableData as TableData);
+  }
   
   if (!section.variables) {
     return content;
@@ -16,6 +22,9 @@ export const renderSectionContent = (section: Section): string => {
       // For list variables, generate <li> tags
       const listItems = value.map(item => `<li>${item}</li>`).join('');
       content = content.replace(placeholder, listItems);
+    } else if (typeof value === 'object' && value !== null) {
+      // Skip complex objects like table data
+      return;
     } else {
       // For text/url variables, replace directly
       content = content.replace(new RegExp(placeholder, 'g'), value as string);
