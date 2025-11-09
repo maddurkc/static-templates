@@ -3,7 +3,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Settings2 } from "lucide-react";
@@ -55,36 +54,26 @@ export const CustomizationToolbar = ({ section, onUpdate }: CustomizationToolbar
   };
 
   return (
-    <div className="border-t bg-card/80 backdrop-blur-sm">
-      <Tabs defaultValue="variables" className="w-full">
-        <div className="px-6 pt-3 border-b">
-          <div className="flex items-center justify-between">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="variables">Variables</TabsTrigger>
-              <TabsTrigger value="styles">Styles</TabsTrigger>
-            </TabsList>
-            
-            {/* Quick access popover for variables */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Settings2 className="h-4 w-4" />
-                  Quick Edit Variables
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-96 max-h-[500px] overflow-y-auto" align="end">
-                <VariableEditor section={section} onUpdate={onUpdate} />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
+    <div className="border-t bg-card/80 backdrop-blur-sm px-6 py-3">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold">Customize Styles</h3>
+        
+        {/* Quick access popover for variables */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Settings2 className="h-4 w-4" />
+              Edit Variables
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-96 max-h-[500px] overflow-y-auto" align="end">
+            <VariableEditor section={section} onUpdate={onUpdate} />
+          </PopoverContent>
+        </Popover>
+      </div>
 
-        <TabsContent value="variables" className="px-6 py-4 m-0">
-          <VariableEditor section={section} onUpdate={onUpdate} />
-        </TabsContent>
-
-        <TabsContent value="styles" className="px-6 py-3 m-0 space-y-3">
-          <div className="flex items-center gap-6 flex-wrap">
+      <div className="space-y-3">
+        <div className="flex items-center gap-6 flex-wrap">
           {/* Font Size */}
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground whitespace-nowrap">Font Size</Label>
@@ -192,9 +181,8 @@ export const CustomizationToolbar = ({ section, onUpdate }: CustomizationToolbar
               />
             </div>
           </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 };
