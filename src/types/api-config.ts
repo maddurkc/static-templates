@@ -1,9 +1,31 @@
+export interface ApiTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  url: string; // Can contain placeholders like {version}, {projectKey}
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  headers?: Record<string, string>; // Can contain placeholders
+  bodyTemplate?: string; // Template for POST body with placeholders
+  requiredParams: ApiParam[]; // Parameters user needs to provide
+  sampleMappings?: ApiMapping[]; // Suggested mappings for this template
+}
+
+export interface ApiParam {
+  name: string;
+  label: string;
+  type: 'text' | 'number' | 'select';
+  placeholder?: string;
+  required: boolean;
+  description?: string;
+  options?: string[]; // For select type
+  location: 'query' | 'path' | 'body' | 'header'; // Where this param goes
+}
+
 export interface ApiConfig {
   enabled: boolean;
-  url: string;
-  method: 'GET' | 'POST';
-  headers?: Record<string, string>;
-  body?: string;
+  templateId: string; // ID of selected API template
+  paramValues: Record<string, string>; // User-provided values for template params
   mappings: ApiMapping[];
 }
 
@@ -17,8 +39,7 @@ export interface ApiMapping {
 
 export const DEFAULT_API_CONFIG: ApiConfig = {
   enabled: false,
-  url: '',
-  method: 'GET',
-  headers: {},
+  templateId: '',
+  paramValues: {},
   mappings: []
 };

@@ -14,11 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { saveTemplate } from "@/lib/templateStorage";
 import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils";
+import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
 
 const TemplateEditor = () => {
   const navigate = useNavigate();
@@ -245,10 +246,32 @@ const TemplateEditor = () => {
   };
 
   const handleTestApiFetch = async () => {
-    if (!apiConfig.enabled || !apiConfig.url) {
+    if (!apiConfig.enabled || !apiConfig.templateId) {
       toast({
         title: "API not configured",
-        description: "Please configure the API URL first.",
+        description: "Please select an API template first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate required parameters
+    const validation = validateApiConfig(apiConfig);
+    if (!validation.valid) {
+      toast({
+        title: "Missing parameters",
+        description: `Please provide: ${validation.missingParams.join(', ')}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Build API request from template
+    const request = buildApiRequest(apiConfig);
+    if (!request) {
+      toast({
+        title: "Invalid template",
+        description: "Could not build API request from template.",
         variant: "destructive",
       });
       return;
@@ -256,16 +279,16 @@ const TemplateEditor = () => {
 
     try {
       const options: RequestInit = {
-        method: apiConfig.method,
-        headers: apiConfig.headers || {},
+        method: request.method,
+        headers: request.headers,
       };
 
-      if (apiConfig.method === 'POST' && apiConfig.body) {
-        options.body = apiConfig.body;
+      if (request.body && (request.method === 'POST' || request.method === 'PUT')) {
+        options.body = request.body;
         options.headers = { ...options.headers, 'Content-Type': 'application/json' };
       }
 
-      const response = await fetch(apiConfig.url, options);
+      const response = await fetch(request.url, options);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
@@ -407,6 +430,19 @@ const TemplateEditor = () => {
                 {showPreview ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
                 {showPreview ? 'Hide' : 'Show'} Preview
               </Button>
+              
+              {apiConfig.enabled && apiConfig.templateId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTestApiFetch}
+                  className="gap-2"
+                >
+                  <Play className="h-4 w-4" />
+                  Test & Fetch API Data
+                </Button>
+              )}
+              
               <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
                 <DialogTrigger asChild>
                   <Button
@@ -459,7 +495,6 @@ const TemplateEditor = () => {
             apiConfig={apiConfig}
             sections={sections}
             onApiConfigUpdate={setApiConfig}
-            onTestApiFetch={handleTestApiFetch}
           />
         </div>
 

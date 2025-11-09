@@ -7,51 +7,50 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { API_TEMPLATES, getAllCategories } from "@/data/apiTemplates";
 
 interface ApiConfigPopoverProps {
   apiConfig: ApiConfig;
   sections: Section[];
   onUpdate: (config: ApiConfig) => void;
-  onTestFetch: () => void;
 }
 
-export const ApiConfigPopover = ({ apiConfig, sections, onUpdate, onTestFetch }: ApiConfigPopoverProps) => {
+export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPopoverProps) => {
   const { toast } = useToast();
-  const [headerKey, setHeaderKey] = useState("");
-  const [headerValue, setHeaderValue] = useState("");
+  const selectedTemplate = API_TEMPLATES.find(t => t.id === apiConfig.templateId);
+  const categories = getAllCategories();
 
   const updateConfig = (updates: Partial<ApiConfig>) => {
     onUpdate({ ...apiConfig, ...updates });
   };
 
-  const addHeader = () => {
-    if (!headerKey || !headerValue) {
-      toast({ title: "Error", description: "Please enter both header key and value", variant: "destructive" });
-      return;
-    }
+  const updateParamValue = (paramName: string, value: string) => {
     updateConfig({
-      headers: { ...apiConfig.headers, [headerKey]: headerValue }
+      paramValues: { ...apiConfig.paramValues, [paramName]: value }
     });
-    setHeaderKey("");
-    setHeaderValue("");
-  };
-
-  const removeHeader = (key: string) => {
-    const { [key]: _, ...rest } = apiConfig.headers || {};
-    updateConfig({ headers: rest });
   };
 
   const addMapping = () => {
-    const newMapping: ApiMapping = {
-      id: `mapping-${Date.now()}`,
-      sectionId: sections[0]?.id || '',
-      apiPath: '',
-      dataType: 'text',
-    };
-    updateConfig({ mappings: [...apiConfig.mappings, newMapping] });
+    if (selectedTemplate?.sampleMappings && apiConfig.mappings.length === 0) {
+      // Use sample mappings from template
+      const mappingsWithIds = selectedTemplate.sampleMappings.map(m => ({
+        ...m,
+        id: `mapping-${Date.now()}-${Math.random()}`,
+        sectionId: sections[0]?.id || ''
+      }));
+      updateConfig({ mappings: mappingsWithIds });
+    } else {
+      const newMapping: ApiMapping = {
+        id: `mapping-${Date.now()}`,
+        sectionId: sections[0]?.id || '',
+        apiPath: '',
+        dataType: 'text',
+      };
+      updateConfig({ mappings: [...apiConfig.mappings, newMapping] });
+    }
   };
 
   const updateMapping = (id: string, updates: Partial<ApiMapping>) => {
@@ -90,106 +89,93 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate, onTestFetch }:
           <>
             <Separator />
 
-            {/* API Configuration */}
+            {/* API Template Selection */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold">API Endpoint</h4>
+              <h4 className="text-sm font-semibold">Select API Template</h4>
               
               <div className="space-y-2">
-                <Label className="text-xs">Method</Label>
+                <Label className="text-xs">Template</Label>
                 <Select
-                  value={apiConfig.method}
-                  onValueChange={(method: 'GET' | 'POST') => updateConfig({ method })}
+                  value={apiConfig.templateId}
+                  onValueChange={(templateId) => updateConfig({ templateId, paramValues: {} })}
                 >
                   <SelectTrigger className="h-8">
-                    <SelectValue />
+                    <SelectValue placeholder="Choose a template..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="GET">GET</SelectItem>
-                    <SelectItem value="POST">POST</SelectItem>
+                    {categories.map(category => (
+                      <div key={category}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                          {category}
+                        </div>
+                        {API_TEMPLATES.filter(t => t.category === category).map(template => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs">URL</Label>
-                <Input
-                  value={apiConfig.url}
-                  onChange={(e) => updateConfig({ url: e.target.value })}
-                  placeholder="https://api.example.com/data"
-                  className="h-8 text-sm"
-                />
-              </div>
-
-              {apiConfig.method === 'POST' && (
-                <div className="space-y-2">
-                  <Label className="text-xs">Request Body (JSON)</Label>
-                  <Input
-                    value={apiConfig.body || ''}
-                    onChange={(e) => updateConfig({ body: e.target.value })}
-                    placeholder='{"key": "value"}'
-                    className="h-8 text-sm font-mono"
-                  />
+              {selectedTemplate && (
+                <div className="p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                  {selectedTemplate.description}
                 </div>
               )}
-
-              {/* Headers */}
-              <div className="space-y-2">
-                <Label className="text-xs">Headers</Label>
-                <div className="space-y-2">
-                  {Object.entries(apiConfig.headers || {}).map(([key, value]) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <Input value={key} disabled className="h-8 text-xs flex-1" />
-                      <Input value={value} disabled className="h-8 text-xs flex-1" />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => removeHeader(key)}
-                        className="h-8 w-8"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={headerKey}
-                      onChange={(e) => setHeaderKey(e.target.value)}
-                      placeholder="Header name"
-                      className="h-8 text-xs flex-1"
-                    />
-                    <Input
-                      value={headerValue}
-                      onChange={(e) => setHeaderValue(e.target.value)}
-                      placeholder="Header value"
-                      className="h-8 text-xs flex-1"
-                    />
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={addHeader}
-                      className="h-8 w-8"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onTestFetch}
-                className="w-full"
-              >
-                <RefreshCw className="h-3 w-3 mr-2" />
-                Test API & Fetch Data
-              </Button>
             </div>
 
-            <Separator />
+            {selectedTemplate && (
+              <>
+                <Separator />
 
-            {/* Data Mappings */}
-            <div className="space-y-3">
+                {/* Template Parameters */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold">Template Parameters</h4>
+                  
+                  {selectedTemplate.requiredParams.map(param => (
+                    <div key={param.name} className="space-y-2">
+                      <Label className="text-xs">
+                        {param.label}
+                        {param.required && <span className="text-destructive ml-1">*</span>}
+                      </Label>
+                      {param.type === 'select' && param.options ? (
+                        <Select
+                          value={apiConfig.paramValues[param.name] || ''}
+                          onValueChange={(value) => updateParamValue(param.name, value)}
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder={param.placeholder} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {param.options.map(option => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          type={param.type === 'number' ? 'number' : 'text'}
+                          value={apiConfig.paramValues[param.name] || ''}
+                          onChange={(e) => updateParamValue(param.name, e.target.value)}
+                          placeholder={param.placeholder}
+                          className="h-8 text-sm"
+                        />
+                      )}
+                      {param.description && (
+                        <p className="text-xs text-muted-foreground">{param.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <Separator />
+
+                {/* Data Mappings */}
+                <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold">Data Mappings</h4>
                 <Button size="sm" variant="outline" onClick={addMapping} className="h-7">
@@ -296,13 +282,15 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate, onTestFetch }:
                 })}
               </div>
 
-              {apiConfig.mappings.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  No mappings configured. Add a mapping to start.
-                </p>
-              )}
-            </div>
-          </>
+                {apiConfig.mappings.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    No mappings configured. Add a mapping to start.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </>
         )}
       </div>
     </ScrollArea>

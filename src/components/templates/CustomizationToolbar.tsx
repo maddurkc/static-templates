@@ -16,7 +16,6 @@ interface CustomizationToolbarProps {
   apiConfig: ApiConfig;
   sections: Section[];
   onApiConfigUpdate: (config: ApiConfig) => void;
-  onTestApiFetch: () => void;
 }
 
 const fontSizes = [
@@ -53,8 +52,7 @@ export const CustomizationToolbar = ({
   onUpdate, 
   apiConfig, 
   sections,
-  onApiConfigUpdate,
-  onTestApiFetch 
+  onApiConfigUpdate
 }: CustomizationToolbarProps) => {
   const updateStyle = (key: string, value: string) => {
     onUpdate({
@@ -93,7 +91,6 @@ export const CustomizationToolbar = ({
                 apiConfig={apiConfig}
                 sections={sections}
                 onUpdate={onApiConfigUpdate}
-                onTestFetch={onTestApiFetch}
               />
             </PopoverContent>
           </Popover>
@@ -137,7 +134,6 @@ export const CustomizationToolbar = ({
                 apiConfig={apiConfig}
                 sections={sections}
                 onUpdate={onApiConfigUpdate}
-                onTestFetch={onTestApiFetch}
               />
             </PopoverContent>
           </Popover>
