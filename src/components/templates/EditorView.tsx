@@ -119,6 +119,8 @@ const SortableSection = ({
 };
 
 interface EditorViewProps {
+  headerSection: Section;
+  footerSection: Section;
   sections: Section[];
   selectedSection: Section | null;
   onSelectSection: (section: Section) => void;
@@ -128,6 +130,8 @@ interface EditorViewProps {
 }
 
 export const EditorView = ({
+  headerSection,
+  footerSection,
   sections,
   selectedSection,
   onSelectSection,
@@ -139,9 +143,36 @@ export const EditorView = ({
     id: 'editor-drop-zone',
   });
 
+  const renderStaticSection = (section: Section, label: string) => (
+    <div 
+      onClick={() => onSelectSection(section)}
+      className={cn(
+        "p-4 rounded-lg border-2 transition-all cursor-pointer bg-muted/30",
+        selectedSection?.id === section.id 
+          ? 'border-primary shadow-lg' 
+          : 'border-muted-foreground/20 hover:border-muted-foreground/40'
+      )}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground uppercase">{label}</span>
+          <span className="text-xs text-muted-foreground">(Cannot be deleted or moved)</span>
+        </div>
+      </div>
+      <div 
+        className="prose prose-sm max-w-none"
+        dangerouslySetInnerHTML={{ __html: renderSectionContent(section) }}
+      />
+    </div>
+  );
+
   return (
-    <div className="p-8" ref={setNodeRef}>
-      <div className="max-w-4xl mx-auto">
+    <div className="p-8 space-y-4" ref={setNodeRef}>
+      <div className="max-w-4xl mx-auto space-y-4">
+        {/* Static Header */}
+        {renderStaticSection(headerSection, 'Header')}
+        
+        {/* User Sections */}
         {sections.length === 0 ? (
           <div className={cn(
             "text-center py-20 border-2 border-dashed rounded-lg transition-all",
@@ -169,6 +200,9 @@ export const EditorView = ({
             />
           ))
         )}
+        
+        {/* Static Footer */}
+        {renderStaticSection(footerSection, 'Footer')}
       </div>
     </div>
   );

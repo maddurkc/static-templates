@@ -17,7 +17,9 @@ export type SectionType =
   | 'image' 
   | 'link' 
   | 'button' 
-  | 'grid';
+  | 'grid'
+  | 'header'
+  | 'footer';
 
 export interface SectionVariable {
   name: string;

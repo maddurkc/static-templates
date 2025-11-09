@@ -85,10 +85,10 @@ const Templates = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
-              Templates
+              Static Templates
             </h1>
             <p className="text-muted-foreground">
-              Manage and organize your email templates
+              Create and manage your static templates
             </p>
           </div>
           <Button
@@ -97,7 +97,7 @@ const Templates = () => {
             className="shadow-lg shadow-primary/20"
           >
             <Plus className="h-5 w-5 mr-2" />
-            Create New Template
+            Create New Static Template
           </Button>
         </div>
 

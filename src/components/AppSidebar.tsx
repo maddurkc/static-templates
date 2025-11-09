@@ -14,7 +14,7 @@ import {
 
 const menuItems = [
   { title: "Sections", url: "/sections", icon: Layers },
-  { title: "Templates", url: "/templates", icon: FileText },
+  { title: "Static Templates", url: "/templates", icon: FileText },
   { title: "Run Templates", url: "/run-templates", icon: PlayCircle },
   { title: "Database Schema", url: "/database-schema", icon: Database },
 ];

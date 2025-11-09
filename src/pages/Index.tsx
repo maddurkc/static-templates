@@ -35,7 +35,7 @@ const Index = () => {
             <Link to="/templates">
               <Button size="lg" variant="outline">
                 <FileText className="mr-2 h-5 w-5" />
-                Start Building
+                Build Static Template
               </Button>
             </Link>
           </div>
@@ -103,7 +103,7 @@ const Index = () => {
               </Link>
               <Link to="/templates">
                 <Button variant="outline">
-                  Build Template
+                  Build Static Template
                 </Button>
               </Link>
             </CardContent>

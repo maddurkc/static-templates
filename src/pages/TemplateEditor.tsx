@@ -21,11 +21,37 @@ import { renderSectionContent } from "@/lib/templateUtils";
 
 const TemplateEditor = () => {
   const navigate = useNavigate();
+  
+  // Static header section - cannot be deleted or moved
+  const [headerSection] = useState<Section>({
+    id: 'static-header',
+    type: 'header',
+    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-bottom: 2px solid #dee2e6;"><h1>{{companyName}}</h1><p>{{tagline}}</p></div>',
+    variables: {
+      companyName: 'Your Company Name',
+      tagline: 'Your Company Tagline'
+    },
+    styles: {}
+  });
+
+  // Static footer section - cannot be deleted or moved
+  const [footerSection] = useState<Section>({
+    id: 'static-footer',
+    type: 'footer',
+    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 2px solid #dee2e6; margin-top: 40px;"><p>&copy; {{year}} {{companyName}}. All rights reserved.</p><p>{{contactEmail}}</p></div>',
+    variables: {
+      year: new Date().getFullYear().toString(),
+      companyName: 'Your Company Name',
+      contactEmail: 'contact@example.com'
+    },
+    styles: {}
+  });
+
   const [sections, setSections] = useState<Section[]>([
     {
       id: 'demo-1',
       type: 'heading1',
-      content: 'Welcome to Your Template',
+      content: 'Welcome to Your Static Template',
       styles: { fontSize: '48px', color: '#3b3f5c', fontWeight: '700' }
     },
     {
@@ -110,6 +136,17 @@ const TemplateEditor = () => {
   };
 
   const handleUpdateSection = (updatedSection: Section) => {
+    // Update header or footer if selected
+    if (updatedSection.id === 'static-header') {
+      // Header is immutable in state, but we update selection
+      setSelectedSection(updatedSection);
+      return;
+    }
+    if (updatedSection.id === 'static-footer') {
+      // Footer is immutable in state, but we update selection
+      setSelectedSection(updatedSection);
+      return;
+    }
     setSections(sections.map(s => s.id === updatedSection.id ? updatedSection : s));
     setSelectedSection(updatedSection);
   };
@@ -173,7 +210,8 @@ const TemplateEditor = () => {
   };
 
   const generateHTML = () => {
-    return sections.map(section => {
+    const allSections = [headerSection, ...sections, footerSection];
+    return allSections.map(section => {
       const styleString = Object.entries(section.styles || {})
         .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
         .join('; ');
@@ -214,17 +252,17 @@ const TemplateEditor = () => {
         <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
           <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-4">
-              <Button
+                <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/templates')}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Templates
+                Back to Static Templates
               </Button>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Template Editor
+                  Static Template Editor
                 </h1>
                 <p className="text-xs text-muted-foreground">
                   Drag, drop, and customize your sections
@@ -309,16 +347,16 @@ const TemplateEditor = () => {
                     className="shadow-lg shadow-primary/20"
                   >
                     <Save className="h-4 w-4 mr-2" />
-                    Save Template
+                    Save Static Template
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Save Template</DialogTitle>
+                    <DialogTitle>Save Static Template</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="template-name">Template Name</Label>
+                      <Label htmlFor="template-name">Static Template Name</Label>
                       <Input
                         id="template-name"
                         placeholder="Enter template name..."
@@ -362,6 +400,8 @@ const TemplateEditor = () => {
           <div className={`flex-1 overflow-auto ${showPreview ? 'border-r' : ''}`}>
             <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
               <EditorView
+                headerSection={headerSection}
+                footerSection={footerSection}
                 sections={sections}
                 selectedSection={selectedSection}
                 onSelectSection={setSelectedSection}
@@ -375,7 +415,11 @@ const TemplateEditor = () => {
           {/* Preview */}
           {showPreview && (
             <div className="w-1/2 overflow-auto bg-white">
-              <PreviewView sections={sections} />
+              <PreviewView 
+                headerSection={headerSection}
+                footerSection={footerSection}
+                sections={sections} 
+              />
             </div>
           )}
         </div>
