@@ -4,6 +4,7 @@ import * as React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -36,7 +37,10 @@ const RunTemplates = () => {
     if (selectedTemplate) {
       const vars = extractAllVariables(selectedTemplate);
       const initialVars: Record<string, string> = {};
-      vars.forEach(v => initialVars[v] = "");
+      vars.forEach(v => {
+        const defaultVal = getDefaultValue(v);
+        initialVars[v] = Array.isArray(defaultVal) ? defaultVal.join('\n') : String(defaultVal);
+      });
       setVariables(initialVars);
     }
   }, [selectedTemplate]);
@@ -45,6 +49,31 @@ const RunTemplates = () => {
     const regex = /\{\{(\w+)\}\}/g;
     const matches = html.matchAll(regex);
     return Array.from(new Set(Array.from(matches, m => m[1])));
+  };
+
+  // Check if a variable is a list type based on sections
+  const isListVariable = (varName: string): boolean => {
+    if (!selectedTemplate?.sections) return false;
+    
+    for (const section of selectedTemplate.sections) {
+      if (section.variables && section.variables[varName]) {
+        return Array.isArray(section.variables[varName]);
+      }
+    }
+    return false;
+  };
+
+  // Get default value for a variable from sections
+  const getDefaultValue = (varName: string): string | string[] => {
+    if (!selectedTemplate?.sections) return '';
+    
+    for (const section of selectedTemplate.sections) {
+      if (section.variables && section.variables[varName] !== undefined) {
+        const value = section.variables[varName];
+        return Array.isArray(value) ? value : String(value);
+      }
+    }
+    return '';
   };
 
   // Extract variables from both HTML and sections
@@ -72,7 +101,15 @@ const RunTemplates = () => {
   const replaceVariables = (html: string, vars: Record<string, string>): string => {
     let result = html;
     Object.entries(vars).forEach(([key, value]) => {
-      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+      // Check if this is a list variable
+      if (isListVariable(key)) {
+        // Split by newlines or commas and create list items
+        const items = value.split(/[\n,]/).map(item => item.trim()).filter(Boolean);
+        const listHtml = items.map(item => `<li>${item}</li>`).join('');
+        result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), listHtml);
+      } else {
+        result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+      }
     });
     return result;
   };
@@ -81,7 +118,18 @@ const RunTemplates = () => {
     setSelectedTemplate(template);
     const vars = extractAllVariables(template);
     const initialVars: Record<string, string> = {};
-    vars.forEach(v => initialVars[v] = "");
+    // Get default values from sections
+    vars.forEach(v => {
+      const sections = template.sections || [];
+      let defaultVal: string | string[] = '';
+      for (const section of sections) {
+        if (section.variables && section.variables[v] !== undefined) {
+          defaultVal = section.variables[v];
+          break;
+        }
+      }
+      initialVars[v] = Array.isArray(defaultVal) ? defaultVal.join('\n') : String(defaultVal);
+    });
     setVariables(initialVars);
   };
 
@@ -285,24 +333,49 @@ const RunTemplates = () => {
                     <Card className="p-6 border-2">
                       <h2 className="text-lg font-semibold mb-4">Template Variables</h2>
                       <div className="space-y-4">
-                        {extractAllVariables(selectedTemplate).map((varName) => (
-                          <div key={varName} className="space-y-2">
-                            <Label htmlFor={`var-${varName}`} className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs font-mono">
-                                {`{{${varName}}}`}
-                              </Badge>
-                              <span>{varName}</span>
-                            </Label>
-                            <Input
-                              id={`var-${varName}`}
-                              placeholder={`Enter ${varName}`}
-                              value={variables[varName] || ""}
-                              onChange={(e) =>
-                                setVariables({ ...variables, [varName]: e.target.value })
-                              }
-                            />
-                          </div>
-                        ))}
+                        {extractAllVariables(selectedTemplate).map((varName) => {
+                          const isList = isListVariable(varName);
+                          return (
+                            <div key={varName} className="space-y-2">
+                              <Label htmlFor={`var-${varName}`} className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs font-mono">
+                                  {`{{${varName}}}`}
+                                </Badge>
+                                <span>{varName}</span>
+                                {isList && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    List
+                                  </Badge>
+                                )}
+                              </Label>
+                              {isList ? (
+                                <>
+                                  <Textarea
+                                    id={`var-${varName}`}
+                                    placeholder={`Enter ${varName} (one per line)`}
+                                    value={variables[varName] || ""}
+                                    onChange={(e) =>
+                                      setVariables({ ...variables, [varName]: e.target.value })
+                                    }
+                                    className="min-h-[100px] font-mono text-sm"
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Enter one item per line
+                                  </p>
+                                </>
+                              ) : (
+                                <Input
+                                  id={`var-${varName}`}
+                                  placeholder={`Enter ${varName}`}
+                                  value={variables[varName] || ""}
+                                  onChange={(e) =>
+                                    setVariables({ ...variables, [varName]: e.target.value })
+                                  }
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </Card>
                   )}

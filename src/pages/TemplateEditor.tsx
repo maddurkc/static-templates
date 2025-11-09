@@ -25,7 +25,7 @@ const TemplateEditor = () => {
   const navigate = useNavigate();
   
   // Static header section - cannot be deleted or moved
-  const [headerSection] = useState<Section>({
+  const [headerSection, setHeaderSection] = useState<Section>({
     id: 'static-header',
     type: 'header',
     content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-bottom: 2px solid #dee2e6;"><h1>{{companyName}}</h1><p>{{tagline}}</p></div>',
@@ -37,7 +37,7 @@ const TemplateEditor = () => {
   });
 
   // Static footer section - cannot be deleted or moved
-  const [footerSection] = useState<Section>({
+  const [footerSection, setFooterSection] = useState<Section>({
     id: 'static-footer',
     type: 'footer',
     content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 2px solid #dee2e6; margin-top: 40px;"><p>&copy; {{year}} {{companyName}}. All rights reserved.</p><p>{{contactEmail}}</p></div>',
@@ -141,12 +141,12 @@ const TemplateEditor = () => {
   const handleUpdateSection = (updatedSection: Section) => {
     // Update header or footer if selected
     if (updatedSection.id === 'static-header') {
-      // Header is immutable in state, but we update selection
+      setHeaderSection(updatedSection);
       setSelectedSection(updatedSection);
       return;
     }
     if (updatedSection.id === 'static-footer') {
-      // Footer is immutable in state, but we update selection
+      setFooterSection(updatedSection);
       setSelectedSection(updatedSection);
       return;
     }
@@ -189,17 +189,18 @@ const TemplateEditor = () => {
       return;
     }
 
-    const html = generateHTML();
+    // Save with placeholders, not rendered values
+    const html = generateHTMLWithPlaceholders();
     
-    // Save template to localStorage
+    // Save template to localStorage with all sections including header and footer
     const savedTemplate = saveTemplate({
       name: templateName,
       html,
       createdAt: new Date().toISOString(),
-      sectionCount: sections.length,
+      sectionCount: sections.length + 2, // Include header and footer
       archived: false,
       apiConfig: apiConfig.enabled ? apiConfig : undefined,
-      sections: [...sections],
+      sections: [headerSection, ...sections, footerSection],
     });
 
     toast({
@@ -212,6 +213,18 @@ const TemplateEditor = () => {
     
     // Navigate back to templates list
     setTimeout(() => navigate('/templates'), 500);
+  };
+
+  const generateHTMLWithPlaceholders = () => {
+    const allSections = [headerSection, ...sections, footerSection];
+    return allSections.map(section => {
+      const styleString = Object.entries(section.styles || {})
+        .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
+        .join('; ');
+      
+      // Use raw content with placeholders, don't render variables
+      return `<div style="${styleString}">\n  ${section.content}\n</div>`;
+    }).join('\n\n');
   };
 
   const generateHTML = () => {
