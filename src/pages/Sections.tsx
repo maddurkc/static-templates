@@ -18,7 +18,6 @@ import * as LucideIcons from "lucide-react";
 
 const Sections = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sections, setSections] = useState<Section[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [customSections, setCustomSections] = useState<SectionDefinition[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -50,25 +49,6 @@ const Sections = () => {
     acc[section.category].push(section);
     return acc;
   }, {} as Record<string, typeof sectionTypes>);
-
-  const createSection = (sectionDef: typeof sectionTypes[0]) => {
-    const newSection: Section = {
-      id: `section-${Date.now()}-${Math.random()}`,
-      type: sectionDef.type,
-      content: sectionDef.defaultContent,
-      styles: {
-        fontSize: '16px',
-        color: '#000000',
-      }
-    };
-    
-    setSections([...sections, newSection]);
-    
-    toast({
-      title: "Section created",
-      description: `${sectionDef.label} has been added to your collection.`,
-    });
-  };
 
   const generateSectionHTML = (sectionDef: typeof sectionTypes[0]) => {
     return sectionDef.defaultContent;
@@ -317,16 +297,7 @@ const Sections = () => {
                       {section.description}
                     </CardDescription>
                     
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={() => createSection(section)}
-                        className="flex-1 group-hover:shadow-md transition-shadow"
-                        size="sm"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add to Session
-                      </Button>
-
+                    <div className="flex gap-2 justify-end">
                       <SectionPreviewDialog section={section} />
                       
                       {isCustomSection(section) && (
@@ -439,16 +410,6 @@ CREATE INDEX idx_template_sections_order ON template_sections(order_index);`}</c
           </CardContent>
         </Card>
 
-        {/* Created Sections Count */}
-        {sections.length > 0 && (
-          <Card className="border-accent bg-accent/5">
-            <CardContent className="py-4">
-              <p className="text-center text-sm text-muted-foreground">
-                <span className="font-semibold text-accent">{sections.length}</span> sections created in this session
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );
