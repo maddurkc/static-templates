@@ -13,6 +13,7 @@ import { sectionTypes } from "@/data/sectionTypes";
 import { Section, SectionDefinition } from "@/types/section";
 import { useToast } from "@/hooks/use-toast";
 import { saveCustomSection, getCustomSections, deleteCustomSection } from "@/lib/sectionStorage";
+import { SectionPreviewDialog } from "@/components/sections/SectionPreviewDialog";
 import * as LucideIcons from "lucide-react";
 
 const Sections = () => {
@@ -325,6 +326,8 @@ const Sections = () => {
                         <Plus className="h-4 w-4 mr-2" />
                         Add to Session
                       </Button>
+
+                      <SectionPreviewDialog section={section} />
                       
                       {isCustomSection(section) && (
                         <Button
