@@ -18,6 +18,7 @@ export type SectionType =
   | 'link' 
   | 'button' 
   | 'grid'
+  | 'html-content'
   | 'header'
   | 'footer';
 

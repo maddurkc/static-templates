@@ -13,7 +13,8 @@ import {
   Image,
   Link,
   MousePointerClick,
-  Grid3x3
+  Grid3x3,
+  Code
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
@@ -234,5 +235,21 @@ export const sectionTypes: SectionDefinition[] = [
     description: 'Grid layout container',
     defaultContent: '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;"><div>Column 1</div><div>Column 2</div><div>Column 3</div></div>',
     category: 'layout'
+  },
+  {
+    type: 'html-content',
+    label: 'HTML Content',
+    icon: Code,
+    description: 'Display raw HTML content from API or custom input',
+    defaultContent: '{{htmlContent}}',
+    category: 'layout',
+    variables: [
+      { 
+        name: 'htmlContent', 
+        label: 'HTML Content', 
+        type: 'text', 
+        defaultValue: '<div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px;"><h3>Sample HTML Content</h3><p>This section can display any HTML content from your API response.</p></div>' 
+      }
+    ]
   }
 ];
