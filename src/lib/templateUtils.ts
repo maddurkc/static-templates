@@ -89,13 +89,38 @@ export const applyApiDataToSection = (
       break;
 
     case 'html':
+      let htmlContent = '';
+      if (typeof extractedData === 'object' && extractedData !== null) {
+        // Convert object to formatted HTML
+        if ('street' in extractedData && 'city' in extractedData) {
+          // Special handling for address objects
+          htmlContent = `
+            <div style="padding: 15px; background: #f0f0f0; border-radius: 8px; margin: 10px 0;">
+              <p><strong>Street:</strong> ${extractedData.street || 'N/A'}</p>
+              <p><strong>Suite:</strong> ${extractedData.suite || 'N/A'}</p>
+              <p><strong>City:</strong> ${extractedData.city || 'N/A'}</p>
+              <p><strong>Zipcode:</strong> ${extractedData.zipcode || 'N/A'}</p>
+            </div>
+          `;
+        } else {
+          // Generic object to HTML conversion
+          htmlContent = '<div>' + 
+            Object.entries(extractedData)
+              .map(([key, val]) => `<p><strong>${key}:</strong> ${val}</p>`)
+              .join('') + 
+            '</div>';
+        }
+      } else {
+        htmlContent = String(extractedData);
+      }
+      
       if (mapping.variableName) {
         updatedSection.variables = {
           ...updatedSection.variables,
-          [mapping.variableName]: String(extractedData)
+          [mapping.variableName]: htmlContent
         };
       } else {
-        updatedSection.content = String(extractedData);
+        updatedSection.content = htmlContent;
       }
       break;
 

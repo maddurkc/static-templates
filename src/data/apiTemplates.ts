@@ -278,6 +278,65 @@ export const API_TEMPLATES: ApiTemplate[] = [
         variableName: "subtitle"
       }
     ]
+  },
+  {
+    id: "jsonplaceholder-user",
+    name: "JSONPlaceholder User (Demo)",
+    description: "Get user information from JSONPlaceholder - Free fake API for testing",
+    category: "Demo",
+    url: "https://jsonplaceholder.typicode.com/users/{userId}",
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    requiredParams: [
+      {
+        name: "userId",
+        label: "User ID",
+        type: "text",
+        placeholder: "1",
+        required: true,
+        description: "User ID (1-10 available in demo API)",
+        location: "path"
+      }
+    ],
+    sampleMappings: [
+      {
+        id: "mapping-1",
+        sectionId: "",
+        apiPath: "name",
+        dataType: "text",
+        variableName: "userName"
+      },
+      {
+        id: "mapping-2",
+        sectionId: "",
+        apiPath: "email",
+        dataType: "text",
+        variableName: "userEmail"
+      },
+      {
+        id: "mapping-3",
+        sectionId: "",
+        apiPath: "phone",
+        dataType: "text",
+        variableName: "userPhone"
+      },
+      {
+        id: "mapping-4",
+        sectionId: "",
+        apiPath: "website",
+        dataType: "text",
+        variableName: "userWebsite"
+      },
+      {
+        id: "mapping-5",
+        sectionId: "",
+        apiPath: "company.name",
+        dataType: "text",
+        variableName: "userCompanyName"
+      }
+    ]
   }
 ];
 
