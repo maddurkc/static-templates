@@ -13,9 +13,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getTemplates, updateTemplate } from "@/lib/templateStorage";
+import { getTemplates, updateTemplate, resetTemplatesToDefault } from "@/lib/templateStorage";
 
 interface Template {
   id: string;
@@ -75,6 +75,15 @@ const Templates = () => {
     setShowPreviewDialog(true);
   };
 
+  const handleResetTemplates = () => {
+    resetTemplatesToDefault();
+    setTemplates(getTemplates());
+    toast({
+      title: "Templates reset",
+      description: "All templates have been reset to default demos including the API demo template.",
+    });
+  };
+
   const activeTemplates = templates.filter(t => !t.archived);
   const archivedTemplates = templates.filter(t => t.archived);
 
@@ -91,14 +100,24 @@ const Templates = () => {
               Create and manage your static templates
             </p>
           </div>
-          <Button
-            size="lg"
-            onClick={() => navigate('/templates/editor')}
-            className="shadow-lg shadow-primary/20"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Create New Static Template
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={handleResetTemplates}
+            >
+              <RefreshCw className="h-5 w-5 mr-2" />
+              Reset to Demo Templates
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => navigate('/templates/editor')}
+              className="shadow-lg shadow-primary/20"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Create New Static Template
+            </Button>
+          </div>
         </div>
 
         {/* Templates Table */}

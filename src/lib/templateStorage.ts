@@ -214,3 +214,7 @@ export const updateTemplate = (id: string, updates: Partial<Template>): void => 
   );
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTemplates));
 };
+
+export const resetTemplatesToDefault = (): void => {
+  localStorage.removeItem(STORAGE_KEY);
+};
