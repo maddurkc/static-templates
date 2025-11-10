@@ -402,7 +402,7 @@ const TemplateEditor = () => {
                     View HTML
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[80vh]">
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>Generated HTML</DialogTitle>
                   </DialogHeader>
@@ -427,8 +427,8 @@ const TemplateEditor = () => {
                       </Button>
                     </div>
                     <ScrollArea className="h-[60vh] w-full rounded-md border">
-                      <pre className="p-4 text-sm">
-                        <code>{generateHTML()}</code>
+                      <pre className="p-4 text-sm whitespace-pre-wrap break-words overflow-x-auto">
+                        <code className="break-all">{generateHTML()}</code>
                       </pre>
                     </ScrollArea>
                   </div>
