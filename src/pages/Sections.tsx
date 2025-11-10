@@ -1,22 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, Code, Copy, Check } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Plus, Code, Copy, Check, Sparkles, Trash2 } from "lucide-react";
 import { sectionTypes } from "@/data/sectionTypes";
-import { Section } from "@/types/section";
+import { Section, SectionDefinition } from "@/types/section";
 import { useToast } from "@/hooks/use-toast";
+import { saveCustomSection, getCustomSections, deleteCustomSection } from "@/lib/sectionStorage";
+import * as LucideIcons from "lucide-react";
 
 const Sections = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sections, setSections] = useState<Section[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [customSections, setCustomSections] = useState<SectionDefinition[]>([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newSection, setNewSection] = useState({
+    type: "",
+    label: "",
+    description: "",
+    defaultContent: "",
+    category: "text" as "text" | "media" | "layout" | "interactive",
+    icon: "Box"
+  });
   const { toast } = useToast();
 
-  const filteredSections = sectionTypes.filter((section) =>
+  useEffect(() => {
+    setCustomSections(getCustomSections());
+  }, []);
+
+  const allSections = [...sectionTypes, ...customSections];
+
+  const filteredSections = allSections.filter((section) =>
     section.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
     section.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -70,6 +91,58 @@ const Sections = () => {
     }
   };
 
+  const handleCreateCustomSection = () => {
+    if (!newSection.type || !newSection.label || !newSection.defaultContent) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const IconComponent = (LucideIcons as any)[newSection.icon] || LucideIcons.Box;
+
+    const sectionDef: SectionDefinition = {
+      type: newSection.type as any,
+      label: newSection.label,
+      icon: IconComponent,
+      description: newSection.description,
+      defaultContent: newSection.defaultContent,
+      category: newSection.category,
+    };
+
+    saveCustomSection(sectionDef);
+    setCustomSections(getCustomSections());
+    setCreateDialogOpen(false);
+    setNewSection({
+      type: "",
+      label: "",
+      description: "",
+      defaultContent: "",
+      category: "text",
+      icon: "Box"
+    });
+
+    toast({
+      title: "Custom Section Created",
+      description: `${newSection.label} has been added to the library.`,
+    });
+  };
+
+  const handleDeleteCustomSection = (type: string, label: string) => {
+    deleteCustomSection(type);
+    setCustomSections(getCustomSections());
+    toast({
+      title: "Section Deleted",
+      description: `${label} has been removed from the library.`,
+    });
+  };
+
+  const isCustomSection = (section: SectionDefinition) => {
+    return customSections.some(cs => cs.type === section.type);
+  };
+
   const categoryColors: Record<string, string> = {
     text: "bg-primary/10 text-primary",
     media: "bg-accent/10 text-accent",
@@ -98,15 +171,108 @@ const Sections = () => {
             </p>
           </div>
 
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search sections..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          {/* Search and Create Button */}
+          <div className="flex gap-4 items-center">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search sections..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Create Custom Section
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create Custom Section</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Type ID *</Label>
+                    <Input
+                      id="type"
+                      placeholder="e.g., custom-hero"
+                      value={newSection.type}
+                      onChange={(e) => setNewSection({...newSection, type: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="label">Label *</Label>
+                    <Input
+                      id="label"
+                      placeholder="e.g., Hero Section"
+                      value={newSection.label}
+                      onChange={(e) => setNewSection({...newSection, label: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Input
+                      id="description"
+                      placeholder="Brief description of the section"
+                      value={newSection.description}
+                      onChange={(e) => setNewSection({...newSection, description: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category *</Label>
+                    <Select value={newSection.category} onValueChange={(value: any) => setNewSection({...newSection, category: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="media">Media</SelectItem>
+                        <SelectItem value="layout">Layout</SelectItem>
+                        <SelectItem value="interactive">Interactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="icon">Icon Name</Label>
+                    <Input
+                      id="icon"
+                      placeholder="e.g., Box, Sparkles, Layout"
+                      value={newSection.icon}
+                      onChange={(e) => setNewSection({...newSection, icon: e.target.value})}
+                    />
+                    <p className="text-xs text-muted-foreground">Use any Lucide icon name</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="content">Default HTML Content *</Label>
+                    <Textarea
+                      id="content"
+                      placeholder="<div>Your HTML content here</div>"
+                      value={newSection.defaultContent}
+                      onChange={(e) => setNewSection({...newSection, defaultContent: e.target.value})}
+                      rows={8}
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateCustomSection}>
+                    Create Section
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -157,9 +323,19 @@ const Sections = () => {
                         size="sm"
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Create
+                        Add to Session
                       </Button>
                       
+                      {isCustomSection(section) && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteCustomSection(section.type, section.label)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button 
