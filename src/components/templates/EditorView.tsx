@@ -215,7 +215,10 @@ export const EditorView = ({
         {section.children.map((child, index) => (
           <div key={child.id} className="border-l-2 border-primary/30 pl-3">
             <div
-              className="p-3 rounded border border-border bg-background hover:border-primary/50 transition-colors cursor-pointer"
+              className={cn(
+                "p-3 rounded border bg-background hover:border-primary/50 transition-colors cursor-pointer",
+                selectedSection?.id === child.id ? "border-primary shadow-md" : "border-border"
+              )}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectSection(child);
