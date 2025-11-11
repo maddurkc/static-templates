@@ -18,16 +18,24 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
         </p>
       </div>
 
-      <div className="p-8">
-        <div className="space-y-4">
-          {allSections.map((section) => (
-            <div
-              key={section.id}
-              className="prose max-w-none"
-              dangerouslySetInnerHTML={{ __html: renderSectionContent(section) }}
-              style={section.styles as React.CSSProperties}
-            />
-          ))}
+      <div className="p-8 bg-gray-50">
+        <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
+          {allSections.map((section) => {
+            const defaultStyles = {
+              margin: '10px 0',
+              padding: '8px',
+            };
+            const combinedStyles = { ...defaultStyles, ...section.styles };
+            
+            return (
+              <div
+                key={section.id}
+                className="prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: renderSectionContent(section) }}
+                style={combinedStyles as React.CSSProperties}
+              />
+            );
+          })}
         </div>
       </div>
     </div>

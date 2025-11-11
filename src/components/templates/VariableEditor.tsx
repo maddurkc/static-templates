@@ -21,6 +21,42 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
     return <TableEditor section={section} onUpdate={onUpdate} />;
   }
   
+  // No editor needed for line breaks
+  if (section.type === 'line-break') {
+    return (
+      <div className="p-4 text-center text-sm text-muted-foreground">
+        Line break - no configuration needed
+      </div>
+    );
+  }
+  
+  // For static-text sections, show a simple textarea
+  if (section.type === 'static-text') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Static Text Content</h3>
+        </div>
+        <Separator />
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Enter your text (no placeholders needed)</Label>
+          <Textarea
+            value={(section.variables?.content as string) || section.content}
+            onChange={(e) => onUpdate({
+              ...section,
+              variables: { ...section.variables, content: e.target.value }
+            })}
+            className="min-h-[120px] text-sm"
+            placeholder="Type your static text here..."
+          />
+          <p className="text-xs text-muted-foreground">
+            This text will appear exactly as you type it in the preview.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
   if (!sectionDef?.variables || sectionDef.variables.length === 0) {
     return null;
   }

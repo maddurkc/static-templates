@@ -1,6 +1,7 @@
 import { Section } from "@/types/section";
 import { ApiMapping } from "@/types/api-config";
 import { generateTableHTML, TableData } from "./tableUtils";
+import { sanitizeHTML } from "./sanitize";
 
 export const renderSectionContent = (section: Section): string => {
   let content = section.content;
@@ -10,8 +11,18 @@ export const renderSectionContent = (section: Section): string => {
     return generateTableHTML(section.variables.tableData as TableData);
   }
   
+  // Handle static-text sections - use content variable directly
+  if (section.type === 'static-text' && section.variables?.content) {
+    return `<div style="margin: 10px 0; padding: 8px;">${sanitizeHTML(section.variables.content as string)}</div>`;
+  }
+  
+  // Handle line-break sections
+  if (section.type === 'line-break') {
+    return '<br/>';
+  }
+  
   if (!section.variables) {
-    return content;
+    return sanitizeHTML(content);
   }
 
   // Replace all variables in the content
@@ -20,14 +31,14 @@ export const renderSectionContent = (section: Section): string => {
     
     if (Array.isArray(value)) {
       // For list variables, generate <li> tags
-      const listItems = value.map(item => `<li>${item}</li>`).join('');
+      const listItems = value.map(item => `<li>${sanitizeHTML(item)}</li>`).join('');
       content = content.replace(placeholder, listItems);
     } else if (typeof value === 'object' && value !== null) {
       // Skip complex objects like table data
       return;
     } else {
       // For text/url variables, replace directly
-      content = content.replace(new RegExp(placeholder, 'g'), value as string);
+      content = content.replace(new RegExp(placeholder, 'g'), sanitizeHTML(value as string));
     }
   });
 

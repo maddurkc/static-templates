@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
@@ -16,13 +16,15 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import { saveTemplate } from "@/lib/templateStorage";
+import { useNavigate, useLocation } from "react-router-dom";
+import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
 import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils";
 import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
 
 const TemplateEditor = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editingTemplate = location.state?.template;
   
   // Static header section - cannot be deleted or moved
   const [headerSection, setHeaderSection] = useState<Section>({
@@ -71,7 +73,44 @@ const TemplateEditor = () => {
   const [copied, setCopied] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Load template for editing if passed via navigation state
+  useEffect(() => {
+    if (editingTemplate) {
+      setIsEditMode(true);
+      setEditingTemplateId(editingTemplate.id);
+      setTemplateName(editingTemplate.name);
+      
+      // Load sections
+      if (editingTemplate.sections && editingTemplate.sections.length > 0) {
+        const loadedSections = editingTemplate.sections;
+        
+        // Find header and footer
+        const header = loadedSections.find((s: Section) => s.id === 'static-header');
+        const footer = loadedSections.find((s: Section) => s.id === 'static-footer');
+        const userSections = loadedSections.filter((s: Section) => 
+          s.id !== 'static-header' && s.id !== 'static-footer'
+        );
+        
+        if (header) setHeaderSection(header);
+        if (footer) setFooterSection(footer);
+        setSections(userSections);
+      }
+      
+      // Load API config
+      if (editingTemplate.apiConfig) {
+        setApiConfig(editingTemplate.apiConfig);
+      }
+      
+      toast({
+        title: "Template loaded",
+        description: `Editing "${editingTemplate.name}"`,
+      });
+    }
+  }, [editingTemplate]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -192,21 +231,31 @@ const TemplateEditor = () => {
     // Save with placeholders, not rendered values
     const html = generateHTMLWithPlaceholders();
     
-    // Save template to localStorage with all sections including header and footer
-    const savedTemplate = saveTemplate({
+    const templateData = {
       name: templateName,
       html,
-      createdAt: new Date().toISOString(),
+      createdAt: isEditMode && editingTemplate ? editingTemplate.createdAt : new Date().toISOString(),
       sectionCount: sections.length + 2, // Include header and footer
       archived: false,
       apiConfig: apiConfig.enabled ? apiConfig : undefined,
       sections: [headerSection, ...sections, footerSection],
-    });
+    };
 
-    toast({
-      title: "Template saved",
-      description: `"${templateName}" has been saved successfully.`,
-    });
+    if (isEditMode && editingTemplateId) {
+      // Update existing template
+      updateTemplate(editingTemplateId, templateData);
+      toast({
+        title: "Template updated",
+        description: `"${templateName}" has been updated successfully.`,
+      });
+    } else {
+      // Save new template
+      saveTemplate(templateData);
+      toast({
+        title: "Template saved",
+        description: `"${templateName}" has been saved successfully.`,
+      });
+    }
 
     setShowSaveDialog(false);
     setTemplateName("");
@@ -230,7 +279,14 @@ const TemplateEditor = () => {
   const generateHTML = () => {
     const allSections = [headerSection, ...sections, footerSection];
     return allSections.map(section => {
-      const styleString = Object.entries(section.styles || {})
+      // Add default spacing styles for better layout
+      const defaultStyles = {
+        margin: '10px 0',
+        padding: '8px',
+      };
+      
+      const combinedStyles = { ...defaultStyles, ...section.styles };
+      const styleString = Object.entries(combinedStyles)
         .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
         .join('; ');
       

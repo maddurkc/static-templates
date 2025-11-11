@@ -14,7 +14,9 @@ import {
   Link,
   MousePointerClick,
   Grid3x3,
-  Code
+  Code,
+  Minus,
+  FileText
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
@@ -249,6 +251,30 @@ export const sectionTypes: SectionDefinition[] = [
         label: 'HTML Content', 
         type: 'text', 
         defaultValue: '<div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px;"><h3>Sample HTML Content</h3><p>This section can display any HTML content from your API response.</p></div>' 
+      }
+    ]
+  },
+  {
+    type: 'line-break',
+    label: 'Line Break',
+    icon: Minus,
+    description: 'Add vertical spacing between sections',
+    defaultContent: '<br/>',
+    category: 'text',
+  },
+  {
+    type: 'static-text',
+    label: 'Static Text',
+    icon: FileText,
+    description: 'Enter text directly without placeholders',
+    defaultContent: 'Enter your static text here...',
+    category: 'text',
+    variables: [
+      {
+        name: 'content',
+        label: 'Text Content',
+        type: 'text',
+        defaultValue: 'Enter your static text here. This is just plain text with no variables or placeholders.'
       }
     ]
   }

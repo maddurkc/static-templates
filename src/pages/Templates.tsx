@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw } from "lucide-react";
+import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, updateTemplate, resetTemplatesToDefault } from "@/lib/templateStorage";
 
@@ -82,6 +82,10 @@ const Templates = () => {
       title: "Templates reset",
       description: "All templates have been reset to default demos including the API demo template.",
     });
+  };
+
+  const handleEditTemplate = (template: Template) => {
+    navigate('/templates/editor', { state: { template } });
   };
 
   const activeTemplates = templates.filter(t => !t.archived);
@@ -181,6 +185,14 @@ const Templates = () => {
                         >
                           <PlayCircle className="h-4 w-4 mr-1" />
                           Run
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditTemplate(template)}
+                          className="hover:bg-blue-100 hover:text-blue-700"
+                        >
+                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"

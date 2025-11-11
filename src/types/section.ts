@@ -20,7 +20,9 @@ export type SectionType =
   | 'grid'
   | 'html-content'
   | 'header'
-  | 'footer';
+  | 'footer'
+  | 'line-break'
+  | 'static-text';
 
 export interface SectionVariable {
   name: string;
