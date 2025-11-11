@@ -136,30 +136,45 @@ const TemplateEditor = () => {
 
     if (active.id.toString().startsWith('library-')) {
       const dropTargetId = String(over.id);
-      const isEditorArea = dropTargetId === 'editor-drop-zone' || sections.some(s => s.id === dropTargetId);
-      if (!isEditorArea) return;
-
       const sectionType = active.id.toString().replace('library-', '');
       const sectionDef = sectionTypes.find(s => s.type === sectionType);
       
-      if (sectionDef) {
-        const variables: Record<string, string | string[]> = {};
-        sectionDef.variables?.forEach(varDef => {
-          variables[varDef.name] = varDef.defaultValue;
-        });
+      if (!sectionDef) return;
+      
+      // Check if dropping into a container
+      const targetContainer = sections.find(s => s.id === dropTargetId && s.type === 'container');
+      
+      const variables: Record<string, string | string[]> = {};
+      sectionDef.variables?.forEach(varDef => {
+        variables[varDef.name] = varDef.defaultValue;
+      });
 
-        const newSection: Section = {
-          id: `section-${Date.now()}-${Math.random()}`,
-          type: sectionDef.type,
-          content: sectionDef.defaultContent,
-          variables,
-          styles: {
-            fontSize: '16px',
-            color: '#000000',
-          }
-        };
+      const newSection: Section = {
+        id: `section-${Date.now()}-${Math.random()}`,
+        type: sectionDef.type,
+        content: sectionDef.defaultContent,
+        variables,
+        styles: {
+          fontSize: '16px',
+          color: '#000000',
+        }
+      };
+      
+      if (targetContainer) {
+        // Add to container's children
+        const updatedSections = sections.map(s => 
+          s.id === targetContainer.id 
+            ? { ...s, children: [...(s.children || []), newSection] }
+            : s
+        );
+        setSections(updatedSections);
+        toast({
+          title: "Section added to container",
+          description: `${sectionDef.label} added inside container.`,
+        });
+      } else {
+        // Add to main sections
         setSections([...sections, newSection]);
-        
         toast({
           title: "Section added",
           description: `${sectionDef.label} has been added to your template.`,

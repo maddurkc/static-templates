@@ -16,11 +16,17 @@ export const renderSectionContent = (section: Section): string => {
     return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>')}</div>`;
   }
   
-  // Handle mixed-content sections - combines static prefix with dynamic content
-  if (section.type === 'mixed-content') {
-    const prefix = sanitizeHTML((section.variables?.prefix as string) || '');
-    const dynamicContent = sanitizeHTML((section.variables?.dynamicContent as string) || '');
-    return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${prefix}${dynamicContent}</div>`;
+  // Handle mixed-content sections - free-form text with embedded placeholders
+  if (section.type === 'mixed-content' && section.variables?.content) {
+    let mixedContent = section.variables.content as string;
+    // Replace all {{placeholder}} patterns with sanitized values or keep them
+    mixedContent = mixedContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+      if (section.variables && section.variables[varName]) {
+        return sanitizeHTML(section.variables[varName] as string);
+      }
+      return match; // Keep placeholder if no value
+    });
+    return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${sanitizeHTML(mixedContent).replace(/\n/g, '<br/>')}</div>`;
   }
   
   // Handle line-break sections

@@ -71,7 +71,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
     );
   }
   
-  // For mixed-content sections
+  // For mixed-content sections - free-form text with embedded placeholders
   if (section.type === 'mixed-content') {
     return (
       <div className="space-y-4">
@@ -79,37 +79,23 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           <h3 className="text-sm font-semibold">Mixed Content</h3>
         </div>
         <Separator />
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Static Text (Prefix)</Label>
-            <Input
-              value={(section.variables?.prefix as string) || ''}
-              onChange={(e) => onUpdate({
-                ...section,
-                variables: { ...section.variables, prefix: e.target.value }
-              })}
-              className="h-9 text-sm"
-              placeholder="What's New: "
-            />
-            <p className="text-xs text-muted-foreground">
-              This text appears before dynamic content (e.g., "What's New: ", "Status: ")
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Dynamic Content</Label>
-            <Textarea
-              value={(section.variables?.dynamicContent as string) || ''}
-              onChange={(e) => onUpdate({
-                ...section,
-                variables: { ...section.variables, dynamicContent: e.target.value }
-              })}
-              className="min-h-[80px] text-sm"
-              placeholder="This can be updated via API"
-            />
-            <p className="text-xs text-muted-foreground">
-              This content can be replaced with API data or edited manually
-            </p>
-          </div>
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Content with Placeholders</Label>
+          <Textarea
+            value={(section.variables?.content as string) || 'What\'s New: {{update}}'}
+            onChange={(e) => onUpdate({
+              ...section,
+              variables: { ...section.variables, content: e.target.value }
+            })}
+            className="min-h-[120px] text-sm font-mono"
+            placeholder="What's New: {{update}}\nStatus: {{status}}"
+          />
+          <p className="text-xs text-muted-foreground">
+            Mix static text with dynamic placeholders using {`{{variableName}}`}. Example: "What's New: {`{{update}}`}"
+          </p>
+          <p className="text-xs text-muted-foreground font-semibold">
+            Placeholders will be replaced with API data or can be edited manually.
+          </p>
         </div>
       </div>
     );

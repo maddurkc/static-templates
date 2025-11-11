@@ -48,6 +48,10 @@ const SortableSection = ({
   };
 
   const isContainer = section.type === 'container';
+  
+  const { setNodeRef: setDropRef, isOver: isDropOver } = useDroppable({
+    id: section.id,
+  });
 
   return (
     <div
@@ -57,7 +61,8 @@ const SortableSection = ({
         "group relative border-2 rounded-lg mb-3 bg-card transition-all",
         isSelected ? "border-primary shadow-lg shadow-primary/20" : "border-border hover:border-primary/50",
         isDragging && "opacity-50",
-        isContainer && "bg-muted/20"
+        isContainer && "bg-muted/20",
+        isContainer && isDropOver && "border-primary border-dashed bg-primary/10"
       )}
       onClick={onSelect}
     >
@@ -72,11 +77,20 @@ const SortableSection = ({
 
       {/* Container Header */}
       {isContainer && (
-        <div className="flex items-center gap-2 p-3 pl-10 pr-32 bg-muted/30 border-b border-border">
+        <div 
+          ref={setDropRef}
+          className={cn(
+            "flex items-center gap-2 p-3 pl-10 pr-32 bg-muted/30 border-b border-border transition-colors",
+            isDropOver && "bg-primary/10 border-primary"
+          )}
+        >
           <Badge variant="outline" className="text-xs">Container</Badge>
           <span className="text-sm text-muted-foreground">
             {section.children?.length || 0} section{section.children?.length !== 1 ? 's' : ''} inside
           </span>
+          {isDropOver && (
+            <span className="text-xs text-primary font-medium ml-auto">Drop here to add</span>
+          )}
         </div>
       )}
 

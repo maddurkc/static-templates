@@ -283,21 +283,15 @@ export const sectionTypes: SectionDefinition[] = [
     type: 'mixed-content',
     label: 'Mixed Content',
     icon: Type,
-    description: 'Combine static text with dynamic placeholders (e.g., "What\'s New: {{update}}")',
-    defaultContent: '{{prefix}}{{dynamicContent}}',
+    description: 'Free-form text with embedded placeholders anywhere (e.g., "What\'s New: {{update}}")',
+    defaultContent: '{{content}}',
     category: 'text',
     variables: [
       {
-        name: 'prefix',
-        label: 'Static Text (Prefix)',
+        name: 'content',
+        label: 'Content',
         type: 'text',
-        defaultValue: 'What\'s New: '
-      },
-      {
-        name: 'dynamicContent',
-        label: 'Dynamic Content',
-        type: 'text',
-        defaultValue: 'Latest updates here'
+        defaultValue: 'What\'s New: {{update}}'
       }
     ]
   },
