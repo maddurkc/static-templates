@@ -3,7 +3,8 @@ import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Section } from "@/types/section";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { GripVertical, Trash2, ChevronUp, ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 
@@ -16,6 +17,8 @@ interface SortableSectionProps {
   onMoveDown: () => void;
   isFirst: boolean;
   isLast: boolean;
+  onAddChild?: (parentId: string) => void;
+  renderChildren?: (section: Section) => React.ReactNode;
 }
 
 const SortableSection = ({
@@ -26,7 +29,9 @@ const SortableSection = ({
   onMoveUp,
   onMoveDown,
   isFirst,
-  isLast
+  isLast,
+  onAddChild,
+  renderChildren
 }: SortableSectionProps) => {
   const {
     attributes,
@@ -42,14 +47,17 @@ const SortableSection = ({
     transition,
   };
 
+  const isContainer = section.type === 'container';
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative border-2 rounded-lg p-4 mb-3 bg-card transition-all",
+        "group relative border-2 rounded-lg mb-3 bg-card transition-all",
         isSelected ? "border-primary shadow-lg shadow-primary/20" : "border-border hover:border-primary/50",
-        isDragging && "opacity-50"
+        isDragging && "opacity-50",
+        isContainer && "bg-muted/20"
       )}
       onClick={onSelect}
     >
@@ -57,22 +65,62 @@ const SortableSection = ({
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-2 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing p-1 hover:bg-primary/10 rounded"
+        className="absolute left-2 top-4 cursor-grab active:cursor-grabbing p-1 hover:bg-primary/10 rounded"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
       </div>
 
+      {/* Container Header */}
+      {isContainer && (
+        <div className="flex items-center gap-2 p-3 pl-10 pr-32 bg-muted/30 border-b border-border">
+          <Badge variant="outline" className="text-xs">Container</Badge>
+          <span className="text-sm text-muted-foreground">
+            {section.children?.length || 0} section{section.children?.length !== 1 ? 's' : ''} inside
+          </span>
+        </div>
+      )}
+
       {/* Content */}
-      <div className="pl-8 pr-32">
-        <div
-          className="prose max-w-none"
-          dangerouslySetInnerHTML={{ __html: section.content }}
-          style={section.styles as React.CSSProperties}
-        />
+      <div className={cn("pl-10 pr-32", isContainer ? "p-4" : "p-4")}>
+        {!isContainer && (
+          <div
+            className="prose max-w-none"
+            dangerouslySetInnerHTML={{ __html: section.content }}
+            style={section.styles as React.CSSProperties}
+          />
+        )}
+        
+        {/* Nested Children for Container */}
+        {isContainer && renderChildren && (
+          <div className="space-y-2">
+            {section.children && section.children.length > 0 ? (
+              renderChildren(section)
+            ) : (
+              <div className="text-center py-8 border-2 border-dashed rounded-lg border-border bg-background">
+                <p className="text-sm text-muted-foreground">Empty container</p>
+                <p className="text-xs text-muted-foreground mt-1">Add sections below</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Controls */}
-      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute right-2 top-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {isContainer && onAddChild && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddChild(section.id);
+            }}
+            className="h-7 px-2 text-xs"
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Add
+          </Button>
+        )}
         <Button
           size="icon"
           variant="ghost"
@@ -127,6 +175,7 @@ interface EditorViewProps {
   onDeleteSection: (id: string) => void;
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
+  onAddChildToContainer?: (parentId: string) => void;
 }
 
 export const EditorView = ({
@@ -137,11 +186,54 @@ export const EditorView = ({
   onSelectSection,
   onDeleteSection,
   onMoveUp,
-  onMoveDown
+  onMoveDown,
+  onAddChildToContainer
 }: EditorViewProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'editor-drop-zone',
   });
+
+  const renderNestedChildren = (section: Section) => {
+    if (!section.children || section.children.length === 0) return null;
+    
+    return (
+      <div className="space-y-2 ml-4">
+        {section.children.map((child, index) => (
+          <div key={child.id} className="border-l-2 border-primary/30 pl-3">
+            <div
+              className="p-3 rounded border border-border bg-background hover:border-primary/50 transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectSection(child);
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <Badge variant="secondary" className="text-xs">
+                  {child.type}
+                </Badge>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteSection(child.id);
+                  }}
+                  className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+              <div
+                className="prose prose-sm max-w-none text-sm"
+                dangerouslySetInnerHTML={{ __html: child.content }}
+                style={child.styles as React.CSSProperties}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const renderStaticSection = (section: Section, label: string) => (
     <div 
@@ -198,6 +290,8 @@ export const EditorView = ({
               onMoveDown={() => onMoveDown(section.id)}
               isFirst={index === 0}
               isLast={index === sections.length - 1}
+              onAddChild={onAddChildToContainer}
+              renderChildren={renderNestedChildren}
             />
           ))
         )}

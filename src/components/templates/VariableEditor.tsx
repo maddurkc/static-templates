@@ -30,6 +30,20 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
     );
   }
   
+  // No editor needed for containers (children are managed separately)
+  if (section.type === 'container') {
+    return (
+      <div className="p-4 space-y-2">
+        <div className="text-center text-sm text-muted-foreground">
+          <p className="font-medium">Container Section</p>
+          <p className="text-xs mt-2">
+            Use the "Add" button in the editor to add sections inside this container.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
   // For static-text sections, show a simple textarea
   if (section.type === 'static-text') {
     return (
@@ -41,7 +55,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         <div className="space-y-2">
           <Label className="text-sm font-medium">Enter your text (no placeholders needed)</Label>
           <Textarea
-            value={(section.variables?.content as string) || section.content}
+            value={(section.variables?.content as string) || ''}
             onChange={(e) => onUpdate({
               ...section,
               variables: { ...section.variables, content: e.target.value }
@@ -50,8 +64,52 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
             placeholder="Type your static text here..."
           />
           <p className="text-xs text-muted-foreground">
-            This text will appear exactly as you type it in the preview.
+            This text will appear exactly as you type it. Supports line breaks.
           </p>
+        </div>
+      </div>
+    );
+  }
+  
+  // For mixed-content sections
+  if (section.type === 'mixed-content') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Mixed Content</h3>
+        </div>
+        <Separator />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Static Text (Prefix)</Label>
+            <Input
+              value={(section.variables?.prefix as string) || ''}
+              onChange={(e) => onUpdate({
+                ...section,
+                variables: { ...section.variables, prefix: e.target.value }
+              })}
+              className="h-9 text-sm"
+              placeholder="What's New: "
+            />
+            <p className="text-xs text-muted-foreground">
+              This text appears before dynamic content (e.g., "What's New: ", "Status: ")
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Dynamic Content</Label>
+            <Textarea
+              value={(section.variables?.dynamicContent as string) || ''}
+              onChange={(e) => onUpdate({
+                ...section,
+                variables: { ...section.variables, dynamicContent: e.target.value }
+              })}
+              className="min-h-[80px] text-sm"
+              placeholder="This can be updated via API"
+            />
+            <p className="text-xs text-muted-foreground">
+              This content can be replaced with API data or edited manually
+            </p>
+          </div>
         </div>
       </div>
     );

@@ -193,17 +193,6 @@ const TemplateEditor = () => {
     setSelectedSection(updatedSection);
   };
 
-  const handleDeleteSection = (id: string) => {
-    setSections(sections.filter(s => s.id !== id));
-    if (selectedSection?.id === id) {
-      setSelectedSection(null);
-    }
-    toast({
-      title: "Section deleted",
-      description: "The section has been removed from your template.",
-    });
-  };
-
   const handleMoveUp = (id: string) => {
     const index = sections.findIndex(s => s.id === id);
     if (index > 0) {
@@ -216,6 +205,81 @@ const TemplateEditor = () => {
     if (index < sections.length - 1) {
       setSections(arrayMove(sections, index, index + 1));
     }
+  };
+
+  const handleAddChildToContainer = (parentId: string) => {
+    // Find the container section
+    const containerIndex = sections.findIndex(s => s.id === parentId);
+    if (containerIndex === -1) return;
+
+    const container = sections[containerIndex];
+    
+    // Create a simple text section as default child
+    const newChild: Section = {
+      id: `child-${Date.now()}-${Math.random()}`,
+      type: 'text',
+      content: '<span>{{text}}</span>',
+      variables: {
+        text: 'New nested section'
+      },
+      styles: {
+        fontSize: '14px',
+        color: '#000000',
+      }
+    };
+
+    // Add child to container
+    const updatedContainer = {
+      ...container,
+      children: [...(container.children || []), newChild]
+    };
+
+    // Update sections array
+    const newSections = [...sections];
+    newSections[containerIndex] = updatedContainer;
+    setSections(newSections);
+
+    toast({
+      title: "Section added",
+      description: "A new section has been added to the container.",
+    });
+  };
+
+  const handleDeleteSection = (id: string) => {
+    // Check if this is a child section first
+    let foundInContainer = false;
+    const newSections = sections.map(section => {
+      if (section.children && section.children.some(child => child.id === id)) {
+        foundInContainer = true;
+        return {
+          ...section,
+          children: section.children.filter(child => child.id !== id)
+        };
+      }
+      return section;
+    });
+
+    if (foundInContainer) {
+      setSections(newSections);
+      if (selectedSection?.id === id) {
+        setSelectedSection(null);
+      }
+      toast({
+        title: "Section deleted",
+        description: "The nested section has been removed.",
+      });
+      return;
+    }
+
+    // Otherwise delete from main sections
+    setSections(sections.filter(s => s.id !== id));
+    if (selectedSection?.id === id) {
+      setSelectedSection(null);
+    }
+    toast({
+      title: "Section deleted",
+      description: "The section has been removed from your template.",
+    });
   };
 
   const handleSaveTemplate = () => {
@@ -581,6 +645,7 @@ const TemplateEditor = () => {
                 onDeleteSection={handleDeleteSection}
                 onMoveUp={handleMoveUp}
                 onMoveDown={handleMoveDown}
+                onAddChildToContainer={handleAddChildToContainer}
               />
             </SortableContext>
           </div>

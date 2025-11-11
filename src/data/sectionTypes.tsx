@@ -16,7 +16,8 @@ import {
   Grid3x3,
   Code,
   Minus,
-  FileText
+  FileText,
+  Box
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
@@ -277,5 +278,36 @@ export const sectionTypes: SectionDefinition[] = [
         defaultValue: 'Enter your static text here. This is just plain text with no variables or placeholders.'
       }
     ]
+  },
+  {
+    type: 'mixed-content',
+    label: 'Mixed Content',
+    icon: Type,
+    description: 'Combine static text with dynamic placeholders (e.g., "What\'s New: {{update}}")',
+    defaultContent: '{{prefix}}{{dynamicContent}}',
+    category: 'text',
+    variables: [
+      {
+        name: 'prefix',
+        label: 'Static Text (Prefix)',
+        type: 'text',
+        defaultValue: 'What\'s New: '
+      },
+      {
+        name: 'dynamicContent',
+        label: 'Dynamic Content',
+        type: 'text',
+        defaultValue: 'Latest updates here'
+      }
+    ]
+  },
+  {
+    type: 'container',
+    label: 'Container',
+    icon: Box,
+    description: 'Container to group nested sections together',
+    defaultContent: '<div>Container for nested sections</div>',
+    category: 'layout',
+    variables: []
   }
 ];

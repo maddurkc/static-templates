@@ -22,7 +22,9 @@ export type SectionType =
   | 'header'
   | 'footer'
   | 'line-break'
-  | 'static-text';
+  | 'static-text'
+  | 'mixed-content'
+  | 'container';
 
 export interface SectionVariable {
   name: string;

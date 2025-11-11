@@ -13,12 +13,25 @@ export const renderSectionContent = (section: Section): string => {
   
   // Handle static-text sections - use content variable directly
   if (section.type === 'static-text' && section.variables?.content) {
-    return `<div style="margin: 10px 0; padding: 8px;">${sanitizeHTML(section.variables.content as string)}</div>`;
+    return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>')}</div>`;
+  }
+  
+  // Handle mixed-content sections - combines static prefix with dynamic content
+  if (section.type === 'mixed-content') {
+    const prefix = sanitizeHTML((section.variables?.prefix as string) || '');
+    const dynamicContent = sanitizeHTML((section.variables?.dynamicContent as string) || '');
+    return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${prefix}${dynamicContent}</div>`;
   }
   
   // Handle line-break sections
   if (section.type === 'line-break') {
     return '<br/>';
+  }
+  
+  // Handle container sections with nested children
+  if (section.type === 'container' && section.children && section.children.length > 0) {
+    const childrenHTML = section.children.map(child => renderSectionContent(child)).join('');
+    return `<div style="margin: 15px 0; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa;">${childrenHTML}</div>`;
   }
   
   if (!section.variables) {
