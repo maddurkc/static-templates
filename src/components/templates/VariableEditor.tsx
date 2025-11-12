@@ -100,6 +100,136 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
       </div>
     );
   }
+
+  // For labeled-content sections - static label + dynamic content
+  if (section.type === 'labeled-content') {
+    const contentType = (section.variables?.contentType as string) || 'text';
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Labeled Content</h3>
+        </div>
+        <Separator />
+        
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Static Label/Heading</Label>
+          <Input
+            value={(section.variables?.label as string) || "What's Happening"}
+            onChange={(e) => onUpdate({
+              ...section,
+              variables: { ...section.variables, label: e.target.value }
+            })}
+            className="h-9 text-sm font-semibold"
+            placeholder="What's Happening"
+          />
+          <p className="text-xs text-muted-foreground">
+            This label stays the same and provides context for the dynamic content below.
+          </p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Content Type</Label>
+          <select
+            value={contentType}
+            onChange={(e) => onUpdate({
+              ...section,
+              variables: { ...section.variables, contentType: e.target.value }
+            })}
+            className="w-full h-9 px-3 text-sm border border-input rounded-md bg-background"
+          >
+            <option value="text">Text Content</option>
+            <option value="list">List Items</option>
+          </select>
+        </div>
+
+        {contentType === 'text' ? (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Dynamic Content <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
+            </Label>
+            <Textarea
+              value={(section.variables?.content as string) || ''}
+              onChange={(e) => onUpdate({
+                ...section,
+                variables: { ...section.variables, content: e.target.value }
+              })}
+              className="min-h-[100px] text-sm"
+              placeholder="Messages journaled in exchange online reasons:&#10;1. Invalid Characters&#10;2. Header too Large"
+            />
+            <p className="text-xs text-muted-foreground">
+              This content appears below the label and can be replaced with API data.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">
+                Dynamic List Items <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
+              </Label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const items = (section.variables?.items as string[]) || [];
+                  onUpdate({
+                    ...section,
+                    variables: { ...section.variables, items: [...items, ''] }
+                  });
+                }}
+                className="h-7 px-2"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Item
+              </Button>
+            </div>
+            
+            <div className="space-y-2 pl-2 border-l-2 border-muted">
+              {((section.variables?.items as string[]) || ['']).map((item, index) => (
+                <div key={index} className="flex items-center gap-2 ml-2">
+                  <Input
+                    value={item}
+                    onChange={(e) => {
+                      const items = (section.variables?.items as string[]) || [];
+                      const newItems = [...items];
+                      newItems[index] = e.target.value;
+                      onUpdate({
+                        ...section,
+                        variables: { ...section.variables, items: newItems }
+                      });
+                    }}
+                    className="flex-1 h-8 text-sm"
+                    placeholder={`Item ${index + 1}`}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => {
+                      const items = (section.variables?.items as string[]) || [];
+                      const newItems = items.filter((_, i) => i !== index);
+                      onUpdate({
+                        ...section,
+                        variables: { ...section.variables, items: newItems }
+                      });
+                    }}
+                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                    disabled={((section.variables?.items as string[]) || []).length === 1}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              These list items appear below the label and can be replaced with API data.
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
   
   if (!sectionDef?.variables || sectionDef.variables.length === 0) {
     return null;

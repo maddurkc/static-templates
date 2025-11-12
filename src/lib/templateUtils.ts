@@ -1,10 +1,32 @@
 import { Section } from "@/types/section";
 import { ApiMapping } from "@/types/api-config";
 import { generateTableHTML, TableData } from "./tableUtils";
-import { sanitizeHTML } from "./sanitize";
+import { sanitizeHTML, sanitizeInput } from "./sanitize";
 
 export const renderSectionContent = (section: Section): string => {
   let content = section.content;
+  
+  // Handle labeled-content sections
+  if (section.type === 'labeled-content') {
+    const label = section.variables?.label || 'Label';
+    const contentType = section.variables?.contentType || 'text';
+    
+    let contentHtml = '';
+    if (contentType === 'list') {
+      const items = (section.variables?.items as string[]) || [];
+      contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
+        items.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 
+        '</ul>';
+    } else {
+      const content = (section.variables?.content as string) || '';
+      contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(content)}</div>`;
+    }
+    
+    return `<div style="margin: 15px 0;">
+      <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;">${sanitizeInput(label)}</div>
+      ${contentHtml}
+    </div>`;
+  }
   
   // Handle table sections specially
   if (section.type === 'table' && section.variables?.tableData) {

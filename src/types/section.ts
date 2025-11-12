@@ -24,6 +24,7 @@ export type SectionType =
   | 'line-break'
   | 'static-text'
   | 'mixed-content'
+  | 'labeled-content'
   | 'container';
 
 export interface SectionVariable {

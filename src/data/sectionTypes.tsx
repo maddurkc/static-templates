@@ -296,6 +296,40 @@ export const sectionTypes: SectionDefinition[] = [
     ]
   },
   {
+    type: 'labeled-content',
+    label: 'Labeled Content',
+    icon: FileText,
+    description: 'Static label with dynamic content below (heading + text/list)',
+    defaultContent: '<div><strong>{{label}}</strong><div>{{content}}</div></div>',
+    category: 'text',
+    variables: [
+      {
+        name: 'label',
+        label: 'Static Label/Heading',
+        type: 'text',
+        defaultValue: 'What\'s Happening'
+      },
+      {
+        name: 'contentType',
+        label: 'Content Type',
+        type: 'text',
+        defaultValue: 'text'
+      },
+      {
+        name: 'content',
+        label: 'Dynamic Content',
+        type: 'text',
+        defaultValue: 'Messages journaled in exchange online reasons:\n1. Invalid Characters\n2. Header too Large'
+      },
+      {
+        name: 'items',
+        label: 'Dynamic List Items',
+        type: 'list',
+        defaultValue: ['Item 1', 'Item 2']
+      }
+    ]
+  },
+  {
     type: 'container',
     label: 'Container',
     icon: Box,
