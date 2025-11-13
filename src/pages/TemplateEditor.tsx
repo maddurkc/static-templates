@@ -112,6 +112,42 @@ const TemplateEditor = () => {
     }
   }, [editingTemplate]);
 
+  // Sync selectedSection with the latest section data from sections array
+  useEffect(() => {
+    if (selectedSection) {
+      // Find the latest version of the selected section
+      const findSection = (sectionList: Section[]): Section | null => {
+        for (const s of sectionList) {
+          if (s.id === selectedSection.id) return s;
+          if (s.children && s.children.length > 0) {
+            const found = findSection(s.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      // Check header and footer first
+      if (selectedSection.id === 'static-header' && headerSection) {
+        if (JSON.stringify(selectedSection) !== JSON.stringify(headerSection)) {
+          setSelectedSection(headerSection);
+        }
+        return;
+      }
+      if (selectedSection.id === 'static-footer' && footerSection) {
+        if (JSON.stringify(selectedSection) !== JSON.stringify(footerSection)) {
+          setSelectedSection(footerSection);
+        }
+        return;
+      }
+
+      const latestSection = findSection(sections);
+      if (latestSection && JSON.stringify(selectedSection) !== JSON.stringify(latestSection)) {
+        setSelectedSection(latestSection);
+      }
+    }
+  }, [sections, headerSection, footerSection]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -204,7 +240,26 @@ const TemplateEditor = () => {
       setSelectedSection(updatedSection);
       return;
     }
-    setSections(sections.map(s => s.id === updatedSection.id ? updatedSection : s));
+    
+    // Helper function to recursively update nested sections
+    const updateNestedSection = (sectionList: Section[]): Section[] => {
+      return sectionList.map(s => {
+        if (s.id === updatedSection.id) {
+          return updatedSection;
+        }
+        // Check if this section has children that need updating
+        if (s.children && s.children.length > 0) {
+          return {
+            ...s,
+            children: updateNestedSection(s.children)
+          };
+        }
+        return s;
+      });
+    };
+    
+    const updatedSections = updateNestedSection(sections);
+    setSections(updatedSections);
     setSelectedSection(updatedSection);
   };
 
