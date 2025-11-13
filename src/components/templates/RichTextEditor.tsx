@@ -135,40 +135,53 @@ export const RichTextEditor = ({
   };
 
   const insertDynamicSection = (section: Section) => {
-    const placeholder = `
-      <div 
-        class="dynamic-section-placeholder" 
-        contenteditable="false"
-        data-section-id="${section.id}"
-        style="
-          display: inline-block;
-          background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%);
-          color: white;
-          padding: 6px 12px;
-          margin: 4px;
-          border-radius: 6px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        "
-      >
-        🔗 ${section.type.toUpperCase()} Section
-      </div>
-    `;
+    if (!editorRef.current) return;
+    
+    const placeholder = `<span class="dynamic-section-placeholder" contenteditable="false" data-section-id="${section.id}" style="display: inline-block; background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%); color: white; padding: 6px 12px; margin: 2px 4px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">🔗 ${section.type.toUpperCase()}</span>`;
 
-    document.execCommand("insertHTML", false, placeholder);
-    editorRef.current?.focus();
+    // Focus the editor first
+    editorRef.current.focus();
+    
+    // Get current selection
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      
+      // Create a temporary div to parse the HTML
+      const temp = document.createElement('div');
+      temp.innerHTML = placeholder;
+      const node = temp.firstChild;
+      
+      if (node) {
+        range.insertNode(node);
+        range.setStartAfter(node);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    } else {
+      // Fallback: append at the end
+      editorRef.current.innerHTML += placeholder;
+    }
+    
     handleInput();
   };
+
+  // Track if we've processed the current drop
+  const [lastProcessedSectionId, setLastProcessedSectionId] = useState<string | null>(null);
 
   // Handle dropping sections into the editor
   useEffect(() => {
     if (isOver && dynamicSections.length > 0) {
       const lastSection = dynamicSections[dynamicSections.length - 1];
-      insertDynamicSection(lastSection);
+      // Only insert if we haven't processed this section yet
+      if (lastSection.id !== lastProcessedSectionId) {
+        insertDynamicSection(lastSection);
+        setLastProcessedSectionId(lastSection.id);
+      }
     }
-  }, [isOver]);
+  }, [isOver, dynamicSections]);
 
   // Handle clicks on dynamic section placeholders within the editor
   const handlePlaceholderClick = (e: React.MouseEvent) => {
@@ -193,6 +206,7 @@ export const RichTextEditor = ({
         onInsertImage={handleInsertImage}
         onInsertLink={handleInsertLink}
         onInsertTable={handleInsertTable}
+        content={content}
       />
 
       <div

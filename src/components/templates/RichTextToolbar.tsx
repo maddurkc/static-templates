@@ -24,6 +24,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 
 interface RichTextToolbarProps {
@@ -31,6 +32,8 @@ interface RichTextToolbarProps {
   onInsertImage: (url: string) => void;
   onInsertLink: (url: string) => void;
   onInsertTable: (rows: number, cols: number) => void;
+  onViewHtml?: () => void;
+  content?: string;
 }
 
 export const RichTextToolbar = ({
@@ -38,6 +41,8 @@ export const RichTextToolbar = ({
   onInsertImage,
   onInsertLink,
   onInsertTable,
+  onViewHtml,
+  content = "",
 }: RichTextToolbarProps) => {
   const [linkUrl, setLinkUrl] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -160,28 +165,44 @@ export const RichTextToolbar = ({
             variant="ghost"
             size="sm"
             title="Text Color"
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 relative"
           >
             <Type className="h-4 w-4" />
+            <div 
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-1 rounded"
+              style={{ backgroundColor: textColor }}
+            />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-64">
-          <div className="space-y-2">
+        <PopoverContent className="w-72">
+          <div className="space-y-3">
             <Label>Text Color</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1">
+                <Input
+                  type="color"
+                  value={textColor}
+                  onChange={(e) => setTextColor(e.target.value)}
+                  className="h-12 w-full cursor-pointer"
+                />
+              </div>
               <Input
-                type="color"
+                type="text"
                 value={textColor}
                 onChange={(e) => setTextColor(e.target.value)}
-                className="h-10 w-full"
+                className="w-24 font-mono text-xs"
+                placeholder="#000000"
               />
-              <Button
-                size="sm"
-                onClick={() => onFormat("foreColor", textColor)}
-              >
-                Apply
-              </Button>
             </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                onFormat("foreColor", textColor);
+              }}
+              className="w-full"
+            >
+              Apply Text Color
+            </Button>
           </div>
         </PopoverContent>
       </Popover>
@@ -193,28 +214,44 @@ export const RichTextToolbar = ({
             variant="ghost"
             size="sm"
             title="Background Color"
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 relative"
           >
             <Palette className="h-4 w-4" />
+            <div 
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-1 rounded"
+              style={{ backgroundColor: bgColor }}
+            />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-64">
-          <div className="space-y-2">
+        <PopoverContent className="w-72">
+          <div className="space-y-3">
             <Label>Background Color</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1">
+                <Input
+                  type="color"
+                  value={bgColor}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  className="h-12 w-full cursor-pointer"
+                />
+              </div>
               <Input
-                type="color"
+                type="text"
                 value={bgColor}
                 onChange={(e) => setBgColor(e.target.value)}
-                className="h-10 w-full"
+                className="w-24 font-mono text-xs"
+                placeholder="#ffffff"
               />
-              <Button
-                size="sm"
-                onClick={() => onFormat("hiliteColor", bgColor)}
-              >
-                Apply
-              </Button>
             </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                onFormat("hiliteColor", bgColor);
+              }}
+              className="w-full"
+            >
+              Apply Background Color
+            </Button>
           </div>
         </PopoverContent>
       </Popover>
@@ -347,6 +384,45 @@ export const RichTextToolbar = ({
           </div>
         </PopoverContent>
       </Popover>
+
+      {onViewHtml && (
+        <>
+          <Separator orientation="vertical" className="h-6" />
+          
+          {/* View HTML */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                title="View HTML"
+                className="h-8 px-3"
+              >
+                &lt;/&gt;
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[600px] max-h-[500px]">
+              <div className="space-y-2">
+                <Label>Generated HTML</Label>
+                <ScrollArea className="h-[400px] w-full rounded border bg-muted/30 p-4">
+                  <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+                    {content}
+                  </pre>
+                </ScrollArea>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(content);
+                  }}
+                  className="w-full"
+                >
+                  Copy HTML
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </>
+      )}
     </div>
   );
 };
