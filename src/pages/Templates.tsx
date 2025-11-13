@@ -15,7 +15,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getTemplates, updateTemplate, resetTemplatesToDefault, Template } from "@/lib/templateStorage";
+import { getTemplates, updateTemplate, resetTemplatesToDefault } from "@/lib/templateStorage";
+
+interface Template {
+  id: string;
+  name: string;
+  html: string;
+  createdAt: string;
+  sectionCount: number;
+  archived?: boolean;
+}
 
 const Templates = () => {
   const navigate = useNavigate();
