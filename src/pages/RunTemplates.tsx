@@ -25,6 +25,10 @@ const RunTemplates = () => {
   const [toEmails, setToEmails] = useState("");
   const [ccEmails, setCcEmails] = useState("");
   const [bccEmails, setBccEmails] = useState("");
+  const [viewMode, setViewMode] = useState<'template' | 'execution'>('template'); // New: toggle between template view and execution view
+  const [executedOn, setExecutedOn] = useState<string>("");
+  const [emailSubject, setEmailSubject] = useState<string>("");
+  const [emailTitle, setEmailTitle] = useState<string>("");
   const { toast } = useToast();
 
   // Load templates from localStorage
