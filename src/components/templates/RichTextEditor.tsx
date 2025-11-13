@@ -32,18 +32,27 @@ export const RichTextEditor = ({
   useEffect(() => {
     if (editorRef.current && content !== editorRef.current.innerHTML) {
       const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-      const startOffset = range?.startOffset || 0;
+      let startOffset = 0;
+      
+      // Safely get current cursor position
+      try {
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          startOffset = range.startOffset;
+        }
+      } catch (e) {
+        // Unable to get selection, use default position
+      }
 
       editorRef.current.innerHTML = content;
 
       // Restore cursor position
       try {
-        if (selection && range && editorRef.current.childNodes.length > 0) {
+        if (selection && editorRef.current.childNodes.length > 0) {
           const newRange = document.createRange();
           const textNode = editorRef.current.childNodes[0];
-          if (textNode) {
-            newRange.setStart(textNode, Math.min(startOffset, textNode.textContent?.length || 0));
+          if (textNode && textNode.textContent) {
+            newRange.setStart(textNode, Math.min(startOffset, textNode.textContent.length));
             newRange.collapse(true);
             selection.removeAllRanges();
             selection.addRange(newRange);
