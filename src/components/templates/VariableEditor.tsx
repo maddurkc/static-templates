@@ -73,30 +73,62 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   
   // For mixed-content sections - free-form text with embedded placeholders
   if (section.type === 'mixed-content') {
+    const contentText = (section.variables?.content as string) || 'What\'s New: {{update}}';
+    
+    // Extract all placeholders from content
+    const placeholderMatches = contentText.match(/\{\{(\w+)\}\}/g) || [];
+    const placeholders = [...new Set(placeholderMatches.map(m => m.replace(/\{\{|\}\}/g, '')))];
+    
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Mixed Content</h3>
+          <h3 className="text-sm font-semibold">Mixed Content (Static + Dynamic)</h3>
         </div>
         <Separator />
+        
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Content with Placeholders</Label>
+          <Label className="text-sm font-medium">Template Text</Label>
           <Textarea
-            value={(section.variables?.content as string) || 'What\'s New: {{update}}'}
+            value={contentText}
             onChange={(e) => onUpdate({
               ...section,
               variables: { ...section.variables, content: e.target.value }
             })}
             className="min-h-[120px] text-sm font-mono"
-            placeholder="What's New: {{update}}\nStatus: {{status}}"
+            placeholder="For invalid Characters issue, the team is working with Engineer- {{incidentNumber}}"
           />
           <p className="text-xs text-muted-foreground">
-            Mix static text with dynamic placeholders using {`{{variableName}}`}. Example: "What's New: {`{{update}}`}"
-          </p>
-          <p className="text-xs text-muted-foreground font-semibold">
-            Placeholders will be replaced with API data or can be edited manually.
+            Write your text and use {`{{variableName}}`} for dynamic parts. Example: "Status: {`{{status}}`}"
           </p>
         </div>
+        
+        {placeholders.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Dynamic Variables</Label>
+              <p className="text-xs text-muted-foreground">
+                Edit the values for placeholders found in your template:
+              </p>
+              {placeholders.map(placeholder => (
+                <div key={placeholder} className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    {`{{${placeholder}}}`}
+                  </Label>
+                  <Input
+                    value={(section.variables?.[placeholder] as string) || ''}
+                    onChange={(e) => onUpdate({
+                      ...section,
+                      variables: { ...section.variables, [placeholder]: e.target.value }
+                    })}
+                    placeholder={`Enter value for ${placeholder}`}
+                    className="text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     );
   }
