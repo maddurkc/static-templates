@@ -8,10 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
 import { Section } from "@/types/section";
+import { TableEditor } from "@/components/templates/TableEditor";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const RunTemplates = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templateFromState || null);
   const [variables, setVariables] = useState<Record<string, string>>({});
-  const [listVariables, setListVariables] = useState<Record<string, string[]>>({});
+  const [listVariables, setListVariables] = useState<Record<string, string[] | any>>({});
   const [toEmails, setToEmails] = useState("");
   const [ccEmails, setCcEmails] = useState("");
   const [bccEmails, setBccEmails] = useState("");
@@ -65,41 +66,46 @@ const RunTemplates = () => {
   };
 
   // Check if a variable is a list type based on sections
-  const isListVariable = (varName: string): boolean => {
-    if (!selectedTemplate?.sections) return false;
-    
-    for (const section of selectedTemplate.sections) {
-      // For labeled-content sections, check contentType
-      if (section.type === 'labeled-content' && section.variables?.label === varName) {
-        return section.variables?.contentType === 'list';
-      }
+    const isListVariable = (varName: string): boolean => {
+      if (!selectedTemplate.sections) return false;
       
-      if (section.variables && section.variables[varName]) {
-        return Array.isArray(section.variables[varName]);
-      }
-    }
-    return false;
-  };
+      const section = selectedTemplate.sections.find(s => 
+        s.type === 'labeled-content' && s.variables?.label === varName
+      );
+      
+      const contentType = section?.variables?.contentType as string;
+      return contentType?.includes('list') || false;
+    };
+
+    const isTableVariable = (varName: string): boolean => {
+      if (!selectedTemplate.sections) return false;
+      
+      const section = selectedTemplate.sections.find(s => 
+        s.type === 'labeled-content' && s.variables?.label === varName
+      );
+      
+      return section?.variables?.contentType === 'table';
+    };
 
   // Get default value for a variable from sections
-  const getDefaultValue = (varName: string): string | string[] => {
-    if (!selectedTemplate?.sections) return '';
+  const getDefaultValue = (varName: string): string | string[] | any => {
+    if (!selectedTemplate.sections) return '';
     
-    for (const section of selectedTemplate.sections) {
-      // For labeled-content sections, return content or items based on contentType
-      if (section.type === 'labeled-content' && section.variables?.label === varName) {
-        if (section.variables.contentType === 'list') {
-          return (section.variables.items as string[]) || [''];
-        }
-        return (section.variables.content as string) || '';
-      }
-      
-      if (section.variables && section.variables[varName] !== undefined) {
-        const value = section.variables[varName];
-        return Array.isArray(value) ? value : String(value);
-      }
+    const section = selectedTemplate.sections.find(s => 
+      s.type === 'labeled-content' && s.variables?.label === varName
+    );
+    
+    const contentType = section?.variables?.contentType as string;
+    
+    if (contentType?.includes('list')) {
+      return (section.variables?.listItems as string[]) || [''];
     }
-    return '';
+    
+    if (contentType === 'table') {
+      return section.variables?.tableData || { headers: [''], rows: [['']] };
+    }
+    
+    return (section?.variables?.content as string) || '';
   };
 
   // Extract variables from both HTML and sections
@@ -506,12 +512,65 @@ const RunTemplates = () => {
                               <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '1.1em' }}>
                                 {label}
                               </div>
-                              {contentType === 'list' && Array.isArray(runtimeValue) ? (
+                              {contentType === 'table' && typeof runtimeValue === 'object' && runtimeValue.headers ? (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '8px' }}>
+                                  <thead>
+                                    <tr>
+                                      {runtimeValue.headers.map((header: string, idx: number) => (
+                                        <th key={idx} style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f2f2f2' }}>
+                                          {header}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {runtimeValue.rows.map((row: string[], rowIdx: number) => (
+                                      <tr key={rowIdx}>
+                                        {row.map((cell: string, cellIdx: number) => (
+                                          <td key={cellIdx} style={{ border: '1px solid #ddd', padding: '8px' }}>
+                                            {cell}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : contentType === 'bullet-list-circle' && Array.isArray(runtimeValue) ? (
                                 <ul style={{ listStyleType: 'circle', marginLeft: '20px' }}>
                                   {runtimeValue.filter(item => item.trim()).map((item, idx) => (
                                     <li key={idx}>{item}</li>
                                   ))}
                                 </ul>
+                              ) : contentType === 'bullet-list-disc' && Array.isArray(runtimeValue) ? (
+                                <ul style={{ listStyleType: 'disc', marginLeft: '20px' }}>
+                                  {runtimeValue.filter(item => item.trim()).map((item, idx) => (
+                                    <li key={idx}>{item}</li>
+                                  ))}
+                                </ul>
+                              ) : contentType === 'bullet-list-square' && Array.isArray(runtimeValue) ? (
+                                <ul style={{ listStyleType: 'square', marginLeft: '20px' }}>
+                                  {runtimeValue.filter(item => item.trim()).map((item, idx) => (
+                                    <li key={idx}>{item}</li>
+                                  ))}
+                                </ul>
+                              ) : contentType === 'number-list-1' && Array.isArray(runtimeValue) ? (
+                                <ol style={{ listStyleType: 'decimal', marginLeft: '20px' }}>
+                                  {runtimeValue.filter(item => item.trim()).map((item, idx) => (
+                                    <li key={idx}>{item}</li>
+                                  ))}
+                                </ol>
+                              ) : contentType === 'number-list-i' && Array.isArray(runtimeValue) ? (
+                                <ol style={{ listStyleType: 'lower-roman', marginLeft: '20px' }}>
+                                  {runtimeValue.filter(item => item.trim()).map((item, idx) => (
+                                    <li key={idx}>{item}</li>
+                                  ))}
+                                </ol>
+                              ) : contentType === 'number-list-a' && Array.isArray(runtimeValue) ? (
+                                <ol style={{ listStyleType: 'lower-alpha', marginLeft: '20px' }}>
+                                  {runtimeValue.filter(item => item.trim()).map((item, idx) => (
+                                    <li key={idx}>{item}</li>
+                                  ))}
+                                </ol>
                               ) : (
                                 <div style={{ whiteSpace: 'pre-wrap' }}>
                                   {typeof runtimeValue === 'string' ? runtimeValue : ''}
