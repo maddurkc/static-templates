@@ -24,6 +24,7 @@ export const RichTextEditor = ({
 }: RichTextEditorProps) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [dropPosition, setDropPosition] = useState<{ x: number; y: number } | null>(null);
 
   const { setNodeRef, isOver } = useDroppable({
     id: "rich-text-editor",
@@ -134,10 +135,23 @@ export const RichTextEditor = ({
     }
   };
 
-  const insertDynamicSection = (section: Section) => {
+  const insertDynamicSection = (section: Section, useDropPos = false) => {
     if (!editorRef.current) return;
     
     const placeholder = `<span class="dynamic-section-placeholder" contenteditable="false" data-section-id="${section.id}" style="display: inline-block; background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%); color: white; padding: 6px 12px; margin: 2px 4px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">🔗 ${section.type.toUpperCase()}</span>`;
+
+    // If we have a drop position, use it to position the cursor
+    if (useDropPos && dropPosition) {
+      const range = document.caretRangeFromPoint(dropPosition.x, dropPosition.y);
+      if (range) {
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+      setDropPosition(null);
+    }
 
     // Focus the editor first
     editorRef.current.focus();
@@ -173,7 +187,7 @@ export const RichTextEditor = ({
     const currentHTML = editorRef.current?.innerHTML ?? content;
     dynamicSections.forEach((section) => {
       if (!currentHTML?.includes(`data-section-id="${section.id}"`)) {
-        insertDynamicSection(section);
+        insertDynamicSection(section, true);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,6 +225,10 @@ export const RichTextEditor = ({
           "flex-1 overflow-auto",
           isOver && "bg-primary/5 ring-2 ring-primary ring-inset"
         )}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDropPosition({ x: e.clientX, y: e.clientY });
+        }}
       >
         <div
           ref={editorRef}

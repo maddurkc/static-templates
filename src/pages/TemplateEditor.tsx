@@ -181,13 +181,10 @@ const TemplateEditor = () => {
       const placeholder = `data-section-id="${section.id}"`;
       if (previewContent.includes(placeholder)) {
         const renderedSection = renderSectionContent(section);
-        // Match both span and div placeholders
+        // Match both span and div placeholders and replace with clean rendered content
         previewContent = previewContent.replace(
           new RegExp(`<(?:span|div)[^>]*${placeholder}[^>]*>.*?<\/(?:span|div)>`, 'g'),
-          `<div style="display: block; margin: 10px 0; padding: 12px; border: 2px solid hsl(var(--primary)); border-radius: 8px; background: hsl(var(--primary) / 0.05);">
-            <div style="font-size: 11px; color: hsl(var(--muted-foreground)); margin-bottom: 8px; font-weight: 600; text-transform: uppercase;">Dynamic Section: ${section.type}</div>
-            <div style="padding: 8px; background: white; border-radius: 4px;">${renderedSection}</div>
-          </div>`
+          renderedSection
         );
       }
     });
