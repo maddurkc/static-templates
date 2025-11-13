@@ -119,6 +119,75 @@ export const getTemplates = (): Template[] => {
       },
       {
         id: "5",
+        name: "Network Ops Template 2024",
+        html: "",
+        createdAt: new Date().toISOString(),
+        sectionCount: 5,
+        archived: false,
+        sections: [
+          {
+            id: "nw-summary",
+            type: "labeled-content",
+            content: "",
+            order: 0,
+            variables: {
+              label: "Summary",
+              contentType: "text",
+              content: "Latency on Self-pay feature via Wells Internet Banking Transfer and Payment application"
+            }
+          },
+          {
+            id: "nw-impact",
+            type: "labeled-content",
+            content: "",
+            order: 1,
+            variables: {
+              label: "Impact",
+              contentType: "text",
+              content: "Customers have been experiencing latency with the Self-Pay feature within the Wells Internet Banking Transfer and Payment (WIBTP) application since 22:03 ET Friday, October 24, 2025"
+            }
+          },
+          {
+            id: "nw-actions",
+            type: "labeled-content",
+            content: "",
+            order: 2,
+            variables: {
+              label: "Actions Taken",
+              contentType: "list",
+              items: [
+                "Suspected pool members down in appviewx - checking the f5's but no indication of flapping pool members - F5 is checking too"
+              ]
+            }
+          },
+          {
+            id: "nw-root",
+            type: "labeled-content",
+            content: "",
+            order: 3,
+            variables: {
+              label: "Root Cause and Resolution",
+              contentType: "text",
+              content: "Determined P3 is related to BAS application which is experiencing connection issues to TELS application since 22:00 ET Friday, October 24, 2025. Related ticket INC18046890"
+            }
+          },
+          {
+            id: "nw-followup",
+            type: "labeled-content",
+            content: "",
+            order: 4,
+            variables: {
+              label: "Follow Up Actions",
+              contentType: "list",
+              items: [
+                "Confirmed no flapping; there are some node disabled logs at Oct 24 08:09:20 UTC and then pool members went down and came back up again at about Oct 24 11:03:19 UTC"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        id: "6",
         name: "User Profile Report (API Demo)",
         html: `<div style="text-align: center; padding: 20px; background: #f8f9fa; border-bottom: 2px solid #dee2e6;"><h1>{{companyName}}</h1><p>{{reportTitle}}</p></div>\n\n<div style="font-size: 48px; color: #3b3f5c; font-weight: 700;">\n  User Profile Report\n</div>\n\n<div style="font-size: 18px; color: #6c757d;">\n  Generated on: {{generatedDate}}\n</div>\n\n<div style="font-size: 48px; color: #3b3f5c; font-weight: 700;">\n  User Information (From API)\n</div>\n\n<div style="font-size: 18px; color: #6c757d;">\n  <strong>Name:</strong> {{userName}}<br>\n  <strong>Email:</strong> {{userEmail}}<br>\n  <strong>Phone:</strong> {{userPhone}}<br>\n  <strong>Website:</strong> {{userWebsite}}<br>\n  <strong>Company:</strong> {{userCompanyName}}\n</div>\n\n<div style="font-size: 48px; color: #3b3f5c; font-weight: 700;">\n  Address Details (From API)\n</div>\n\n<div style="font-size: 18px; color: #6c757d;">\n  {{addressHtml}}\n</div>\n\n<div style="font-size: 48px; color: #3b3f5c; font-weight: 700;">\n  Custom Notes\n</div>\n\n<div style="font-size: 18px; color: #6c757d;">\n  {{customNotes}}\n</div>\n\n<div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 2px solid #dee2e6; margin-top: 40px;"><p>&copy; 2024 {{companyName}}. All rights reserved.</p><p>{{contactEmail}}</p></div>`,
         createdAt: new Date().toISOString(),
