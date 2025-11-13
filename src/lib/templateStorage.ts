@@ -57,6 +57,68 @@ export const getTemplates = (): Template[] => {
       },
       {
         id: "4",
+        name: "Incident Report - Static & Dynamic",
+        html: "",
+        createdAt: new Date().toISOString(),
+        sectionCount: 3,
+        archived: false,
+        sections: [
+          {
+            id: "section-1",
+            type: "labeled-content",
+            content: "",
+            order: 0,
+            variables: {
+              label: "What's Happening",
+              contentType: "list",
+              items: [
+                "Messages journaled in Exchange Online non-deliveries",
+                "Invalid characters detected",
+                "Header too large"
+              ]
+            }
+          },
+          {
+            id: "section-2",
+            type: "line-break",
+            content: "<br/>",
+            order: 1
+          },
+          {
+            id: "section-3",
+            type: "labeled-content",
+            content: "",
+            order: 2,
+            variables: {
+              label: "Impact",
+              contentType: "list",
+              items: [
+                "Some messages to external recipients may not be delivered",
+                "In some cases, there is a delay in message delivery",
+                "In some cases, there is just a notification to sender"
+              ]
+            }
+          },
+          {
+            id: "section-4",
+            type: "line-break",
+            content: "<br/>",
+            order: 3
+          },
+          {
+            id: "section-5",
+            type: "mixed-content",
+            content: "",
+            order: 4,
+            variables: {
+              content: "For invalid Characters issue, the team is working with Engineer- {{incidentNumber}}",
+              incidentNumber: "#INC1234567"
+            }
+          }
+        ]
+      },
+      {
+        id: "5",
         name: "User Profile Report (API Demo)",
         html: `<div style="text-align: center; padding: 20px; background: #f8f9fa; border-bottom: 2px solid #dee2e6;"><h1>{{companyName}}</h1><p>{{reportTitle}}</p></div>\n\n<div style="font-size: 48px; color: #3b3f5c; font-weight: 700;">\n  User Profile Report\n</div>\n\n<div style="font-size: 18px; color: #6c757d;">\n  Generated on: {{generatedDate}}\n</div>\n\n<div style="font-size: 48px; color: #3b3f5c; font-weight: 700;">\n  User Information (From API)\n</div>\n\n<div style="font-size: 18px; color: #6c757d;">\n  <strong>Name:</strong> {{userName}}<br>\n  <strong>Email:</strong> {{userEmail}}<br>\n  <strong>Phone:</strong> {{userPhone}}<br>\n  <strong>Website:</strong> {{userWebsite}}<br>\n  <strong>Company:</strong> {{userCompanyName}}\n</div>\n\n<div style="font-size: 48px; color: #3b3f5c; font-weight: 700;">\n  Address Details (From API)\n</div>\n\n<div style="font-size: 18px; color: #6c757d;">\n  {{addressHtml}}\n</div>\n\n<div style="font-size: 48px; color: #3b3f5c; font-weight: 700;">\n  Custom Notes\n</div>\n\n<div style="font-size: 18px; color: #6c757d;">\n  {{customNotes}}\n</div>\n\n<div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 2px solid #dee2e6; margin-top: 40px;"><p>&copy; 2024 {{companyName}}. All rights reserved.</p><p>{{contactEmail}}</p></div>`,
         createdAt: new Date().toISOString(),
