@@ -71,25 +71,25 @@ export const RichTextEditor = ({
   };
 
   const handleFormat = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
     editorRef.current?.focus();
+    document.execCommand(command, false, value);
     handleInput();
   };
 
   const handleInsertImage = (url: string) => {
-    document.execCommand("insertImage", false, url);
     editorRef.current?.focus();
+    document.execCommand("insertImage", false, url);
     handleInput();
   };
 
   const handleInsertLink = (url: string) => {
+    editorRef.current?.focus();
     const selection = window.getSelection();
     if (selection && selection.toString()) {
       document.execCommand("createLink", false, url);
     } else {
       document.execCommand("insertHTML", false, `<a href="${url}">${url}</a>`);
     }
-    editorRef.current?.focus();
     handleInput();
   };
 
@@ -109,8 +109,8 @@ export const RichTextEditor = ({
     }
     tableHTML += "</table>";
 
-    document.execCommand("insertHTML", false, tableHTML);
     editorRef.current?.focus();
+    document.execCommand("insertHTML", false, tableHTML);
     handleInput();
   };
 
@@ -168,20 +168,16 @@ export const RichTextEditor = ({
     handleInput();
   };
 
-  // Track if we've processed the current drop
-  const [lastProcessedSectionId, setLastProcessedSectionId] = useState<string | null>(null);
-
-  // Handle dropping sections into the editor
+  // Ensure any newly added dynamic sections are present as placeholders in the editor
   useEffect(() => {
-    if (isOver && dynamicSections.length > 0) {
-      const lastSection = dynamicSections[dynamicSections.length - 1];
-      // Only insert if we haven't processed this section yet
-      if (lastSection.id !== lastProcessedSectionId) {
-        insertDynamicSection(lastSection);
-        setLastProcessedSectionId(lastSection.id);
+    const currentHTML = editorRef.current?.innerHTML ?? content;
+    dynamicSections.forEach((section) => {
+      if (!currentHTML?.includes(`data-section-id="${section.id}"`)) {
+        insertDynamicSection(section);
       }
-    }
-  }, [isOver, dynamicSections]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dynamicSections]);
 
   // Handle clicks on dynamic section placeholders within the editor
   const handlePlaceholderClick = (e: React.MouseEvent) => {
@@ -225,7 +221,7 @@ export const RichTextEditor = ({
           onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
           className={cn(
-            "min-h-[400px] p-6 outline-none prose max-w-none",
+            "min-h-[400px] p-6 outline-none prose max-w-none rich-editor-content",
             "focus:ring-2 focus:ring-primary/20 focus:ring-inset",
             isFocused && "ring-2 ring-primary/20 ring-inset"
           )}

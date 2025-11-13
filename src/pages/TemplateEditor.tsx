@@ -204,7 +204,7 @@ const TemplateEditor = () => {
         <div className="p-8 bg-muted/20">
           <div className="max-w-4xl mx-auto bg-card shadow-lg rounded-lg p-6">
             <div 
-              className="prose max-w-none"
+              className="prose max-w-none rich-preview-content"
               dangerouslySetInnerHTML={{ __html: previewContent }}
             />
           </div>

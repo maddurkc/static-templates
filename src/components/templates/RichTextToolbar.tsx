@@ -385,44 +385,40 @@ export const RichTextToolbar = ({
         </PopoverContent>
       </Popover>
 
-      {onViewHtml && (
-        <>
-          <Separator orientation="vertical" className="h-6" />
-          
-          {/* View HTML */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                title="View HTML"
-                className="h-8 px-3"
-              >
-                &lt;/&gt;
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[600px] max-h-[500px]">
-              <div className="space-y-2">
-                <Label>Generated HTML</Label>
-                <ScrollArea className="h-[400px] w-full rounded border bg-muted/30 p-4">
-                  <pre className="text-xs font-mono whitespace-pre-wrap break-all">
-                    {content}
-                  </pre>
-                </ScrollArea>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    navigator.clipboard.writeText(content);
-                  }}
-                  className="w-full"
-                >
-                  Copy HTML
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </>
-      )}
+      <Separator orientation="vertical" className="h-6" />
+      
+      {/* View HTML */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            title="View HTML"
+            className="h-8 px-3"
+          >
+            &lt;/&gt;
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[600px] max-h-[500px]">
+          <div className="space-y-2">
+            <Label>Generated HTML</Label>
+            <ScrollArea className="h-[400px] w-full rounded border bg-muted/30 p-4">
+              <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+                {content}
+              </pre>
+            </ScrollArea>
+            <Button
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(content || "");
+              }}
+              className="w-full"
+            >
+              Copy HTML
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };
