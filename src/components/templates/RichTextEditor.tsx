@@ -116,6 +116,33 @@ export const RichTextEditor = ({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    // Tab indentation for lists
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        handleFormat("outdent");
+      } else {
+        handleFormat("indent");
+      }
+      return;
+    }
+
+    // Delete dynamic section placeholder with Backspace/Delete
+    if (e.key === "Backspace" || e.key === "Delete") {
+      const selection = window.getSelection();
+      const anchor = selection?.anchorNode as Node | null;
+      const element = (anchor && (anchor.nodeType === 3 ? (anchor.parentElement as HTMLElement | null) : (anchor as HTMLElement | null))) || null;
+      const placeholder = element?.closest?.('.dynamic-section-placeholder') as HTMLElement | null;
+      if (placeholder && editorRef.current?.contains(placeholder)) {
+        e.preventDefault();
+        const sectionId = placeholder.getAttribute('data-section-id') || '';
+        placeholder.remove();
+        onRemoveSection?.(sectionId);
+        handleInput();
+        return;
+      }
+    }
+
     // Handle keyboard shortcuts
     if (e.ctrlKey || e.metaKey) {
       switch (e.key.toLowerCase()) {
@@ -138,7 +165,7 @@ export const RichTextEditor = ({
   const insertDynamicSection = (section: Section, useDropPos = false) => {
     if (!editorRef.current) return;
     
-    const placeholder = `<span class="dynamic-section-placeholder" contenteditable="false" data-section-id="${section.id}" style="display: inline-block; background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%); color: white; padding: 6px 12px; margin: 2px 4px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">🔗 ${section.type.toUpperCase()}</span>`;
+    const placeholder = `<span class="dynamic-section-placeholder" contenteditable="false" data-section-id="${section.id}"><span class="dynamic-section-label">${section.type.toUpperCase()}</span><span class="dynamic-section-actions"><button type="button" data-action="up" aria-label="Move up">↑</button><button type="button" data-action="down" aria-label="Move down">↓</button><button type="button" data-action="delete" aria-label="Remove">✕</button></span></span>`;
 
     // If we have a drop position, use it to position the cursor
     if (useDropPos && dropPosition) {
@@ -196,16 +223,45 @@ export const RichTextEditor = ({
   // Handle clicks on dynamic section placeholders within the editor
   const handlePlaceholderClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    const placeholder = target.closest('.dynamic-section-placeholder');
-    
-    if (placeholder) {
-      const sectionId = placeholder.getAttribute('data-section-id');
-      if (sectionId && onSectionSelect) {
-        const section = dynamicSections.find(s => s.id === sectionId);
-        if (section) {
-          onSectionSelect(section);
-        }
+    const placeholder = target.closest('.dynamic-section-placeholder') as HTMLElement | null;
+
+    if (!placeholder) return;
+
+    const sectionId = placeholder.getAttribute('data-section-id') || '';
+
+    // Actions: up / down / delete
+    const actionButton = target.closest('button') as HTMLButtonElement | null;
+    const action = actionButton?.dataset.action;
+    if (action) {
+      e.preventDefault();
+      if (action === 'delete') {
+        placeholder.remove();
+        onRemoveSection?.(sectionId);
+        handleInput();
+        return;
       }
+      if (action === 'up') {
+        const prev = placeholder.previousElementSibling;
+        if (prev) {
+          placeholder.parentElement?.insertBefore(placeholder, prev);
+          handleInput();
+        }
+        return;
+      }
+      if (action === 'down') {
+        const next = placeholder.nextElementSibling;
+        if (next) {
+          placeholder.parentElement?.insertBefore(next, placeholder);
+          handleInput();
+        }
+        return;
+      }
+    }
+
+    // Select/open section settings if clicking on placeholder body
+    if (onSectionSelect) {
+      const section = dynamicSections.find((s) => s.id === sectionId);
+      if (section) onSectionSelect(section);
     }
   };
 
@@ -226,6 +282,10 @@ export const RichTextEditor = ({
           isOver && "bg-primary/5 ring-2 ring-primary ring-inset"
         )}
         onDragOver={(e) => {
+          e.preventDefault();
+          setDropPosition({ x: e.clientX, y: e.clientY });
+        }}
+        onDrop={(e) => {
           e.preventDefault();
           setDropPosition({ x: e.clientX, y: e.clientY });
         }}

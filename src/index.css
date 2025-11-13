@@ -207,4 +207,38 @@ All colors MUST be HSL.
     background-color: hsl(var(--muted)) !important;
     font-weight: 600 !important;
   }
+
+  /* Dynamic section placeholder - editor only */
+  .rich-editor-content .dynamic-section-placeholder {
+    display: block;
+    width: 100%;
+    margin: 0.5rem 0;
+    padding: 0.25rem 0.5rem;
+    background: transparent;
+    border: 0;
+  }
+  .rich-editor-content .dynamic-section-label {
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+  }
+  .rich-editor-content .dynamic-section-actions {
+    display: inline-flex;
+    gap: 0.25rem;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    opacity: 0.9;
+  }
+  .rich-editor-content .dynamic-section-actions button {
+    font-size: 0.75rem;
+    line-height: 1;
+    padding: 0.125rem 0.25rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.25rem;
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+  }
+  .rich-editor-content .dynamic-section-actions button:hover {
+    background: hsl(var(--secondary));
+  }
 }
+
