@@ -135,6 +135,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
 
   // For labeled-content sections - static label + dynamic content
   if (section.type === 'labeled-content') {
+    const label = (section.variables?.label as string) || '';
     const contentType = (section.variables?.contentType as string) || 'text';
     
     return (
@@ -145,18 +146,18 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         <Separator />
         
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Static Label/Heading</Label>
+          <Label className="text-sm font-medium">Field Label</Label>
           <Input
-            value={(section.variables?.label as string) || "What's Happening"}
+            value={label}
             onChange={(e) => onUpdate({
               ...section,
               variables: { ...section.variables, label: e.target.value }
             })}
             className="h-9 text-sm font-semibold"
-            placeholder="What's Happening"
+            placeholder="e.g., Summary, Impact, Actions"
           />
           <p className="text-xs text-muted-foreground">
-            This label stays the same and provides context for the dynamic content below.
+            This will be the field name. Users will see <code className="text-xs bg-muted px-1 rounded">{`{{${label || 'FieldName'}}}`}</code> when running the template.
           </p>
         </div>
 

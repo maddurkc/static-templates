@@ -3,7 +3,7 @@ import { ApiMapping } from "@/types/api-config";
 import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
 
-export const renderSectionContent = (section: Section): string => {
+export const renderSectionContent = (section: Section, variables?: Record<string, string | string[]>): string => {
   let content = section.content;
   
   // Handle labeled-content sections
@@ -12,14 +12,28 @@ export const renderSectionContent = (section: Section): string => {
     const contentType = section.variables?.contentType || 'text';
     
     let contentHtml = '';
-    if (contentType === 'list') {
-      const items = (section.variables?.items as string[]) || [];
-      contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
-        items.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 
-        '</ul>';
+    
+    // Check if we have runtime variables (from RunTemplates)
+    if (variables && variables[label] !== undefined) {
+      const runtimeValue = variables[label];
+      if (contentType === 'list' && Array.isArray(runtimeValue)) {
+        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
+          runtimeValue.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 
+          '</ul>';
+      } else if (typeof runtimeValue === 'string') {
+        contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(runtimeValue)}</div>`;
+      }
     } else {
-      const content = (section.variables?.content as string) || '';
-      contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(content)}</div>`;
+      // Use default values from section variables
+      if (contentType === 'list') {
+        const items = (section.variables?.items as string[]) || [];
+        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
+          items.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 
+          '</ul>';
+      } else {
+        const content = (section.variables?.content as string) || '';
+        contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(content)}</div>`;
+      }
     }
     
     return `<div style="margin: 15px 0;">
@@ -58,7 +72,7 @@ export const renderSectionContent = (section: Section): string => {
   
   // Handle container sections with nested children
   if (section.type === 'container' && section.children && section.children.length > 0) {
-    const childrenHTML = section.children.map(child => renderSectionContent(child)).join('');
+    const childrenHTML = section.children.map(child => renderSectionContent(child, variables)).join('');
     return `<div style="margin: 15px 0; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa;">${childrenHTML}</div>`;
   }
   
