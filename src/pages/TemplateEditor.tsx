@@ -1,75 +1,33 @@
 import { useState, useEffect } from "react";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
 import { ApiConfig, DEFAULT_API_CONFIG } from "@/types/api-config";
 import { sectionTypes } from "@/data/sectionTypes";
-import { SectionLibrary } from "@/components/templates/SectionLibrary";
-import { EditorView } from "@/components/templates/EditorView";
+import { RichTextEditor } from "@/components/templates/RichTextEditor";
+import { DynamicSectionPanel } from "@/components/templates/DynamicSectionPanel";
 import { PreviewView } from "@/components/templates/PreviewView";
-import { CustomizationToolbar } from "@/components/templates/CustomizationToolbar";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play } from "lucide-react";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Save, Eye, EyeOff, Code, Copy, Check, ArrowLeft, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation } from "react-router-dom";
-import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
-import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils";
+import { saveTemplate, updateTemplate } from "@/lib/templateStorage";
+import { convertToThymeleaf, renderSectionContent } from "@/lib/templateUtils";
 import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
+import { applyApiDataToSection } from "@/lib/templateUtils";
 
 const TemplateEditor = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const editingTemplate = location.state?.template;
   
-  // Static header section - cannot be deleted or moved
-  const [headerSection, setHeaderSection] = useState<Section>({
-    id: 'static-header',
-    type: 'header',
-    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-bottom: 2px solid #dee2e6;"><h1>{{companyName}}</h1><p>{{tagline}}</p></div>',
-    variables: {
-      companyName: 'Your Company Name',
-      tagline: 'Your Company Tagline'
-    },
-    styles: {}
-  });
-
-  // Static footer section - cannot be deleted or moved
-  const [footerSection, setFooterSection] = useState<Section>({
-    id: 'static-footer',
-    type: 'footer',
-    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 2px solid #dee2e6; margin-top: 40px;"><p>&copy; {{year}} {{companyName}}. All rights reserved.</p><p>{{contactEmail}}</p></div>',
-    variables: {
-      year: new Date().getFullYear().toString(),
-      companyName: 'Your Company Name',
-      contactEmail: 'contact@example.com'
-    },
-    styles: {}
-  });
-
-  const [sections, setSections] = useState<Section[]>([
-    {
-      id: 'demo-1',
-      type: 'heading1',
-      content: 'Welcome to Your Static Template',
-      styles: { fontSize: '48px', color: '#3b3f5c', fontWeight: '700' }
-    },
-    {
-      id: 'demo-2',
-      type: 'paragraph',
-      content: 'Start building your page by dragging sections from the library on the left.',
-      styles: { fontSize: '18px', color: '#6c757d' }
-    }
-  ]);
-  const [selectedSection, setSelectedSection] = useState<Section | null>(null);
+  const [editorContent, setEditorContent] = useState<string>('<p>Start typing your template content here...</p>');
+  const [dynamicSections, setDynamicSections] = useState<Section[]>([]);
   const [apiConfig, setApiConfig] = useState<ApiConfig>(DEFAULT_API_CONFIG);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
-  const [showLibrary, setShowLibrary] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -84,23 +42,14 @@ const TemplateEditor = () => {
       setEditingTemplateId(editingTemplate.id);
       setTemplateName(editingTemplate.name);
       
-      // Load sections
-      if (editingTemplate.sections && editingTemplate.sections.length > 0) {
-        const loadedSections = editingTemplate.sections;
-        
-        // Find header and footer
-        const header = loadedSections.find((s: Section) => s.id === 'static-header');
-        const footer = loadedSections.find((s: Section) => s.id === 'static-footer');
-        const userSections = loadedSections.filter((s: Section) => 
-          s.id !== 'static-header' && s.id !== 'static-footer'
-        );
-        
-        if (header) setHeaderSection(header);
-        if (footer) setFooterSection(footer);
-        setSections(userSections);
+      if (editingTemplate.editorContent) {
+        setEditorContent(editingTemplate.editorContent);
       }
       
-      // Load API config
+      if (editingTemplate.dynamicSections) {
+        setDynamicSections(editingTemplate.dynamicSections);
+      }
+      
       if (editingTemplate.apiConfig) {
         setApiConfig(editingTemplate.apiConfig);
       }
@@ -112,188 +61,71 @@ const TemplateEditor = () => {
     }
   }, [editingTemplate]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
+  const handleInsertPlaceholder = (name: string, label?: string) => {
+    // Check if a section with this placeholder already exists
+    const existingSection = dynamicSections.find(
+      s => s.variables?.placeholderName === name
+    );
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const id = String(event.active.id);
-    setActiveId(id);
-    if (id.startsWith('library-')) {
-      setShowLibrary(false);
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) return;
-
-    if (active.id.toString().startsWith('library-')) {
-      const dropTargetId = String(over.id);
-      const sectionType = active.id.toString().replace('library-', '');
-      const sectionDef = sectionTypes.find(s => s.type === sectionType);
-      
-      if (!sectionDef) return;
-      
-      // Check if dropping into a container
-      const targetContainer = sections.find(s => s.id === dropTargetId && s.type === 'container');
-      
-      const variables: Record<string, string | string[]> = {};
-      sectionDef.variables?.forEach(varDef => {
-        variables[varDef.name] = varDef.defaultValue;
-      });
-
+    if (!existingSection) {
+      // Create a new dynamic section for this placeholder
       const newSection: Section = {
-        id: `section-${Date.now()}-${Math.random()}`,
-        type: sectionDef.type,
-        content: sectionDef.defaultContent,
-        variables,
-        styles: {
-          fontSize: '16px',
-          color: '#000000',
-        }
+        id: `dynamic-${Date.now()}-${Math.random()}`,
+        type: 'text',
+        content: `<span th:text="\${${name}}"></span>`,
+        variables: {
+          placeholderName: name,
+          label: label || name,
+          text: `Sample value for ${name}`,
+        },
+        styles: {}
       };
-      
-      if (targetContainer) {
-        // Add to container's children
-        const updatedSections = sections.map(s => 
-          s.id === targetContainer.id 
-            ? { ...s, children: [...(s.children || []), newSection] }
-            : s
-        );
-        setSections(updatedSections);
-        toast({
-          title: "Section added to container",
-          description: `${sectionDef.label} added inside container.`,
-        });
-      } else {
-        // Add to main sections
-        setSections([...sections, newSection]);
-        toast({
-          title: "Section added",
-          description: `${sectionDef.label} has been added to your template.`,
-        });
-      }
-      return;
-    }
 
-    if (active.id !== over.id) {
-      setSections((items) => {
-        const oldIndex = items.findIndex(item => item.id === active.id);
-        const newIndex = items.findIndex(item => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+      setDynamicSections([...dynamicSections, newSection]);
+      
+      toast({
+        title: "Placeholder added",
+        description: `Dynamic placeholder "${name}" has been added. You can configure it in the right panel.`,
       });
     }
   };
 
-  const handleUpdateSection = (updatedSection: Section) => {
-    // Update header or footer if selected
-    if (updatedSection.id === 'static-header') {
-      setHeaderSection(updatedSection);
-      setSelectedSection(updatedSection);
-      return;
-    }
-    if (updatedSection.id === 'static-footer') {
-      setFooterSection(updatedSection);
-      setSelectedSection(updatedSection);
-      return;
-    }
-    setSections(sections.map(s => s.id === updatedSection.id ? updatedSection : s));
-    setSelectedSection(updatedSection);
-  };
+  const handleAddDynamicSection = (type: string) => {
+    const sectionDef = sectionTypes.find(s => s.type === type);
+    if (!sectionDef) return;
 
-  const handleMoveUp = (id: string) => {
-    const index = sections.findIndex(s => s.id === id);
-    if (index > 0) {
-      setSections(arrayMove(sections, index, index - 1));
-    }
-  };
+    const variables: Record<string, string | string[]> = {};
+    sectionDef.variables?.forEach(varDef => {
+      variables[varDef.name] = varDef.defaultValue;
+    });
 
-  const handleMoveDown = (id: string) => {
-    const index = sections.findIndex(s => s.id === id);
-    if (index < sections.length - 1) {
-      setSections(arrayMove(sections, index, index + 1));
-    }
-  };
+    const newSection: Section = {
+      id: `dynamic-${Date.now()}-${Math.random()}`,
+      type: sectionDef.type,
+      content: sectionDef.defaultContent,
+      variables,
+      styles: {}
+    };
 
-  const handleAddChildToContainer = (parentId: string) => {
-    // Find the container section
-    const containerIndex = sections.findIndex(s => s.id === parentId);
-    if (containerIndex === -1) return;
-
-    const container = sections[containerIndex];
+    setDynamicSections([...dynamicSections, newSection]);
     
-    // Create a simple text section as default child
-    const newChild: Section = {
-      id: `child-${Date.now()}-${Math.random()}`,
-      type: 'text',
-      content: '<span>{{text}}</span>',
-      variables: {
-        text: 'New nested section'
-      },
-      styles: {
-        fontSize: '14px',
-        color: '#000000',
-      }
-    };
-
-    // Add child to container
-    const updatedContainer = {
-      ...container,
-      children: [...(container.children || []), newChild]
-    };
-
-    // Update sections array
-    const newSections = [...sections];
-    newSections[containerIndex] = updatedContainer;
-    setSections(newSections);
-
     toast({
       title: "Section added",
-      description: "A new section has been added to the container.",
+      description: `${sectionDef.label} has been added to dynamic sections.`,
     });
   };
 
-  const handleDeleteSection = (id: string) => {
-    // Check if this is a child section first
-    let foundInContainer = false;
-    const newSections = sections.map(section => {
-      if (section.children && section.children.some(child => child.id === id)) {
-        foundInContainer = true;
-        return {
-          ...section,
-          children: section.children.filter(child => child.id !== id)
-        };
-      }
-      return section;
-    });
+  const handleUpdateDynamicSection = (updatedSection: Section) => {
+    setDynamicSections(dynamicSections.map(s => 
+      s.id === updatedSection.id ? updatedSection : s
+    ));
+  };
 
-    if (foundInContainer) {
-      setSections(newSections);
-      if (selectedSection?.id === id) {
-        setSelectedSection(null);
-      }
-      toast({
-        title: "Section deleted",
-        description: "The nested section has been removed.",
-      });
-      return;
-    }
-
-    // Otherwise delete from main sections
-    setSections(sections.filter(s => s.id !== id));
-    if (selectedSection?.id === id) {
-      setSelectedSection(null);
-    }
+  const handleDeleteDynamicSection = (id: string) => {
+    setDynamicSections(dynamicSections.filter(s => s.id !== id));
     toast({
       title: "Section deleted",
-      description: "The section has been removed from your template.",
+      description: "The dynamic section has been removed.",
     });
   };
 
@@ -307,28 +139,27 @@ const TemplateEditor = () => {
       return;
     }
 
-    // Save with placeholders, not rendered values
-    const html = generateHTMLWithPlaceholders();
+    const { html: thymeleafHtml, placeholders } = convertToThymeleaf(editorContent);
     
     const templateData = {
       name: templateName,
-      html,
+      html: thymeleafHtml,
+      editorContent,
+      dynamicSections,
+      placeholders,
+      sectionCount: dynamicSections.length,
       createdAt: isEditMode && editingTemplate ? editingTemplate.createdAt : new Date().toISOString(),
-      sectionCount: sections.length + 2, // Include header and footer
       archived: false,
       apiConfig: apiConfig.enabled ? apiConfig : undefined,
-      sections: [headerSection, ...sections, footerSection],
     };
 
     if (isEditMode && editingTemplateId) {
-      // Update existing template
       updateTemplate(editingTemplateId, templateData);
       toast({
         title: "Template updated",
         description: `"${templateName}" has been updated successfully.`,
       });
     } else {
-      // Save new template
       saveTemplate(templateData);
       toast({
         title: "Template saved",
@@ -339,49 +170,40 @@ const TemplateEditor = () => {
     setShowSaveDialog(false);
     setTemplateName("");
     
-    // Navigate back to templates list
     setTimeout(() => navigate('/templates'), 500);
   };
 
-  const generateHTMLWithPlaceholders = () => {
-    const allSections = [headerSection, ...sections, footerSection];
-    return allSections.map(section => {
-      const styleString = Object.entries(section.styles || {})
-        .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
-        .join('; ');
-      
-      // Use raw content with placeholders, don't render variables
-      return `<div style="${styleString}">\n  ${section.content}\n</div>`;
-    }).join('\n\n');
+  const generateFinalHTML = () => {
+    const { html } = convertToThymeleaf(editorContent);
+    return html;
   };
 
-  const generateHTML = () => {
-    const allSections = [headerSection, ...sections, footerSection];
-    return allSections.map(section => {
-      // Add default spacing styles for better layout
-      const defaultStyles = {
-        margin: '10px 0',
-        padding: '8px',
-      };
+  const generatePreviewHTML = () => {
+    // For preview, show with sample values
+    let html = editorContent;
+    
+    // Replace placeholders with sample values from dynamic sections
+    dynamicSections.forEach(section => {
+      const placeholderName = section.variables?.placeholderName as string;
+      const sampleValue = section.variables?.text || section.variables?.label || placeholderName;
       
-      const combinedStyles = { ...defaultStyles, ...section.styles };
-      const styleString = Object.entries(combinedStyles)
-        .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
-        .join('; ');
-      
-      const content = renderSectionContent(section);
-      return `<div style="${styleString}">\n  ${content}\n</div>`;
-    }).join('\n\n');
+      if (placeholderName) {
+        const regex = new RegExp(`<span[^>]*data-placeholder="${placeholderName}"[^>]*>.*?</span>`, 'g');
+        html = html.replace(regex, `<span style="background-color: #e3f2fd; padding: 2px 6px; border-radius: 4px;">${sampleValue}</span>`);
+      }
+    });
+    
+    return html;
   };
 
   const handleCopyHTML = async () => {
-    const html = generateHTML();
+    const html = generateFinalHTML();
     try {
       await navigator.clipboard.writeText(html);
       setCopied(true);
       toast({
         title: "HTML copied",
-        description: "Template HTML has been copied to clipboard.",
+        description: "Template HTML with Thymeleaf tags has been copied to clipboard.",
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -397,13 +219,12 @@ const TemplateEditor = () => {
     if (!apiConfig.enabled || !apiConfig.templateId) {
       toast({
         title: "API not configured",
-        description: "Please select an API template first.",
+        description: "Please configure API settings first.",
         variant: "destructive",
       });
       return;
     }
 
-    // Validate required parameters
     const validation = validateApiConfig(apiConfig);
     if (!validation.valid) {
       toast({
@@ -414,7 +235,6 @@ const TemplateEditor = () => {
       return;
     }
 
-    // Build API request from template
     const request = buildApiRequest(apiConfig);
     if (!request) {
       toast({
@@ -441,8 +261,7 @@ const TemplateEditor = () => {
 
       const data = await response.json();
 
-      // Apply mappings to sections
-      const updatedSections = [...sections];
+      const updatedSections = [...dynamicSections];
       apiConfig.mappings.forEach(mapping => {
         const sectionIndex = updatedSections.findIndex(s => s.id === mapping.sectionId);
         if (sectionIndex !== -1) {
@@ -454,7 +273,7 @@ const TemplateEditor = () => {
         }
       });
 
-      setSections(updatedSections);
+      setDynamicSections(updatedSections);
 
       toast({
         title: "API data fetched",
@@ -471,221 +290,186 @@ const TemplateEditor = () => {
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
-        {/* Top Bar */}
-        <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-          <div className="flex items-center justify-between px-6 py-3">
-            <div className="flex items-center gap-4">
-                <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/templates')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Static Templates
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Static Template Editor
-                </h1>
-                <p className="text-xs text-muted-foreground">
-                  Drag, drop, and customize your sections
-                </p>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
+      {/* Top Bar */}
+      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="flex items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/templates')}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Templates
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Rich Template Editor
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Create templates with free-form text and dynamic placeholders
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Sheet open={showLibrary} onOpenChange={setShowLibrary}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Library className="h-4 w-4 mr-2" />
-                    Section Library
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" onInteractOutside={(e) => e.preventDefault()} className="w-96 p-0 overflow-y-auto">
-                  <SheetHeader className="p-4 border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <SheetTitle>Section Library</SheetTitle>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Drag sections to add them to your template
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowLibrary(false)}
-                        className="h-8 w-8 hover:bg-muted"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </SheetHeader>
-                  <SectionLibrary />
-                </SheetContent>
-              </Sheet>
-              
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Code className="h-4 w-4 mr-2" />
-                    View HTML
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden">
-                  <DialogHeader>
-                    <DialogTitle>Generated HTML</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCopyHTML}
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="h-4 w-4 mr-2" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy HTML
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <ScrollArea className="h-[60vh] w-full rounded-md border">
-                      <pre className="p-4 text-sm whitespace-pre-wrap break-words overflow-x-auto">
-                        <code className="break-all">{generateHTML()}</code>
-                      </pre>
-                    </ScrollArea>
+          </div>
+          <div className="flex items-center gap-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Code className="h-4 w-4 mr-2" />
+                  View HTML
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden">
+                <DialogHeader>
+                  <DialogTitle>Generated Thymeleaf HTML</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCopyHTML}
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy HTML
+                        </>
+                      )}
+                    </Button>
                   </div>
-                </DialogContent>
-              </Dialog>
+                  <ScrollArea className="h-[60vh] w-full rounded-md border">
+                    <pre className="p-4 text-sm whitespace-pre-wrap break-words overflow-x-auto">
+                      <code className="break-all">{generateFinalHTML()}</code>
+                    </pre>
+                  </ScrollArea>
+                </div>
+              </DialogContent>
+            </Dialog>
 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+            >
+              {showPreview ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {showPreview ? 'Hide' : 'Show'} Preview
+            </Button>
+            
+            {apiConfig.enabled && apiConfig.templateId && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowPreview(!showPreview)}
+                onClick={handleTestApiFetch}
+                className="gap-2"
               >
-                {showPreview ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                {showPreview ? 'Hide' : 'Show'} Preview
+                <Play className="h-4 w-4" />
+                Test API
               </Button>
-              
-              {apiConfig.enabled && apiConfig.templateId && (
+            )}
+            
+            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+              <DialogTrigger asChild>
                 <Button
-                  variant="outline"
                   size="sm"
-                  onClick={handleTestApiFetch}
-                  className="gap-2"
+                  className="shadow-lg shadow-primary/20"
                 >
-                  <Play className="h-4 w-4" />
-                  Test & Fetch API Data
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Template
                 </Button>
-              )}
-              
-              <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                <DialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    className="shadow-lg shadow-primary/20"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Static Template
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Save Static Template</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="template-name">Static Template Name</Label>
-                      <Input
-                        id="template-name"
-                        placeholder="Enter template name..."
-                        value={templateName}
-                        onChange={(e) => setTemplateName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSaveTemplate();
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowSaveDialog(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSaveTemplate}>
-                        Save
-                      </Button>
-                    </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Save Template</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="template-name">Template Name</Label>
+                    <Input
+                      id="template-name"
+                      placeholder="Enter template name..."
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSaveTemplate();
+                        }
+                      }}
+                    />
                   </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowSaveDialog(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveTemplate}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
-          
-          <CustomizationToolbar
-            section={selectedSection}
-            onUpdate={handleUpdateSection}
-            apiConfig={apiConfig}
-            sections={sections}
-            onApiConfigUpdate={setApiConfig}
-          />
         </div>
-
-        {/* Main Content */}
-        <div className="flex h-[calc(100vh-120px)]">
-          {/* Editor */}
-          <div className={`flex-1 overflow-auto ${showPreview ? 'border-r' : ''}`}>
-            <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
-              <EditorView
-                headerSection={headerSection}
-                footerSection={footerSection}
-                sections={sections}
-                selectedSection={selectedSection}
-                onSelectSection={setSelectedSection}
-                onDeleteSection={handleDeleteSection}
-                onMoveUp={handleMoveUp}
-                onMoveDown={handleMoveDown}
-                onAddChildToContainer={handleAddChildToContainer}
-              />
-            </SortableContext>
-          </div>
-
-          {/* Preview */}
-          {showPreview && (
-            <div className="w-1/2 overflow-auto bg-white">
-              <PreviewView 
-                headerSection={headerSection}
-                footerSection={footerSection}
-                sections={sections} 
-              />
-            </div>
-          )}
-        </div>
-
-        <DragOverlay>
-          {activeId ? (
-            <div className="bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-xl">
-              Dragging...
-            </div>
-          ) : null}
-        </DragOverlay>
       </div>
-    </DndContext>
+
+      {/* Main Content */}
+      <div className="h-[calc(100vh-80px)]">
+        <ResizablePanelGroup direction="horizontal">
+          {/* Editor Panel */}
+          <ResizablePanel defaultSize={showPreview ? 40 : 60} minSize={30}>
+            <div className="h-full overflow-auto p-6">
+              <div className="max-w-4xl mx-auto">
+                <RichTextEditor
+                  content={editorContent}
+                  onChange={setEditorContent}
+                  onInsertPlaceholder={handleInsertPlaceholder}
+                />
+              </div>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* Dynamic Sections Panel */}
+          <ResizablePanel defaultSize={showPreview ? 30 : 40} minSize={20}>
+            <DynamicSectionPanel
+              sections={dynamicSections}
+              onUpdateSection={handleUpdateDynamicSection}
+              onDeleteSection={handleDeleteDynamicSection}
+              onAddSection={handleAddDynamicSection}
+            />
+          </ResizablePanel>
+
+          {showPreview && (
+            <>
+              <ResizableHandle withHandle />
+              
+              {/* Preview Panel */}
+              <ResizablePanel defaultSize={30} minSize={20}>
+                <div className="h-full overflow-auto bg-white">
+                  <div className="p-6">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900">Preview</h3>
+                    <div 
+                      className="prose max-w-none"
+                      dangerouslySetInnerHTML={{ __html: generatePreviewHTML() }}
+                    />
+                  </div>
+                </div>
+              </ResizablePanel>
+            </>
+          )}
+        </ResizablePanelGroup>
+      </div>
+    </div>
   );
 };
 

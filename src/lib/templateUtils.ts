@@ -3,6 +3,34 @@ import { ApiMapping } from "@/types/api-config";
 import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
 
+/**
+ * Convert HTML content with ${placeholder} to Thymeleaf th:text syntax
+ * Also extracts placeholders with their labels
+ */
+export const convertToThymeleaf = (html: string): { html: string; placeholders: Array<{ name: string; label: string }> } => {
+  const placeholders: Array<{ name: string; label: string }> = [];
+  
+  // Match dynamic placeholder spans
+  const placeholderRegex = /<span[^>]*data-placeholder="([^"]*)"[^>]*data-label="([^"]*)"[^>]*>.*?<\/span>/g;
+  
+  let match;
+  while ((match = placeholderRegex.exec(html)) !== null) {
+    const name = match[1];
+    const label = match[2] || name;
+    if (!placeholders.find(p => p.name === name)) {
+      placeholders.push({ name, label });
+    }
+  }
+  
+  // Replace placeholder spans with Thymeleaf attributes
+  const thymeleafHtml = html.replace(
+    placeholderRegex,
+    (match, name) => `<span th:text="\${${name}}"></span>`
+  );
+  
+  return { html: thymeleafHtml, placeholders };
+};
+
 export const renderSectionContent = (section: Section): string => {
   let content = section.content;
   
@@ -66,20 +94,20 @@ export const renderSectionContent = (section: Section): string => {
     return sanitizeHTML(content);
   }
 
-  // Replace all variables in the content
+  // Replace all variables in the content - convert to Thymeleaf
   Object.entries(section.variables).forEach(([key, value]) => {
     const placeholder = `{{${key}}}`;
     
     if (Array.isArray(value)) {
-      // For list variables, generate <li> tags
+      // For list variables, generate <li> tags with Thymeleaf
       const listItems = value.map(item => `<li>${sanitizeHTML(item)}</li>`).join('');
       content = content.replace(placeholder, listItems);
     } else if (typeof value === 'object' && value !== null) {
       // Skip complex objects like table data
       return;
     } else {
-      // For text/url variables, replace directly
-      content = content.replace(new RegExp(placeholder, 'g'), sanitizeHTML(value as string));
+      // For text/url variables, replace with Thymeleaf syntax
+      content = content.replace(new RegExp(placeholder, 'g'), `<span th:text="\${${key}}"></span>`);
     }
   });
 
