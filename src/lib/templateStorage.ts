@@ -4,12 +4,15 @@ import { ApiConfig } from "@/types/api-config";
 export interface Template {
   id: string;
   name: string;
-  html: string;
+  html?: string; // Legacy field - for old templates
+  richTextContent?: string; // New field - for rich text editor
   createdAt: string;
-  sectionCount: number;
+  updatedAt?: string;
+  sectionCount?: number; // Optional for new templates
   archived?: boolean;
   apiConfig?: ApiConfig;
-  sections?: Section[];
+  sections?: Section[]; // Legacy field - for old drag-drop editor
+  dynamicSections?: Section[]; // New field - for rich text editor dynamic sections
 }
 
 const STORAGE_KEY = 'email_templates';
