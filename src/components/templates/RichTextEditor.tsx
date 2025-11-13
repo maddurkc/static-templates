@@ -170,55 +170,20 @@ export const RichTextEditor = ({
     }
   }, [isOver]);
 
-  const renderDynamicSections = () => {
-    return (
-      <div className="space-y-2 p-4 border-t bg-muted/20">
-        <p className="text-xs font-semibold text-muted-foreground uppercase">Dynamic Sections</p>
-        {dynamicSections.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            Drag sections from the library to add dynamic content
-          </p>
-        ) : (
-          dynamicSections.map((section) => (
-            <div
-              key={section.id}
-              className="flex items-center justify-between p-2 bg-card border rounded-lg hover:border-primary/50 transition-colors"
-            >
-              <div className="flex items-center gap-2 flex-1">
-                <Badge variant="secondary" className="text-xs">
-                  {section.type}
-                </Badge>
-                <span className="text-sm truncate">
-                  {section.variables?.label || section.type}
-                </span>
-              </div>
-              <div className="flex gap-1">
-                {onSectionSelect && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onSectionSelect(section)}
-                    className="h-7 w-7 p-0"
-                  >
-                    <Settings className="h-3 w-3" />
-                  </Button>
-                )}
-                {onRemoveSection && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onRemoveSection(section.id)}
-                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    );
+  // Handle clicks on dynamic section placeholders within the editor
+  const handlePlaceholderClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const placeholder = target.closest('.dynamic-section-placeholder');
+    
+    if (placeholder) {
+      const sectionId = placeholder.getAttribute('data-section-id');
+      if (sectionId && onSectionSelect) {
+        const section = dynamicSections.find(s => s.id === sectionId);
+        if (section) {
+          onSectionSelect(section);
+        }
+      }
+    }
   };
 
   return (
@@ -241,6 +206,7 @@ export const RichTextEditor = ({
           ref={editorRef}
           contentEditable
           onInput={handleInput}
+          onClick={handlePlaceholderClick}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
@@ -255,8 +221,6 @@ export const RichTextEditor = ({
           }}
         />
       </div>
-
-      {renderDynamicSections()}
     </div>
   );
 };
