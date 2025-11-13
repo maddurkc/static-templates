@@ -13,7 +13,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     
     let contentHtml = '';
     
-    if (contentType === 'table' && runtimeValue && typeof runtimeValue === 'object' && !Array.isArray(runtimeValue)) {
+    if (contentType === 'table' && runtimeValue && typeof runtimeValue === 'object' && !Array.isArray(runtimeValue) && 'headers' in runtimeValue && 'rows' in runtimeValue) {
       const tableData = runtimeValue as { headers: string[]; rows: string[][] };
       contentHtml = '<table style="width: 100%; border-collapse: collapse; margin-top: 8px;">';
       contentHtml += '<thead><tr>';
