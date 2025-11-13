@@ -69,6 +69,11 @@ const RunTemplates = () => {
     if (!selectedTemplate?.sections) return false;
     
     for (const section of selectedTemplate.sections) {
+      // For labeled-content sections, check contentType
+      if (section.type === 'labeled-content' && section.variables?.label === varName) {
+        return section.variables?.contentType === 'list';
+      }
+      
       if (section.variables && section.variables[varName]) {
         return Array.isArray(section.variables[varName]);
       }
@@ -81,6 +86,14 @@ const RunTemplates = () => {
     if (!selectedTemplate?.sections) return '';
     
     for (const section of selectedTemplate.sections) {
+      // For labeled-content sections, return content or items based on contentType
+      if (section.type === 'labeled-content' && section.variables?.label === varName) {
+        if (section.variables.contentType === 'list') {
+          return (section.variables.items as string[]) || [''];
+        }
+        return (section.variables.content as string) || '';
+      }
+      
       if (section.variables && section.variables[varName] !== undefined) {
         const value = section.variables[varName];
         return Array.isArray(value) ? value : String(value);
@@ -97,6 +110,12 @@ const RunTemplates = () => {
     // Extract from sections if available
     if (template.sections) {
       template.sections.forEach((section: Section) => {
+        // For labeled-content sections, use the label value as the variable name
+        if (section.type === 'labeled-content' && section.variables?.label) {
+          varsFromSections.add(section.variables.label as string);
+          return;
+        }
+        
         // Extract variables from section content
         const contentVars = extractVariables(section.content);
         contentVars.forEach(v => varsFromSections.add(v));
@@ -125,6 +144,24 @@ const RunTemplates = () => {
       result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
     });
     
+    // Handle labeled-content sections with runtime variables
+    if (selectedTemplate?.sections) {
+      selectedTemplate.sections.forEach(section => {
+        if (section.type === 'labeled-content' && section.variables?.label) {
+          const label = section.variables.label as string;
+          const runtimeValue = listVars[label] || vars[label];
+          if (runtimeValue) {
+            result = result.replace(
+              new RegExp(`\\{\\{${label}\\}\\}`, 'g'),
+              Array.isArray(runtimeValue) 
+                ? runtimeValue.filter(item => item.trim()).map(item => `<li>${item}</li>`).join('')
+                : runtimeValue
+            );
+          }
+        }
+      });
+    }
+    
     return result;
   };
 
@@ -145,6 +182,11 @@ const RunTemplates = () => {
     
     setVariables(initialVars);
     setListVariables(initialListVars);
+    
+    // Set initial execution metadata
+    setExecutedOn(new Date().toLocaleString());
+    setEmailSubject(`${template.name} - ${new Date().toLocaleDateString()}`);
+    setEmailTitle(template.name);
   };
 
   const handleSendTemplate = () => {
