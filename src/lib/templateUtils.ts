@@ -6,51 +6,40 @@ import { sanitizeHTML, sanitizeInput } from "./sanitize";
 export const renderSectionContent = (section: Section, variables?: Record<string, string | string[]>): string => {
   let content = section.content;
   
-  if (section.type === 'labeled-content' && section.variables) {
-    const label = section.variables.label as string;
-    const contentType = section.variables.contentType as string;
-    const runtimeValue = variables?.[label];
+  // Handle labeled-content sections
+  if (section.type === 'labeled-content') {
+    const label = section.variables?.label || 'Label';
+    const contentType = section.variables?.contentType || 'text';
     
     let contentHtml = '';
     
-    if (contentType === 'table' && runtimeValue && typeof runtimeValue === 'object' && !Array.isArray(runtimeValue) && 'headers' in runtimeValue && 'rows' in runtimeValue) {
-      const tableData = runtimeValue as { headers: string[]; rows: string[][] };
-      contentHtml = '<table style="width: 100%; border-collapse: collapse; margin-top: 8px;">';
-      contentHtml += '<thead><tr>';
-      tableData.headers.forEach((header: string) => {
-        contentHtml += `<th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">${sanitizeInput(header)}</th>`;
-      });
-      contentHtml += '</tr></thead><tbody>';
-      tableData.rows.forEach((row: string[]) => {
-        contentHtml += '<tr>';
-        row.forEach((cell: string) => {
-          contentHtml += `<td style="border: 1px solid #ddd; padding: 8px;">${sanitizeInput(cell)}</td>`;
-        });
-        contentHtml += '</tr>';
-      });
-      contentHtml += '</tbody></table>';
-    } else if (contentType?.includes('list') && Array.isArray(runtimeValue)) {
-      const listItems = runtimeValue;
-      const listStyleMap: Record<string, string> = {
-        'bullet-list-circle': 'circle',
-        'bullet-list-disc': 'disc',
-        'bullet-list-square': 'square',
-        'number-list-1': 'decimal',
-        'number-list-i': 'lower-roman',
-        'number-list-a': 'lower-alpha',
-      };
-      const listStyle = listStyleMap[contentType] || 'circle';
-      const tagType = contentType.startsWith('number') ? 'ol' : 'ul';
-      contentHtml = `<${tagType} style="list-style-type: ${listStyle}; margin-left: 20px;">` + 
-        listItems.filter(item => item.trim()).map(item => `<li>${sanitizeInput(item)}</li>`).join('') + `</${tagType}>`;
-    } else if (typeof runtimeValue === 'string') {
-      contentHtml = sanitizeInput(runtimeValue).replace(/\n/g, '<br>');
+    // Check if we have runtime variables (from RunTemplates)
+    if (variables && variables[label] !== undefined) {
+      const runtimeValue = variables[label];
+      if (contentType === 'list' && Array.isArray(runtimeValue)) {
+        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
+          runtimeValue.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 
+          '</ul>';
+      } else if (typeof runtimeValue === 'string') {
+        contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(runtimeValue)}</div>`;
+      }
     } else {
-      const content = section.variables.content as string || '';
-      contentHtml = sanitizeInput(content).replace(/\n/g, '<br>');
+      // Use default values from section variables
+      if (contentType === 'list') {
+        const items = (section.variables?.items as string[]) || [];
+        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
+          items.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 
+          '</ul>';
+      } else {
+        const content = (section.variables?.content as string) || '';
+        contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(content)}</div>`;
+      }
     }
     
-    return `<div style="margin: 15px 0;"><strong style="display: block; margin-bottom: 8px; font-size: 1.1em;">${sanitizeInput(label)}</strong>${contentHtml}</div>`;
+    return `<div style="margin: 15px 0;">
+      <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;">${sanitizeInput(label)}</div>
+      ${contentHtml}
+    </div>`;
   }
   
   // Handle table sections specially
