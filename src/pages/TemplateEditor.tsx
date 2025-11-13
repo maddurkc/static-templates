@@ -51,21 +51,14 @@ const TemplateEditor = () => {
     styles: {}
   });
 
-  const [sections, setSections] = useState<Section[]>([
-    {
-      id: 'demo-1',
-      type: 'heading1',
-      content: 'Welcome to Your Static Template',
-      styles: { fontSize: '48px', color: '#3b3f5c', fontWeight: '700' }
-    },
-    {
-      id: 'demo-2',
-      type: 'paragraph',
-      content: 'Start building your page by dragging sections from the library on the left.',
-      styles: { fontSize: '18px', color: '#6c757d' }
-    }
-  ]);
-  const [selectedSection, setSelectedSection] = useState<Section | null>(null);
+  // Rich text content for the template body
+  const [richTextContent, setRichTextContent] = useState<string>(
+    '<h1>Welcome to Your Template</h1><p>Start typing here or use the toolbar above to format your content. Drag sections from the library to add dynamic content placeholders.</p>'
+  );
+  
+  // Dynamic sections that will be embedded in the rich text
+  const [dynamicSections, setDynamicSections] = useState<Section[]>([]);
+  const [selectedDynamicSection, setSelectedDynamicSection] = useState<Section | null>(null);
   const [apiConfig, setApiConfig] = useState<ApiConfig>(DEFAULT_API_CONFIG);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
