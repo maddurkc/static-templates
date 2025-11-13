@@ -492,10 +492,57 @@ const RunTemplates = () => {
               </div>
               <ScrollArea className="h-[calc(100vh-180px)]">
                 <div className="p-8">
-                  <div
-                    dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables, listVariables) }}
-                    className="prose max-w-none"
-                  />
+                  {selectedTemplate.sections && selectedTemplate.sections.length > 0 ? (
+                    // Render from sections with runtime values
+                    <div className="space-y-4">
+                      {selectedTemplate.sections.map((section) => {
+                        if (section.type === 'labeled-content' && section.variables?.label) {
+                          const label = section.variables.label as string;
+                          const contentType = section.variables.contentType as string;
+                          const runtimeValue = listVariables[label] || variables[label];
+                          
+                          return (
+                            <div key={section.id} style={{ margin: '15px 0' }}>
+                              <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '1.1em' }}>
+                                {label}
+                              </div>
+                              {contentType === 'list' && Array.isArray(runtimeValue) ? (
+                                <ul style={{ listStyleType: 'circle', marginLeft: '20px' }}>
+                                  {runtimeValue.filter(item => item.trim()).map((item, idx) => (
+                                    <li key={idx}>{item}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div style={{ whiteSpace: 'pre-wrap' }}>
+                                  {typeof runtimeValue === 'string' ? runtimeValue : ''}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        } else if (section.type === 'line-break') {
+                          return <br key={section.id} />;
+                        } else if (section.type === 'mixed-content' && section.variables?.content) {
+                          let content = section.variables.content as string;
+                          // Replace placeholders in mixed-content
+                          Object.entries(variables).forEach(([key, value]) => {
+                            content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+                          });
+                          return (
+                            <div key={section.id} style={{ margin: '10px 0', padding: '8px', lineHeight: '1.6' }}>
+                              {content}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  ) : (
+                    // Render from HTML for legacy templates
+                    <div
+                      dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables, listVariables) }}
+                      className="prose max-w-none"
+                    />
+                  )}
                 </div>
               </ScrollArea>
             </div>
