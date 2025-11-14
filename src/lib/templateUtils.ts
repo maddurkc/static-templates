@@ -25,7 +25,12 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
     } else {
       // Use default values from section variables
-      if (contentType === 'list') {
+      if (contentType === 'table') {
+        const tableData = section.variables?.tableData as TableData;
+        if (tableData) {
+          contentHtml = generateTableHTML(tableData);
+        }
+      } else if (contentType === 'list') {
         const items = (section.variables?.items as string[]) || [];
         contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
           items.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 

@@ -47,7 +47,10 @@ const RunTemplates = () => {
       
       vars.forEach(v => {
         const defaultVal = getDefaultValue(v);
-        if (Array.isArray(defaultVal)) {
+        if (isTableVariable(v)) {
+          // Skip table variables - they'll be handled separately
+          // For now we don't support runtime table editing
+        } else if (Array.isArray(defaultVal)) {
           initialListVars[v] = defaultVal.length > 0 ? defaultVal : [''];
         } else {
           initialVars[v] = String(defaultVal);
@@ -82,8 +85,30 @@ const RunTemplates = () => {
     return false;
   };
 
+  // Check if a variable is a table type
+  const isTableVariable = (varName: string): boolean => {
+    if (!selectedTemplate?.sections) return false;
+    
+    return selectedTemplate.sections.some(section => {
+      if (section.type === 'labeled-content' && section.variables?.label === varName) {
+        return section.variables.contentType === 'table';
+      }
+      return false;
+    });
+  };
+
+  // Check if a label is editable at runtime
+  const isLabelEditable = (varName: string): boolean => {
+    if (!selectedTemplate?.sections) return true;
+    
+    const section = selectedTemplate.sections.find(section => 
+      section.type === 'labeled-content' && section.variables?.label === varName
+    );
+    return section?.isLabelEditable !== false;
+  };
+
   // Get default value for a variable from sections
-  const getDefaultValue = (varName: string): string | string[] => {
+  const getDefaultValue = (varName: string): string | string[] | any => {
     if (!selectedTemplate?.sections) return '';
     
     for (const section of selectedTemplate.sections) {
@@ -91,6 +116,8 @@ const RunTemplates = () => {
       if (section.type === 'labeled-content' && section.variables?.label === varName) {
         if (section.variables.contentType === 'list') {
           return (section.variables.items as string[]) || [''];
+        } else if (section.variables.contentType === 'table') {
+          return section.variables.tableData || { headers: [], rows: [] };
         }
         return (section.variables.content as string) || '';
       }
@@ -394,20 +421,49 @@ const RunTemplates = () => {
                       <div className="space-y-4">
                         {extractAllVariables(selectedTemplate).map((varName) => {
                           const isList = isListVariable(varName);
+                          const isTable = isTableVariable(varName);
+                          const editable = isLabelEditable(varName);
+                          
                           return (
                             <div key={varName} className="space-y-2">
-                              <Label htmlFor={`var-${varName}`} className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs font-mono">
-                                  {`{{${varName}}}`}
-                                </Badge>
+                              <Label htmlFor={`var-${varName}`} className="flex items-center gap-2 flex-wrap">
+                                {editable ? (
+                                  <Badge variant="outline" className="text-xs font-mono">
+                                    {`{{${varName}}}`}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs font-mono bg-muted">
+                                    {`{{${varName}}}`}
+                                  </Badge>
+                                )}
                                 <span>{varName}</span>
                                 {isList && (
                                   <Badge variant="secondary" className="text-xs">
                                     List
                                   </Badge>
                                 )}
+                                {isTable && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Table
+                                  </Badge>
+                                )}
+                                {!editable && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Label locked
+                                  </Badge>
+                                )}
                               </Label>
-                              {isList ? (
+                              {isTable ? (
+                                <div className="space-y-2 border rounded-lg p-4">
+                                  <p className="text-xs text-muted-foreground mb-2">
+                                    Table content - customize rows and columns
+                                  </p>
+                                  {/* Table editor would go here - for now show placeholder */}
+                                  <div className="text-sm text-muted-foreground">
+                                    Table editing in runtime coming soon...
+                                  </div>
+                                </div>
+                              ) : isList ? (
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs text-muted-foreground">List Items</span>

@@ -175,7 +175,29 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           >
             <option value="text">Text Content</option>
             <option value="list">List Items</option>
+            <option value="table">Table</option>
           </select>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="label-editable"
+              checked={section.isLabelEditable !== false}
+              onChange={(e) => onUpdate({
+                ...section,
+                isLabelEditable: e.target.checked
+              })}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="label-editable" className="text-sm font-medium cursor-pointer">
+              Label editable at runtime
+            </Label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            When unchecked, users won't be able to modify the label value when running the template.
+          </p>
         </div>
 
         {contentType === 'text' ? (
@@ -194,6 +216,16 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
             />
             <p className="text-xs text-muted-foreground">
               This content appears below the label and can be replaced with API data.
+            </p>
+          </div>
+        ) : contentType === 'table' ? (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Table Data <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
+            </Label>
+            <TableEditor section={section} onUpdate={onUpdate} />
+            <p className="text-xs text-muted-foreground">
+              Define the table structure that will appear under this label.
             </p>
           </div>
         ) : (
