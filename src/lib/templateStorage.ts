@@ -34,7 +34,7 @@ export const getTemplates = (): Template[] => {
       {
         id: "1",
         name: "Welcome Email Template",
-        html: "<h1>Welcome {{name}}!</h1><p>Thank you for joining us.</p>",
+        html: "<h1>Welcome <th:utext=\"${name}\"></h1><p>Thank you for joining us.</p>",
         createdAt: "2024-01-15",
         sectionCount: 2,
         archived: false,
@@ -42,7 +42,7 @@ export const getTemplates = (): Template[] => {
       {
         id: "2",
         name: "Newsletter Template",
-        html: "<h1>{{title}}</h1><p>{{content}}</p><p>Best regards, {{sender}}</p>",
+        html: "<h1><th:utext=\"${title}\"></h1><p><th:utext=\"${content}\"></p><p>Best regards, <th:utext=\"${sender}\"></p>",
         createdAt: "2024-01-20",
         sectionCount: 3,
         archived: false,
@@ -50,7 +50,7 @@ export const getTemplates = (): Template[] => {
       {
         id: "3",
         name: "Product Launch Template",
-        html: "<h1>Introducing {{productName}}</h1><p>{{description}}</p><button>Learn More</button>",
+        html: "<h1>Introducing <th:utext=\"${productName}\"></h1><p><th:utext=\"${description}\"></p><button>Learn More</button>",
         createdAt: "2024-01-25",
         sectionCount: 3,
         archived: true,
@@ -111,7 +111,7 @@ export const getTemplates = (): Template[] => {
             content: "",
             order: 4,
             variables: {
-              content: "For invalid Characters issue, the team is working with Engineer- {{incidentNumber}}",
+              content: 'For invalid Characters issue, the team is working with Engineer- <th:utext="${incidentNumber}">',
               incidentNumber: "#INC1234567"
             }
           }

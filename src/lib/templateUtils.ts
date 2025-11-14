@@ -110,8 +110,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   // Handle mixed-content sections - free-form text with embedded placeholders
   if (section.type === 'mixed-content' && section.variables?.content) {
     let mixedContent = section.variables.content as string;
-    // Replace all {{placeholder}} patterns with sanitized values or keep them
-    mixedContent = mixedContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+    // Replace all <th:utext="${placeholder}"> patterns with sanitized values or keep them
+    mixedContent = mixedContent.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
       if (section.variables && section.variables[varName]) {
         return sanitizeHTML(section.variables[varName] as string);
       }
@@ -137,18 +137,19 @@ export const renderSectionContent = (section: Section, variables?: Record<string
 
   // Replace all variables in the content
   Object.entries(section.variables).forEach(([key, value]) => {
-    const placeholder = `{{${key}}}`;
+    const placeholder = `<th:utext="\\$\\{${key}\\}">`;
+    const placeholderRegex = new RegExp(`<th:utext="\\$\\{${key}\\}">`, 'g');
     
     if (Array.isArray(value)) {
       // For list variables, generate <li> tags
       const listItems = value.map(item => `<li>${sanitizeHTML(item)}</li>`).join('');
-      content = content.replace(placeholder, listItems);
+      content = content.replace(placeholderRegex, listItems);
     } else if (typeof value === 'object' && value !== null) {
       // Skip complex objects like table data
       return;
     } else {
       // For text/url variables, replace directly
-      content = content.replace(new RegExp(placeholder, 'g'), sanitizeHTML(value as string));
+      content = content.replace(placeholderRegex, sanitizeHTML(value as string));
     }
   });
 

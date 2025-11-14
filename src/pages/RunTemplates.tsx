@@ -66,7 +66,7 @@ const RunTemplates = () => {
   }, [selectedTemplate]);
 
   const extractVariables = (html: string): string[] => {
-    const regex = /\{\{(\w+)\}\}/g;
+    const regex = /<th:utext="\$\{(\w+)\}">/g;
     const matches = html.matchAll(regex);
     return Array.from(new Set(Array.from(matches, m => m[1])));
   };
@@ -211,9 +211,9 @@ const RunTemplates = () => {
                 }
                 return `<li>${item}</li>`;
               }).join('');
-              result = result.replace(new RegExp(`\\{\\{${label}\\}\\}`, 'g'), listHtml);
+              result = result.replace(new RegExp(`<th:utext="\\$\\{${label}\\}">`, 'g'), listHtml);
             } else {
-              result = result.replace(new RegExp(`\\{\\{${label}\\}\\}`, 'g'), runtimeValue as string);
+              result = result.replace(new RegExp(`<th:utext="\\$\\{${label}\\}">`, 'g'), runtimeValue as string);
             }
           }
         }
