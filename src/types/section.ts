@@ -50,6 +50,7 @@ export interface Section {
   };
   children?: Section[];
   order?: number;
+  isLabelEditable?: boolean; // Whether the label can be edited at runtime
 }
 
 export interface SectionDefinition {
