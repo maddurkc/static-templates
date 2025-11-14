@@ -3,7 +3,7 @@ import { ApiMapping } from "@/types/api-config";
 import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
 
-export const renderSectionContent = (section: Section, variables?: Record<string, string | string[]>): string => {
+export const renderSectionContent = (section: Section, variables?: Record<string, string | string[] | any>): string => {
   let content = section.content;
   
   // Handle labeled-content sections
@@ -16,7 +16,23 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     // Check if we have runtime variables (from RunTemplates)
     if (variables && variables[label] !== undefined) {
       const runtimeValue = variables[label];
-      if (contentType === 'list' && Array.isArray(runtimeValue)) {
+      if (contentType === 'table' && typeof runtimeValue === 'object' && runtimeValue.headers) {
+        // Render table from runtime data
+        let tableHtml = '<table style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;"><thead><tr>';
+        runtimeValue.headers.forEach((header: string) => {
+          tableHtml += `<th style="border: 1px solid #ddd; padding: 8px; background-color: #f5f5f5; text-align: left;">${sanitizeInput(header)}</th>`;
+        });
+        tableHtml += '</tr></thead><tbody>';
+        (runtimeValue.rows || []).forEach((row: string[]) => {
+          tableHtml += '<tr>';
+          row.forEach((cell: string) => {
+            tableHtml += `<td style="border: 1px solid #ddd; padding: 8px;">${sanitizeInput(cell)}</td>`;
+          });
+          tableHtml += '</tr>';
+        });
+        tableHtml += '</tbody></table>';
+        contentHtml = tableHtml;
+      } else if (contentType === 'list' && Array.isArray(runtimeValue)) {
         contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
           runtimeValue.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 
           '</ul>';
@@ -26,9 +42,22 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     } else {
       // Use default values from section variables
       if (contentType === 'table') {
-        const tableData = section.variables?.tableData as TableData;
-        if (tableData) {
-          contentHtml = generateTableHTML(tableData);
+        const tableData = section.variables?.tableData;
+        if (tableData && tableData.headers) {
+          let tableHtml = '<table style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;"><thead><tr>';
+          tableData.headers.forEach((header: string) => {
+            tableHtml += `<th style="border: 1px solid #ddd; padding: 8px; background-color: #f5f5f5; text-align: left;">${sanitizeInput(header)}</th>`;
+          });
+          tableHtml += '</tr></thead><tbody>';
+          (tableData.rows || []).forEach((row: string[]) => {
+            tableHtml += '<tr>';
+            row.forEach((cell: string) => {
+              tableHtml += `<td style="border: 1px solid #ddd; padding: 8px;">${sanitizeInput(cell)}</td>`;
+            });
+            tableHtml += '</tr>';
+          });
+          tableHtml += '</tbody></table>';
+          contentHtml = tableHtml;
         }
       } else if (contentType === 'list') {
         const items = (section.variables?.items as string[]) || [];

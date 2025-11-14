@@ -111,9 +111,38 @@ const SortableSection = ({
                 </Badge>
               )}
             </div>
-            <div className="text-sm text-muted-foreground pl-4 border-l-2 border-muted">
-              {'{'}content{'}'} - {section.variables.contentType || 'text'}
-            </div>
+            {section.variables.contentType === 'table' && section.variables.tableData ? (
+              <div 
+                className="text-sm border rounded overflow-x-auto"
+                dangerouslySetInnerHTML={{ 
+                  __html: (() => {
+                    const tableData = section.variables.tableData as any;
+                    if (!tableData.headers || tableData.headers.length === 0) {
+                      return '<p class="text-muted-foreground p-2">No table data</p>';
+                    }
+                    
+                    let html = '<table class="w-full border-collapse"><thead><tr>';
+                    (tableData.headers || []).forEach((header: string) => {
+                      html += `<th class="border p-2 bg-muted text-left font-semibold">${header}</th>`;
+                    });
+                    html += '</tr></thead><tbody>';
+                    (tableData.rows || []).forEach((row: string[]) => {
+                      html += '<tr>';
+                      row.forEach((cell: string) => {
+                        html += `<td class="border p-2">${cell}</td>`;
+                      });
+                      html += '</tr>';
+                    });
+                    html += '</tbody></table>';
+                    return html;
+                  })()
+                }}
+              />
+            ) : (
+              <div className="text-sm text-muted-foreground pl-4 border-l-2 border-muted">
+                {'{'}content{'}'} - {section.variables.contentType || 'text'}
+              </div>
+            )}
           </div>
         ) : !isContainer && (
           <div
