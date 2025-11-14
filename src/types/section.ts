@@ -34,11 +34,18 @@ export interface SectionVariable {
   defaultValue: string | string[] | any;
 }
 
+export interface ListItemStyle {
+  text: string;
+  color?: string;
+  bold?: boolean;
+  backgroundColor?: string;
+}
+
 export interface Section {
   id: string;
   type: SectionType;
   content: string;
-  variables?: Record<string, string | string[] | any>;
+  variables?: Record<string, string | string[] | ListItemStyle[] | any>;
   styles?: {
     fontSize?: string;
     color?: string;

@@ -8,11 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Paintbrush } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
-import { Section } from "@/types/section";
+import { Section, ListItemStyle } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ const RunTemplates = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templateFromState || null);
   const [variables, setVariables] = useState<Record<string, string>>({});
-  const [listVariables, setListVariables] = useState<Record<string, string[]>>({});
+  const [listVariables, setListVariables] = useState<Record<string, string[] | ListItemStyle[]>>({});
   const [tableVariables, setTableVariables] = useState<Record<string, any>>({});
   const [toEmails, setToEmails] = useState("");
   const [ccEmails, setCcEmails] = useState("");
@@ -167,12 +168,22 @@ const RunTemplates = () => {
     return Array.from(new Set([...varsFromHtml, ...varsFromSections]));
   };
 
-  const replaceVariables = (html: string, vars: Record<string, string>, listVars: Record<string, string[]>): string => {
+  const replaceVariables = (html: string, vars: Record<string, string>, listVars: Record<string, string[] | ListItemStyle[]>): string => {
     let result = html;
     
     // Replace list variables
     Object.entries(listVars).forEach(([key, items]) => {
-      const listHtml = items.filter(item => item.trim()).map(item => `<li>${item}</li>`).join('');
+      const listHtml = items.filter((item: any) => typeof item === 'string' ? item.trim() : item.text?.trim()).map((item: any) => {
+        if (typeof item === 'object' && 'text' in item) {
+          const styles = [];
+          if (item.color) styles.push(`color: ${item.color}`);
+          if (item.bold) styles.push('font-weight: bold');
+          if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+          return `<li${styleAttr}>${item.text}</li>`;
+        }
+        return `<li>${item}</li>`;
+      }).join('');
       result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), listHtml);
     });
     
@@ -188,12 +199,22 @@ const RunTemplates = () => {
           const label = section.variables.label as string;
           const runtimeValue = listVars[label] || vars[label];
           if (runtimeValue) {
-            result = result.replace(
-              new RegExp(`\\{\\{${label}\\}\\}`, 'g'),
-              Array.isArray(runtimeValue) 
-                ? runtimeValue.filter(item => item.trim()).map(item => `<li>${item}</li>`).join('')
-                : runtimeValue
-            );
+            if (Array.isArray(runtimeValue)) {
+              const listHtml = runtimeValue.map((item: any) => {
+                if (typeof item === 'object' && 'text' in item) {
+                  const styles = [];
+                  if (item.color) styles.push(`color: ${item.color}`);
+                  if (item.bold) styles.push('font-weight: bold');
+                  if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+                  const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+                  return `<li${styleAttr}>${item.text}</li>`;
+                }
+                return `<li>${item}</li>`;
+              }).join('');
+              result = result.replace(new RegExp(`\\{\\{${label}\\}\\}`, 'g'), listHtml);
+            } else {
+              result = result.replace(new RegExp(`\\{\\{${label}\\}\\}`, 'g'), runtimeValue as string);
+            }
           }
         }
       });
@@ -206,7 +227,7 @@ const RunTemplates = () => {
     setSelectedTemplate(template);
     const vars = extractAllVariables(template);
     const initialVars: Record<string, string> = {};
-    const initialListVars: Record<string, string[]> = {};
+    const initialListVars: Record<string, string[] | ListItemStyle[]> = {};
     
     vars.forEach(v => {
       const defaultVal = getDefaultValue(v);
@@ -610,56 +631,182 @@ const RunTemplates = () => {
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs text-muted-foreground">List Items</span>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setListVariables(prev => ({
-                                          ...prev,
-                                          [varName]: [...(prev[varName] || ['']), '']
-                                        }));
-                                      }}
-                                      className="h-7 px-2"
-                                    >
-                                      <Plus className="h-3 w-3 mr-1" />
-                                      Add Item
-                                    </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setListVariables(prev => ({
+                                            ...prev,
+                                            [varName]: [...(prev[varName] || []), ''] as string[] | ListItemStyle[]
+                                          }));
+                                        }}
+                                        className="h-7 px-2"
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Add Item
+                                      </Button>
                                   </div>
                                   <div className="space-y-2 pl-2 border-l-2 border-muted">
-                                    {(listVariables[varName] || ['']).map((item, index) => (
-                                      <div key={index} className="flex items-center gap-2 ml-2">
-                                        <Input
-                                          value={item}
-                                          onChange={(e) => {
-                                            setListVariables(prev => {
-                                              const newItems = [...(prev[varName] || [''])];
-                                              newItems[index] = e.target.value;
-                                              return { ...prev, [varName]: newItems };
-                                            });
-                                          }}
-                                          placeholder={`Item ${index + 1}`}
-                                          className="h-8 text-sm"
-                                        />
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          onClick={() => {
-                                            setListVariables(prev => {
-                                              const newItems = [...(prev[varName] || [''])];
-                                              if (newItems.length > 1) {
-                                                newItems.splice(index, 1);
-                                                return { ...prev, [varName]: newItems };
-                                              }
-                                              return prev;
-                                            });
-                                          }}
-                                          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                                          disabled={(listVariables[varName]?.length || 0) <= 1}
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    ))}
+                                    {(listVariables[varName] || ['']).map((item, index) => {
+                                      const isStyled = typeof item === 'object' && 'text' in item;
+                                      const itemValue = isStyled ? (item as ListItemStyle).text : (item as string);
+                                      const itemStyle = isStyled ? (item as ListItemStyle) : { text: item as string };
+                                      
+                                      return (
+                                        <div key={index} className="flex items-center gap-2 ml-2">
+                                          <Input
+                                            value={itemValue}
+                                            onChange={(e) => {
+                                              setListVariables(prev => {
+                                                const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                if (typeof newItems[index] === 'object' && 'text' in newItems[index]) {
+                                                  newItems[index] = { ...(newItems[index] as ListItemStyle), text: e.target.value };
+                                                } else {
+                                                  newItems[index] = e.target.value;
+                                                }
+                                                return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                              });
+                                            }}
+                                            placeholder={`Item ${index + 1}`}
+                                            className="h-8 text-sm flex-1"
+                                            style={{
+                                              color: itemStyle.color,
+                                              fontWeight: itemStyle.bold ? 'bold' : 'normal',
+                                              backgroundColor: itemStyle.backgroundColor
+                                            }}
+                                          />
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-8 w-8 hover:bg-primary/10"
+                                              >
+                                                <Palette className="h-3.5 w-3.5" />
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-64">
+                                              <div className="space-y-3">
+                                                <h4 className="font-medium text-sm">Style Options</h4>
+                                                
+                                                <div className="space-y-2">
+                                                  <Label className="text-xs">Text Color</Label>
+                                                  <div className="flex gap-2">
+                                                    <Input
+                                                      type="color"
+                                                      value={itemStyle.color || '#000000'}
+                                                    onChange={(e) => {
+                                                      setListVariables(prev => {
+                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                          ? (newItems[index] as ListItemStyle)
+                                                          : { text: newItems[index] as string };
+                                                        newItems[index] = { ...current, color: e.target.value } as ListItemStyle;
+                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                      });
+                                                    }}
+                                                      className="h-8 w-16"
+                                                    />
+                                                    <Button
+                                                      size="sm"
+                                                      variant="outline"
+                                                    onClick={() => {
+                                                      setListVariables(prev => {
+                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                          ? (newItems[index] as ListItemStyle)
+                                                          : { text: newItems[index] as string };
+                                                        const { color, ...rest } = current;
+                                                        newItems[index] = rest as ListItemStyle;
+                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                      });
+                                                    }}
+                                                      className="h-8"
+                                                    >
+                                                      Clear
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                                
+                                                <div className="space-y-2">
+                                                  <Label className="text-xs">Background Color</Label>
+                                                  <div className="flex gap-2">
+                                                    <Input
+                                                      type="color"
+                                                      value={itemStyle.backgroundColor || '#ffffff'}
+                                                    onChange={(e) => {
+                                                      setListVariables(prev => {
+                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                          ? (newItems[index] as ListItemStyle)
+                                                          : { text: newItems[index] as string };
+                                                        newItems[index] = { ...current, backgroundColor: e.target.value } as ListItemStyle;
+                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                      });
+                                                    }}
+                                                      className="h-8 w-16"
+                                                    />
+                                                    <Button
+                                                      size="sm"
+                                                      variant="outline"
+                                                    onClick={() => {
+                                                      setListVariables(prev => {
+                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                          ? (newItems[index] as ListItemStyle)
+                                                          : { text: newItems[index] as string };
+                                                        const { backgroundColor, ...rest } = current;
+                                                        newItems[index] = rest as ListItemStyle;
+                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                      });
+                                                    }}
+                                                      className="h-8"
+                                                    >
+                                                      Clear
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                                
+                                                <div className="flex items-center justify-between">
+                                                  <Label className="text-xs">Bold Text</Label>
+                                                  <Button
+                                                    size="sm"
+                                                    variant={itemStyle.bold ? "default" : "outline"}
+                                                    onClick={() => {
+                                                      setListVariables(prev => {
+                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                          ? (newItems[index] as ListItemStyle)
+                                                          : { text: newItems[index] as string };
+                                                        newItems[index] = { ...current, bold: !current.bold } as ListItemStyle;
+                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                      });
+                                                    }}
+                                                    className="h-8 w-8 p-0"
+                                                  >
+                                                    <Bold className="h-3.5 w-3.5" />
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={() => {
+                                              setListVariables(prev => {
+                                                const newItems = ((prev[varName] || []) as (string | ListItemStyle)[]).filter((_, i) => i !== index);
+                                                return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                              });
+                                            }}
+                                            className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                                            disabled={(listVariables[varName] || ['']).length <= 1}
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               ) : (
