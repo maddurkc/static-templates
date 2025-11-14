@@ -100,7 +100,7 @@ const SortableSection = ({
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-base">
-                {`{{${section.variables.label}}}`}
+                {section.variables.label}
               </span>
               <Badge variant="secondary" className="text-xs">
                 {section.variables.contentType === 'text' ? 'Text' : section.variables.contentType === 'list' ? 'List' : 'Table'}

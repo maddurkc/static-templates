@@ -73,11 +73,14 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   
   // For mixed-content sections - free-form text with embedded placeholders
   if (section.type === 'mixed-content') {
-    const contentText = (section.variables?.content as string) || 'What\'s New: {{update}}';
+    const contentText = (section.variables?.content as string) || 'What\'s New: <th:utext="${update}">';
     
     // Extract all placeholders from content
-    const placeholderMatches = contentText.match(/\{\{(\w+)\}\}/g) || [];
-    const placeholders = [...new Set(placeholderMatches.map(m => m.replace(/\{\{|\}\}/g, '')))];
+    const placeholderMatches = contentText.match(/<th:utext="\$\{(\w+)\}">/g) || [];
+    const placeholders = [...new Set(placeholderMatches.map(m => {
+      const match = m.match(/<th:utext="\$\{(\w+)\}">/);
+      return match ? match[1] : '';
+    }).filter(Boolean))];
     
     return (
       <div className="space-y-4">
@@ -95,10 +98,10 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               variables: { ...section.variables, content: e.target.value }
             })}
             className="min-h-[120px] text-sm font-mono"
-            placeholder="For invalid Characters issue, the team is working with Engineer- {{incidentNumber}}"
+            placeholder='For invalid Characters issue, the team is working with Engineer- <th:utext="${incidentNumber}">'
           />
           <p className="text-xs text-muted-foreground">
-            Write your text and use {`{{variableName}}`} for dynamic parts. Example: "Status: {`{{status}}`}"
+            Write your text and use {'<th:utext="${variableName}">'} for dynamic parts. Example: "Status: {'<th:utext="${status}">'}"
           </p>
         </div>
         
@@ -113,7 +116,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               {placeholders.map(placeholder => (
                 <div key={placeholder} className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">
-                    {`{{${placeholder}}}`}
+                    {'<th:utext="${' + placeholder + '}">'} 
                   </Label>
                   <Input
                     value={(section.variables?.[placeholder] as string) || ''}
@@ -157,7 +160,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
             placeholder="e.g., Summary, Impact, Actions"
           />
           <p className="text-xs text-muted-foreground">
-            This will be the field name. Users will see <code className="text-xs bg-muted px-1 rounded">{`{{${label || 'FieldName'}}}`}</code> when running the template.
+            This will be the field name. Users will see <code className="text-xs bg-muted px-1 rounded">{label || 'FieldName'}</code> when running the template.
           </p>
         </div>
 
