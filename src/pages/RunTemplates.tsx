@@ -23,6 +23,7 @@ const RunTemplates = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templateFromState || null);
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [listVariables, setListVariables] = useState<Record<string, string[]>>({});
+  const [tableVariables, setTableVariables] = useState<Record<string, any>>({});
   const [toEmails, setToEmails] = useState("");
   const [ccEmails, setCcEmails] = useState("");
   const [bccEmails, setBccEmails] = useState("");
@@ -44,12 +45,12 @@ const RunTemplates = () => {
       const vars = extractAllVariables(selectedTemplate);
       const initialVars: Record<string, string> = {};
       const initialListVars: Record<string, string[]> = {};
+      const initialTableVars: Record<string, any> = {};
       
       vars.forEach(v => {
         const defaultVal = getDefaultValue(v);
         if (isTableVariable(v)) {
-          // Skip table variables - they'll be handled separately
-          // For now we don't support runtime table editing
+          initialTableVars[v] = defaultVal || { headers: [], rows: [] };
         } else if (Array.isArray(defaultVal)) {
           initialListVars[v] = defaultVal.length > 0 ? defaultVal : [''];
         } else {
@@ -59,6 +60,7 @@ const RunTemplates = () => {
       
       setVariables(initialVars);
       setListVariables(initialListVars);
+      setTableVariables(initialTableVars);
     }
   }, [selectedTemplate]);
 
@@ -117,7 +119,14 @@ const RunTemplates = () => {
         if (section.variables.contentType === 'list') {
           return (section.variables.items as string[]) || [''];
         } else if (section.variables.contentType === 'table') {
-          return section.variables.tableData || { headers: [], rows: [] };
+          const tableData = section.variables.tableData;
+          if (tableData && tableData.headers) {
+            return {
+              headers: tableData.headers || [],
+              rows: tableData.rows || []
+            };
+          }
+          return { headers: [], rows: [] };
         }
         return (section.variables.content as string) || '';
       }
@@ -455,13 +464,147 @@ const RunTemplates = () => {
                               </Label>
                               {isTable ? (
                                 <div className="space-y-2 border rounded-lg p-4">
-                                  <p className="text-xs text-muted-foreground mb-2">
-                                    Table content - customize rows and columns
-                                  </p>
-                                  {/* Table editor would go here - for now show placeholder */}
-                                  <div className="text-sm text-muted-foreground">
-                                    Table editing in runtime coming soon...
+                                  <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs text-muted-foreground">
+                                      Edit table content
+                                    </p>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          const tableData = tableVariables[varName] || { headers: [], rows: [] };
+                                          setTableVariables(prev => ({
+                                            ...prev,
+                                            [varName]: {
+                                              ...tableData,
+                                              headers: [...(tableData.headers || []), `Column ${(tableData.headers?.length || 0) + 1}`]
+                                            }
+                                          }));
+                                        }}
+                                        className="h-7 px-2"
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Add Column
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          const tableData = tableVariables[varName] || { headers: [], rows: [] };
+                                          const newRow = new Array(tableData.headers?.length || 1).fill('');
+                                          setTableVariables(prev => ({
+                                            ...prev,
+                                            [varName]: {
+                                              ...tableData,
+                                              rows: [...(tableData.rows || []), newRow]
+                                            }
+                                          }));
+                                        }}
+                                        className="h-7 px-2"
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Add Row
+                                      </Button>
+                                    </div>
                                   </div>
+                                  
+                                  {(() => {
+                                    const tableData = tableVariables[varName] || { headers: [], rows: [] };
+                                    if (!tableData.headers || tableData.headers.length === 0) {
+                                      return <p className="text-xs text-muted-foreground text-center py-4">Click "Add Column" to start</p>;
+                                    }
+                                    
+                                    return (
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse border">
+                                          <thead>
+                                            <tr>
+                                              {tableData.headers.map((header: string, colIdx: number) => (
+                                                <th key={colIdx} className="border p-1 bg-muted">
+                                                  <div className="flex items-center gap-1">
+                                                    <Input
+                                                      value={header}
+                                                      onChange={(e) => {
+                                                        const newHeaders = [...tableData.headers];
+                                                        newHeaders[colIdx] = e.target.value;
+                                                        setTableVariables(prev => ({
+                                                          ...prev,
+                                                          [varName]: { ...tableData, headers: newHeaders }
+                                                        }));
+                                                      }}
+                                                      className="h-7 text-xs font-semibold"
+                                                      placeholder={`Header ${colIdx + 1}`}
+                                                    />
+                                                    <Button
+                                                      size="icon"
+                                                      variant="ghost"
+                                                      onClick={() => {
+                                                        const newHeaders = tableData.headers.filter((_: any, i: number) => i !== colIdx);
+                                                        const newRows = tableData.rows.map((row: string[]) => 
+                                                          row.filter((_: any, i: number) => i !== colIdx)
+                                                        );
+                                                        setTableVariables(prev => ({
+                                                          ...prev,
+                                                          [varName]: { headers: newHeaders, rows: newRows }
+                                                        }));
+                                                      }}
+                                                      className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+                                                      disabled={tableData.headers.length <= 1}
+                                                    >
+                                                      <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                  </div>
+                                                </th>
+                                              ))}
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {(tableData.rows || []).map((row: string[], rowIdx: number) => (
+                                              <tr key={rowIdx}>
+                                                {row.map((cell: string, colIdx: number) => (
+                                                  <td key={colIdx} className="border p-1">
+                                                    <div className="flex items-center gap-1">
+                                                      <Input
+                                                        value={cell}
+                                                        onChange={(e) => {
+                                                          const newRows = [...tableData.rows];
+                                                          newRows[rowIdx][colIdx] = e.target.value;
+                                                          setTableVariables(prev => ({
+                                                            ...prev,
+                                                            [varName]: { ...tableData, rows: newRows }
+                                                          }));
+                                                        }}
+                                                        className="h-7 text-xs"
+                                                        placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
+                                                      />
+                                                      {colIdx === row.length - 1 && (
+                                                        <Button
+                                                          size="icon"
+                                                          variant="ghost"
+                                                          onClick={() => {
+                                                            const newRows = tableData.rows.filter((_: any, i: number) => i !== rowIdx);
+                                                            setTableVariables(prev => ({
+                                                              ...prev,
+                                                              [varName]: { ...tableData, rows: newRows }
+                                                            }));
+                                                          }}
+                                                          className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+                                                          disabled={tableData.rows.length <= 1}
+                                                        >
+                                                          <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                      )}
+                                                    </div>
+                                                  </td>
+                                                ))}
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               ) : isList ? (
                                 <div className="space-y-2">
@@ -554,10 +697,11 @@ const RunTemplates = () => {
                     <div
                       dangerouslySetInnerHTML={{ 
                         __html: selectedTemplate.sections.map(section => {
-                          // Combine variables and listVariables for rendering
-                          const runtimeVars: Record<string, string | string[]> = {
+                          // Combine variables, listVariables, and tableVariables for rendering
+                          const runtimeVars: Record<string, string | string[] | any> = {
                             ...variables,
-                            ...listVariables
+                            ...listVariables,
+                            ...tableVariables
                           };
                           return renderSectionContent(section, runtimeVars);
                         }).join('')
