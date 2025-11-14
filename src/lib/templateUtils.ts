@@ -34,7 +34,17 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         contentHtml = tableHtml;
       } else if (contentType === 'list' && Array.isArray(runtimeValue)) {
         contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
-          runtimeValue.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 
+          runtimeValue.map((item: any) => {
+            if (typeof item === 'object' && 'text' in item) {
+              const styles = [];
+              if (item.color) styles.push(`color: ${item.color}`);
+              if (item.bold) styles.push('font-weight: bold');
+              if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+              const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+              return `<li${styleAttr}>${sanitizeInput(item.text)}</li>`;
+            }
+            return `<li>${sanitizeInput(item)}</li>`;
+          }).join('') + 
           '</ul>';
       } else if (typeof runtimeValue === 'string') {
         contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(runtimeValue)}</div>`;
@@ -60,9 +70,19 @@ export const renderSectionContent = (section: Section, variables?: Record<string
           contentHtml = tableHtml;
         }
       } else if (contentType === 'list') {
-        const items = (section.variables?.items as string[]) || [];
+        const items = (section.variables?.items as any[]) || [];
         contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
-          items.map(item => `<li>${sanitizeInput(item)}</li>`).join('') + 
+          items.map((item: any) => {
+            if (typeof item === 'object' && 'text' in item) {
+              const styles = [];
+              if (item.color) styles.push(`color: ${item.color}`);
+              if (item.bold) styles.push('font-weight: bold');
+              if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+              const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+              return `<li${styleAttr}>${sanitizeInput(item.text)}</li>`;
+            }
+            return `<li>${sanitizeInput(item)}</li>`;
+          }).join('') + 
           '</ul>';
       } else {
         const content = (section.variables?.content as string) || '';
@@ -70,8 +90,9 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
     }
     
+    const labelColor = section.variables?.labelColor ? `color: ${section.variables.labelColor};` : '';
     return `<div style="margin: 15px 0;">
-      <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;">${sanitizeInput(label)}</div>
+      <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em; ${labelColor}">${sanitizeInput(label)}</div>
       ${contentHtml}
     </div>`;
   }
