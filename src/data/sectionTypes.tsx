@@ -299,15 +299,15 @@ export const sectionTypes: SectionDefinition[] = [
     type: 'labeled-content',
     label: 'Labeled Content',
     icon: FileText,
-    description: 'Static label with dynamic content below (heading + text/list)',
+    description: 'Label and content - both can be static or dynamic using Thymeleaf',
     defaultContent: '<div><strong><th:utext="${label}"></strong><div><th:utext="${content}"></div></div>',
     category: 'text',
     variables: [
       {
         name: 'label',
-        label: 'Static Label/Heading',
+        label: 'Label/Heading',
         type: 'text',
-        defaultValue: 'What\'s Happening'
+        defaultValue: 'Incident <th:utext="${incidentNumber}">'
       },
       {
         name: 'contentType',

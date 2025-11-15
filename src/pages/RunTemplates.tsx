@@ -148,9 +148,18 @@ const RunTemplates = () => {
     // Extract from sections if available
     if (template.sections) {
       template.sections.forEach((section: Section) => {
-        // For labeled-content sections, use the label value as the variable name
-        if (section.type === 'labeled-content' && section.variables?.label) {
-          varsFromSections.add(section.variables.label as string);
+        // For labeled-content sections, extract variables from both label and content
+        if (section.type === 'labeled-content') {
+          // Extract variables from the label itself
+          if (section.variables?.label) {
+            const labelVars = extractVariables(section.variables.label as string);
+            labelVars.forEach(v => varsFromSections.add(v));
+          }
+          
+          // Also add the label as a variable name for content (if not editable, skip content variable)
+          if (section.variables?.label) {
+            varsFromSections.add(section.variables.label as string);
+          }
           return;
         }
         

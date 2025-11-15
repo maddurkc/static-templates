@@ -8,7 +8,19 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   
   // Handle labeled-content sections
   if (section.type === 'labeled-content') {
-    const label = section.variables?.label || 'Label';
+    let label = section.variables?.label || 'Label';
+    
+    // Process Thymeleaf expressions in label
+    label = String(label).replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+      if (variables && variables[varName] !== undefined) {
+        return sanitizeInput(String(variables[varName]));
+      }
+      if (section.variables && section.variables[varName]) {
+        return sanitizeInput(String(section.variables[varName]));
+      }
+      return match; // Keep placeholder if no value
+    });
+    
     const contentType = section.variables?.contentType || 'text';
     
     let contentHtml = '';
