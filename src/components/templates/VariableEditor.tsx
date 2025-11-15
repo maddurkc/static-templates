@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { TableEditor } from "./TableEditor";
+import { ThymeleafEditor } from "./ThymeleafEditor";
 
 interface VariableEditorProps {
   section: Section;
@@ -91,17 +92,20 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         
         <div className="space-y-2">
           <Label className="text-sm font-medium">Template Text</Label>
-          <Textarea
+          <ThymeleafEditor
             value={contentText}
-            onChange={(e) => onUpdate({
+            onChange={(value) => onUpdate({
               ...section,
-              variables: { ...section.variables, content: e.target.value }
+              variables: { ...section.variables, content: value }
             })}
-            className="min-h-[120px] text-sm font-mono"
             placeholder='For invalid Characters issue, the team is working with Engineer- <th:utext="${incidentNumber}">'
+            className="min-h-[120px]"
           />
           <p className="text-xs text-muted-foreground">
-            Write your text and use {'<th:utext="${variableName}">'} for dynamic parts. Example: "Status: {'<th:utext="${status}">'}"
+            Write your text and use Thymeleaf tags:<br/>
+            • Variables: {'<th:utext="${variableName}">'}<br/>
+            • Conditionals: {'<th:if="${condition}">'}content{'</th:if>'}<br/>
+            • Loops: {'<th:each="item : ${items}">'}{'<th:utext="${item}">'}{'</th:each>'}
           </p>
         </div>
         
