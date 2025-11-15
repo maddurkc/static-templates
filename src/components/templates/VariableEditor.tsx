@@ -153,18 +153,18 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         <Separator />
         
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Field Label</Label>
-          <Input
+          <Label className="text-sm font-medium">Field Label (supports dynamic content)</Label>
+          <ThymeleafEditor
             value={label}
-            onChange={(e) => onUpdate({
+            onChange={(value) => onUpdate({
               ...section,
-              variables: { ...section.variables, label: e.target.value }
+              variables: { ...section.variables, label: value }
             })}
-            className="h-9 text-sm font-semibold"
-            placeholder="e.g., Summary, Impact, Actions"
+            placeholder='e.g., Summary or Incident <th:utext="${incidentNumber}">'
+            className="min-h-[60px]"
           />
           <p className="text-xs text-muted-foreground">
-            This will be the field name. Users will see <code className="text-xs bg-muted px-1 rounded">{label || 'FieldName'}</code> when running the template.
+            Use static text or add Thymeleaf expressions like {'<th:utext="${variableName}">'} for dynamic parts.
           </p>
         </div>
 

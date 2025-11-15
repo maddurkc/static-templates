@@ -99,12 +99,23 @@ const SortableSection = ({
         {!isContainer && section.type === 'labeled-content' && section.variables?.label ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-base">
-                {section.variables.label}
-              </span>
+              <span 
+                className="font-semibold text-base"
+                dangerouslySetInnerHTML={{ 
+                  __html: String(section.variables.label).replace(
+                    /<th:utext="\$\{(\w+)\}">/g,
+                    '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary">${$1}</span>'
+                  )
+                }}
+              />
               <Badge variant="secondary" className="text-xs">
                 {section.variables.contentType === 'text' ? 'Text' : section.variables.contentType === 'list' ? 'List' : 'Table'}
               </Badge>
+              {String(section.variables.label).includes('<th:utext=') && (
+                <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
+                  Dynamic Label
+                </Badge>
+              )}
               {!section.isLabelEditable && (
                 <Badge variant="outline" className="text-xs">
                   Label locked
