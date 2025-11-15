@@ -283,7 +283,7 @@ export const sectionTypes: SectionDefinition[] = [
     type: 'mixed-content',
     label: 'Mixed Content',
     icon: Type,
-    description: 'Free-form text with embedded placeholders anywhere (e.g., "What\'s New: <th:utext="${update}">")',
+    description: 'Free-form text with Thymeleaf tags: variables, conditionals (<th:if>), loops (<th:each>)',
     defaultContent: '<th:utext="${content}">',
     category: 'text',
     variables: [
@@ -291,7 +291,7 @@ export const sectionTypes: SectionDefinition[] = [
         name: 'content',
         label: 'Content',
         type: 'text',
-        defaultValue: 'What\'s New: <th:utext="${update}">'
+        defaultValue: 'Status: <th:utext="${status}">\n\n<th:if="${hasIssues}">Found issues that need attention.</th:if>\n\n<th:each="item : ${items}"><th:utext="${item}"> </th:each>'
       }
     ]
   },

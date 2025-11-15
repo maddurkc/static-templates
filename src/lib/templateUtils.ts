@@ -110,6 +110,48 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   // Handle mixed-content sections - free-form text with embedded placeholders
   if (section.type === 'mixed-content' && section.variables?.content) {
     let mixedContent = section.variables.content as string;
+    
+    // Process Thymeleaf conditionals: <th:if="${condition}">content</th:if>
+    mixedContent = mixedContent.replace(
+      /<th:if="\$\{(\w+)\}">([\s\S]*?)<\/th:if>/g,
+      (match, varName, content) => {
+        if (section.variables && section.variables[varName]) {
+          const value = section.variables[varName];
+          // Evaluate condition: truthy values, non-empty strings, non-zero numbers
+          const isTrue = value && value !== 'false' && value !== '0' && value !== 'null';
+          return isTrue ? content : '';
+        }
+        return ''; // If variable doesn't exist, condition is false
+      }
+    );
+    
+    // Process Thymeleaf loops: <th:each="item : ${items}">content with ${item}</th:each>
+    mixedContent = mixedContent.replace(
+      /<th:each="(\w+)\s*:\s*\$\{(\w+)\}">([\s\S]*?)<\/th:each>/g,
+      (match, itemName, arrayName, loopContent) => {
+        if (section.variables && section.variables[arrayName]) {
+          const items = section.variables[arrayName];
+          if (Array.isArray(items)) {
+            return items.map(item => {
+              let itemContent = loopContent;
+              // Replace ${item} with actual item value
+              itemContent = itemContent.replace(
+                new RegExp(`<th:utext="\\$\\{${itemName}\\}">`, 'g'),
+                typeof item === 'object' && item.text ? sanitizeInput(item.text) : sanitizeInput(String(item))
+              );
+              // Also support simple ${item} references
+              itemContent = itemContent.replace(
+                new RegExp(`\\$\\{${itemName}\\}`, 'g'),
+                typeof item === 'object' && item.text ? sanitizeInput(item.text) : sanitizeInput(String(item))
+              );
+              return itemContent;
+            }).join('');
+          }
+        }
+        return ''; // If array doesn't exist, render nothing
+      }
+    );
+    
     // Replace all <th:utext="${placeholder}"> patterns with sanitized values or keep them
     mixedContent = mixedContent.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
       if (section.variables && section.variables[varName]) {
@@ -117,6 +159,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
       return match; // Keep placeholder if no value
     });
+    
     return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${sanitizeHTML(mixedContent).replace(/\n/g, '<br/>')}</div>`;
   }
   
