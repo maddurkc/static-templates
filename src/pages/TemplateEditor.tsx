@@ -30,7 +30,7 @@ const TemplateEditor = () => {
   const [headerSection, setHeaderSection] = useState<Section>({
     id: 'static-header',
     type: 'header',
-    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-bottom: 2px solid #dee2e6;"><h1>{{companyName}}</h1><p>{{tagline}}</p></div>',
+    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-bottom: 2px solid #dee2e6;"><h1><th:utext="${companyName}"></h1><p><th:utext="${tagline}"></p></div>',
     variables: {
       companyName: 'Your Company Name',
       tagline: 'Your Company Tagline'
@@ -42,7 +42,7 @@ const TemplateEditor = () => {
   const [footerSection, setFooterSection] = useState<Section>({
     id: 'static-footer',
     type: 'footer',
-    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 2px solid #dee2e6; margin-top: 40px;"><p>&copy; {{year}} {{companyName}}. All rights reserved.</p><p>{{contactEmail}}</p></div>',
+    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 2px solid #dee2e6; margin-top: 40px;"><p>&copy; <th:utext="${year}"> <th:utext="${companyName}">. All rights reserved.</p><p><th:utext="${contactEmail}"></p></div>',
     variables: {
       year: new Date().getFullYear().toString(),
       companyName: 'Your Company Name',
@@ -285,10 +285,10 @@ const TemplateEditor = () => {
     const container = sections[containerIndex];
     
     // Create a simple text section as default child
-    const newChild: Section = {
+      const newChild: Section = {
       id: `child-${Date.now()}-${Math.random()}`,
       type: 'text',
-      content: '<span>{{text}}</span>',
+      content: '<span><th:utext="${text}"></span>',
       variables: {
         text: 'New nested section'
       },
@@ -400,14 +400,23 @@ const TemplateEditor = () => {
 
   const generateHTMLWithPlaceholders = () => {
     const allSections = [headerSection, ...sections, footerSection];
-    return allSections.map(section => {
+    
+    const generateSectionHTML = (section: Section, indent = ''): string => {
       const styleString = Object.entries(section.styles || {})
         .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
         .join('; ');
       
-      // Use raw content with placeholders, don't render variables
-      return `<div style="${styleString}">\n  ${section.content}\n</div>`;
-    }).join('\n\n');
+      // Handle container sections with children
+      if (section.type === 'container' && section.children && section.children.length > 0) {
+        const childrenHTML = section.children.map(child => generateSectionHTML(child, indent + '  ')).join('\n');
+        return `${indent}<div style="margin: 15px 0; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa;">\n${childrenHTML}\n${indent}</div>`;
+      }
+      
+      // Keep Thymeleaf tags in content - don't render variables
+      return `${indent}<div style="${styleString}">\n${indent}  ${section.content}\n${indent}</div>`;
+    };
+    
+    return allSections.map(section => generateSectionHTML(section)).join('\n\n');
   };
 
   const generateHTML = () => {
@@ -430,13 +439,13 @@ const TemplateEditor = () => {
   };
 
   const handleCopyHTML = async () => {
-    const html = generateHTML();
+    const html = generateHTMLWithPlaceholders();
     try {
       await navigator.clipboard.writeText(html);
       setCopied(true);
       toast({
         title: "HTML copied",
-        description: "Template HTML has been copied to clipboard.",
+        description: "Template HTML with Thymeleaf tags has been copied to clipboard.",
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -618,7 +627,7 @@ const TemplateEditor = () => {
                     </div>
                     <ScrollArea className="h-[60vh] w-full rounded-md border">
                       <pre className="p-4 text-sm whitespace-pre-wrap break-words overflow-x-auto">
-                        <code className="break-all">{generateHTML()}</code>
+                        <code className="break-all">{generateHTMLWithPlaceholders()}</code>
                       </pre>
                     </ScrollArea>
                   </div>

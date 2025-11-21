@@ -96,7 +96,7 @@ const SortableSection = ({
       )}
 
       {/* Content */}
-      <div className={cn("pl-10 pr-32", isContainer ? "p-4" : "p-4")}>
+      <div className={cn("pl-10 pr-32 py-4", isContainer && "px-4")}>
         {!isContainer && section.type === 'labeled-content' && section.variables?.label ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
