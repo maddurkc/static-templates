@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical, Trash2, ChevronUp, ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { thymeleafToPlaceholder } from "@/lib/thymeleafUtils";
 
 
 interface SortableSectionProps {
@@ -102,16 +103,16 @@ const SortableSection = ({
               <span 
                 className="font-semibold text-base"
                 dangerouslySetInnerHTML={{ 
-                  __html: String(section.variables.label).replace(
-                    /<th:utext="\$\{(\w+)\}">/g,
-                    '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary">${$1}</span>'
+                  __html: thymeleafToPlaceholder(String(section.variables.label)).replace(
+                    /\{\{(\w+)\}\}/g,
+                    '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>'
                   )
                 }}
               />
               <Badge variant="secondary" className="text-xs">
                 {section.variables.contentType === 'text' ? 'Text' : section.variables.contentType === 'list' ? 'List' : 'Table'}
               </Badge>
-              {String(section.variables.label).includes('<th:utext=') && (
+              {String(section.variables.label).includes('{{') && (
                 <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
                   Dynamic Label
                 </Badge>
@@ -158,7 +159,14 @@ const SortableSection = ({
         ) : !isContainer && (
           <div
             className="prose max-w-none"
-            dangerouslySetInnerHTML={{ __html: section.content }}
+            dangerouslySetInnerHTML={{ 
+              __html: thymeleafToPlaceholder(section.content)
+                .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
+                .replace(/\{\{if\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">if $1</span>')
+                .replace(/\{\{\/if\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">/if</span>')
+                .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">each $1 in $2</span>')
+                .replace(/\{\{\/each\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">/each</span>')
+            }}
             style={section.styles as React.CSSProperties}
           />
         )}
@@ -301,7 +309,10 @@ export const EditorView = ({
               </div>
               <div
                 className="prose prose-sm max-w-none text-sm"
-                dangerouslySetInnerHTML={{ __html: child.content }}
+                dangerouslySetInnerHTML={{ 
+                  __html: thymeleafToPlaceholder(child.content)
+                    .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
+                }}
                 style={child.styles as React.CSSProperties}
               />
             </div>
@@ -329,7 +340,10 @@ export const EditorView = ({
       </div>
       <div 
         className="prose prose-sm max-w-none"
-        dangerouslySetInnerHTML={{ __html: section.content }}
+        dangerouslySetInnerHTML={{ 
+          __html: thymeleafToPlaceholder(section.content)
+            .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
+        }}
         style={section.styles as React.CSSProperties}
       />
     </div>
