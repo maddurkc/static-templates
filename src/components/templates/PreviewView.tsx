@@ -1,5 +1,6 @@
 import { Section } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
+import { thymeleafToPlaceholder } from "@/lib/thymeleafUtils";
 
 interface PreviewViewProps {
   headerSection: Section;
@@ -36,11 +37,15 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
     }
     
     // Regular sections
+    const renderedContent = renderSectionContent(section);
+    const displayContent = thymeleafToPlaceholder(renderedContent)
+      .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>');
+    
     return (
       <div
         key={section.id}
-        className="prose max-w-none"
-        dangerouslySetInnerHTML={{ __html: renderSectionContent(section) }}
+        className="[&>h1]:text-3xl [&>h1]:font-bold [&>h2]:text-2xl [&>h2]:font-bold [&>h3]:text-xl [&>h3]:font-semibold [&>h4]:text-lg [&>h4]:font-semibold [&>h5]:text-base [&>h5]:font-medium [&>h6]:text-sm [&>h6]:font-medium [&>p]:text-sm [&>ul]:list-disc [&>ul]:list-inside [&>ul]:text-sm [&>ol]:list-decimal [&>ol]:list-inside [&>ol]:text-sm [&>table]:text-xs [&>table]:border-collapse [&_th]:border [&_th]:p-2 [&_th]:font-semibold [&_td]:border [&_td]:p-2 [&>img]:max-w-full [&>img]:h-auto [&>button]:px-3 [&>button]:py-1.5 [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded [&>a]:text-primary [&>a]:underline"
+        dangerouslySetInnerHTML={{ __html: displayContent }}
         style={combinedStyles as React.CSSProperties}
       />
     );
