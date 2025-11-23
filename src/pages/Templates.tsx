@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,16 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getTemplates, updateTemplate, resetTemplatesToDefault } from "@/lib/templateStorage";
-
-interface Template {
-  id: string;
-  name: string;
-  html: string;
-  createdAt: string;
-  sectionCount: number;
-  archived?: boolean;
-}
+import { getTemplates, updateTemplate, resetTemplatesToDefault, Template } from "@/lib/templateStorage";
+import { renderSectionContent } from "@/lib/templateUtils";
 
 const Templates = () => {
   const navigate = useNavigate();
@@ -87,6 +79,21 @@ const Templates = () => {
   const handleEditTemplate = (template: Template) => {
     navigate('/templates/editor', { state: { template } });
   };
+
+  // Generate preview HTML from sections or html field
+  const previewHtml = useMemo(() => {
+    if (!previewTemplate) return "";
+    
+    // If template has sections, render from sections
+    if (previewTemplate.sections && previewTemplate.sections.length > 0) {
+      return previewTemplate.sections
+        .map((section) => renderSectionContent(section))
+        .join('');
+    }
+    
+    // Otherwise use html field
+    return previewTemplate.html;
+  }, [previewTemplate]);
 
   const activeTemplates = templates.filter(t => !t.archived);
   const archivedTemplates = templates.filter(t => t.archived);
@@ -306,8 +313,8 @@ const Templates = () => {
             <ScrollArea className="h-[70vh] w-full rounded-md border bg-white p-6">
               {previewTemplate && (
                 <div
-                  dangerouslySetInnerHTML={{ __html: previewTemplate.html }}
-                  className="prose max-w-none"
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  className="prose max-w-none [&>h1]:text-3xl [&>h1]:font-bold [&>h2]:text-2xl [&>h2]:font-bold [&>h3]:text-xl [&>h3]:font-semibold [&>h4]:text-lg [&>h4]:font-semibold [&>h5]:text-base [&>h5]:font-medium [&>h6]:text-sm [&>h6]:font-medium [&>p]:text-sm [&>ul]:list-disc [&>ul]:list-inside [&>ul]:text-sm [&>ol]:list-decimal [&>ol]:list-inside [&>ol]:text-sm"
                 />
               )}
             </ScrollArea>
