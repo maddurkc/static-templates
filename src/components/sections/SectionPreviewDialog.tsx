@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye, Plus, Trash2 } from "lucide-react";
-import { SectionDefinition } from "@/types/section";
+import { SectionDefinition, TextStyle, ListItemStyle } from "@/types/section";
 
 interface SectionPreviewDialogProps {
   section: SectionDefinition;
@@ -30,13 +30,42 @@ export const SectionPreviewDialog = ({ section }: SectionPreviewDialogProps) => 
       const placeholder = `{{${variable.name}}}`;
       
       if (variable.type === 'list' && Array.isArray(value)) {
-        const items = value.map(item => `<li>${item}</li>`).join('');
+        const items = value.map(item => {
+          if (typeof item === 'object' && 'text' in item) {
+            const style = item as ListItemStyle;
+            const styles = [];
+            if (style.color) styles.push(`color: ${style.color}`);
+            if (style.backgroundColor) styles.push(`background-color: ${style.backgroundColor}`);
+            if (style.bold) styles.push('font-weight: bold');
+            if (style.italic) styles.push('font-style: italic');
+            if (style.underline) styles.push('text-decoration: underline');
+            if (style.fontSize) styles.push(`font-size: ${style.fontSize}`);
+            return `<li style="${styles.join('; ')}">${style.text}</li>`;
+          }
+          return `<li>${item}</li>`;
+        }).join('');
         result = result.replace(placeholder, items);
       } else if (variable.type === 'table' && value) {
         // Handle table rendering if needed
         result = result.replace(placeholder, String(value));
       } else {
-        result = result.replace(new RegExp(placeholder, 'g'), String(value || ''));
+        // Handle TextStyle for regular text variables
+        if (typeof value === 'object' && value !== null && 'text' in value) {
+          const style = value as TextStyle;
+          const styles = [];
+          if (style.color) styles.push(`color: ${style.color}`);
+          if (style.backgroundColor) styles.push(`background-color: ${style.backgroundColor}`);
+          if (style.bold) styles.push('font-weight: bold');
+          if (style.italic) styles.push('font-style: italic');
+          if (style.underline) styles.push('text-decoration: underline');
+          if (style.fontSize) styles.push(`font-size: ${style.fontSize}`);
+          const styledText = styles.length > 0 
+            ? `<span style="${styles.join('; ')}">${style.text}</span>`
+            : style.text;
+          result = result.replace(new RegExp(placeholder, 'g'), styledText);
+        } else {
+          result = result.replace(new RegExp(placeholder, 'g'), String(value || ''));
+        }
       }
     });
     
