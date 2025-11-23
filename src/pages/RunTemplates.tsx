@@ -8,12 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Paintbrush } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Bold, Italic, Underline, Type, PaintBucket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
 import { Section, ListItemStyle } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -187,6 +187,8 @@ const RunTemplates = () => {
           const styles = [];
           if (item.color) styles.push(`color: ${item.color}`);
           if (item.bold) styles.push('font-weight: bold');
+          if (item.italic) styles.push('font-style: italic');
+          if (item.underline) styles.push('text-decoration: underline');
           if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
           const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
           return `<li${styleAttr}>${item.text}</li>`;
@@ -214,6 +216,8 @@ const RunTemplates = () => {
                   const styles = [];
                   if (item.color) styles.push(`color: ${item.color}`);
                   if (item.bold) styles.push('font-weight: bold');
+                  if (item.italic) styles.push('font-style: italic');
+                  if (item.underline) styles.push('text-decoration: underline');
                   if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
                   const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
                   return `<li${styleAttr}>${item.text}</li>`;
@@ -680,15 +684,16 @@ const RunTemplates = () => {
                                         Add Item
                                       </Button>
                                   </div>
-                                  <div className="space-y-2 pl-2 border-l-2 border-muted">
-                                    {(listVariables[varName] || ['']).map((item, index) => {
+                                   <div className="space-y-2 pl-2 border-l-2 border-muted">
+                                    <TooltipProvider>
+                                      {(listVariables[varName] || ['']).map((item, index) => {
                                       const isStyled = typeof item === 'object' && 'text' in item;
                                       const itemValue = isStyled ? (item as ListItemStyle).text : (item as string);
                                       const itemStyle = isStyled ? (item as ListItemStyle) : { text: item as string };
                                       
                                       return (
                                         <div key={index} className="flex items-center gap-2 ml-2">
-                                          <Input
+                                           <Input
                                             value={itemValue}
                                             onChange={(e) => {
                                               setListVariables(prev => {
@@ -706,29 +711,101 @@ const RunTemplates = () => {
                                             style={{
                                               color: itemStyle.color,
                                               fontWeight: itemStyle.bold ? 'bold' : 'normal',
+                                              fontStyle: itemStyle.italic ? 'italic' : 'normal',
+                                              textDecoration: itemStyle.underline ? 'underline' : 'none',
                                               backgroundColor: itemStyle.backgroundColor
                                             }}
                                           />
-                                          <Popover>
-                                            <PopoverTrigger asChild>
-                                              <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-8 w-8 hover:bg-primary/10"
-                                              >
-                                                <Palette className="h-3.5 w-3.5" />
-                                              </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-64">
-                                              <div className="space-y-3">
-                                                <h4 className="font-medium text-sm">Style Options</h4>
-                                                
-                                                <div className="space-y-2">
-                                                  <Label className="text-xs">Text Color</Label>
-                                                  <div className="flex gap-2">
-                                                    <Input
-                                                      type="color"
-                                                      value={itemStyle.color || '#000000'}
+                                          
+                                          {/* Inline Formatting Toolbar */}
+                                          <div className="flex items-center gap-0.5 border rounded-md p-0.5 bg-background/50 shadow-sm">
+                                            {/* Bold */}
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  size="icon"
+                                                  variant={itemStyle.bold ? "default" : "ghost"}
+                                                  onClick={() => {
+                                                    setListVariables(prev => {
+                                                      const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                      const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                        ? (newItems[index] as ListItemStyle)
+                                                        : { text: newItems[index] as string };
+                                                      newItems[index] = { ...current, bold: !current.bold } as ListItemStyle;
+                                                      return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                    });
+                                                  }}
+                                                  className="h-7 w-7"
+                                                >
+                                                  <Bold className="h-3.5 w-3.5" />
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>Bold</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                            
+                                            {/* Italic */}
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  size="icon"
+                                                  variant={itemStyle.italic ? "default" : "ghost"}
+                                                  onClick={() => {
+                                                    setListVariables(prev => {
+                                                      const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                      const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                        ? (newItems[index] as ListItemStyle)
+                                                        : { text: newItems[index] as string };
+                                                      newItems[index] = { ...current, italic: !current.italic } as ListItemStyle;
+                                                      return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                    });
+                                                  }}
+                                                  className="h-7 w-7"
+                                                >
+                                                  <Italic className="h-3.5 w-3.5" />
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>Italic</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                            
+                                            {/* Underline */}
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  size="icon"
+                                                  variant={itemStyle.underline ? "default" : "ghost"}
+                                                  onClick={() => {
+                                                    setListVariables(prev => {
+                                                      const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                      const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                        ? (newItems[index] as ListItemStyle)
+                                                        : { text: newItems[index] as string };
+                                                      newItems[index] = { ...current, underline: !current.underline } as ListItemStyle;
+                                                      return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                    });
+                                                  }}
+                                                  className="h-7 w-7"
+                                                >
+                                                  <Underline className="h-3.5 w-3.5" />
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>Underline</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                            
+                                            <div className="w-px h-5 bg-border mx-0.5" />
+                                            
+                                            {/* Text Color */}
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <div className="relative">
+                                                  <Input
+                                                    type="color"
+                                                    value={itemStyle.color || '#000000'}
                                                     onChange={(e) => {
                                                       setListVariables(prev => {
                                                         const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
@@ -739,35 +816,22 @@ const RunTemplates = () => {
                                                         return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
                                                       });
                                                     }}
-                                                      className="h-8 w-16"
-                                                    />
-                                                    <Button
-                                                      size="sm"
-                                                      variant="outline"
-                                                    onClick={() => {
-                                                      setListVariables(prev => {
-                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                          ? (newItems[index] as ListItemStyle)
-                                                          : { text: newItems[index] as string };
-                                                        const { color, ...rest } = current;
-                                                        newItems[index] = rest as ListItemStyle;
-                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                      });
-                                                    }}
-                                                      className="h-8"
-                                                    >
-                                                      Clear
-                                                    </Button>
-                                                  </div>
+                                                    className="h-7 w-7 p-0.5 border-0 cursor-pointer"
+                                                  />
                                                 </div>
-                                                
-                                                <div className="space-y-2">
-                                                  <Label className="text-xs">Background Color</Label>
-                                                  <div className="flex gap-2">
-                                                    <Input
-                                                      type="color"
-                                                      value={itemStyle.backgroundColor || '#ffffff'}
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>Text Color</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                            
+                                            {/* Background Color */}
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <div className="relative">
+                                                  <Input
+                                                    type="color"
+                                                    value={itemStyle.backgroundColor || '#ffffff'}
                                                     onChange={(e) => {
                                                       setListVariables(prev => {
                                                         const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
@@ -778,52 +842,16 @@ const RunTemplates = () => {
                                                         return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
                                                       });
                                                     }}
-                                                      className="h-8 w-16"
-                                                    />
-                                                    <Button
-                                                      size="sm"
-                                                      variant="outline"
-                                                    onClick={() => {
-                                                      setListVariables(prev => {
-                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                          ? (newItems[index] as ListItemStyle)
-                                                          : { text: newItems[index] as string };
-                                                        const { backgroundColor, ...rest } = current;
-                                                        newItems[index] = rest as ListItemStyle;
-                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                      });
-                                                    }}
-                                                      className="h-8"
-                                                    >
-                                                      Clear
-                                                    </Button>
-                                                  </div>
+                                                    className="h-7 w-7 p-0.5 border-0 cursor-pointer"
+                                                  />
                                                 </div>
-                                                
-                                                <div className="flex items-center justify-between">
-                                                  <Label className="text-xs">Bold Text</Label>
-                                                  <Button
-                                                    size="sm"
-                                                    variant={itemStyle.bold ? "default" : "outline"}
-                                                    onClick={() => {
-                                                      setListVariables(prev => {
-                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                          ? (newItems[index] as ListItemStyle)
-                                                          : { text: newItems[index] as string };
-                                                        newItems[index] = { ...current, bold: !current.bold } as ListItemStyle;
-                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                      });
-                                                    }}
-                                                    className="h-8 w-8 p-0"
-                                                  >
-                                                    <Bold className="h-3.5 w-3.5" />
-                                                  </Button>
-                                                </div>
-                                              </div>
-                                            </PopoverContent>
-                                          </Popover>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>Background Color</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </div>
+                                          
                                           <Button
                                             size="icon"
                                             variant="ghost"
@@ -841,6 +869,7 @@ const RunTemplates = () => {
                                         </div>
                                       );
                                     })}
+                                    </TooltipProvider>
                                   </div>
                                 </div>
                               ) : (

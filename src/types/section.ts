@@ -38,6 +38,8 @@ export interface ListItemStyle {
   text: string;
   color?: string;
   bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
   backgroundColor?: string;
 }
 
