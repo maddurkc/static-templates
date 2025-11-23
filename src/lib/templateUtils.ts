@@ -54,6 +54,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
               if (item.italic) styles.push('font-style: italic');
               if (item.underline) styles.push('text-decoration: underline');
               if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+              if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
               const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
               return `<li${styleAttr}>${sanitizeInput(item.text)}</li>`;
             }
@@ -94,6 +95,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
               if (item.italic) styles.push('font-style: italic');
               if (item.underline) styles.push('text-decoration: underline');
               if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+              if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
               const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
               return `<li${styleAttr}>${sanitizeInput(item.text)}</li>`;
             }
