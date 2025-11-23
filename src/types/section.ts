@@ -41,6 +41,7 @@ export interface ListItemStyle {
   italic?: boolean;
   underline?: boolean;
   backgroundColor?: string;
+  fontSize?: string;
 }
 
 export interface Section {
