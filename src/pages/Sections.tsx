@@ -14,7 +14,7 @@ import { Section, SectionDefinition } from "@/types/section";
 import { useToast } from "@/hooks/use-toast";
 import { saveCustomSection, getCustomSections, deleteCustomSection } from "@/lib/sectionStorage";
 import { SectionPreviewDialog } from "@/components/sections/SectionPreviewDialog";
-import { thymeleafToPlaceholder } from "@/lib/thymeleafUtils";
+import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
 import * as LucideIcons from "lucide-react";
 
 const Sections = () => {
@@ -290,10 +290,9 @@ const Sections = () => {
                     <div className="min-h-[60px] p-3 rounded-md bg-muted/30 border border-muted-foreground/20">
                       <div
                         dangerouslySetInnerHTML={{ 
-                          __html: thymeleafToPlaceholder(section.defaultContent)
-                            .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
+                          __html: replaceWithDefaults(section.defaultContent, section.variables)
                         }}
-                        className="[&>h1]:text-3xl [&>h1]:font-bold [&>h2]:text-2xl [&>h2]:font-bold [&>h3]:text-xl [&>h3]:font-semibold [&>h4]:text-lg [&>h4]:font-semibold [&>h5]:text-base [&>h5]:font-medium [&>h6]:text-sm [&>h6]:font-medium [&>p]:text-sm [&>ul]:list-inside [&>ul]:text-sm [&>ol]:list-inside [&>ol]:text-sm [&>table]:text-xs [&>table]:border-collapse [&_th]:border [&_th]:p-1 [&_td]:border [&_td]:p-1 [&>img]:max-w-full [&>img]:h-auto [&>button]:px-3 [&>button]:py-1 [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded [&>a]:text-primary [&>a]:underline"
+                        className="[&>h1]:text-3xl [&>h1]:font-bold [&>h2]:text-2xl [&>h2]:font-bold [&>h3]:text-xl [&>h3]:font-semibold [&>h4]:text-lg [&>h4]:font-semibold [&>h5]:text-base [&>h5]:font-medium [&>h6]:text-sm [&>h6]:font-medium [&>p]:text-sm [&>ul]:list-disc [&>ul]:list-inside [&>ul]:text-sm [&>ol]:list-decimal [&>ol]:list-inside [&>ol]:text-sm [&>table]:text-xs [&>table]:border-collapse [&_th]:border [&_th]:p-1 [&_td]:border [&_td]:p-1 [&>img]:max-w-full [&>img]:h-auto [&>button]:px-3 [&>button]:py-1 [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded [&>a]:text-primary [&>a]:underline"
                       />
                     </div>
                     
