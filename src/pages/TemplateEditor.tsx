@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Maximize2, Minimize2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
@@ -75,6 +75,7 @@ const TemplateEditor = () => {
   const [templateName, setTemplateName] = useState("");
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'split' | 'editor-only' | 'preview-only' | 'fullscreen'>('split');
   const { toast } = useToast();
 
   // Load template for editing if passed via navigation state
@@ -550,15 +551,16 @@ const TemplateEditor = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/templates')}
+                className="hover:bg-primary/10 hover:text-primary transition-all"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Static Templates
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <div className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
                   Static Template Editor
                 </h1>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-medium">
                   Drag, drop, and customize your sections
                 </p>
               </div>
@@ -634,14 +636,37 @@ const TemplateEditor = () => {
                 </DialogContent>
               </Dialog>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowPreview(!showPreview)}
-              >
-                {showPreview ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                {showPreview ? 'Hide' : 'Show'} Preview
-              </Button>
+              <div className="flex items-center gap-1 border-l pl-2 ml-2">
+                <Button
+                  variant={viewMode === 'editor-only' ? 'default' : 'ghost'}
+                  size="icon"
+                  onClick={() => setViewMode(viewMode === 'editor-only' ? 'split' : 'editor-only')}
+                  className="h-9 w-9 transition-all hover:scale-105"
+                  title="Editor Only View"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  variant={viewMode === 'preview-only' ? 'default' : 'ghost'}
+                  size="icon"
+                  onClick={() => setViewMode(viewMode === 'preview-only' ? 'split' : 'preview-only')}
+                  className="h-9 w-9 transition-all hover:scale-105"
+                  title="Preview Only View"
+                >
+                  <PanelRightClose className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  variant={viewMode === 'fullscreen' ? 'default' : 'ghost'}
+                  size="icon"
+                  onClick={() => setViewMode(viewMode === 'fullscreen' ? 'split' : 'fullscreen')}
+                  className="h-9 w-9 transition-all hover:scale-105"
+                  title="Toggle Fullscreen"
+                >
+                  {viewMode === 'fullscreen' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+              </div>
               
               {apiConfig.enabled && apiConfig.templateId && (
                 <Button
@@ -711,27 +736,37 @@ const TemplateEditor = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex h-[calc(100vh-120px)]">
+        <div className={`flex ${viewMode === 'fullscreen' ? 'h-screen' : 'h-[calc(100vh-120px)]'}`}>
           {/* Editor */}
-          <div className={`flex-1 overflow-auto ${showPreview ? 'border-r' : ''}`}>
-            <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
-              <EditorView
-                headerSection={headerSection}
-                footerSection={footerSection}
-                sections={sections}
-                selectedSection={selectedSection}
-                onSelectSection={setSelectedSection}
-                onDeleteSection={handleDeleteSection}
-                onMoveUp={handleMoveUp}
-                onMoveDown={handleMoveDown}
-                onAddChildToContainer={handleAddChildToContainer}
-              />
-            </SortableContext>
-          </div>
+          {viewMode !== 'preview-only' && (
+            <div className={`overflow-auto ${
+              viewMode === 'editor-only' || viewMode === 'fullscreen' 
+                ? 'w-full' 
+                : 'flex-1 border-r'
+            }`}>
+              <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                <EditorView
+                  headerSection={headerSection}
+                  footerSection={footerSection}
+                  sections={sections}
+                  selectedSection={selectedSection}
+                  onSelectSection={setSelectedSection}
+                  onDeleteSection={handleDeleteSection}
+                  onMoveUp={handleMoveUp}
+                  onMoveDown={handleMoveDown}
+                  onAddChildToContainer={handleAddChildToContainer}
+                />
+              </SortableContext>
+            </div>
+          )}
 
           {/* Preview */}
-          {showPreview && (
-            <div className="w-1/2 overflow-auto bg-white">
+          {viewMode !== 'editor-only' && (
+            <div className={`overflow-auto bg-white ${
+              viewMode === 'preview-only' || viewMode === 'fullscreen'
+                ? 'w-full'
+                : 'w-1/2'
+            }`}>
               <PreviewView 
                 headerSection={headerSection}
                 footerSection={footerSection}
