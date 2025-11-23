@@ -68,3 +68,29 @@ export const getDisplayContent = (content: string, variables?: Record<string, an
   
   return displayContent;
 };
+
+/**
+ * Replaces Thymeleaf placeholders with actual default values from section variables
+ */
+export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }>): string => {
+  if (!variables || variables.length === 0) {
+    return content;
+  }
+
+  let result = content;
+
+  variables.forEach(variable => {
+    const placeholder = `<th:utext="\${${variable.name}}">`;
+    
+    if (Array.isArray(variable.defaultValue)) {
+      // For list variables, create actual <li> elements
+      const listItems = variable.defaultValue.map(item => `<li>${item}</li>`).join('');
+      result = result.replace(placeholder, listItems);
+    } else {
+      // For text variables, just replace with the default value
+      result = result.replace(placeholder, variable.defaultValue);
+    }
+  });
+
+  return result;
+};
