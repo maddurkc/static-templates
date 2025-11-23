@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
-import { Section, ListItemStyle } from "@/types/section";
+import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -22,7 +22,7 @@ const RunTemplates = () => {
   
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templateFromState || null);
-  const [variables, setVariables] = useState<Record<string, string>>({});
+  const [variables, setVariables] = useState<Record<string, string | TextStyle>>({});
   const [listVariables, setListVariables] = useState<Record<string, string[] | ListItemStyle[]>>({});
   const [tableVariables, setTableVariables] = useState<Record<string, any>>({});
   const [toEmails, setToEmails] = useState("");
@@ -44,7 +44,7 @@ const RunTemplates = () => {
   React.useEffect(() => {
     if (selectedTemplate) {
       const vars = extractAllVariables(selectedTemplate);
-      const initialVars: Record<string, string> = {};
+      const initialVars: Record<string, string | TextStyle> = {};
       const initialListVars: Record<string, string[]> = {};
       const initialTableVars: Record<string, any> = {};
       
@@ -177,7 +177,7 @@ const RunTemplates = () => {
     return Array.from(new Set([...varsFromHtml, ...varsFromSections]));
   };
 
-  const replaceVariables = (html: string, vars: Record<string, string>, listVars: Record<string, string[] | ListItemStyle[]>): string => {
+  const replaceVariables = (html: string, vars: Record<string, string | TextStyle>, listVars: Record<string, string[] | ListItemStyle[]>): string => {
     let result = html;
     
     // Replace list variables
@@ -201,7 +201,20 @@ const RunTemplates = () => {
     
     // Replace regular variables
     Object.entries(vars).forEach(([key, value]) => {
-      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+      if (typeof value === 'object' && value !== null && 'text' in value) {
+        // Handle styled text
+        const styles = [];
+        if (value.color) styles.push(`color: ${value.color}`);
+        if (value.bold) styles.push('font-weight: bold');
+        if (value.italic) styles.push('font-style: italic');
+        if (value.underline) styles.push('text-decoration: underline');
+        if (value.backgroundColor) styles.push(`background-color: ${value.backgroundColor}`);
+        if (value.fontSize) styles.push(`font-size: ${value.fontSize}`);
+        const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+        result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), `<span${styleAttr}>${value.text}</span>`);
+      } else {
+        result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value as string);
+      }
     });
     
     // Handle labeled-content sections with runtime variables
@@ -241,7 +254,7 @@ const RunTemplates = () => {
   const handleRunTemplate = (template: Template) => {
     setSelectedTemplate(template);
     const vars = extractAllVariables(template);
-    const initialVars: Record<string, string> = {};
+    const initialVars: Record<string, string | TextStyle> = {};
     const initialListVars: Record<string, string[] | ListItemStyle[]> = {};
     
     vars.forEach(v => {
@@ -311,23 +324,37 @@ const RunTemplates = () => {
     
     // If template has sections, render from sections
     if (selectedTemplate.sections && selectedTemplate.sections.length > 0) {
+      // Combine all variables for rendering, converting TextStyle objects to strings
+      const allVars: Record<string, any> = {};
+      
+      Object.entries(variables).forEach(([key, value]) => {
+        if (typeof value === 'object' && value !== null && 'text' in value) {
+          const textStyle = value as TextStyle;
+          const styles = [];
+          if (textStyle.color) styles.push(`color: ${textStyle.color}`);
+          if (textStyle.bold) styles.push('font-weight: bold');
+          if (textStyle.italic) styles.push('font-style: italic');
+          if (textStyle.underline) styles.push('text-decoration: underline');
+          if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
+          if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
+          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+          allVars[key] = `<span${styleAttr}>${textStyle.text}</span>`;
+        } else {
+          allVars[key] = value;
+        }
+      });
+      
+      // Add list and table variables
+      Object.entries(listVariables).forEach(([key, value]) => {
+        allVars[key] = value;
+      });
+      
+      Object.entries(tableVariables).forEach(([key, value]) => {
+        allVars[key] = value;
+      });
+      
       return selectedTemplate.sections
-        .map((section) => {
-          // Create a variables object combining regular and list variables
-          const allVars: Record<string, any> = { ...variables };
-          
-          // Add list variables to allVars
-          Object.entries(listVariables).forEach(([key, value]) => {
-            allVars[key] = value;
-          });
-          
-          // Add table variables to allVars
-          Object.entries(tableVariables).forEach(([key, value]) => {
-            allVars[key] = value;
-          });
-          
-          return renderSectionContent(section, allVars);
-        })
+        .map((section) => renderSectionContent(section, allVars))
         .join('');
     }
     
@@ -928,16 +955,205 @@ const RunTemplates = () => {
                                     })}
                                   </div>
                                 </div>
-                              ) : (
-                                <Input
-                                  id={`var-${varName}`}
-                                  placeholder={`Enter ${varName}`}
-                                  value={variables[varName] || ""}
-                                  onChange={(e) =>
-                                    setVariables({ ...variables, [varName]: e.target.value })
-                                  }
-                                />
-                              )}
+                               ) : (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    id={`var-${varName}`}
+                                    placeholder={`Enter ${varName}`}
+                                    value={typeof variables[varName] === 'object' && variables[varName] !== null && 'text' in variables[varName] 
+                                      ? (variables[varName] as TextStyle).text 
+                                      : (variables[varName] as string || "")}
+                                    onChange={(e) => {
+                                      const currentVar = variables[varName];
+                                      if (typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar) {
+                                        setVariables({ ...variables, [varName]: { ...currentVar, text: e.target.value } });
+                                      } else {
+                                        setVariables({ ...variables, [varName]: e.target.value });
+                                      }
+                                    }}
+                                    className="flex-1"
+                                    style={typeof variables[varName] === 'object' && variables[varName] !== null && 'text' in variables[varName]
+                                      ? {
+                                          color: (variables[varName] as TextStyle).color,
+                                          fontWeight: (variables[varName] as TextStyle).bold ? 'bold' : 'normal',
+                                          fontStyle: (variables[varName] as TextStyle).italic ? 'italic' : 'normal',
+                                          textDecoration: (variables[varName] as TextStyle).underline ? 'underline' : 'none',
+                                          backgroundColor: (variables[varName] as TextStyle).backgroundColor,
+                                          fontSize: (variables[varName] as TextStyle).fontSize
+                                        }
+                                      : undefined
+                                    }
+                                  />
+                                  
+                                  {/* Text Formatting Popover */}
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 hover:bg-primary/10"
+                                      >
+                                        <Palette className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-72" align="start">
+                                      <div className="space-y-4">
+                                        <h4 className="font-medium text-sm">Text Formatting</h4>
+                                        
+                                        {/* Font Size */}
+                                        <div className="space-y-2">
+                                          <Label className="text-xs">Font Size</Label>
+                                          <select
+                                            value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'fontSize' in variables[varName] 
+                                              ? (variables[varName] as TextStyle).fontSize 
+                                              : undefined) || '14px'}
+                                            onChange={(e) => {
+                                              const currentVar = variables[varName];
+                                              const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                                ? currentVar as TextStyle
+                                                : { text: currentVar as string || '' };
+                                              setVariables({ ...variables, [varName]: { ...current, fontSize: e.target.value } });
+                                            }}
+                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                          >
+                                            <option value="10px">10px</option>
+                                            <option value="12px">12px</option>
+                                            <option value="14px">14px</option>
+                                            <option value="16px">16px</option>
+                                            <option value="18px">18px</option>
+                                            <option value="20px">20px</option>
+                                            <option value="24px">24px</option>
+                                            <option value="28px">28px</option>
+                                            <option value="32px">32px</option>
+                                          </select>
+                                        </div>
+                                        
+                                        {/* Text Style Toggles */}
+                                        <div className="space-y-2">
+                                          <Label className="text-xs">Text Style</Label>
+                                          <div className="flex gap-2">
+                                            <Button
+                                              size="sm"
+                                              variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'bold' in variables[varName] && (variables[varName] as TextStyle).bold) ? "default" : "outline"}
+                                              onClick={() => {
+                                                const currentVar = variables[varName];
+                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                                  ? currentVar as TextStyle
+                                                  : { text: currentVar as string || '' };
+                                                setVariables({ ...variables, [varName]: { ...current, bold: !current.bold } });
+                                              }}
+                                              className="h-8 w-8 p-0"
+                                              title="Bold"
+                                            >
+                                              <Bold className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'italic' in variables[varName] && (variables[varName] as TextStyle).italic) ? "default" : "outline"}
+                                              onClick={() => {
+                                                const currentVar = variables[varName];
+                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                                  ? currentVar as TextStyle
+                                                  : { text: currentVar as string || '' };
+                                                setVariables({ ...variables, [varName]: { ...current, italic: !current.italic } });
+                                              }}
+                                              className="h-8 w-8 p-0"
+                                              title="Italic"
+                                            >
+                                              <Italic className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'underline' in variables[varName] && (variables[varName] as TextStyle).underline) ? "default" : "outline"}
+                                              onClick={() => {
+                                                const currentVar = variables[varName];
+                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                                  ? currentVar as TextStyle
+                                                  : { text: currentVar as string || '' };
+                                                setVariables({ ...variables, [varName]: { ...current, underline: !current.underline } });
+                                              }}
+                                              className="h-8 w-8 p-0"
+                                              title="Underline"
+                                            >
+                                              <Underline className="h-3.5 w-3.5" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                        
+                                        {/* Text Color */}
+                                        <div className="space-y-2">
+                                          <Label className="text-xs">Text Color</Label>
+                                          <div className="flex gap-2">
+                                            <Input
+                                              type="color"
+                                              value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'color' in variables[varName] 
+                                                ? (variables[varName] as TextStyle).color 
+                                                : undefined) || '#000000'}
+                                              onChange={(e) => {
+                                                const currentVar = variables[varName];
+                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                                  ? currentVar as TextStyle
+                                                  : { text: currentVar as string || '' };
+                                                setVariables({ ...variables, [varName]: { ...current, color: e.target.value } });
+                                              }}
+                                              className="h-8 w-16"
+                                            />
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => {
+                                                const currentVar = variables[varName];
+                                                if (typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar) {
+                                                  const { color, ...rest } = currentVar as TextStyle;
+                                                  setVariables({ ...variables, [varName]: rest });
+                                                }
+                                              }}
+                                              className="h-8"
+                                            >
+                                              Clear
+                                            </Button>
+                                          </div>
+                                        </div>
+                                        
+                                        {/* Background Color */}
+                                        <div className="space-y-2">
+                                          <Label className="text-xs">Background Color</Label>
+                                          <div className="flex gap-2">
+                                            <Input
+                                              type="color"
+                                              value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'backgroundColor' in variables[varName] 
+                                                ? (variables[varName] as TextStyle).backgroundColor 
+                                                : undefined) || '#ffffff'}
+                                              onChange={(e) => {
+                                                const currentVar = variables[varName];
+                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                                  ? currentVar as TextStyle
+                                                  : { text: currentVar as string || '' };
+                                                setVariables({ ...variables, [varName]: { ...current, backgroundColor: e.target.value } });
+                                              }}
+                                              className="h-8 w-16"
+                                            />
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => {
+                                                const currentVar = variables[varName];
+                                                if (typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar) {
+                                                  const { backgroundColor, ...rest } = currentVar as TextStyle;
+                                                  setVariables({ ...variables, [varName]: rest });
+                                                }
+                                              }}
+                                              className="h-8"
+                                            >
+                                              Clear
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                               )}
                             </div>
                           );
                         })}
