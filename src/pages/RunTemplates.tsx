@@ -300,9 +300,34 @@ const RunTemplates = () => {
     setListVariables({});
   };
 
-  const previewHtml = selectedTemplate
-    ? replaceVariables(selectedTemplate.html, variables, listVariables)
-    : "";
+  const previewHtml = React.useMemo(() => {
+    if (!selectedTemplate) return "";
+    
+    // If template has sections, render from sections
+    if (selectedTemplate.sections && selectedTemplate.sections.length > 0) {
+      return selectedTemplate.sections
+        .map((section) => {
+          // Create a variables object combining regular and list variables
+          const allVars: Record<string, any> = { ...variables };
+          
+          // Add list variables to allVars
+          Object.entries(listVariables).forEach(([key, value]) => {
+            allVars[key] = value;
+          });
+          
+          // Add table variables to allVars
+          Object.entries(tableVariables).forEach(([key, value]) => {
+            allVars[key] = value;
+          });
+          
+          return renderSectionContent(section, allVars);
+        })
+        .join('');
+    }
+    
+    // Otherwise render from html field
+    return replaceVariables(selectedTemplate.html, variables, listVariables);
+  }, [selectedTemplate, variables, listVariables, tableVariables]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
