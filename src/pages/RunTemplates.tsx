@@ -278,6 +278,16 @@ const RunTemplates = () => {
   const handleSendTemplate = () => {
     if (!selectedTemplate) return;
 
+    // Validate subject
+    if (!emailSubject.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter an email subject.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validate emails
     if (!toEmails.trim()) {
       toast({
@@ -291,6 +301,7 @@ const RunTemplates = () => {
     // Save to database (mock)
     const runData = {
       templateId: selectedTemplate.id,
+      subject: emailSubject,
       toEmails: toEmails.split(',').map(e => e.trim()),
       ccEmails: ccEmails.split(',').map(e => e.trim()).filter(Boolean),
       bccEmails: bccEmails.split(',').map(e => e.trim()).filter(Boolean),
@@ -304,7 +315,7 @@ const RunTemplates = () => {
 
     toast({
       title: "Template Sent",
-      description: `Template sent successfully to ${runData.toEmails.length} recipient(s).`,
+      description: `"${emailSubject}" sent successfully to ${runData.toEmails.length} recipient(s).`,
     });
 
     resetForm();
@@ -472,8 +483,20 @@ const RunTemplates = () => {
                 <div className="p-8 space-y-6">
                   {/* Email Recipients */}
                   <Card className="p-6 border-2">
-                    <h2 className="text-lg font-semibold mb-4">Email Recipients</h2>
+                    <h2 className="text-lg font-semibold mb-4">Email Configuration</h2>
                     <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="subject">
+                          Subject <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="subject"
+                          placeholder="Enter email subject"
+                          value={emailSubject}
+                          onChange={(e) => setEmailSubject(e.target.value)}
+                        />
+                      </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="to-emails">
                           To <span className="text-destructive">*</span>
