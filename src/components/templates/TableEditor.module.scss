@@ -1,0 +1,67 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.toggleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toggleLabel {
+  font-size: 0.75rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tableWrapper {
+  overflow: auto;
+  max-height: 400px;
+}
+
+.table {
+  width: 100%;
+
+  &.bordered {
+    border: 1px solid #e9ecef;
+  }
+}
+
+.cell {
+  padding: 0.25rem;
+
+  &.bordered {
+    border: 1px solid #e9ecef;
+  }
+
+  &.selected {
+    box-shadow: 0 0 0 2px #4361ee;
+  }
+}
+
+.cellInput {
+  height: 2rem;
+  font-size: 0.75rem;
+}
+
+.selectedInfo {
+  font-size: 0.75rem;
+  color: #6c757d;
+}

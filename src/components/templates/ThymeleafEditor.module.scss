@@ -1,0 +1,39 @@
+.editorWrapper {
+  position: relative;
+}
+
+.highlightLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  padding: 0.75rem;
+  line-height: 1.5;
+  color: transparent;
+  border: 1px solid transparent;
+}
+
+.textarea {
+  position: relative;
+  width: 100%;
+  min-height: 120px;
+  padding: 0.75rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  background-color: transparent;
+  caret-color: currentColor;
+  border: 1px solid #e9ecef;
+  border-radius: 0.375rem;
+  line-height: 1.5;
+  resize: vertical;
+  color: inherit;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+  }
+}

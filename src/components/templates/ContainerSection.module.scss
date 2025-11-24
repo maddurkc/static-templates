@@ -1,0 +1,57 @@
+.container {
+  margin-bottom: 0.5rem;
+}
+
+.card {
+  transition: all 0.3s ease;
+
+  &.selected {
+    box-shadow: 0 0 0 2px #4361ee;
+    border-color: #4361ee;
+  }
+
+  &:hover:not(.selected) {
+    border-color: rgba(67, 97, 238, 0.5);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: rgba(248, 249, 250, 0.3);
+}
+
+.dragHandle {
+  cursor: grab;
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:hover {
+    background-color: #f8f9fa;
+  }
+}
+
+.contentArea {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sectionCount {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.childrenArea {
+  padding: 0.75rem;
+  border-top: 1px dashed rgba(222, 226, 230, 0.5);
+  background: #ffffff;
+}

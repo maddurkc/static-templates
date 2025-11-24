@@ -1,0 +1,95 @@
+.container {
+  padding: 1rem;
+}
+
+.categorySection {
+  margin-bottom: 1.5rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.categoryTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sectionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.draggableCard {
+  padding: 0.75rem;
+  cursor: grab;
+  transition: all 0.2s ease;
+  border: 1px solid #e9ecef;
+  border-radius: 0.5rem;
+  background: #ffffff;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-color: rgba(67, 97, 238, 0.5);
+  }
+}
+
+.cardContent {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dragIcon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: #6c757d;
+
+  .draggableCard:hover & {
+    color: #4361ee;
+  }
+}
+
+.sectionIcon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #4361ee;
+}
+
+.cardText {
+  flex: 1;
+  min-width: 0;
+}
+
+.sectionTitle {
+  font-weight: 500;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sectionDescription {
+  font-size: 0.75rem;
+  color: #6c757d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
