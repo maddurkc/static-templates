@@ -8,6 +8,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { TableEditor } from "./TableEditor";
 import { ThymeleafEditor } from "./ThymeleafEditor";
+import styles from "./VariableEditor.module.scss";
 
 interface VariableEditorProps {
   section: Section;
@@ -25,7 +26,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   // No editor needed for line breaks
   if (section.type === 'line-break') {
     return (
-      <div className="p-4 text-center text-sm text-muted-foreground">
+      <div className={styles.centerText}>
         Line break - no configuration needed
       </div>
     );
@@ -34,10 +35,10 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   // No editor needed for containers (children are managed separately)
   if (section.type === 'container') {
     return (
-      <div className="p-4 space-y-2">
-        <div className="text-center text-sm text-muted-foreground">
+      <div className={styles.infoBox}>
+        <div className={styles.centerText}>
           <p className="font-medium">Container Section</p>
-          <p className="text-xs mt-2">
+          <p className="hint">
             Use the "Add" button in the editor to add sections inside this container.
           </p>
         </div>
@@ -48,23 +49,23 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   // For static-text sections, show a simple textarea
   if (section.type === 'static-text') {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Static Text Content</h3>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Static Text Content</h3>
         </div>
         <Separator />
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Enter your text (no placeholders needed)</Label>
+        <div className={styles.section}>
+          <Label className={styles.label}>Enter your text (no placeholders needed)</Label>
           <Textarea
             value={(section.variables?.content as string) || ''}
             onChange={(e) => onUpdate({
               ...section,
               variables: { ...section.variables, content: e.target.value }
             })}
-            className="min-h-[120px] text-sm"
+            className={styles.staticTextArea}
             placeholder="Type your static text here..."
           />
-          <p className="text-xs text-muted-foreground">
+          <p className={styles.description}>
             This text will appear exactly as you type it. Supports line breaks.
           </p>
         </div>
@@ -84,14 +85,14 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
     }).filter(Boolean))];
     
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Mixed Content (Static + Dynamic)</h3>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Mixed Content (Static + Dynamic)</h3>
         </div>
         <Separator />
         
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Template Text</Label>
+        <div className={styles.section}>
+          <Label className={styles.label}>Template Text</Label>
           <ThymeleafEditor
             value={contentText}
             onChange={(value) => onUpdate({
@@ -99,9 +100,9 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               variables: { ...section.variables, content: value }
             })}
             placeholder='For invalid Characters issue, the team is working with Engineer- <th:utext="${incidentNumber}">'
-            className="min-h-[120px]"
+            className={styles.thymeleafEditor}
           />
-          <p className="text-xs text-muted-foreground">
+          <p className={styles.description}>
             Write your text and use Thymeleaf tags:<br/>
             • Variables: {'<th:utext="${variableName}">'}<br/>
             • Conditionals: {'<th:if="${condition}">'}content{'</th:if>'}<br/>
@@ -112,14 +113,14 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         {placeholders.length > 0 && (
           <>
             <Separator />
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Dynamic Variables</Label>
-              <p className="text-xs text-muted-foreground">
+            <div className={styles.variablesSection}>
+              <Label className={styles.label}>Dynamic Variables</Label>
+              <p className={styles.description}>
                 Edit the values for placeholders found in your template:
               </p>
               {placeholders.map(placeholder => (
-                <div key={placeholder} className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
+                <div key={placeholder} className={styles.variableField}>
+                  <Label className={styles.variableLabel}>
                     {'<th:utext="${' + placeholder + '}">'} 
                   </Label>
                   <Input
@@ -129,7 +130,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                       variables: { ...section.variables, [placeholder]: e.target.value }
                     })}
                     placeholder={`Enter value for ${placeholder}`}
-                    className="text-sm"
+                    className={styles.variableInput}
                   />
                 </div>
               ))}
@@ -146,14 +147,14 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
     const contentType = (section.variables?.contentType as string) || 'text';
     
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Labeled Content</h3>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Labeled Content</h3>
         </div>
         <Separator />
         
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Field Label (supports dynamic content)</Label>
+        <div className={styles.section}>
+          <Label className={styles.label}>Field Label (supports dynamic content)</Label>
           <ThymeleafEditor
             value={label}
             onChange={(value) => onUpdate({
@@ -163,22 +164,22 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
             placeholder='e.g., Summary or Incident <th:utext="${incidentNumber}">'
             className="min-h-[60px]"
           />
-          <p className="text-xs text-muted-foreground">
+          <p className={styles.description}>
             Use static text or add Thymeleaf expressions like {'<th:utext="${variableName}">'} for dynamic parts.
           </p>
         </div>
 
         <Separator />
 
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Content Type</Label>
+        <div className={styles.section}>
+          <Label className={styles.label}>Content Type</Label>
           <select
             value={contentType}
             onChange={(e) => onUpdate({
               ...section,
               variables: { ...section.variables, contentType: e.target.value }
             })}
-            className="w-full h-9 px-3 text-sm border border-input rounded-md bg-background"
+            className={styles.selectInput}
           >
             <option value="text">Text Content</option>
             <option value="list">List Items</option>
@@ -186,8 +187,8 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           </select>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
+        <div className={styles.section}>
+          <div className={styles.checkboxGroup}>
             <input
               type="checkbox"
               id="label-editable"
@@ -198,11 +199,11 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               })}
               className="h-4 w-4"
             />
-            <Label htmlFor="label-editable" className="text-sm font-medium cursor-pointer">
+            <Label htmlFor="label-editable" className={styles.checkboxLabel}>
               Label editable at runtime
             </Label>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className={styles.description}>
             When unchecked, users won't be able to modify the label value when running the template.
           </p>
         </div>
@@ -491,9 +492,9 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Variables</h3>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>Variables</h3>
       </div>
       
       <Separator />
@@ -505,9 +506,9 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           const listValues = Array.isArray(currentValue) ? currentValue : [currentValue as string];
           
           return (
-            <div key={varDef.name} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">{varDef.label}</Label>
+            <div key={varDef.name} className={styles.section}>
+              <div className={styles.header}>
+                <Label className={styles.label}>{varDef.label}</Label>
                 <Button
                   size="sm"
                   variant="outline"
@@ -519,13 +520,13 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                 </Button>
               </div>
               
-              <div className="space-y-2 pl-2 border-l-2 border-muted">
+              <div className={styles.listItems}>
                 {listValues.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2 ml-2">
+                  <div key={index} className={styles.listItem}>
                     <Input
                       value={item}
                       onChange={(e) => updateListItem(varDef.name, index, e.target.value)}
-                      className="flex-1 h-8 text-sm"
+                      className={styles.listInput}
                       placeholder={`Item ${index + 1}`}
                     />
                     <Button
@@ -549,13 +550,13 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           const isLongText = textValue.length > 50 || textValue.includes('\n');
           
           return (
-            <div key={varDef.name} className="space-y-2">
-              <Label className="text-sm font-medium">{varDef.label}</Label>
+            <div key={varDef.name} className={styles.section}>
+              <Label className={styles.label}>{varDef.label}</Label>
               {isLongText ? (
                 <Textarea
                   value={textValue}
                   onChange={(e) => updateVariable(varDef.name, e.target.value)}
-                  className="min-h-[80px] text-sm"
+                  className={styles.staticTextArea}
                   placeholder={varDef.defaultValue as string}
                 />
               ) : (
@@ -572,8 +573,8 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
 
         if (varDef.type === 'url') {
           return (
-            <div key={varDef.name} className="space-y-2">
-              <Label className="text-sm font-medium">{varDef.label}</Label>
+            <div key={varDef.name} className={styles.section}>
+              <Label className={styles.label}>{varDef.label}</Label>
               <Input
                 type="url"
                 value={currentValue as string}

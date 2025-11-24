@@ -11,6 +11,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { API_TEMPLATES, getAllCategories } from "@/data/apiTemplates";
+import styles from "./ApiConfigPopover.module.scss";
 
 interface ApiConfigPopoverProps {
   apiConfig: ApiConfig;
@@ -35,7 +36,6 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
 
   const addMapping = () => {
     if (selectedTemplate?.sampleMappings && apiConfig.mappings.length === 0) {
-      // Use sample mappings from template
       const mappingsWithIds = selectedTemplate.sampleMappings.map(m => ({
         ...m,
         id: `mapping-${Date.now()}-${Math.random()}`,
@@ -71,16 +71,16 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
 
   return (
     <ScrollArea className="max-h-[600px]">
-      <div className="space-y-4 p-1">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-semibold">Enable API Integration</Label>
+      <div className={styles.container}>
+        <div className={styles.section}>
+          <div className={styles.enableSwitch}>
+            <Label className={styles.sectionTitle}>Enable API Integration</Label>
             <Switch
               checked={apiConfig.enabled}
               onCheckedChange={(enabled) => updateConfig({ enabled })}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className={styles.description}>
             Fetch data from an API and automatically map it to section variables
           </p>
         </div>
@@ -90,10 +90,10 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
             <Separator />
 
             {/* API Template Selection */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold">Select API Template</h4>
+            <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>Select API Template</h4>
               
-              <div className="space-y-2">
+              <div className={styles.section}>
                 <Label className="text-xs">Template</Label>
                 <Select
                   value={apiConfig.templateId}
@@ -120,7 +120,7 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
               </div>
 
               {selectedTemplate && (
-                <div className="p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                <div className={styles.infoBox}>
                   {selectedTemplate.description}
                 </div>
               )}
@@ -131,11 +131,11 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                 <Separator />
 
                 {/* Template Parameters */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold">Template Parameters</h4>
+                <div className={styles.section}>
+                  <h4 className={styles.sectionTitle}>Template Parameters</h4>
                   
                   {selectedTemplate.requiredParams.map(param => (
-                    <div key={param.name} className="space-y-2">
+                    <div key={param.name} className={styles.section}>
                       <Label className="text-xs">
                         {param.label}
                         {param.required && <span className="text-destructive ml-1">*</span>}
@@ -166,7 +166,7 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                         />
                       )}
                       {param.description && (
-                        <p className="text-xs text-muted-foreground">{param.description}</p>
+                        <p className={styles.description}>{param.description}</p>
                       )}
                     </div>
                   ))}
@@ -175,23 +175,23 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                 <Separator />
 
                 {/* Data Mappings */}
-                <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold">Data Mappings</h4>
+                <div className={styles.section}>
+              <div className={styles.enableSwitch}>
+                <h4 className={styles.sectionTitle}>Data Mappings</h4>
                 <Button size="sm" variant="outline" onClick={addMapping} className="h-7">
                   <Plus className="h-3 w-3 mr-1" />
                   Add Mapping
                 </Button>
               </div>
 
-              <div className="space-y-3">
+              <div className={styles.section}>
                 {apiConfig.mappings.map((mapping) => {
                   const selectedSection = sections.find(s => s.id === mapping.sectionId);
                   const variables = getSectionVariables(mapping.sectionId);
                   
                   return (
-                    <div key={mapping.id} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                      <div className="flex items-center justify-between">
+                    <div key={mapping.id} className={styles.mappingCard}>
+                      <div className={styles.enableSwitch}>
                         <Label className="text-xs font-semibold">Mapping</Label>
                         <Button
                           size="icon"
@@ -203,7 +203,7 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                         </Button>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className={styles.section}>
                         <Label className="text-xs">Target Section</Label>
                         <Select
                           value={mapping.sectionId}
@@ -222,7 +222,7 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className={styles.section}>
                         <Label className="text-xs">API Response Path (JSON Path)</Label>
                         <Input
                           value={mapping.apiPath}
@@ -230,12 +230,12 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                           placeholder="data.items or $.results[0].name"
                           className="h-8 text-xs font-mono"
                         />
-                        <p className="text-xs text-muted-foreground">
+                        <p className={styles.description}>
                           e.g., "data.items" or "results[0].title"
                         </p>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className={styles.section}>
                         <Label className="text-xs">Data Type</Label>
                         <Select
                           value={mapping.dataType}
@@ -255,7 +255,7 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                       </div>
 
                       {variables.length > 0 && (
-                        <div className="space-y-2">
+                        <div className={styles.section}>
                           <Label className="text-xs">Variable (Optional)</Label>
                           <Select
                             value={mapping.variableName || ''}
@@ -283,7 +283,7 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
               </div>
 
                 {apiConfig.mappings.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">
+                  <p className={styles.description} style={{ textAlign: 'center', padding: '1rem 0' }}>
                     No mappings configured. Add a mapping to start.
                   </p>
                 )}

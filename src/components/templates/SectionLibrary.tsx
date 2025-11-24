@@ -4,6 +4,7 @@ import { sectionTypes } from "@/data/sectionTypes";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical } from "lucide-react";
+import styles from "./SectionLibrary.module.scss";
 
 const DraggableSection = ({ section }: { section: typeof sectionTypes[0] }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -21,14 +22,14 @@ const DraggableSection = ({ section }: { section: typeof sectionTypes[0] }) => {
       style={style}
       {...attributes}
       {...listeners}
-      className="p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-all hover:border-primary/50 group"
+      className={styles.draggableCard}
     >
-      <div className="flex items-center gap-3">
-        <GripVertical className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
-        <section.icon className="h-5 w-5 text-primary shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{section.label}</p>
-          <p className="text-xs text-muted-foreground truncate">{section.description}</p>
+      <div className={styles.cardContent}>
+        <GripVertical className={styles.dragIcon} />
+        <section.icon className={styles.sectionIcon} />
+        <div className={styles.cardText}>
+          <p className={styles.sectionTitle}>{section.label}</p>
+          <p className={styles.sectionDescription}>{section.description}</p>
         </div>
       </div>
     </Card>
@@ -52,18 +53,18 @@ export const SectionLibrary = () => {
   };
 
   return (
-    <div className="p-4 space-y-6">
+    <div className={styles.container}>
       {Object.entries(groupedSections).map(([category, categorySections]) => (
-        <div key={category} className="space-y-3">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <div key={category} className={styles.categorySection}>
+          <div className={styles.categoryHeader}>
+            <h3 className={styles.categoryTitle}>
               {categoryLabels[category]}
             </h3>
             <Badge variant="secondary" className="text-xs">
               {categorySections.length}
             </Badge>
           </div>
-          <div className="space-y-2">
+          <div className={styles.sectionsList}>
             {categorySections.map((section) => (
               <DraggableSection key={section.type} section={section} />
             ))}

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, Merge } from "lucide-react";
 import { Section } from "@/types/section";
+import styles from "./TableEditor.module.scss";
 
 interface TableEditorProps {
   section: Section;
@@ -151,16 +152,16 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Table Editor</h3>
-        <div className="flex items-center gap-2">
-          <Label className="text-xs">Show Border</Label>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>Table Editor</h3>
+        <div className={styles.toggleGroup}>
+          <Label className={styles.toggleLabel}>Show Border</Label>
           <Switch checked={tableData.showBorder} onCheckedChange={toggleBorder} />
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
+      <div className={styles.actions}>
         <Button size="sm" variant="outline" onClick={addRow} className="h-8 px-2">
           <Plus className="h-3 w-3 mr-1" />
           Add Row
@@ -181,8 +182,8 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
         </Button>
       </div>
 
-      <div className="overflow-auto max-h-[400px]">
-        <table className={`w-full ${tableData.showBorder ? 'border border-border' : ''}`}>
+      <div className={styles.tableWrapper}>
+        <table className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''}`}>
           <tbody>
             {tableData.rows.map((row, rowIndex) => (
               <tr key={rowIndex}>
@@ -199,13 +200,13 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                       key={colIndex}
                       rowSpan={merge?.rowSpan}
                       colSpan={merge?.colSpan}
-                      className={`p-1 ${tableData.showBorder ? 'border border-border' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`}
+                      className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
                       onClick={() => setSelectedCell({ row: rowIndex, col: colIndex })}
                     >
                       <Input
                         value={cell}
                         onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
-                        className="h-8 text-xs"
+                        className={styles.cellInput}
                         placeholder={rowIndex === 0 ? `Header ${colIndex + 1}` : `Cell ${rowIndex},${colIndex + 1}`}
                       />
                     </td>
@@ -244,7 +245,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
       </div>
 
       {selectedCell && (
-        <p className="text-xs text-muted-foreground">
+        <p className={styles.selectedInfo}>
           Selected: Row {selectedCell.row + 1}, Column {selectedCell.col + 1}
           {getCellMerge(selectedCell.row, selectedCell.col) && ' (Merged)'}
         </p>

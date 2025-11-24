@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye, Plus, Trash2 } from "lucide-react";
 import { SectionDefinition, TextStyle, ListItemStyle } from "@/types/section";
+import styles from "./SectionPreviewDialog.module.scss";
 
 interface SectionPreviewDialogProps {
   section: SectionDefinition;
@@ -103,22 +104,22 @@ export const SectionPreviewDialog = ({ section }: SectionPreviewDialogProps) => 
           <Eye className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
+      <DialogContent className={styles.dialogContent}>
         <DialogHeader>
           <DialogTitle>Test Section - {section.label}</DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 grid grid-cols-2 gap-6 overflow-hidden">
+        <div className={styles.gridLayout}>
           {/* Left: Variable Inputs */}
-          <ScrollArea className="pr-4">
-            <div className="space-y-4">
+          <ScrollArea className={styles.leftPanel}>
+            <div className={styles.formSection}>
               {!section.variables || section.variables.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   This section has no variables to configure.
                 </p>
               ) : (
                 section.variables.map((variable) => (
-                  <div key={variable.name} className="space-y-2">
+                  <div key={variable.name} className={styles.formField}>
                     <Label htmlFor={variable.name}>{variable.label}</Label>
                     
                     {variable.type === 'text' || variable.type === 'url' ? (
@@ -132,7 +133,7 @@ export const SectionPreviewDialog = ({ section }: SectionPreviewDialogProps) => 
                     ) : variable.type === 'list' ? (
                       <div className="space-y-2">
                         {((variableValues[variable.name] as string[]) || []).map((item, index) => (
-                          <div key={index} className="flex gap-2">
+                          <div key={index} className={styles.listItemRow}>
                             <Input
                               value={item}
                               onChange={(e) => handleListItemChange(variable.name, index, e.target.value)}
@@ -173,12 +174,12 @@ export const SectionPreviewDialog = ({ section }: SectionPreviewDialogProps) => 
           </ScrollArea>
 
           {/* Right: Live Preview */}
-          <div className="border rounded-lg bg-background">
-            <div className="border-b px-4 py-2 bg-muted/30">
+          <div className={styles.previewPanel}>
+            <div className={styles.previewHeader}>
               <h4 className="text-sm font-medium">Live Preview</h4>
             </div>
             <ScrollArea className="h-[calc(90vh-200px)]">
-              <div className="p-6">
+              <div className={styles.previewContent}>
                 <div
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                   className="[&>h1]:text-3xl [&>h1]:font-bold [&>h1]:mb-4 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:mb-3 [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:mb-2 [&>h4]:text-lg [&>h4]:font-semibold [&>h4]:mb-2 [&>h5]:text-base [&>h5]:font-medium [&>h5]:mb-2 [&>h6]:text-sm [&>h6]:font-medium [&>h6]:mb-2 [&>p]:text-sm [&>p]:mb-4 [&>ul]:list-disc [&>ul]:list-inside [&>ul]:mb-4 [&>ol]:list-decimal [&>ol]:list-inside [&>ol]:mb-4 [&>table]:w-full [&>table]:border-collapse [&>table]:mb-4 [&_th]:border [&_th]:p-2 [&_th]:bg-muted [&_td]:border [&_td]:p-2 [&>img]:max-w-full [&>img]:h-auto [&>img]:mb-4 [&>button]:px-4 [&>button]:py-2 [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded [&>button]:mb-4 [&>a]:text-primary [&>a]:underline"

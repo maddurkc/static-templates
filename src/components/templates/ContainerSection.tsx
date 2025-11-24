@@ -5,6 +5,7 @@ import { GripVertical, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import styles from "./ContainerSection.module.scss";
 
 interface ContainerSectionProps {
   section: Section;
@@ -39,26 +40,22 @@ export const ContainerSection = ({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="group">
+    <div ref={setNodeRef} style={style} className={styles.container}>
       <Card
-        className={`mb-2 transition-all ${
-          isSelected 
-            ? 'ring-2 ring-primary border-primary shadow-md' 
-            : 'border-border hover:border-primary/50 hover:shadow-sm'
-        }`}
+        className={`${styles.card} ${isSelected ? styles.selected : ''}`}
       >
-        <div className="flex items-center gap-2 p-3 bg-muted/30">
+        <div className={styles.header}>
           <div
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing hover:bg-muted rounded p-1"
+            className={styles.dragHandle}
           >
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
           
-          <div className="flex-1 flex items-center gap-2">
+          <div className={styles.contentArea}>
             <Badge variant="outline" className="text-xs">Container</Badge>
-            <span className="text-sm font-medium">
+            <span className={styles.sectionCount}>
               {section.children?.length || 0} sections inside
             </span>
           </div>
@@ -93,7 +90,7 @@ export const ContainerSection = ({
         </div>
         
         {section.children && section.children.length > 0 && (
-          <div className="p-3 border-t border-dashed border-border/50 bg-background">
+          <div className={styles.childrenArea}>
             {children}
           </div>
         )}
