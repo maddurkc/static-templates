@@ -162,12 +162,12 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
       </div>
 
       <div className={styles.actions}>
-        <Button size="sm" variant="outline" onClick={addRow} className={styles.actionButton}>
-          <Plus className={`${styles.icon} ${styles.iconMargin}`} />
+        <Button size="sm" variant="outline" onClick={addRow} className="h-8 px-2">
+          <Plus className="h-3 w-3 mr-1" />
           Add Row
         </Button>
-        <Button size="sm" variant="outline" onClick={addColumn} className={styles.actionButton}>
-          <Plus className={`${styles.icon} ${styles.iconMargin}`} />
+        <Button size="sm" variant="outline" onClick={addColumn} className="h-8 px-2">
+          <Plus className="h-3 w-3 mr-1" />
           Add Column
         </Button>
         <Button 
@@ -175,9 +175,9 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
           variant="outline" 
           onClick={mergeCells}
           disabled={!selectedCell}
-          className={styles.actionButton}
+          className="h-8 px-2"
         >
-          <Merge className={`${styles.icon} ${styles.iconMargin}`} />
+          <Merge className="h-3 w-3 mr-1" />
           Toggle Merge
         </Button>
       </div>
@@ -212,30 +212,30 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                     </td>
                   );
                 })}
-                <td className={styles.deleteCell}>
+                <td className="p-1">
                   <Button
                     size="icon"
                     variant="ghost"
                     onClick={() => removeRow(rowIndex)}
                     disabled={tableData.rows.length <= 1}
-                    className={styles.deleteButton}
+                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <Trash2 className={styles.icon} />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </td>
               </tr>
             ))}
             <tr>
               {tableData.rows[0]?.map((_, colIndex) => (
-                <td key={colIndex} className={styles.deleteCell}>
+                <td key={colIndex} className="p-1">
                   <Button
                     size="icon"
                     variant="ghost"
                     onClick={() => removeColumn(colIndex)}
                     disabled={tableData.rows[0]?.length <= 1}
-                    className={styles.deleteButton}
+                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <Trash2 className={styles.icon} />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </td>
               ))}

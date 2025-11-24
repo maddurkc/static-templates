@@ -160,14 +160,14 @@ const SortableSection = ({
           </div>
         ) : !isContainer && (
           <div
-            className={styles.prose}
+            className="prose max-w-none"
             dangerouslySetInnerHTML={{ 
               __html: thymeleafToPlaceholder(section.content)
-                .replace(/\{\{(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / 0.2);">${$1}</span>')
-                .replace(/\{\{if\s+(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: rgba(59, 130, 246, 0.1); color: rgb(29, 78, 216); border: 1px solid rgba(147, 197, 253, 0.3);">if $1</span>')
-                .replace(/\{\{\/if\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: rgba(59, 130, 246, 0.1); color: rgb(29, 78, 216); border: 1px solid rgba(147, 197, 253, 0.3);">/if</span>')
-                .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: rgba(34, 197, 94, 0.1); color: rgb(22, 163, 74); border: 1px solid rgba(134, 239, 172, 0.3);">each $1 in $2</span>')
-                .replace(/\{\{\/each\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: rgba(34, 197, 94, 0.1); color: rgb(22, 163, 74); border: 1px solid rgba(134, 239, 172, 0.3);">/each</span>')
+                .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
+                .replace(/\{\{if\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">if $1</span>')
+                .replace(/\{\{\/if\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">/if</span>')
+                .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">each $1 in $2</span>')
+                .replace(/\{\{\/each\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">/each</span>')
             }}
             style={section.styles as React.CSSProperties}
           />
@@ -212,7 +212,7 @@ const SortableSection = ({
             onMoveUp();
           }}
           disabled={isFirst}
-          className={styles.iconButton}
+          className="h-8 w-8"
         >
           <ChevronUp className={styles.icon} />
         </Button>
@@ -224,7 +224,7 @@ const SortableSection = ({
             onMoveDown();
           }}
           disabled={isLast}
-          className={styles.iconButton}
+          className="h-8 w-8"
         >
           <ChevronDown className={styles.icon} />
         </Button>

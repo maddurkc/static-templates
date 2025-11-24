@@ -60,7 +60,7 @@ export const SectionLibrary = () => {
             <h3 className={styles.categoryTitle}>
               {categoryLabels[category]}
             </h3>
-            <Badge variant="secondary" className={styles.badge}>
+            <Badge variant="secondary" className="text-xs">
               {categorySections.length}
             </Badge>
           </div>
