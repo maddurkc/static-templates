@@ -5,8 +5,8 @@ import { Section } from "@/types/section";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical, Trash2, ChevronUp, ChevronDown, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { thymeleafToPlaceholder } from "@/lib/thymeleafUtils";
-import styles from "./EditorView.module.scss";
 
 
 interface SortableSectionProps {
@@ -54,47 +54,54 @@ const SortableSection = ({
     id: section.id,
   });
 
-  const sectionClasses = `${styles.section} ${isSelected ? styles.selected : ''} ${isDragging ? styles.dragging : ''} ${isContainer ? styles.container : ''} ${isContainer && isDropOver ? styles.dropOver : ''}`;
-
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={sectionClasses}
+      className={cn(
+        "group relative border-2 rounded-lg mb-3 bg-card transition-all",
+        isSelected ? "border-primary shadow-lg shadow-primary/20" : "border-border hover:border-primary/50",
+        isDragging && "opacity-50",
+        isContainer && "bg-muted/20",
+        isContainer && isDropOver && "border-primary border-dashed bg-primary/10"
+      )}
       onClick={onSelect}
     >
       {/* Drag Handle */}
       <div
         {...attributes}
         {...listeners}
-        className={styles.dragHandle}
+        className="absolute left-2 top-4 cursor-grab active:cursor-grabbing p-1 hover:bg-primary/10 rounded"
       >
-        <GripVertical className={styles.iconSm} />
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
       </div>
 
       {/* Container Header */}
       {isContainer && (
         <div 
           ref={setDropRef}
-          className={`${styles.containerHeader} ${isDropOver ? styles.dropOver : ''}`}
+          className={cn(
+            "flex items-center gap-2 p-3 pl-10 pr-32 bg-muted/30 border-b border-border transition-colors",
+            isDropOver && "bg-primary/10 border-primary"
+          )}
         >
-          <Badge variant="outline" className={styles.badge}>Container</Badge>
-          <span className={styles.textSm}>
+          <Badge variant="outline" className="text-xs">Container</Badge>
+          <span className="text-sm text-muted-foreground">
             {section.children?.length || 0} section{section.children?.length !== 1 ? 's' : ''} inside
           </span>
           {isDropOver && (
-            <span className={`${styles.textXs} ml-auto font-medium`}>Drop here to add</span>
+            <span className="text-xs text-primary font-medium ml-auto">Drop here to add</span>
           )}
         </div>
       )}
 
       {/* Content */}
-      <div className={`${styles.sectionContent} ${isContainer ? styles.containerContent : ''}`}>
+      <div className={cn("pl-10 pr-32 py-4", isContainer && "px-4")}>
         {!isContainer && section.type === 'labeled-content' && section.variables?.label ? (
-          <div className={styles.labeledContent}>
-            <div className={styles.labelWrapper}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span 
-                className={styles.labelText}
+                className="font-semibold text-base"
                 dangerouslySetInnerHTML={{ 
                   __html: thymeleafToPlaceholder(String(section.variables.label)).replace(
                     /\{\{(\w+)\}\}/g,
@@ -102,23 +109,23 @@ const SortableSection = ({
                   )
                 }}
               />
-              <Badge variant="secondary" className={styles.badge}>
+              <Badge variant="secondary" className="text-xs">
                 {section.variables.contentType === 'text' ? 'Text' : section.variables.contentType === 'list' ? 'List' : 'Table'}
               </Badge>
               {String(section.variables.label).includes('{{') && (
-                <Badge variant="outline" className={styles.badge}>
+                <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
                   Dynamic Label
                 </Badge>
               )}
               {!section.isLabelEditable && (
-                <Badge variant="outline" className={styles.badge}>
+                <Badge variant="outline" className="text-xs">
                   Label locked
                 </Badge>
               )}
             </div>
             {section.variables.contentType === 'table' && section.variables.tableData ? (
               <div 
-                className={styles.tableContainer}
+                className="text-sm border rounded overflow-x-auto"
                 dangerouslySetInnerHTML={{ 
                   __html: (() => {
                     const tableData = section.variables.tableData as any;
@@ -144,20 +151,21 @@ const SortableSection = ({
                 }}
               />
             ) : (
-              <div className={styles.contentPlaceholder}>
+              <div className="text-sm text-muted-foreground pl-4 border-l-2 border-muted">
                 {'{'}content{'}'} - {section.variables.contentType || 'text'}
               </div>
             )}
           </div>
         ) : !isContainer && (
           <div
+            className="prose max-w-none"
             dangerouslySetInnerHTML={{ 
               __html: thymeleafToPlaceholder(section.content)
-                .replace(/\{\{(\w+)\}\}/g, '<span class="variable">${$1}</span>')
-                .replace(/\{\{if\s+(\w+)\}\}/g, '<span class="condition">if $1</span>')
-                .replace(/\{\{\/if\}\}/g, '<span class="condition">/if</span>')
-                .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span class="loop">each $1 in $2</span>')
-                .replace(/\{\{\/each\}\}/g, '<span class="loop">/each</span>')
+                .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
+                .replace(/\{\{if\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">if $1</span>')
+                .replace(/\{\{\/if\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">/if</span>')
+                .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">each $1 in $2</span>')
+                .replace(/\{\{\/each\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">/each</span>')
             }}
             style={section.styles as React.CSSProperties}
           />
@@ -165,13 +173,13 @@ const SortableSection = ({
         
         {/* Nested Children for Container */}
         {isContainer && renderChildren && (
-          <div className={styles.nestedChildren}>
+          <div className="space-y-2">
             {section.children && section.children.length > 0 ? (
               renderChildren(section)
             ) : (
-              <div className={styles.emptyContainer}>
-                <p className={styles.emptyContainerText}>Empty container</p>
-                <p className={styles.emptyContainerHint}>Add sections below</p>
+              <div className="text-center py-8 border-2 border-dashed rounded-lg border-border bg-background">
+                <p className="text-sm text-muted-foreground">Empty container</p>
+                <p className="text-xs text-muted-foreground mt-1">Add sections below</p>
               </div>
             )}
           </div>
@@ -179,7 +187,7 @@ const SortableSection = ({
       </div>
 
       {/* Controls */}
-      <div className={styles.controls}>
+      <div className="absolute right-2 top-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         {isContainer && onAddChild && (
           <Button
             size="sm"
@@ -188,9 +196,9 @@ const SortableSection = ({
               e.stopPropagation();
               onAddChild(section.id);
             }}
-            className={styles.btnAddChild}
+            className="h-7 px-2 text-xs"
           >
-            <Plus className={`${styles.iconXs} ${styles.iconMr1}`} />
+            <Plus className="h-3 w-3 mr-1" />
             Add
           </Button>
         )}
@@ -202,9 +210,9 @@ const SortableSection = ({
             onMoveUp();
           }}
           disabled={isFirst}
-          className={styles.btnIcon}
+          className="h-8 w-8"
         >
-          <ChevronUp className={styles.iconSm} />
+          <ChevronUp className="h-4 w-4" />
         </Button>
         <Button
           size="icon"
@@ -214,9 +222,9 @@ const SortableSection = ({
             onMoveDown();
           }}
           disabled={isLast}
-          className={styles.btnIcon}
+          className="h-8 w-8"
         >
-          <ChevronDown className={styles.iconSm} />
+          <ChevronDown className="h-4 w-4" />
         </Button>
         <Button
           size="icon"
@@ -225,15 +233,15 @@ const SortableSection = ({
             e.stopPropagation();
             onDelete();
           }}
-          className={styles.btnIcon}
+          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
         >
-          <Trash2 className={styles.iconSm} />
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Selected Indicator */}
       {isSelected && (
-        <div className={styles.selectedIndicator} />
+        <div className="absolute -left-1 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-accent rounded-l" />
       )}
     </div>
   );
@@ -270,18 +278,21 @@ export const EditorView = ({
     if (!section.children || section.children.length === 0) return null;
     
     return (
-      <div className={styles.nestedChildren}>
+      <div className="space-y-2 ml-4">
         {section.children.map((child, index) => (
-          <div key={child.id}>
+          <div key={child.id} className="border-l-2 border-primary/30 pl-3">
             <div
-              className={`${styles.nestedSection} ${selectedSection?.id === child.id ? styles.selected : ''}`}
+              className={cn(
+                "p-3 rounded border bg-background hover:border-primary/50 transition-colors cursor-pointer",
+                selectedSection?.id === child.id ? "border-primary shadow-md" : "border-border"
+              )}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectSection(child);
               }}
             >
-              <div className={styles.nestedHeader}>
-                <Badge variant="secondary" className={styles.badge}>
+              <div className="flex items-center justify-between mb-2">
+                <Badge variant="secondary" className="text-xs">
                   {child.type}
                 </Badge>
                 <Button
@@ -291,16 +302,16 @@ export const EditorView = ({
                     e.stopPropagation();
                     onDeleteSection(child.id);
                   }}
-                  className={styles.btnIconSm}
+                  className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <Trash2 className={styles.iconXs} />
+                  <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
               <div
-                className={styles.textSm}
+                className="prose prose-sm max-w-none text-sm"
                 dangerouslySetInnerHTML={{ 
                   __html: thymeleafToPlaceholder(child.content)
-                    .replace(/\{\{(\w+)\}\}/g, '<span class="variable">${$1}</span>')
+                    .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
                 }}
                 style={child.styles as React.CSSProperties}
               />
@@ -314,18 +325,24 @@ export const EditorView = ({
   const renderStaticSection = (section: Section, label: string) => (
     <div 
       onClick={() => onSelectSection(section)}
-      className={`${styles.staticSection} ${selectedSection?.id === section.id ? styles.selected : ''}`}
+      className={cn(
+        "p-4 rounded-lg border-2 transition-all cursor-pointer bg-muted/30",
+        selectedSection?.id === section.id 
+          ? 'border-primary shadow-lg' 
+          : 'border-muted-foreground/20 hover:border-muted-foreground/40'
+      )}
     >
-      <div className={styles.staticHeader}>
-        <div className={styles.staticLabel}>
-          <span>{label}</span>
-          <span className={styles.staticNote}>(Cannot be deleted or moved)</span>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground uppercase">{label}</span>
+          <span className="text-xs text-muted-foreground">(Cannot be deleted or moved)</span>
         </div>
       </div>
       <div 
+        className="prose prose-sm max-w-none"
         dangerouslySetInnerHTML={{ 
           __html: thymeleafToPlaceholder(section.content)
-            .replace(/\{\{(\w+)\}\}/g, '<span class="variable">${$1}</span>')
+            .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
         }}
         style={section.styles as React.CSSProperties}
       />
@@ -333,18 +350,21 @@ export const EditorView = ({
   );
 
   return (
-    <div className={styles.container} ref={setNodeRef}>
-      <div className={styles.innerContainer}>
+    <div className="p-8 space-y-4" ref={setNodeRef}>
+      <div className="max-w-4xl mx-auto space-y-4">
         {/* Static Header */}
         {renderStaticSection(headerSection, 'Header')}
         
         {/* User Sections */}
         {sections.length === 0 ? (
-          <div className={`${styles.dropZone} ${isOver ? styles.dropOver : ''}`}>
-            <p className={styles.dropZoneText}>
+          <div className={cn(
+            "text-center py-20 border-2 border-dashed rounded-lg transition-all",
+            isOver ? "border-primary bg-primary/10" : "border-border bg-muted/20"
+          )}>
+            <p className="text-muted-foreground text-lg">
               Drop sections here to start building
             </p>
-            <p className={styles.dropZoneHint}>
+            <p className="text-muted-foreground text-sm mt-2">
               Open Section Library and drag sections here
             </p>
           </div>
