@@ -1,0 +1,28 @@
+.sidebar {
+  border-right: 1px solid hsl(var(--sidebar-border));
+}
+
+.groupLabel {
+  color: hsl(var(--sidebar-foreground));
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.75rem 0.5rem;
+}
+
+.menuItem {
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: hsl(var(--sidebar-accent));
+  }
+  
+  &.active {
+    background-color: hsl(var(--sidebar-accent));
+    font-weight: 500;
+  }
+}
+
+.icon {
+  height: 1rem;
+  width: 1rem;
+}
