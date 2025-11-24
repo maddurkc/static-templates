@@ -1,17 +1,18 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database, Network } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import styles from "./ERDiagram.module.scss";
 
 const ERDiagram = () => {
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-          <Network className="h-6 w-6 text-white" />
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.iconWrapper}>
+          <Network />
         </div>
         <div>
-          <h1 className="text-3xl font-bold">Entity Relationship Diagram</h1>
-          <p className="text-muted-foreground">Interactive database schema visualization</p>
+          <h1>Entity Relationship Diagram</h1>
+          <p>Interactive database schema visualization</p>
         </div>
       </div>
 
@@ -31,7 +32,7 @@ const ERDiagram = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted/30 p-6 rounded-lg overflow-x-auto">
+              <div className={styles.diagramBox}>
                 <pre className="text-sm">
 {`erDiagram
     sections ||--o{ template_sections : "used in"
@@ -168,7 +169,7 @@ const ERDiagram = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted/30 p-6 rounded-lg overflow-x-auto">
+              <div className={styles.diagramBox}>
                 <pre className="text-sm">
 {`erDiagram
     sections ||--o{ template_sections : "used in"
@@ -227,7 +228,7 @@ const ERDiagram = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted/30 p-6 rounded-lg overflow-x-auto">
+              <div className={styles.diagramBox}>
                 <pre className="text-sm">
 {`erDiagram
     templates ||--|| template_api_configs : "configured with"
@@ -278,16 +279,16 @@ const ERDiagram = () => {
         </TabsContent>
       </Tabs>
 
-      <Card className="border-primary/20">
+      <Card className={styles.keyCard}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
+          <CardTitle className={styles.keyTitle}>
+            <Database />
             Key Relationships
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 border rounded-lg bg-card">
+        <CardContent>
+          <div className={styles.keyGrid}>
+            <div className={styles.keyItem}>
               <h3 className="font-semibold mb-2">1:Many Relationships</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• Templates → Template Sections</li>
@@ -298,23 +299,23 @@ const ERDiagram = () => {
               </ul>
             </div>
 
-            <div className="p-4 border rounded-lg bg-card">
-              <h3 className="font-semibold mb-2">1:1 Relationships</h3>
+            <div className={styles.keyItem}>
+              <h3>1:1 Relationships</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• Templates ↔ API Configs</li>
               </ul>
             </div>
 
-            <div className="p-4 border rounded-lg bg-card">
-              <h3 className="font-semibold mb-2">Self-Referencing</h3>
+            <div className={styles.keyItem}>
+              <h3>Self-Referencing</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• Template Sections (parent-child)</li>
                 <li>• Enables nested container sections</li>
               </ul>
             </div>
 
-            <div className="p-4 border rounded-lg bg-card">
-              <h3 className="font-semibold mb-2">CASCADE Deletes</h3>
+            <div className={styles.keyItem}>
+              <h3>CASCADE Deletes</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• Delete template → removes sections</li>
                 <li>• Delete section → removes children</li>
