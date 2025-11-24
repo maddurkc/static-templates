@@ -633,7 +633,7 @@ const TemplateEditor = () => {
                 </DialogContent>
               </Dialog>
 
-              <div className="flex items-center gap-1 border-l pl-2 ml-2">
+              <div className={styles.viewModeGroup}>
                 <Button
                   variant={viewMode === 'editor-only' ? 'default' : 'ghost'}
                   size="icon"
