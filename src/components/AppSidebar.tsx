@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import styles from "./AppSidebar.module.scss";
 
 const menuItems = [
   { title: "Sections", url: "/sections", icon: Layers },
@@ -25,10 +26,10 @@ export function AppSidebar() {
   const { open } = useSidebar();
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+    <Sidebar collapsible="icon" className={styles.sidebar}>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground font-semibold text-sm px-2 py-3">
+          <SidebarGroupLabel className={styles.sidebarLabel}>
             Page Builder
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -38,10 +39,10 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      className="hover:bg-sidebar-accent transition-colors"
-                      activeClassName="bg-sidebar-accent font-medium"
+                      className={styles.navLink}
+                      activeClassName={styles.active}
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className={styles.icon} />
                       {open && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>

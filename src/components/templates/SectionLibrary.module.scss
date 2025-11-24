@@ -81,15 +81,16 @@
 .sectionTitle {
   font-weight: 500;
   font-size: 0.875rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: hsl(var(--foreground));
 }
 
 .sectionDescription {
   font-size: 0.75rem;
-  color: #6c757d;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: hsl(var(--muted-foreground));
+  margin-top: 2px;
+}
+
+.badge {
+  font-size: 0.75rem;
+  line-height: 1rem;
 }
