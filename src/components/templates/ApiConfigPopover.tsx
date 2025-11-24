@@ -70,7 +70,7 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
   };
 
   return (
-    <ScrollArea className="max-h-[600px]">
+    <ScrollArea style={{ maxHeight: '600px' }}>
       <div className={styles.container}>
         <div className={styles.section}>
           <div className={styles.enableSwitch}>
@@ -94,18 +94,18 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
               <h4 className={styles.sectionTitle}>Select API Template</h4>
               
               <div className={styles.section}>
-                <Label className="text-xs">Template</Label>
+                <Label className={styles.label}>Template</Label>
                 <Select
                   value={apiConfig.templateId}
                   onValueChange={(templateId) => updateConfig({ templateId, paramValues: {} })}
                 >
-                  <SelectTrigger className="h-8">
+                  <SelectTrigger className={styles.selectTrigger}>
                     <SelectValue placeholder="Choose a template..." />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map(category => (
                       <div key={category}>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        <div className={styles.categoryHeader}>
                           {category}
                         </div>
                         {API_TEMPLATES.filter(t => t.category === category).map(template => (
@@ -136,16 +136,16 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                   
                   {selectedTemplate.requiredParams.map(param => (
                     <div key={param.name} className={styles.section}>
-                      <Label className="text-xs">
+                      <Label className={styles.label}>
                         {param.label}
-                        {param.required && <span className="text-destructive ml-1">*</span>}
+                        {param.required && <span className={styles.textError}>*</span>}
                       </Label>
                       {param.type === 'select' && param.options ? (
                         <Select
                           value={apiConfig.paramValues[param.name] || ''}
                           onValueChange={(value) => updateParamValue(param.name, value)}
                         >
-                          <SelectTrigger className="h-8">
+                          <SelectTrigger className={styles.selectTrigger}>
                             <SelectValue placeholder={param.placeholder} />
                           </SelectTrigger>
                           <SelectContent>
@@ -162,7 +162,7 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                           value={apiConfig.paramValues[param.name] || ''}
                           onChange={(e) => updateParamValue(param.name, e.target.value)}
                           placeholder={param.placeholder}
-                          className="h-8 text-sm"
+                          className={styles.inputSmall}
                         />
                       )}
                       {param.description && (
@@ -176,121 +176,121 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
 
                 {/* Data Mappings */}
                 <div className={styles.section}>
-              <div className={styles.enableSwitch}>
-                <h4 className={styles.sectionTitle}>Data Mappings</h4>
-                <Button size="sm" variant="outline" onClick={addMapping} className="h-7">
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add Mapping
-                </Button>
-              </div>
+                  <div className={styles.enableSwitch}>
+                    <h4 className={styles.sectionTitle}>Data Mappings</h4>
+                    <Button size="sm" variant="outline" onClick={addMapping} className={styles.buttonSmall}>
+                      <Plus className={`${styles.icon} ${styles.iconMargin}`} />
+                      Add Mapping
+                    </Button>
+                  </div>
 
-              <div className={styles.section}>
-                {apiConfig.mappings.map((mapping) => {
-                  const selectedSection = sections.find(s => s.id === mapping.sectionId);
-                  const variables = getSectionVariables(mapping.sectionId);
-                  
-                  return (
-                    <div key={mapping.id} className={styles.mappingCard}>
-                      <div className={styles.enableSwitch}>
-                        <Label className="text-xs font-semibold">Mapping</Label>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => removeMapping(mapping.id)}
-                          className="h-6 w-6"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                  <div className={styles.section}>
+                    {apiConfig.mappings.map((mapping) => {
+                      const selectedSection = sections.find(s => s.id === mapping.sectionId);
+                      const variables = getSectionVariables(mapping.sectionId);
+                      
+                      return (
+                        <div key={mapping.id} className={styles.mappingCard}>
+                          <div className={styles.enableSwitch}>
+                            <Label className={styles.label} style={{ fontWeight: 600 }}>Mapping</Label>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => removeMapping(mapping.id)}
+                              className={styles.buttonIcon}
+                            >
+                              <Trash2 className={styles.icon} />
+                            </Button>
+                          </div>
 
-                      <div className={styles.section}>
-                        <Label className="text-xs">Target Section</Label>
-                        <Select
-                          value={mapping.sectionId}
-                          onValueChange={(sectionId) => updateMapping(mapping.id, { sectionId })}
-                        >
-                          <SelectTrigger className="h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {sections.map((section) => (
-                              <SelectItem key={section.id} value={section.id}>
-                                Section {sections.indexOf(section) + 1} ({section.type})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                          <div className={styles.section}>
+                            <Label className={styles.label}>Target Section</Label>
+                            <Select
+                              value={mapping.sectionId}
+                              onValueChange={(sectionId) => updateMapping(mapping.id, { sectionId })}
+                            >
+                              <SelectTrigger className={styles.selectTrigger}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {sections.map((section) => (
+                                  <SelectItem key={section.id} value={section.id}>
+                                    Section {sections.indexOf(section) + 1} ({section.type})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                      <div className={styles.section}>
-                        <Label className="text-xs">API Response Path (JSON Path)</Label>
-                        <Input
-                          value={mapping.apiPath}
-                          onChange={(e) => updateMapping(mapping.id, { apiPath: e.target.value })}
-                          placeholder="data.items or $.results[0].name"
-                          className="h-8 text-xs font-mono"
-                        />
-                        <p className={styles.description}>
-                          e.g., "data.items" or "results[0].title"
-                        </p>
-                      </div>
+                          <div className={styles.section}>
+                            <Label className={styles.label}>API Response Path (JSON Path)</Label>
+                            <Input
+                              value={mapping.apiPath}
+                              onChange={(e) => updateMapping(mapping.id, { apiPath: e.target.value })}
+                              placeholder="data.items or $.results[0].name"
+                              className={styles.inputMono}
+                            />
+                            <p className={styles.description}>
+                              e.g., "data.items" or "results[0].title"
+                            </p>
+                          </div>
 
-                      <div className={styles.section}>
-                        <Label className="text-xs">Data Type</Label>
-                        <Select
-                          value={mapping.dataType}
-                          onValueChange={(dataType: 'text' | 'list' | 'html') => 
-                            updateMapping(mapping.id, { dataType })
-                          }
-                        >
-                          <SelectTrigger className="h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="text">Text</SelectItem>
-                            <SelectItem value="list">List (Array)</SelectItem>
-                            <SelectItem value="html">HTML</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                          <div className={styles.section}>
+                            <Label className={styles.label}>Data Type</Label>
+                            <Select
+                              value={mapping.dataType}
+                              onValueChange={(dataType: 'text' | 'list' | 'html') => 
+                                updateMapping(mapping.id, { dataType })
+                              }
+                            >
+                              <SelectTrigger className={styles.selectTrigger}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="text">Text</SelectItem>
+                                <SelectItem value="list">List (Array)</SelectItem>
+                                <SelectItem value="html">HTML</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                      {variables.length > 0 && (
-                        <div className={styles.section}>
-                          <Label className="text-xs">Variable (Optional)</Label>
-                          <Select
-                            value={mapping.variableName || ''}
-                            onValueChange={(variableName) => 
-                              updateMapping(mapping.id, { variableName })
-                            }
-                          >
-                            <SelectTrigger className="h-8">
-                              <SelectValue placeholder="Select variable" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="">Content only</SelectItem>
-                              {variables.map((varName) => (
-                                <SelectItem key={varName} value={varName}>
-                                  {varName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {variables.length > 0 && (
+                            <div className={styles.section}>
+                              <Label className={styles.label}>Variable (Optional)</Label>
+                              <Select
+                                value={mapping.variableName || ''}
+                                onValueChange={(variableName) => 
+                                  updateMapping(mapping.id, { variableName })
+                                }
+                              >
+                                <SelectTrigger className={styles.selectTrigger}>
+                                  <SelectValue placeholder="Select variable" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">Content only</SelectItem>
+                                  {variables.map((varName) => (
+                                    <SelectItem key={varName} value={varName}>
+                                      {varName}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
 
-                {apiConfig.mappings.length === 0 && (
-                  <p className={styles.description} style={{ textAlign: 'center', padding: '1rem 0' }}>
-                    No mappings configured. Add a mapping to start.
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-        </>
+                  {apiConfig.mappings.length === 0 && (
+                    <p className={`${styles.description} ${styles.textCenter}`}>
+                      No mappings configured. Add a mapping to start.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </>
         )}
       </div>
     </ScrollArea>

@@ -31,7 +31,7 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
     // Regular sections
     const renderedContent = renderSectionContent(section);
     const displayContent = thymeleafToPlaceholder(renderedContent)
-      .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>');
+      .replace(/\{\{(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / 0.2);">${$1}</span>');
     
     return (
       <div
