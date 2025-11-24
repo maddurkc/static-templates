@@ -79,15 +79,15 @@ export const CustomizationToolbar = ({
           {/* API Integration Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Plug className="h-4 w-4" />
+              <Button variant="outline" size="sm" className={styles.buttonGap}>
+                <Plug className={styles.icon} />
                 API Integration
                 {apiConfig.enabled && (
-                  <span className="ml-1 h-2 w-2 rounded-full bg-green-500" />
+                  <span className={styles.statusDot} />
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[500px]" align="end">
+            <PopoverContent style={{ width: '500px' }} align="end">
               <ApiConfigPopover
                 apiConfig={apiConfig}
                 sections={sections}
@@ -109,12 +109,12 @@ export const CustomizationToolbar = ({
           {/* Variables popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Settings2 className="h-4 w-4" />
+              <Button variant="outline" size="sm" className={styles.buttonGap}>
+                <Settings2 className={styles.icon} />
                 Edit Variables
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-96 max-h-[500px] overflow-y-auto" align="end">
+            <PopoverContent style={{ width: '24rem', maxHeight: '500px', overflowY: 'auto' }} align="end">
               <VariableEditor section={section} onUpdate={onUpdate} />
             </PopoverContent>
           </Popover>
@@ -122,15 +122,15 @@ export const CustomizationToolbar = ({
           {/* API Integration Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Plug className="h-4 w-4" />
+              <Button variant="outline" size="sm" className={styles.buttonGap}>
+                <Plug className={styles.icon} />
                 API Integration
                 {apiConfig.enabled && (
-                  <span className="ml-1 h-2 w-2 rounded-full bg-green-500" />
+                  <span className={styles.statusDot} />
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[500px]" align="end">
+            <PopoverContent style={{ width: '500px' }} align="end">
               <ApiConfigPopover
                 apiConfig={apiConfig}
                 sections={sections}
@@ -144,13 +144,13 @@ export const CustomizationToolbar = ({
       <div className={styles.controls}>
         <div className={styles.controlRow}>
           {/* Font Size */}
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">Font Size</Label>
+          <div className={styles.controlGroup}>
+            <Label className={styles.label}>Font Size</Label>
             <Select
               value={section.styles?.fontSize || "16px"}
               onValueChange={(value) => updateStyle("fontSize", value)}
             >
-              <SelectTrigger className="w-[100px] h-8">
+              <SelectTrigger className={styles.selectTrigger} style={{ width: '100px' }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -163,16 +163,16 @@ export const CustomizationToolbar = ({
             </Select>
           </div>
 
-          <Separator orientation="vertical" className="h-8" />
+          <Separator orientation="vertical" className={styles.separator} />
 
           {/* Font Weight */}
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">Weight</Label>
+          <div className={styles.controlGroup}>
+            <Label className={styles.label}>Weight</Label>
             <Select
               value={section.styles?.fontWeight || "400"}
               onValueChange={(value) => updateStyle("fontWeight", value)}
             >
-              <SelectTrigger className="w-[140px] h-8">
+              <SelectTrigger className={styles.selectTrigger} style={{ width: '140px' }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -185,16 +185,16 @@ export const CustomizationToolbar = ({
             </Select>
           </div>
 
-          <Separator orientation="vertical" className="h-8" />
+          <Separator orientation="vertical" className={styles.separator} />
 
           {/* Text Alignment */}
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">Align</Label>
+          <div className={styles.controlGroup}>
+            <Label className={styles.label}>Align</Label>
             <Select
               value={section.styles?.textAlign || "left"}
               onValueChange={(value) => updateStyle("textAlign", value)}
             >
-              <SelectTrigger className="w-[100px] h-8">
+              <SelectTrigger className={styles.selectTrigger} style={{ width: '100px' }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -207,45 +207,45 @@ export const CustomizationToolbar = ({
             </Select>
           </div>
 
-          <Separator orientation="vertical" className="h-8" />
+          <Separator orientation="vertical" className={styles.separator} />
 
           {/* Text Color */}
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">Text Color</Label>
-            <div className="flex items-center gap-2">
+          <div className={styles.controlGroup}>
+            <Label className={styles.label}>Text Color</Label>
+            <div className={styles.controlGroup}>
               <Input
                 type="color"
                 value={section.styles?.color || "#000000"}
                 onChange={(e) => updateStyle("color", e.target.value)}
-                className="w-16 h-8 p-1 cursor-pointer"
+                className={styles.inputColor}
               />
               <Input
                 type="text"
                 value={section.styles?.color || "#000000"}
                 onChange={(e) => updateStyle("color", e.target.value)}
-                className="w-24 h-8 text-xs font-mono"
+                className={styles.inputText}
                 placeholder="#000000"
               />
             </div>
           </div>
 
-          <Separator orientation="vertical" className="h-8" />
+          <Separator orientation="vertical" className={styles.separator} />
 
           {/* Background Color */}
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">Background</Label>
-            <div className="flex items-center gap-2">
+          <div className={styles.controlGroup}>
+            <Label className={styles.label}>Background</Label>
+            <div className={styles.controlGroup}>
               <Input
                 type="color"
                 value={section.styles?.backgroundColor || "#ffffff"}
                 onChange={(e) => updateStyle("backgroundColor", e.target.value)}
-                className="w-16 h-8 p-1 cursor-pointer"
+                className={styles.inputColor}
               />
               <Input
                 type="text"
                 value={section.styles?.backgroundColor || "#ffffff"}
                 onChange={(e) => updateStyle("backgroundColor", e.target.value)}
-                className="w-24 h-8 text-xs font-mono"
+                className={styles.inputText}
                 placeholder="#ffffff"
               />
             </div>

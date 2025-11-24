@@ -1,8 +1,31 @@
 .dialogContent {
-  max-width: 1200px;
+  max-width: 90vw;
   max-height: 90vh;
-  display: flex;
-  flex-direction: column;
+}
+
+.icon {
+  height: 1rem;
+  width: 1rem;
+}
+
+.iconMargin {
+  margin-right: 0.5rem;
+}
+
+.textSmall {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.spaceY {
+  > * + * {
+    margin-top: 0.5rem;
+  }
+}
+
+.buttonFull {
+  width: 100%;
 }
 
 .gridLayout {
@@ -34,117 +57,115 @@
   gap: 0.5rem;
 }
 
-.emptyText {
-  font-size: 0.875rem;
-  color: #6c757d;
-}
-
 .previewPanel {
-  border: 1px solid #e9ecef;
+  border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
-  background: #ffffff;
+  background: hsl(var(--card));
 }
 
 .previewHeader {
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid hsl(var(--border));
   padding: 0.75rem 1rem;
-  background-color: rgba(248, 249, 250, 0.3);
-  
-  h4 {
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
+  background-color: hsl(var(--muted) / 0.3);
 }
 
 .previewContent {
-  padding: 1.5rem;
-  
-  h1 {
-    font-size: 1.875rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
+  padding: 24px;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  min-height: 200px;
+}
 
-  h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 0.75rem;
-  }
-
-  h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
-
-  h4 {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
-
-  h5 {
-    font-size: 1rem;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-  }
-
-  h6 {
-    font-size: 0.875rem;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-  }
-
-  p {
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-  }
-
-  ul, ol {
-    margin-bottom: 1rem;
-  }
-
-  ul {
-    list-style-type: disc;
-    list-style-position: inside;
-  }
-
-  ol {
-    list-style-type: decimal;
-    list-style-position: inside;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 1rem;
-
-    th, td {
-      border: 1px solid #dee2e6;
+.previewHtml {
+  :global {
+    h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+    
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    h4 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    h5 {
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    
+    h6 {
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    
+    p {
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+    
+    ul {
+      list-style: disc;
+      list-style-position: inside;
+      margin-bottom: 1rem;
+    }
+    
+    ol {
+      list-style: decimal;
+      list-style-position: inside;
+      margin-bottom: 1rem;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+    }
+    
+    th {
+      border: 1px solid hsl(var(--border));
+      padding: 0.5rem;
+      background: hsl(var(--muted));
+    }
+    
+    td {
+      border: 1px solid hsl(var(--border));
       padding: 0.5rem;
     }
-
-    th {
-      background-color: #f8f9fa;
+    
+    img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 1rem;
     }
-  }
-
-  img {
-    max-width: 100%;
-    height: auto;
-    margin-bottom: 1rem;
-  }
-
-  button {
-    padding: 0.5rem 1rem;
-    background-color: #4361ee;
-    color: #ffffff;
-    border-radius: 0.375rem;
-    margin-bottom: 1rem;
-  }
-
-  a {
-    color: #4361ee;
-    text-decoration: underline;
+    
+    button {
+      padding: 0.5rem 1rem;
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+    }
+    
+    a {
+      color: hsl(var(--primary));
+      text-decoration: underline;
+    }
   }
 }

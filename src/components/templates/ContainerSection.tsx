@@ -50,11 +50,11 @@ export const ContainerSection = ({
             {...listeners}
             className={styles.dragHandle}
           >
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
+            <GripVertical className={styles.icon} />
           </div>
           
           <div className={styles.contentArea}>
-            <Badge variant="outline" className="text-xs">Container</Badge>
+            <Badge variant="outline" className={styles.badge}>Container</Badge>
             <span className={styles.sectionCount}>
               {section.children?.length || 0} sections inside
             </span>
@@ -64,9 +64,9 @@ export const ContainerSection = ({
             size="sm"
             variant="ghost"
             onClick={() => onAddChild(section.id)}
-            className="h-7 px-2 text-xs"
+            className={styles.actionButton}
           >
-            <Plus className="h-3 w-3 mr-1" />
+            <Plus className={styles.iconSmall} style={{ marginRight: '0.25rem' }} />
             Add Section
           </Button>
 
@@ -74,7 +74,7 @@ export const ContainerSection = ({
             size="sm"
             variant="ghost"
             onClick={() => onSelect(section)}
-            className={`h-7 px-2 text-xs ${isSelected ? 'bg-primary/10' : ''}`}
+            className={`${styles.editButton} ${isSelected ? styles.selected : ''}`}
           >
             Edit
           </Button>
@@ -83,9 +83,9 @@ export const ContainerSection = ({
             size="icon"
             variant="ghost"
             onClick={() => onDelete(section.id)}
-            className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+            className={styles.deleteButton}
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className={styles.iconSmall} />
           </Button>
         </div>
         

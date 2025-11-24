@@ -1,44 +1,65 @@
 .toolbar {
-  border-top: 1px solid #e9ecef;
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(4px);
-  padding: 0.75rem 1.5rem;
+  background: hsl(var(--card));
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
 .toolbarHeader {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .title {
-  font-size: 0.875rem;
+  font-size: 18px;
   font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 0;
 }
 
 .subtitle {
-  font-size: 0.75rem;
-  color: #6c757d;
-  margin-top: 0.25rem;
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+  margin: 4px 0 0 0;
 }
 
 .actions {
   display: flex;
+  gap: 8px;
   align-items: center;
+}
+
+.icon {
+  height: 1rem;
+  width: 1rem;
+}
+
+.buttonGap {
   gap: 0.5rem;
+}
+
+.statusDot {
+  margin-left: 0.25rem;
+  height: 0.5rem;
+  width: 0.5rem;
+  border-radius: 9999px;
+  background-color: rgb(34, 197, 94);
 }
 
 .controls {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 16px;
 }
 
 .controlRow {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
@@ -48,30 +69,34 @@
   gap: 0.5rem;
 }
 
-.controlLabel {
+.label {
   font-size: 0.75rem;
-  color: #6c757d;
+  line-height: 1rem;
+  color: hsl(var(--muted-foreground));
   white-space: nowrap;
 }
 
-.colorInputGroup {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.selectTrigger {
+  height: 2rem;
 }
 
-.colorPreview {
-  width: 4rem;
+.inputSmall {
   height: 2rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.inputColor {
+  composes: inputSmall;
+  width: 4rem;
   padding: 0.25rem;
   cursor: pointer;
 }
 
-.colorInput {
+.inputText {
+  composes: inputSmall;
   width: 6rem;
-  height: 2rem;
-  font-size: 0.75rem;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: ui-monospace, monospace;
 }
 
 .separator {
