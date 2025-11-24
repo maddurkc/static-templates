@@ -1,0 +1,129 @@
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+  }
+
+  p {
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+.iconWrapper {
+  height: 3rem;
+  width: 3rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    height: 1.5rem;
+    width: 1.5rem;
+    color: white;
+  }
+}
+
+.instructionsCard {
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.instructionsList {
+  list-style-type: decimal;
+  list-style-position: inside;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.tabsList {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  width: 100%;
+}
+
+.tabTrigger {
+  font-size: 0.75rem;
+}
+
+.migrationHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h3 {
+    font-size: 1.125rem;
+    text-transform: uppercase;
+  }
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.codeArea {
+  height: 500px;
+  width: 100%;
+
+  pre {
+    background-color: hsl(var(--muted) / 0.5);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-family: monospace;
+    overflow-x: auto;
+  }
+}
+
+.notesGrid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.noteItem {
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  background-color: hsl(var(--card));
+
+  h3 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  ul {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}

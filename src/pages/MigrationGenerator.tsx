@@ -5,6 +5,7 @@ import { Download, FileCode, Copy, Check } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import styles from "./MigrationGenerator.module.scss";
 
 const MigrationGenerator = () => {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
@@ -237,15 +238,15 @@ GO`
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <FileCode className="h-6 w-6 text-white" />
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.headerContent}>
+          <div className={styles.iconWrapper}>
+            <FileCode />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">SQL Server Migration Generator</h1>
-            <p className="text-muted-foreground">Generate SQL Server migration scripts from database schema</p>
+            <h1>SQL Server Migration Generator</h1>
+            <p>Generate SQL Server migration scripts from database schema</p>
           </div>
         </div>
         <Button onClick={handleDownloadAll} size="lg" className="gap-2">
@@ -254,7 +255,7 @@ GO`
         </Button>
       </div>
 
-      <Card className="border-primary/20">
+      <Card className={styles.instructionsCard}>
         <CardHeader>
           <CardTitle>Migration Instructions</CardTitle>
           <CardDescription>
@@ -262,7 +263,7 @@ GO`
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+          <ol className={styles.instructionsList}>
             <li>Download all migration files or copy them individually</li>
             <li>Execute migrations in numerical order (001, 002, 003, etc.)</li>
             <li>Each migration is idempotent and includes proper constraints</li>
@@ -273,9 +274,9 @@ GO`
       </Card>
 
       <Tabs defaultValue="001_create_sections" className="w-full">
-        <TabsList className="grid grid-cols-6 w-full">
+        <TabsList className={styles.tabsList}>
           {Object.keys(migrations).map((key) => (
-            <TabsTrigger key={key} value={key} className="text-xs">
+            <TabsTrigger key={key} value={key} className={styles.tabTrigger}>
               {key.split("_")[0]}
             </TabsTrigger>
           ))}
@@ -285,14 +286,14 @@ GO`
           <TabsContent key={key} value={key}>
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className={styles.migrationHeader}>
                   <div>
                     <CardTitle className="text-lg">{key.replace(/_/g, " ").toUpperCase()}</CardTitle>
                     <CardDescription>
                       {content.split("\n")[1].replace("-- Description: ", "")}
                     </CardDescription>
                   </div>
-                  <div className="flex gap-2">
+                  <div className={styles.buttonGroup}>
                     <Button
                       variant="outline"
                       size="sm"
@@ -324,7 +325,7 @@ GO`
                 </div>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[500px] w-full">
+                <ScrollArea className={styles.codeArea}>
                   <pre className="bg-muted/50 p-4 rounded-lg text-sm font-mono overflow-x-auto">
                     {content}
                   </pre>
@@ -340,8 +341,8 @@ GO`
           <CardTitle>SQL Server Specific Notes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 border rounded-lg bg-card">
+          <div className={styles.notesGrid}>
+            <div className={styles.noteItem}>
               <h3 className="font-semibold mb-2">Data Types</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• UUID → UNIQUEIDENTIFIER</li>
@@ -353,8 +354,8 @@ GO`
               </ul>
             </div>
 
-            <div className="p-4 border rounded-lg bg-card">
-              <h3 className="font-semibold mb-2">Default Values</h3>
+            <div className={styles.noteItem}>
+              <h3>Default Values</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• NEWID() for UNIQUEIDENTIFIER</li>
                 <li>• GETUTCDATE() for timestamps</li>
@@ -362,8 +363,8 @@ GO`
               </ul>
             </div>
 
-            <div className="p-4 border rounded-lg bg-card">
-              <h3 className="font-semibold mb-2">Constraints</h3>
+            <div className={styles.noteItem}>
+              <h3>Constraints</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• CASCADE deletes configured</li>
                 <li>• UNIQUE constraints on composite keys</li>
@@ -371,8 +372,8 @@ GO`
               </ul>
             </div>
 
-            <div className="p-4 border rounded-lg bg-card">
-              <h3 className="font-semibold mb-2">Indexes</h3>
+            <div className={styles.noteItem}>
+              <h3>Indexes</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• Primary keys auto-indexed</li>
                 <li>• Foreign keys indexed</li>

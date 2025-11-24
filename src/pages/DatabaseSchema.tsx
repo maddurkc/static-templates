@@ -2,34 +2,31 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database, Table, Link2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import styles from "./DatabaseSchema.module.scss";
 
 const DatabaseSchema = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
-      <div className="container mx-auto p-8">
+    <div className={styles.container}>
+      <div className={styles.innerContainer}>
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
-            Database Schema
-          </h1>
-          <p className="text-muted-foreground">
-            Complete database model with relationships for the Page Builder application
-          </p>
+        <div className={styles.header}>
+          <h1>Database Schema</h1>
+          <p>Complete database model with relationships for the Page Builder application</p>
         </div>
 
         {/* Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className={styles.overviewGrid}>
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Table className="h-5 w-5 text-primary" />
+                <div className={styles.iconBox}>
+                  <Table className={styles.iconPrimary} />
                 </div>
                 <CardTitle className="text-lg">Sections</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">1</p>
+              <p className={styles.cardValue}>1</p>
               <CardDescription>Available section types</CardDescription>
             </CardContent>
           </Card>
@@ -37,14 +34,14 @@ const DatabaseSchema = () => {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-accent/10">
-                  <FileText className="h-5 w-5 text-accent" />
+                <div className={styles.iconBox}>
+                  <FileText className={styles.iconAccent} />
                 </div>
                 <CardTitle className="text-lg">Templates</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">1</p>
+              <p className={styles.cardValue}>1</p>
               <CardDescription>User-created templates</CardDescription>
             </CardContent>
           </Card>
@@ -52,14 +49,14 @@ const DatabaseSchema = () => {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-purple-100">
-                  <Link2 className="h-5 w-5 text-purple-700" />
+                <div className={`${styles.iconBox} ${styles.iconPurple}`}>
+                  <Link2 />
                 </div>
                 <CardTitle className="text-lg">Relations</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">5</p>
+              <p className={styles.cardValue}>5</p>
               <CardDescription>Table relationships</CardDescription>
             </CardContent>
           </Card>
@@ -67,47 +64,47 @@ const DatabaseSchema = () => {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-orange-100">
-                  <Database className="h-5 w-5 text-orange-700" />
+                <div className={`${styles.iconBox} ${styles.iconOrange}`}>
+                  <Database />
                 </div>
                 <CardTitle className="text-lg">Total Tables</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">5</p>
+              <p className={styles.cardValue}>5</p>
               <CardDescription>Core database tables</CardDescription>
             </CardContent>
           </Card>
         </div>
 
         {/* Tables Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className={styles.tablesGrid}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Table className="h-5 w-5" />
+                <Table className={styles.iconTitle} />
                 Core Tables
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <span className="font-medium">sections</span>
+            <CardContent className={styles.tablesList}>
+              <div className={styles.tableItem}>
+                <span>sections</span>
                 <Badge variant="secondary">Master data</Badge>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <span className="font-medium">templates</span>
+              <div className={styles.tableItem}>
+                <span>templates</span>
                 <Badge variant="secondary">Templates</Badge>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <span className="font-medium">template_sections</span>
+              <div className={styles.tableItem}>
+                <span>template_sections</span>
                 <Badge variant="outline">Junction</Badge>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <span className="font-medium">template_runs</span>
+              <div className={styles.tableItem}>
+                <span>template_runs</span>
                 <Badge variant="secondary">History</Badge>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <span className="font-medium">template_variables</span>
+              <div className={styles.tableItem}>
+                <span>template_variables</span>
                 <Badge variant="outline">Metadata</Badge>
               </div>
             </CardContent>
@@ -116,41 +113,41 @@ const DatabaseSchema = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Link2 className="h-5 w-5" />
+                <Link2 className={styles.iconTitle} />
                 Key Relationships
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-                <p className="font-medium text-sm">sections → template_sections</p>
-                <p className="text-xs text-muted-foreground">One section type can be used in many templates</p>
+            <CardContent className={styles.tablesList}>
+              <div className={styles.relationItem}>
+                <p>sections → template_sections</p>
+                <p>One section type can be used in many templates</p>
               </div>
-              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-                <p className="font-medium text-sm">templates → template_sections</p>
-                <p className="text-xs text-muted-foreground">One template contains many sections</p>
+              <div className={styles.relationItem}>
+                <p>templates → template_sections</p>
+                <p>One template contains many sections</p>
               </div>
-              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-                <p className="font-medium text-sm">template_sections → template_sections</p>
-                <p className="text-xs text-muted-foreground">Self-reference for nested sections</p>
+              <div className={styles.relationItem}>
+                <p>template_sections → template_sections</p>
+                <p>Self-reference for nested sections</p>
               </div>
-              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-                <p className="font-medium text-sm">templates → template_runs</p>
-                <p className="text-xs text-muted-foreground">One template can have many run executions</p>
+              <div className={styles.relationItem}>
+                <p>templates → template_runs</p>
+                <p>One template can have many run executions</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Full Schema */}
-        <Card className="border-2">
+        <Card className={styles.schemaCard}>
           <CardHeader>
-            <CardTitle className="text-2xl">Complete SQL Schema</CardTitle>
+            <CardTitle className={styles.schemaTitle}>Complete SQL Schema</CardTitle>
             <CardDescription>
               PostgreSQL database schema with all tables, indexes, and relationships
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[600px] w-full rounded-md border">
+            <ScrollArea className={styles.schemaCode}>
               <pre className="p-6 text-sm font-mono">
                 <code>{`-- ================================================================
 -- SECTIONS TABLE

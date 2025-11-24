@@ -1,0 +1,96 @@
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+  }
+
+  p {
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+.iconWrapper {
+  height: 3rem;
+  width: 3rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    height: 1.5rem;
+    width: 1.5rem;
+    color: white;
+  }
+}
+
+.diagramBox {
+  background-color: hsl(var(--muted) / 0.3);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+
+  pre {
+    font-size: 0.875rem;
+  }
+}
+
+.keyCard {
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.keyTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  svg {
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+}
+
+.keyGrid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.keyItem {
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  background-color: hsl(var(--card));
+
+  h3 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  ul {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}

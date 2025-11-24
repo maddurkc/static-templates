@@ -20,6 +20,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
 import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils";
 import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
+import styles from "./TemplateEditor.module.scss";
 
 const TemplateEditor = () => {
   const navigate = useNavigate();
@@ -542,30 +543,26 @@ const TemplateEditor = () => {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
+      <div className={styles.container}>
         {/* Top Bar */}
-        <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-          <div className="flex items-center justify-between px-6 py-3">
-            <div className="flex items-center gap-4">
-                <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/templates')}
-                className="hover:bg-primary/10 hover:text-primary transition-all"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Static Templates
-              </Button>
-              <div className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
-                  Static Template Editor
-                </h1>
-                <p className="text-xs text-muted-foreground font-medium">
-                  Drag, drop, and customize your sections
-                </p>
-              </div>
+        <div className={styles.topBar}>
+          <div className={styles.titleSection}>
+              <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/templates')}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Static Templates
+            </Button>
+            <div>
+              <h1>Static Template Editor</h1>
+              <p className="text-xs text-muted-foreground font-medium">
+                Drag, drop, and customize your sections
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+          </div>
+          <div className={styles.viewControls}>
               <Sheet open={showLibrary} onOpenChange={setShowLibrary}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -694,8 +691,8 @@ const TemplateEditor = () => {
                   <DialogHeader>
                     <DialogTitle>Save Static Template</DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
+                  <div className={styles.saveDialogContent}>
+                    <div className={styles.inputGroup}>
                       <Label htmlFor="template-name">Static Template Name</Label>
                       <Input
                         id="template-name"
@@ -709,7 +706,7 @@ const TemplateEditor = () => {
                         }}
                       />
                     </div>
-                    <div className="flex justify-end gap-2">
+                    <div className={styles.dialogActions}>
                       <Button
                         variant="outline"
                         onClick={() => setShowSaveDialog(false)}
@@ -736,13 +733,11 @@ const TemplateEditor = () => {
         </div>
 
         {/* Main Content */}
-        <div className={`flex ${viewMode === 'fullscreen' ? 'h-screen' : 'h-[calc(100vh-120px)]'}`}>
+        <div className={styles.contentArea}>
           {/* Editor */}
           {viewMode !== 'preview-only' && (
-            <div className={`overflow-auto ${
-              viewMode === 'editor-only' || viewMode === 'fullscreen' 
-                ? 'w-full' 
-                : 'flex-1 border-r'
+            <div className={`${styles.editorSection} ${
+              (viewMode === 'editor-only' || viewMode === 'fullscreen') ? styles.fullscreenPreview : ''
             }`}>
               <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
                 <EditorView
@@ -762,10 +757,8 @@ const TemplateEditor = () => {
 
           {/* Preview */}
           {viewMode !== 'editor-only' && (
-            <div className={`overflow-auto bg-white ${
-              viewMode === 'preview-only' || viewMode === 'fullscreen'
-                ? 'w-full'
-                : 'w-1/2'
+            <div className={`${styles.previewSection} ${
+              (viewMode === 'preview-only' || viewMode === 'fullscreen') ? styles.fullscreenPreview : ''
             }`}>
               <PreviewView 
                 headerSection={headerSection}
