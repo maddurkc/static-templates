@@ -721,7 +721,6 @@ const TemplateEditor = () => {
                 </DialogContent>
               </Dialog>
             </div>
-          </div>
           
           <CustomizationToolbar
             section={selectedSection}
