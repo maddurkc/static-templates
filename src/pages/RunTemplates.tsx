@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as React from "react";
+import styles from "./RunTemplates.module.scss";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -374,11 +375,11 @@ const RunTemplates = () => {
   }, [selectedTemplate, variables, listVariables, tableVariables]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
+    <div className={styles.container}>
       {!selectedTemplate ? (
         // Template Selection View
-        <div className="container mx-auto p-8">
-          <div className="mb-8 flex items-center gap-4">
+        <div className={styles.innerContainer}>
+          <div className={styles.header}>
             <Button
               variant="ghost"
               size="sm"
@@ -388,10 +389,10 @@ const RunTemplates = () => {
               Back to Templates
             </Button>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+              <h1 className={styles.title}>
                 Run Templates
               </h1>
-              <p className="text-muted-foreground">
+              <p className={styles.subtitle}>
                 Select a template to run and send via email
               </p>
             </div>
@@ -476,16 +477,18 @@ const RunTemplates = () => {
           </div>
 
           {/* Side-by-Side Layout */}
-          <div className="flex-1 flex overflow-hidden">
+          <div className={styles.mainContent}>
             {/* Left Panel - Configuration */}
-            <div className="w-1/2 border-r overflow-auto">
+            <div className={styles.editorSection}>
               <ScrollArea className="h-full">
-                <div className="p-8 space-y-6">
+                <div>
                   {/* Email Recipients */}
-                  <Card className="p-6 border-2">
-                    <h2 className="text-lg font-semibold mb-4">Email Configuration</h2>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
+                  <Card>
+                    <div className={styles.sectionHeader}>
+                      <h2>Email Configuration</h2>
+                    </div>
+                    <div className={styles.formGrid}>
+                      <div className={styles.formField}>
                         <Label htmlFor="subject">
                           Subject <span className="text-destructive">*</span>
                         </Label>
@@ -497,7 +500,7 @@ const RunTemplates = () => {
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className={styles.formField}>
                         <Label htmlFor="to-emails">
                           To <span className="text-destructive">*</span>
                         </Label>
@@ -512,7 +515,7 @@ const RunTemplates = () => {
                         </p>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className={styles.formField}>
                         <Label htmlFor="cc-emails">CC (Optional)</Label>
                         <Input
                           id="cc-emails"
@@ -522,7 +525,7 @@ const RunTemplates = () => {
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className={styles.formField}>
                         <Label htmlFor="bcc-emails">BCC (Optional)</Label>
                         <Input
                           id="bcc-emails"
@@ -536,16 +539,18 @@ const RunTemplates = () => {
 
                   {/* Template Variables */}
                   {extractAllVariables(selectedTemplate).length > 0 && (
-                    <Card className="p-6 border-2">
-                      <h2 className="text-lg font-semibold mb-4">Template Variables</h2>
-                      <div className="space-y-4">
+                    <Card>
+                      <div className={styles.sectionHeader}>
+                        <h2>Template Variables</h2>
+                      </div>
+                      <div className={styles.formGrid}>
                         {extractAllVariables(selectedTemplate).map((varName) => {
                           const isList = isListVariable(varName);
                           const isTable = isTableVariable(varName);
                           const editable = isLabelEditable(varName);
                           
                           return (
-                            <div key={varName} className="space-y-2">
+                            <div key={varName} className={styles.formField}>
                               <Label htmlFor={`var-${varName}`} className="flex items-center gap-2 flex-wrap">
                                 {editable ? (
                                   <Badge variant="outline" className="text-xs font-mono">
@@ -1188,15 +1193,15 @@ const RunTemplates = () => {
             </div>
 
             {/* Right Panel - Live Preview */}
-            <div className="w-1/2 bg-white overflow-auto">
-              <div className="sticky top-0 bg-muted/50 px-6 py-3 border-b z-10">
-                <h2 className="font-semibold">Live Preview</h2>
+            <div className={styles.previewSection}>
+              <div className={styles.sectionHeader}>
+                <h2>Live Preview</h2>
                 <p className="text-xs text-muted-foreground">
                   Preview updates as you enter variable values
                 </p>
               </div>
               <ScrollArea className="h-[calc(100vh-180px)]">
-                <div className="p-8">
+                <div>
                   {selectedTemplate.sections && selectedTemplate.sections.length > 0 ? (
                     // Render from sections with runtime values
                     <div
@@ -1211,13 +1216,13 @@ const RunTemplates = () => {
                           return renderSectionContent(section, runtimeVars);
                         }).join('')
                       }}
-                      className="[&>h1]:text-3xl [&>h1]:font-bold [&>h1]:mb-4 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:mb-3 [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:mb-3 [&>h4]:text-lg [&>h4]:font-semibold [&>h4]:mb-2 [&>h5]:text-base [&>h5]:font-medium [&>h5]:mb-2 [&>h6]:text-sm [&>h6]:font-medium [&>h6]:mb-2 [&>p]:text-sm [&>p]:mb-2 [&>ul]:list-disc [&>ul]:list-inside [&>ul]:text-sm [&>ul]:mb-2 [&>ol]:list-decimal [&>ol]:list-inside [&>ol]:text-sm [&>ol]:mb-2 [&>a]:text-primary [&>a]:underline [&>a]:mb-2"
+                      className={styles.previewContent}
                     />
                   ) : (
                     // Render from HTML for legacy templates
                     <div
                       dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables, listVariables) }}
-                      className="prose max-w-none"
+                      className={styles.previewContent}
                     />
                   )}
                 </div>

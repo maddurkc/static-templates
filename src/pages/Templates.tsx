@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import styles from "./Templates.module.scss";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -99,19 +100,19 @@ const Templates = () => {
   const archivedTemplates = templates.filter(t => t.archived);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
-      <div className="container mx-auto p-8">
+    <div className={styles.container}>
+      <div className={styles.innerContainer}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+        <div className={styles.header}>
+          <div className={styles.headerContent}>
+            <h1>
               Static Templates
             </h1>
-            <p className="text-muted-foreground">
+            <p>
               Create and manage your static templates
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className={styles.headerActions}>
             <Button
               size="lg"
               variant="outline"
@@ -132,9 +133,9 @@ const Templates = () => {
         </div>
 
         {/* Templates Table */}
-        <Card className="border-2 mb-6">
-          <div className="p-4 border-b bg-muted/30">
-            <h2 className="font-semibold text-lg">Active Templates</h2>
+        <Card className={styles.tableCard}>
+          <div className={styles.tableHeader}>
+            <h2>Active Templates</h2>
           </div>
           <Table>
             <TableHeader>
@@ -148,12 +149,12 @@ const Templates = () => {
             <TableBody>
               {activeTemplates.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-12">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="rounded-full bg-muted p-4">
+                  <TableCell colSpan={4} className={styles.emptyState}>
+                    <div className={styles.emptyState}>
+                      <div className={styles.emptyIcon}>
                         <Plus className="h-8 w-8 text-muted-foreground" />
                       </div>
-                      <p className="text-muted-foreground">No templates yet</p>
+                      <p className={styles.emptyText}>No templates yet</p>
                       <Button
                         variant="outline"
                         onClick={() => navigate('/templates/editor')}
@@ -165,10 +166,10 @@ const Templates = () => {
                 </TableRow>
               ) : (
                 activeTemplates.map((template) => (
-                  <TableRow key={template.id} className="hover:bg-muted/30 transition-colors">
+                  <TableRow key={template.id} className={styles.tableRow}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{template.name}</span>
+                      <div className={styles.templateName}>
+                        <span>{template.name}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -177,13 +178,13 @@ const Templates = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className={styles.dateCell}>
                         <Calendar className="h-4 w-4" />
                         {new Date(template.createdAt).toLocaleDateString()}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-end gap-2">
+                      <div className={styles.actionButtons}>
                         <Button
                           variant="outline"
                           size="sm"
@@ -234,9 +235,9 @@ const Templates = () => {
 
         {/* Archived Templates */}
         {archivedTemplates.length > 0 && (
-          <Card className="border-2 border-orange-200 bg-orange-50/50">
-            <div className="p-4 border-b bg-orange-100/50">
-              <h2 className="font-semibold text-lg flex items-center gap-2">
+          <Card className={styles.archivedCard}>
+            <div className={styles.archivedHeader}>
+              <h2>
                 <Archive className="h-5 w-5" />
                 Archived Templates
               </h2>
@@ -252,11 +253,11 @@ const Templates = () => {
               </TableHeader>
               <TableBody>
                 {archivedTemplates.map((template) => (
-                  <TableRow key={template.id} className="hover:bg-orange-100/30 transition-colors opacity-60">
+                  <TableRow key={template.id} className={styles.archivedRow}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{template.name}</span>
-                        <Badge variant="outline" className="text-xs">Archived</Badge>
+                      <div className={styles.templateName}>
+                        <span>{template.name}</span>
+                        <Badge variant="outline" className={styles.archivedBadge}>Archived</Badge>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -265,13 +266,13 @@ const Templates = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className={styles.dateCell}>
                         <Calendar className="h-4 w-4" />
                         {new Date(template.createdAt).toLocaleDateString()}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-end gap-2">
+                      <div className={styles.actionButtons}>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -314,7 +315,7 @@ const Templates = () => {
               {previewTemplate && (
                 <div
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
-                  className="prose max-w-none [&>h1]:text-3xl [&>h1]:font-bold [&>h2]:text-2xl [&>h2]:font-bold [&>h3]:text-xl [&>h3]:font-semibold [&>h4]:text-lg [&>h4]:font-semibold [&>h5]:text-base [&>h5]:font-medium [&>h6]:text-sm [&>h6]:font-medium [&>p]:text-sm [&>ul]:list-disc [&>ul]:list-inside [&>ul]:text-sm [&>ol]:list-decimal [&>ol]:list-inside [&>ol]:text-sm"
+                  className={styles.previewContent}
                 />
               )}
             </ScrollArea>

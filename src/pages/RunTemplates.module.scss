@@ -1,0 +1,284 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  padding: 2rem;
+}
+
+.innerContainer {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #4361ee 0%, #14b8a6 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: #6c757d;
+  margin-top: 0.5rem;
+}
+
+.mainContent {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.editorSection {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e9ecef;
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+.formGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.listItemRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.listItemInput {
+  flex: 1;
+}
+
+.formatButton {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #e9ecef;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f8f9fa;
+    border-color: #4361ee;
+  }
+
+  &.active {
+    background: #4361ee;
+    color: #ffffff;
+    border-color: #4361ee;
+  }
+}
+
+.colorInputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.colorInput {
+  width: 3rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  border: 1px solid #e9ecef;
+  cursor: pointer;
+}
+
+.formatPopover {
+  width: 280px;
+  padding: 1rem;
+  background: #ffffff;
+  border-radius: 0.5rem;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.formatSection {
+  margin-bottom: 1rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #495057;
+  }
+}
+
+.styleButtons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.previewSection {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  max-height: 800px;
+  overflow-y: auto;
+}
+
+.previewContent {
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin: 1rem 0;
+  }
+
+  h2 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin: 0.875rem 0;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0.75rem 0;
+  }
+
+  h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.625rem 0;
+  }
+
+  h5 {
+    font-size: 1.125rem;
+    font-weight: 500;
+    margin: 0.5rem 0;
+  }
+
+  h6 {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0.5rem 0;
+  }
+
+  p {
+    font-size: 1rem;
+    margin: 0.5rem 0;
+    line-height: 1.6;
+  }
+
+  ul,
+  ol {
+    font-size: 1rem;
+    margin: 0.5rem 0;
+    padding-left: 2rem;
+  }
+
+  ul {
+    list-style-type: disc;
+  }
+
+  ol {
+    list-style-type: decimal;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+
+    th,
+    td {
+      border: 1px solid #dee2e6;
+      padding: 0.5rem;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f8f9fa;
+      font-weight: 600;
+    }
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    margin: 1rem 0;
+  }
+
+  button {
+    padding: 0.5rem 1rem;
+    background-color: #4361ee;
+    color: #ffffff;
+    border-radius: 0.375rem;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: #3651de;
+    }
+  }
+
+  a {
+    color: #4361ee;
+    text-decoration: underline;
+
+    &:hover {
+      color: #3651de;
+    }
+  }
+}
+
+.actionsBar {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e9ecef;
+}
