@@ -75,7 +75,7 @@ const SortableSection = ({
         {...listeners}
         className={styles.dragHandle}
       >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
+        <GripVertical className={styles.icon} />
       </div>
 
       {/* Container Header */}
@@ -87,12 +87,12 @@ const SortableSection = ({
             isDropOver && styles.dropOver
           )}
         >
-          <Badge variant="outline" className="text-xs">Container</Badge>
-          <span className="text-sm text-muted-foreground">
+          <Badge variant="outline" className={styles.containerBadge}>Container</Badge>
+          <span className={styles.containerInfo}>
             {section.children?.length || 0} section{section.children?.length !== 1 ? 's' : ''} inside
           </span>
           {isDropOver && (
-            <span className="text-xs text-primary font-medium ml-auto">Drop here to add</span>
+            <span className={styles.dropHint}>Drop here to add</span>
           )}
         </div>
       )}
@@ -100,10 +100,10 @@ const SortableSection = ({
       {/* Content */}
       <div className={cn(styles.sectionContent, isContainer && styles.containerContent)}>
         {!isContainer && section.type === 'labeled-content' && section.variables?.label ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className={styles.labeledContent}>
+            <div className={styles.labelRow}>
               <span 
-                className="font-semibold text-base"
+                className={styles.labelText}
                 dangerouslySetInnerHTML={{ 
                   __html: thymeleafToPlaceholder(String(section.variables.label)).replace(
                     /\{\{(\w+)\}\}/g,
@@ -111,23 +111,23 @@ const SortableSection = ({
                   )
                 }}
               />
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className={styles.badgeSmall}>
                 {section.variables.contentType === 'text' ? 'Text' : section.variables.contentType === 'list' ? 'List' : 'Table'}
               </Badge>
               {String(section.variables.label).includes('{{') && (
-                <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
+                <Badge variant="outline" className={styles.badgeDynamic}>
                   Dynamic Label
                 </Badge>
               )}
               {!section.isLabelEditable && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className={styles.badgeSmall}>
                   Label locked
                 </Badge>
               )}
             </div>
             {section.variables.contentType === 'table' && section.variables.tableData ? (
               <div 
-                className="text-sm border rounded overflow-x-auto"
+                className={styles.tablePreview}
                 dangerouslySetInnerHTML={{ 
                   __html: (() => {
                     const tableData = section.variables.tableData as any;
@@ -153,7 +153,7 @@ const SortableSection = ({
                 }}
               />
             ) : (
-              <div className="text-sm text-muted-foreground pl-4 border-l-2 border-muted">
+              <div className={styles.contentPlaceholder}>
                 {'{'}content{'}'} - {section.variables.contentType || 'text'}
               </div>
             )}
@@ -175,7 +175,7 @@ const SortableSection = ({
         
         {/* Nested Children for Container */}
         {isContainer && renderChildren && (
-          <div className="space-y-2">
+          <div className={styles.nestedContainerWrapper}>
             {section.children && section.children.length > 0 ? (
               renderChildren(section)
             ) : (
@@ -198,9 +198,9 @@ const SortableSection = ({
               e.stopPropagation();
               onAddChild(section.id);
             }}
-            className="h-7 px-2 text-xs"
+            className={styles.addButton}
           >
-            <Plus className="h-3 w-3 mr-1" />
+            <Plus />
             Add
           </Button>
         )}
@@ -214,7 +214,7 @@ const SortableSection = ({
           disabled={isFirst}
           className="h-8 w-8"
         >
-          <ChevronUp className="h-4 w-4" />
+          <ChevronUp className={styles.icon} />
         </Button>
         <Button
           size="icon"
@@ -226,7 +226,7 @@ const SortableSection = ({
           disabled={isLast}
           className="h-8 w-8"
         >
-          <ChevronDown className="h-4 w-4" />
+          <ChevronDown className={styles.icon} />
         </Button>
         <Button
           size="icon"
@@ -235,9 +235,9 @@ const SortableSection = ({
             e.stopPropagation();
             onDelete();
           }}
-          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+          className={styles.deleteButton}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 />
         </Button>
       </div>
 
@@ -294,7 +294,7 @@ export const EditorView = ({
               }}
             >
               <div className={styles.nestedHeader}>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className={styles.badgeSmall}>
                   {child.type}
                 </Badge>
                 <Button
@@ -304,13 +304,13 @@ export const EditorView = ({
                     e.stopPropagation();
                     onDeleteSection(child.id);
                   }}
-                  className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
+                  className={styles.deleteButtonSmall}
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 />
                 </Button>
               </div>
               <div
-                className="prose prose-sm max-w-none text-sm"
+                className={styles.nestedContent}
                 dangerouslySetInnerHTML={{ 
                   __html: thymeleafToPlaceholder(child.content)
                     .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
@@ -339,7 +339,7 @@ export const EditorView = ({
         </div>
       </div>
       <div 
-        className="prose prose-sm max-w-none"
+        className={styles.staticContent}
         dangerouslySetInnerHTML={{ 
           __html: thymeleafToPlaceholder(section.content)
             .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
