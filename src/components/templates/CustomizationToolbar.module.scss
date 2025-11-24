@@ -1,0 +1,79 @@
+.toolbar {
+  border-top: 1px solid #e9ecef;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+  padding: 0.75rem 1.5rem;
+}
+
+.toolbarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.controlRow {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.controlGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.controlLabel {
+  font-size: 0.75rem;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+.colorInputGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.colorPreview {
+  width: 4rem;
+  height: 2rem;
+  padding: 0.25rem;
+  cursor: pointer;
+}
+
+.colorInput {
+  width: 6rem;
+  height: 2rem;
+  font-size: 0.75rem;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.separator {
+  height: 2rem;
+}

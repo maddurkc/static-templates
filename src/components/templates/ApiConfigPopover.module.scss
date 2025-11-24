@@ -1,0 +1,76 @@
+.container {
+  padding: 0.25rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.enableSwitch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.description {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.selectField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fieldLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.infoBox {
+  padding: 0.5rem;
+  background-color: rgba(248, 249, 250, 0.5);
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.mappingCard {
+  padding: 0.75rem;
+  border: 1px solid #e9ecef;
+  border-radius: 0.5rem;
+  background-color: rgba(248, 249, 250, 0.3);
+}
+
+.mappingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.mappingBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inputMono {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 1rem 0;
+  font-size: 0.75rem;
+  color: #6c757d;
+}
