@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import styles from "./ThymeleafEditor.module.scss";
 
 interface ThymeleafEditorProps {
   value: string;
@@ -58,14 +59,10 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
   };
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn(styles.editorWrapper, className)}>
       {/* Highlighted background */}
       <div
-        className="absolute inset-0 pointer-events-none overflow-auto whitespace-pre-wrap break-words font-mono text-sm p-3 leading-6"
-        style={{ 
-          color: "transparent",
-          border: "1px solid transparent"
-        }}
+        className={styles.highlightLayer}
         dangerouslySetInnerHTML={{ __html: highlightedHtml }}
       />
       
@@ -76,16 +73,7 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
         onChange={(e) => onChange(e.target.value)}
         onScroll={handleScroll}
         placeholder={placeholder}
-        className={cn(
-          "relative w-full min-h-[120px] p-3 font-mono text-sm",
-          "bg-transparent caret-foreground",
-          "border border-input rounded-md",
-          "focus:outline-none focus:ring-2 focus:ring-ring",
-          "resize-y leading-6"
-        )}
-        style={{
-          color: "inherit"
-        }}
+        className={styles.textarea}
         spellCheck={false}
       />
     </div>

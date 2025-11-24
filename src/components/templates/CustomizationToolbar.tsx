@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Settings2, Plug } from "lucide-react";
 import { VariableEditor } from "./VariableEditor";
 import { ApiConfigPopover } from "./ApiConfigPopover";
+import styles from "./CustomizationToolbar.module.scss";
 
 interface CustomizationToolbarProps {
   section: Section | null;
@@ -66,11 +67,11 @@ export const CustomizationToolbar = ({
 
   if (!section) {
     return (
-      <div className="border-t bg-card/80 backdrop-blur-sm px-6 py-3">
-        <div className="flex items-center justify-between">
+      <div className={styles.toolbar}>
+        <div className={styles.toolbarHeader}>
           <div>
-            <h3 className="text-sm font-semibold">Customize Template</h3>
-            <p className="text-xs text-muted-foreground mt-1">
+            <h3 className={styles.title}>Customize Template</h3>
+            <p className={styles.subtitle}>
               Select a section to customize its styles
             </p>
           </div>
@@ -100,11 +101,11 @@ export const CustomizationToolbar = ({
   }
 
   return (
-    <div className="border-t bg-card/80 backdrop-blur-sm px-6 py-3">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold">Customize Styles</h3>
+    <div className={styles.toolbar}>
+      <div className={styles.toolbarHeader}>
+        <h3 className={styles.title}>Customize Styles</h3>
         
-        <div className="flex items-center gap-2">
+        <div className={styles.actions}>
           {/* Variables popover */}
           <Popover>
             <PopoverTrigger asChild>
@@ -140,8 +141,8 @@ export const CustomizationToolbar = ({
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center gap-6 flex-wrap">
+      <div className={styles.controls}>
+        <div className={styles.controlRow}>
           {/* Font Size */}
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground whitespace-nowrap">Font Size</Label>
