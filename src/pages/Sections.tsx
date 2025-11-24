@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import styles from "./Sections.module.scss";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -140,28 +141,28 @@ const Sections = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30 p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className={styles.container}>
+      <div className={styles.innerContainer}>
         {/* Header */}
-        <div className="space-y-4">
+        <div className={styles.header}>
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <h1 className={styles.title}>
               Section Library
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className={styles.subtitle}>
               Create and manage reusable content sections for your templates
             </p>
           </div>
 
           {/* Search and Create Button */}
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className={styles.searchBar}>
+            <div className={styles.searchWrapper}>
+              <Search className={styles.searchIcon} />
               <Input
                 placeholder="Search sections..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className={styles.searchInput}
               />
             </div>
 
@@ -260,47 +261,46 @@ const Sections = () => {
 
         {/* Section Cards by Category */}
         {Object.entries(groupedSections).map(([category, categorySections]) => (
-          <div key={category} className="space-y-4">
-            <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-semibold">{categoryLabels[category]}</h2>
+          <div key={category} className={styles.categorySection}>
+            <div className={styles.categoryHeader}>
+              <h2 className={styles.categoryTitle}>{categoryLabels[category]}</h2>
               <Badge variant="secondary" className="text-xs">
                 {categorySections.length}
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className={styles.cardsGrid}>
               {categorySections.map((section) => (
                 <Card 
                   key={section.type}
-                  className="group hover:shadow-lg transition-all duration-300 hover:scale-105 border-2 hover:border-primary/50"
+                  className={styles.sectionCard}
                 >
-                  <CardHeader className="space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10">
-                        <section.icon className="h-6 w-6 text-primary" />
+                  <CardHeader className={styles.cardHeader}>
+                    <div className={styles.cardIconWrapper}>
+                      <div className={styles.iconBox}>
+                        <section.icon className={styles.cardIcon} />
                       </div>
-                      <Badge className={categoryColors[category]}>
+                      <Badge className={`${styles.categoryBadge} ${styles[category]}`}>
                         {categoryLabels[category]}
                       </Badge>
                     </div>
-                    <CardTitle className="text-lg">{section.label}</CardTitle>
+                    <CardTitle className={styles.cardTitle}>{section.label}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className={styles.cardContent}>
                     {/* Preview of the actual content */}
-                    <div className="min-h-[60px] p-3 rounded-md bg-muted/30 border border-muted-foreground/20">
+                    <div className={styles.previewBox}>
                       <div
                         dangerouslySetInnerHTML={{ 
                           __html: replaceWithDefaults(section.defaultContent, section.variables)
                         }}
-                        className="[&>h1]:text-3xl [&>h1]:font-bold [&>h2]:text-2xl [&>h2]:font-bold [&>h3]:text-xl [&>h3]:font-semibold [&>h4]:text-lg [&>h4]:font-semibold [&>h5]:text-base [&>h5]:font-medium [&>h6]:text-sm [&>h6]:font-medium [&>p]:text-sm [&>ul]:list-disc [&>ul]:list-inside [&>ul]:text-sm [&>ol]:list-decimal [&>ol]:list-inside [&>ol]:text-sm [&>table]:text-xs [&>table]:border-collapse [&_th]:border [&_th]:p-1 [&_td]:border [&_td]:p-1 [&>img]:max-w-full [&>img]:h-auto [&>button]:px-3 [&>button]:py-1 [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded [&>a]:text-primary [&>a]:underline"
                       />
                     </div>
                     
-                    <CardDescription className="text-sm">
+                    <CardDescription className={styles.cardDescription}>
                       {section.description}
                     </CardDescription>
                     
-                    <div className="flex gap-2 justify-end">
+                    <div className={styles.cardActions}>
                       <SectionPreviewDialog section={section} />
                       
                       {isCustomSection(section) && (
@@ -365,15 +365,15 @@ const Sections = () => {
         ))}
 
         {/* Database Schema Info */}
-        <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="text-primary">📊</span>
+        <Card className={styles.schemaCard}>
+          <CardHeader className={styles.schemaHeader}>
+            <CardTitle className={styles.schemaTitle}>
+              <span>📊</span>
               Database Schema
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <pre className="bg-card p-4 rounded-lg overflow-x-auto text-sm border">
+          <CardContent className={styles.schemaContent}>
+            <pre className={styles.schemaCode}>
               <code>{`-- Sections Table
 CREATE TABLE sections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

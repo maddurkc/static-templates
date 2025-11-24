@@ -1,0 +1,191 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.innerContainer {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.headerContent {
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #4361ee 0%, #14b8a6 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    color: #6c757d;
+  }
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tableCard {
+  border: 2px solid #e9ecef;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  margin-bottom: 1.5rem;
+}
+
+.tableHeader {
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  background-color: rgba(248, 249, 250, 0.3);
+
+  h2 {
+    font-weight: 600;
+    font-size: 1.125rem;
+  }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 0;
+}
+
+.emptyIcon {
+  border-radius: 50%;
+  background-color: #f8f9fa;
+  padding: 1rem;
+}
+
+.emptyText {
+  color: #6c757d;
+}
+
+.tableRow {
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(248, 249, 250, 0.3);
+  }
+}
+
+.templateName {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  span {
+    font-weight: 500;
+  }
+}
+
+.dateCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.actionButtons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.archivedCard {
+  border: 2px solid #fde68a;
+  background-color: rgba(254, 243, 199, 0.5);
+}
+
+.archivedHeader {
+  padding: 1rem;
+  border-bottom: 1px solid #fde68a;
+  background-color: rgba(254, 243, 199, 0.5);
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+}
+
+.archivedRow {
+  opacity: 0.6;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(254, 243, 199, 0.3);
+  }
+}
+
+.archivedBadge {
+  font-size: 0.75rem;
+}
+
+.previewContent {
+  h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  h5 {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  h6 {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  p {
+    font-size: 0.875rem;
+  }
+
+  ul,
+  ol {
+    font-size: 0.875rem;
+    padding-left: 1.5rem;
+  }
+
+  ul {
+    list-style-type: disc;
+    list-style-position: inside;
+  }
+
+  ol {
+    list-style-type: decimal;
+    list-style-position: inside;
+  }
+}
