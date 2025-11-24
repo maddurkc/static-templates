@@ -162,7 +162,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               variables: { ...section.variables, label: value }
             })}
             placeholder='e.g., Summary or Incident <th:utext="${incidentNumber}">'
-            className="min-h-[60px]"
+            className={styles.minHeight60}
           />
           <p className={styles.description}>
             Use static text or add Thymeleaf expressions like {'<th:utext="${variableName}">'} for dynamic parts.
@@ -197,7 +197,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                 ...section,
                 isLabelEditable: e.target.checked
               })}
-              className="h-4 w-4"
+              className={styles.checkboxInput}
             />
             <Label htmlFor="label-editable" className={styles.checkboxLabel}>
               Label editable at runtime
@@ -209,9 +209,9 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         </div>
 
         {contentType === 'text' ? (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Dynamic Content <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
+          <div className={styles.spaceY}>
+            <Label className={styles.mediumLabel}>
+              Dynamic Content <span className={styles.mutedText}>(under "{section.variables?.label || "Label"}")</span>
             </Label>
             <Textarea
               value={(section.variables?.content as string) || ''}
@@ -219,20 +219,20 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                 ...section,
                 variables: { ...section.variables, content: e.target.value }
               })}
-              className="min-h-[100px] text-sm"
+              className={styles.minHeight100}
               placeholder="Messages journaled in exchange online reasons:&#10;1. Invalid Characters&#10;2. Header too Large"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className={styles.textMutedSmall}>
               This content appears below the label and can be replaced with API data.
             </p>
           </div>
         ) : contentType === 'table' ? (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Table Data <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
+          <div className={styles.spaceY}>
+            <Label className={styles.mediumLabel}>
+              Table Data <span className={styles.mutedText}>(under "{section.variables?.label || "Label"}")</span>
             </Label>
-            <div className="border rounded-lg p-4 space-y-4">
-              <div className="flex gap-2">
+            <div className={`${styles.border} ${styles.spaceY}`} style={{ gap: '1rem' }}>
+              <div className={styles.flexGap}>
                 <Button
                   size="sm"
                   variant="outline"
@@ -250,9 +250,9 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                       }
                     });
                   }}
-                  className="h-7 px-2"
+                  className={styles.actionButtonSmall}
                 >
-                  <Plus className="h-3 w-3 mr-1" />
+                  <Plus className={`${styles.iconSmall} ${styles.iconMarginSmall}`} />
                   Add Column
                 </Button>
                 <Button
@@ -272,9 +272,9 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                       }
                     });
                   }}
-                  className="h-7 px-2"
+                  className={styles.actionButtonSmall}
                 >
-                  <Plus className="h-3 w-3 mr-1" />
+                  <Plus className={`${styles.iconSmall} ${styles.iconMarginSmall}`} />
                   Add Row
                 </Button>
               </div>
@@ -282,17 +282,17 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               {(() => {
                 const tableData = section.variables?.tableData || { headers: [], rows: [] };
                 if (!tableData.headers || tableData.headers.length === 0) {
-                  return <p className="text-xs text-muted-foreground text-center py-4">Click "Add Column" to start</p>;
+                  return <p className={`${styles.textMutedSmall} ${styles.textCenter}`}>Click "Add Column" to start</p>;
                 }
                 
                 return (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border text-sm">
+                  <div className={styles.overflowAuto}>
+                    <table className={styles.tableFullWidth}>
                       <thead>
                         <tr>
                           {(tableData.headers || []).map((header: string, colIdx: number) => (
-                            <th key={colIdx} className="border p-2 bg-muted">
-                              <div className="flex items-center gap-1">
+                            <th key={colIdx} className={`${styles.tableBorder} ${styles.tableBgMuted}`}>
+                              <div className={styles.cellFlexGroup}>
                                 <Input
                                   value={header}
                                   onChange={(e) => {
@@ -306,7 +306,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                                       }
                                     });
                                   }}
-                                  className="h-8 text-xs font-semibold"
+                                  className={styles.headerInputSmall}
                                   placeholder={`Header ${colIdx + 1}`}
                                 />
                                 <Button
@@ -325,10 +325,10 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                                       }
                                     });
                                   }}
-                                  className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                                  className={styles.deleteIconButton}
                                   disabled={(tableData.headers || []).length <= 1}
                                 >
-                                  <Trash2 className="h-3 w-3" />
+                                  <Trash2 className={styles.iconSmall} />
                                 </Button>
                               </div>
                             </th>
@@ -339,8 +339,8 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                         {(tableData.rows || []).map((row: string[], rowIdx: number) => (
                           <tr key={rowIdx}>
                             {row.map((cell: string, colIdx: number) => (
-                              <td key={colIdx} className="border p-1">
-                                <div className="flex items-center gap-1">
+                              <td key={colIdx} className={styles.tableCellPadding}>
+                                <div className={styles.cellFlexGroup}>
                                   <Input
                                     value={cell}
                                     onChange={(e) => {
@@ -354,7 +354,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                                         }
                                       });
                                     }}
-                                    className="h-8 text-xs"
+                                    className={styles.cellInputSmall}
                                     placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
                                   />
                                   {colIdx === row.length - 1 && (
@@ -371,10 +371,10 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                                           }
                                         });
                                       }}
-                                      className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                                      className={styles.deleteIconButton}
                                       disabled={(tableData.rows || []).length <= 1}
                                     >
-                                      <Trash2 className="h-3 w-3" />
+                                      <Trash2 className={styles.iconSmall} />
                                     </Button>
                                   )}
                                 </div>
@@ -388,15 +388,15 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                 );
               })()}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className={styles.textMutedSmall}>
               Define the table structure that will appear under this label.
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">
-                Dynamic List Items <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
+          <div className={styles.spaceY}>
+            <div className={styles.flexBetween}>
+              <Label className={styles.mediumLabel}>
+                Dynamic List Items <span className={styles.mutedText}>(under "{section.variables?.label || "Label"}")</span>
               </Label>
               <Button
                 size="sm"
@@ -408,16 +408,16 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                     variables: { ...section.variables, items: [...items, ''] }
                   });
                 }}
-                className="h-7 px-2"
+                className={styles.actionButtonSmall}
               >
-                <Plus className="h-3 w-3 mr-1" />
+                <Plus className={`${styles.iconSmall} ${styles.iconMarginSmall}`} />
                 Add Item
               </Button>
             </div>
             
-            <div className="space-y-2 pl-2 border-l-2 border-muted">
+            <div className={`${styles.spaceY} ${styles.listBorder}`}>
               {((section.variables?.items as string[]) || ['']).map((item, index) => (
-                <div key={index} className="flex items-center gap-2 ml-2">
+                <div key={index} className={styles.listItemFlex}>
                   <Input
                     value={item}
                     onChange={(e) => {
@@ -429,7 +429,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                         variables: { ...section.variables, items: newItems }
                       });
                     }}
-                    className="flex-1 h-8 text-sm"
+                    className={styles.listInputFlex}
                     placeholder={`Item ${index + 1}`}
                   />
                   <Button
@@ -443,15 +443,15 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                         variables: { ...section.variables, items: newItems }
                       });
                     }}
-                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                    className={styles.deleteIconButton}
                     disabled={((section.variables?.items as string[]) || []).length === 1}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className={styles.iconSmall} />
                   </Button>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className={styles.textMutedSmall}>
               These list items appear below the label and can be replaced with API data.
             </p>
           </div>
