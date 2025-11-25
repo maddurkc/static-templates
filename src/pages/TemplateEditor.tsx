@@ -633,38 +633,6 @@ const TemplateEditor = () => {
                   </div>
                 </DialogContent>
               </Dialog>
-
-              <div className={styles.viewModeGroup}>
-                <Button
-                  variant={viewMode === 'editor-only' ? 'default' : 'ghost'}
-                  size="icon"
-                  onClick={() => setViewMode(viewMode === 'editor-only' ? 'split' : 'editor-only')}
-                  className="h-9 w-9 transition-all hover:scale-105"
-                  title="Editor Only View"
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  variant={viewMode === 'preview-only' ? 'default' : 'ghost'}
-                  size="icon"
-                  onClick={() => setViewMode(viewMode === 'preview-only' ? 'split' : 'preview-only')}
-                  className="h-9 w-9 transition-all hover:scale-105"
-                  title="Preview Only View"
-                >
-                  <PanelRightClose className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  variant={viewMode === 'fullscreen' ? 'default' : 'ghost'}
-                  size="icon"
-                  onClick={() => setViewMode(viewMode === 'fullscreen' ? 'split' : 'fullscreen')}
-                  className="h-9 w-9 transition-all hover:scale-105"
-                  title="Toggle Fullscreen"
-                >
-                  {viewMode === 'fullscreen' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                </Button>
-              </div>
               
               {apiConfig.enabled && apiConfig.templateId && (
                 <Button
@@ -734,6 +702,41 @@ const TemplateEditor = () => {
 
         {/* Main Content */}
         <div className={styles.contentArea}>
+          {/* View Mode Controls - Floating */}
+          <div className={styles.floatingViewControls}>
+            <Button
+              variant={viewMode === 'editor-only' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode(viewMode === 'editor-only' ? 'split' : 'editor-only')}
+              title="Editor Only View"
+              className={styles.viewButton}
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant={viewMode === 'preview-only' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode(viewMode === 'preview-only' ? 'split' : 'preview-only')}
+              title="Preview Only View"
+              className={styles.viewButton}
+            >
+              <PanelRightClose className="h-4 w-4" />
+            </Button>
+            
+            <div className={styles.separator} />
+            
+            <Button
+              variant={viewMode === 'fullscreen' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode(viewMode === 'fullscreen' ? 'split' : 'fullscreen')}
+              title="Toggle Fullscreen"
+              className={styles.viewButton}
+            >
+              {viewMode === 'fullscreen' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
+          
           {viewMode === 'split' ? (
             <ResizablePanelGroup direction="horizontal" className={styles.resizableGroup}>
               <ResizablePanel defaultSize={50} minSize={20} className={styles.editorSection}>
@@ -762,13 +765,21 @@ const TemplateEditor = () => {
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
+          ) : viewMode === 'fullscreen' ? (
+            <div className={styles.fullscreenContainer}>
+              <div className={styles.fullscreenContent}>
+                <PreviewView 
+                  headerSection={headerSection}
+                  footerSection={footerSection}
+                  sections={sections} 
+                />
+              </div>
+            </div>
           ) : (
             <>
               {/* Editor Only */}
-              {viewMode !== 'preview-only' && (
-                <div className={`${styles.editorSection} ${
-                  (viewMode === 'editor-only' || viewMode === 'fullscreen') ? styles.fullscreenPreview : ''
-                }`}>
+              {viewMode === 'editor-only' && (
+                <div className={styles.singleViewContainer}>
                   <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
                     <EditorView
                       headerSection={headerSection}
@@ -786,10 +797,8 @@ const TemplateEditor = () => {
               )}
 
               {/* Preview Only */}
-              {viewMode !== 'editor-only' && (
-                <div className={`${styles.previewSection} ${
-                  (viewMode === 'preview-only' || viewMode === 'fullscreen') ? styles.fullscreenPreview : ''
-                }`}>
+              {viewMode === 'preview-only' && (
+                <div className={styles.singleViewContainer}>
                   <PreviewView 
                     headerSection={headerSection}
                     footerSection={footerSection}
