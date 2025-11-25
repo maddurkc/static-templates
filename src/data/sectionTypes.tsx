@@ -283,15 +283,15 @@ export const sectionTypes: SectionDefinition[] = [
     type: 'mixed-content',
     label: 'Mixed Content',
     icon: Type,
-    description: 'Free-form text with Thymeleaf tags: variables, conditionals (<th:if>), loops (<th:each>)',
+    description: 'Combine static text with dynamic variables in one field (e.g., "Status: {{status}}")',
     defaultContent: '<th:utext="${content}">',
     category: 'text',
     variables: [
       {
         name: 'content',
-        label: 'Content',
+        label: 'Content (mix static text with variables)',
         type: 'text',
-        defaultValue: 'Status: <th:utext="${status}">\n\n<th:if="${hasIssues}">Found issues that need attention.</th:if>\n\n<th:each="item : ${items}"><th:utext="${item}"> </th:each>'
+        defaultValue: 'Status: <th:utext="${status}">\n\n<th:if="${hasIssues}">⚠️ Found <th:utext="${issueCount}"> issues that need attention.</th:if>\n\nProcessed items:\n<th:each="item : ${items}">• <th:utext="${item}"> </th:each>'
       }
     ]
   },
@@ -299,15 +299,15 @@ export const sectionTypes: SectionDefinition[] = [
     type: 'labeled-content',
     label: 'Labeled Content',
     icon: FileText,
-    description: 'Label and content - both can be static or dynamic using Thymeleaf',
+    description: 'Section with dynamic label (e.g., "Incident {{number}}") and customizable content type',
     defaultContent: '<div><strong><th:utext="${label}"></strong><div><th:utext="${content}"></div></div>',
     category: 'text',
     variables: [
       {
         name: 'label',
-        label: 'Label/Heading',
+        label: 'Label/Heading (can include variables)',
         type: 'text',
-        defaultValue: 'Incident <th:utext="${incidentNumber}">'
+        defaultValue: 'Incident Report #<th:utext="${incidentNumber}">'
       },
       {
         name: 'contentType',
@@ -317,13 +317,13 @@ export const sectionTypes: SectionDefinition[] = [
       },
       {
         name: 'content',
-        label: 'Dynamic Content',
+        label: 'Text Content',
         type: 'text',
-        defaultValue: 'Messages journaled in exchange online reasons:\n1. Invalid Characters\n2. Header too Large'
+        defaultValue: 'Messages journaled in exchange online:\n- Invalid Characters\n- Header too Large'
       },
       {
         name: 'items',
-        label: 'Dynamic List Items',
+        label: 'List Items (if content type is list)',
         type: 'list',
         defaultValue: ['Item 1', 'Item 2']
       }
