@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Maximize2, Minimize2 } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
@@ -77,7 +77,7 @@ const TemplateEditor = () => {
   const [templateName, setTemplateName] = useState("");
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'split' | 'editor-only' | 'preview-only' | 'fullscreen'>('split');
+  const [viewMode, setViewMode] = useState<'split' | 'editor-only' | 'preview-only'>('split');
   const { toast } = useToast();
 
   // Load template for editing if passed via navigation state
@@ -707,7 +707,7 @@ const TemplateEditor = () => {
             <Button
               variant={viewMode === 'editor-only' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setViewMode(viewMode === 'editor-only' ? 'split' : 'editor-only')}
+              onClick={() => setViewMode('editor-only')}
               title="Editor Only View"
               className={styles.viewButton}
             >
@@ -715,25 +715,23 @@ const TemplateEditor = () => {
             </Button>
             
             <Button
+              variant={viewMode === 'split' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('split')}
+              title="Split View"
+              className={styles.viewButton}
+            >
+              <Columns className="h-4 w-4" />
+            </Button>
+            
+            <Button
               variant={viewMode === 'preview-only' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setViewMode(viewMode === 'preview-only' ? 'split' : 'preview-only')}
+              onClick={() => setViewMode('preview-only')}
               title="Preview Only View"
               className={styles.viewButton}
             >
               <PanelRightClose className="h-4 w-4" />
-            </Button>
-            
-            <div className={styles.separator} />
-            
-            <Button
-              variant={viewMode === 'fullscreen' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode(viewMode === 'fullscreen' ? 'split' : 'fullscreen')}
-              title="Toggle Fullscreen"
-              className={styles.viewButton}
-            >
-              {viewMode === 'fullscreen' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
           </div>
           
@@ -765,16 +763,6 @@ const TemplateEditor = () => {
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
-          ) : viewMode === 'fullscreen' ? (
-            <div className={styles.fullscreenContainer}>
-              <div className={styles.fullscreenContent}>
-                <PreviewView 
-                  headerSection={headerSection}
-                  footerSection={footerSection}
-                  sections={sections} 
-                />
-              </div>
-            </div>
           ) : (
             <>
               {/* Editor Only */}
