@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Settings2, Plug } from "lucide-react";
+import { Settings2, Plug, Bold, Italic, Underline } from "lucide-react";
 import { VariableEditor } from "./VariableEditor";
 import { ApiConfigPopover } from "./ApiConfigPopover";
 import styles from "./CustomizationToolbar.module.scss";
@@ -63,6 +63,12 @@ export const CustomizationToolbar = ({
         [key]: value,
       },
     });
+  };
+
+  const toggleStyle = (key: string, onValue: string, offValue: string) => {
+    const currentValue = section?.styles?.[key] || offValue;
+    const newValue = currentValue === onValue ? offValue : onValue;
+    updateStyle(key, newValue);
   };
 
   if (!section) {
@@ -183,6 +189,42 @@ export const CustomizationToolbar = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <Separator orientation="vertical" className={styles.separator} />
+
+          {/* Bold, Italic, Underline Toggle Buttons */}
+          <div className={styles.controlGroup}>
+            <Label className={styles.label}>Style</Label>
+            <div className={styles.toggleButtons}>
+              <Button
+                variant={section.styles?.fontWeight === "700" ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleStyle("fontWeight", "700", "400")}
+                className={styles.toggleButton}
+                title="Bold"
+              >
+                <Bold className={styles.iconSmall} />
+              </Button>
+              <Button
+                variant={section.styles?.fontStyle === "italic" ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleStyle("fontStyle", "italic", "normal")}
+                className={styles.toggleButton}
+                title="Italic"
+              >
+                <Italic className={styles.iconSmall} />
+              </Button>
+              <Button
+                variant={section.styles?.textDecoration === "underline" ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleStyle("textDecoration", "underline", "none")}
+                className={styles.toggleButton}
+                title="Underline"
+              >
+                <Underline className={styles.iconSmall} />
+              </Button>
+            </div>
           </div>
 
           <Separator orientation="vertical" className={styles.separator} />

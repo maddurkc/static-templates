@@ -102,3 +102,22 @@
 .separator {
   height: 2rem;
 }
+
+.toggleButtons {
+  display: flex;
+  gap: 4px;
+}
+
+.toggleButton {
+  padding: 4px 8px;
+  min-width: 36px;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.iconSmall {
+  width: 16px;
+  height: 16px;
+}

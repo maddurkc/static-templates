@@ -67,6 +67,8 @@ export interface Section {
     margin?: string;
     textAlign?: string;
     fontWeight?: string;
+    fontStyle?: string;
+    textDecoration?: string;
   };
   children?: Section[];
   order?: number;
