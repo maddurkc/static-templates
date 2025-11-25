@@ -186,6 +186,25 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     return '<br/>';
   }
   
+  // Handle heading sections (h1-h6) with mixed static/dynamic content
+  if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6'].includes(section.type)) {
+    const headingTag = section.type.replace('heading', 'h');
+    let headingContent = (section.variables?.content as string) || content;
+    
+    // Replace all <th:utext="${placeholder}"> patterns with values
+    headingContent = headingContent.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+      if (variables && variables[varName] !== undefined) {
+        return sanitizeInput(String(variables[varName]));
+      }
+      if (section.variables && section.variables[varName]) {
+        return sanitizeInput(String(section.variables[varName]));
+      }
+      return match; // Keep placeholder if no value
+    });
+    
+    return `<${headingTag}>${headingContent}</${headingTag}>`;
+  }
+  
   // Handle container sections with nested children
   if (section.type === 'container' && section.children && section.children.length > 0) {
     const childrenHTML = section.children.map(child => renderSectionContent(child, variables)).join('');
