@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Maximize2, Minimize2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -733,38 +734,70 @@ const TemplateEditor = () => {
 
         {/* Main Content */}
         <div className={styles.contentArea}>
-          {/* Editor */}
-          {viewMode !== 'preview-only' && (
-            <div className={`${styles.editorSection} ${
-              (viewMode === 'editor-only' || viewMode === 'fullscreen') ? styles.fullscreenPreview : ''
-            }`}>
-              <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
-                <EditorView
+          {viewMode === 'split' ? (
+            <ResizablePanelGroup direction="horizontal" className={styles.resizableGroup}>
+              <ResizablePanel defaultSize={50} minSize={20} className={styles.editorSection}>
+                <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                  <EditorView
+                    headerSection={headerSection}
+                    footerSection={footerSection}
+                    sections={sections}
+                    selectedSection={selectedSection}
+                    onSelectSection={setSelectedSection}
+                    onDeleteSection={handleDeleteSection}
+                    onMoveUp={handleMoveUp}
+                    onMoveDown={handleMoveDown}
+                    onAddChildToContainer={handleAddChildToContainer}
+                  />
+                </SortableContext>
+              </ResizablePanel>
+              
+              <ResizableHandle withHandle className={styles.resizeHandle} />
+              
+              <ResizablePanel defaultSize={50} minSize={20} className={styles.previewSection}>
+                <PreviewView 
                   headerSection={headerSection}
                   footerSection={footerSection}
-                  sections={sections}
-                  selectedSection={selectedSection}
-                  onSelectSection={setSelectedSection}
-                  onDeleteSection={handleDeleteSection}
-                  onMoveUp={handleMoveUp}
-                  onMoveDown={handleMoveDown}
-                  onAddChildToContainer={handleAddChildToContainer}
+                  sections={sections} 
                 />
-              </SortableContext>
-            </div>
-          )}
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <>
+              {/* Editor Only */}
+              {viewMode !== 'preview-only' && (
+                <div className={`${styles.editorSection} ${
+                  (viewMode === 'editor-only' || viewMode === 'fullscreen') ? styles.fullscreenPreview : ''
+                }`}>
+                  <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                    <EditorView
+                      headerSection={headerSection}
+                      footerSection={footerSection}
+                      sections={sections}
+                      selectedSection={selectedSection}
+                      onSelectSection={setSelectedSection}
+                      onDeleteSection={handleDeleteSection}
+                      onMoveUp={handleMoveUp}
+                      onMoveDown={handleMoveDown}
+                      onAddChildToContainer={handleAddChildToContainer}
+                    />
+                  </SortableContext>
+                </div>
+              )}
 
-          {/* Preview */}
-          {viewMode !== 'editor-only' && (
-            <div className={`${styles.previewSection} ${
-              (viewMode === 'preview-only' || viewMode === 'fullscreen') ? styles.fullscreenPreview : ''
-            }`}>
-              <PreviewView 
-                headerSection={headerSection}
-                footerSection={footerSection}
-                sections={sections} 
-              />
-            </div>
+              {/* Preview Only */}
+              {viewMode !== 'editor-only' && (
+                <div className={`${styles.previewSection} ${
+                  (viewMode === 'preview-only' || viewMode === 'fullscreen') ? styles.fullscreenPreview : ''
+                }`}>
+                  <PreviewView 
+                    headerSection={headerSection}
+                    footerSection={footerSection}
+                    sections={sections} 
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
 
