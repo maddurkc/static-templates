@@ -5,14 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -132,177 +125,164 @@ const Templates = () => {
           </div>
         </div>
 
-        {/* Templates Table */}
-        <Card className={styles.tableCard}>
-          <div className={styles.tableHeader}>
+        {/* Active Templates Section */}
+        <div>
+          <div className={styles.sectionHeader}>
             <h2>Active Templates</h2>
+            <Badge variant="secondary">{activeTemplates.length}</Badge>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="font-semibold">Template Name</TableHead>
-                <TableHead className="font-semibold">Sections</TableHead>
-                <TableHead className="font-semibold">Created Date</TableHead>
-                <TableHead className="font-semibold text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activeTemplates.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className={styles.emptyState}>
-                    <div className={styles.emptyState}>
-                      <div className={styles.emptyIcon}>
-                        <Plus className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <p className={styles.emptyText}>No templates yet</p>
+
+          {activeTemplates.length === 0 ? (
+            <Card className={styles.emptyCard}>
+              <div className={styles.emptyState}>
+                <div className={styles.emptyIcon}>
+                  <Plus />
+                </div>
+                <p className={styles.emptyText}>No templates yet</p>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/templates/editor')}
+                >
+                  Create Your First Template
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <div className={styles.cardsGrid}>
+              {activeTemplates.map((template) => (
+                <Card key={template.id} className={styles.templateCard}>
+                  <div className={styles.cardHeader}>
+                    <h3 className={styles.cardTitle}>{template.name}</h3>
+                    <div className={styles.cardMeta}>
+                      <Calendar className={styles.metaIcon} />
+                      <span>{new Date(template.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.cardBadges}>
+                    <Badge variant="secondary">
+                      {template.sectionCount} sections
+                    </Badge>
+                  </div>
+
+                  <Separator className={styles.cardSeparator} />
+
+                  <div className={styles.cardActions}>
+                    <Button
+                      onClick={() => handleRunTemplate(template)}
+                      className={styles.runButton}
+                    >
+                      <PlayCircle />
+                      Run
+                    </Button>
+                    <div className={styles.iconActions}>
                       <Button
-                        variant="outline"
-                        onClick={() => navigate('/templates/editor')}
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditTemplate(template)}
+                        className={styles.iconButton}
                       >
-                        Create Your First Template
+                        <Edit />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handlePreviewTemplate(template)}
+                        className={styles.iconButton}
+                      >
+                        <Eye />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleCopyHTML(template.html, template.name)}
+                        className={styles.iconButton}
+                      >
+                        <Copy />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleArchiveTemplate(template.id, template.name, false)}
+                        className={styles.archiveButton}
+                      >
+                        <Archive />
                       </Button>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                activeTemplates.map((template) => (
-                  <TableRow key={template.id} className={styles.tableRow}>
-                    <TableCell>
-                      <div className={styles.templateName}>
-                        <span>{template.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {template.sectionCount} sections
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className={styles.dateCell}>
-                        <Calendar className="h-4 w-4" />
-                        {new Date(template.createdAt).toLocaleDateString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className={styles.actionButtons}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRunTemplate(template)}
-                          className="shadow-sm"
-                        >
-                          <PlayCircle className="h-4 w-4 mr-1" />
-                          Run
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditTemplate(template)}
-                          className="hover:bg-blue-100 hover:text-blue-700"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handlePreviewTemplate(template)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopyHTML(template.html, template.name)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleArchiveTemplate(template.id, template.name, false)}
-                          className="hover:bg-orange-100 hover:text-orange-700"
-                        >
-                          <Archive className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Card>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Archived Templates */}
         {archivedTemplates.length > 0 && (
-          <Card className={styles.archivedCard}>
-            <div className={styles.archivedHeader}>
-              <h2>
-                <Archive className="h-5 w-5" />
-                Archived Templates
-              </h2>
+          <div>
+            <div className={styles.sectionHeader}>
+              <div className={styles.archivedTitleGroup}>
+                <Archive />
+                <h2>Archived Templates</h2>
+              </div>
+              <Badge variant="outline">{archivedTemplates.length}</Badge>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-orange-100/30">
-                  <TableHead className="font-semibold">Template Name</TableHead>
-                  <TableHead className="font-semibold">Sections</TableHead>
-                  <TableHead className="font-semibold">Created Date</TableHead>
-                  <TableHead className="font-semibold text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {archivedTemplates.map((template) => (
-                  <TableRow key={template.id} className={styles.archivedRow}>
-                    <TableCell>
-                      <div className={styles.templateName}>
-                        <span>{template.name}</span>
-                        <Badge variant="outline" className={styles.archivedBadge}>Archived</Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {template.sectionCount} sections
+
+            <div className={styles.cardsGrid}>
+              {archivedTemplates.map((template) => (
+                <Card key={template.id} className={styles.archivedTemplateCard}>
+                  <div className={styles.cardHeader}>
+                    <div className={styles.titleWithBadge}>
+                      <h3 className={styles.cardTitle}>{template.name}</h3>
+                      <Badge variant="outline" className={styles.archivedBadgeSmall}>
+                        Archived
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className={styles.dateCell}>
-                        <Calendar className="h-4 w-4" />
-                        {new Date(template.createdAt).toLocaleDateString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className={styles.actionButtons}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handlePreviewTemplate(template)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopyHTML(template.html, template.name)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleArchiveTemplate(template.id, template.name, true)}
-                          className="text-green-700 hover:bg-green-100"
-                        >
-                          <ArchiveRestore className="h-4 w-4 mr-1" />
-                          Restore
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+                    </div>
+                    <div className={styles.cardMeta}>
+                      <Calendar className={styles.metaIcon} />
+                      <span>{new Date(template.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.cardBadges}>
+                    <Badge variant="secondary">
+                      {template.sectionCount} sections
+                    </Badge>
+                  </div>
+
+                  <Separator className={styles.cardSeparator} />
+
+                  <div className={styles.cardActions}>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleArchiveTemplate(template.id, template.name, true)}
+                      className={styles.restoreButton}
+                    >
+                      <ArchiveRestore />
+                      Restore
+                    </Button>
+                    <div className={styles.iconActions}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handlePreviewTemplate(template)}
+                        className={styles.iconButton}
+                      >
+                        <Eye />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleCopyHTML(template.html, template.name)}
+                        className={styles.iconButton}
+                      >
+                        <Copy />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Preview Dialog */}
