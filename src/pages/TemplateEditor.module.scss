@@ -101,21 +101,54 @@
   }
 }
 
+.resizableGroup {
+  width: 100%;
+  height: 100%;
+}
+
 .editorSection {
-  flex: 1;
   overflow-y: auto;
   border-right: 1px solid hsl(var(--border));
+  
+  &.fullscreenPreview {
+    border-right: none;
+  }
 }
 
 .previewSection {
-  flex: 1;
   overflow-y: auto;
   background-color: white;
-  width: 50%;
+  
+  &:not(:has(.fullscreenPreview)) {
+    border-left: 1px solid hsl(var(--border));
+  }
 }
 
 .fullscreenPreview {
   width: 100%;
+  flex: 1;
+  display: flex;
+}
+
+.resizeHandle {
+  position: relative;
+  width: 8px !important;
+  background-color: hsl(var(--border));
+  cursor: col-resize;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background-color: hsl(var(--primary) / 0.5);
+  }
+  
+  &[data-resize-handle-active] {
+    background-color: hsl(var(--primary));
+  }
+  
+  // Override default styles for better visibility
+  &::after {
+    background-color: transparent !important;
+  }
 }
 
 .previewHeader {
