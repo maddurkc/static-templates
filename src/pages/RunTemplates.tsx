@@ -141,6 +141,65 @@ const RunTemplates = () => {
     return '';
   };
 
+  // Get context information for a variable - shows where it's used
+  const getVariableContext = (varName: string): { sectionType: string; label?: string; context?: string } | null => {
+    if (!selectedTemplate?.sections) return null;
+    
+    for (const section of selectedTemplate.sections) {
+      // Check if this is a labeled-content section
+      if (section.type === 'labeled-content' && section.variables?.label === varName) {
+        // Extract the static parts of the label to show context
+        const labelText = section.variables.label as string;
+        return {
+          sectionType: 'Labeled Content',
+          label: labelText,
+          context: `Content for: ${labelText.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}')}`
+        };
+      }
+      
+      // Check if variable appears in label of labeled-content
+      if (section.type === 'labeled-content' && section.variables?.label) {
+        const labelText = section.variables.label as string;
+        if (labelText.includes(`\${${varName}}`)) {
+          return {
+            sectionType: 'Dynamic Label',
+            label: section.variables.label as string,
+            context: `Used in label: ${labelText.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}')}`
+          };
+        }
+      }
+      
+      // Check mixed-content sections
+      if (section.type === 'mixed-content' && section.variables?.content) {
+        const content = section.variables.content as string;
+        if (content.includes(`\${${varName}}`)) {
+          // Extract surrounding text for context
+          const regex = new RegExp(`([^<]*)<th:utext="\\$\\{${varName}\\}">([^<]*)`, 'g');
+          const match = regex.exec(content);
+          if (match) {
+            const before = match[1].trim();
+            const after = match[2].trim();
+            return {
+              sectionType: 'Mixed Content',
+              context: before ? `Appears after: "${before}"` : 'Used in mixed content section'
+            };
+          }
+        }
+      }
+      
+      // Check regular sections
+      if (section.variables && section.variables[varName] !== undefined) {
+        const typeLabel = section.type.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        return {
+          sectionType: typeLabel,
+          context: `Used in ${typeLabel.toLowerCase()}`
+        };
+      }
+    }
+    
+    return null;
+  };
+
   // Extract variables from both HTML and sections
   const extractAllVariables = (template: Template): string[] => {
     const varsFromHtml = extractVariables(template.html);
@@ -554,6 +613,7 @@ const RunTemplates = () => {
                           const isList = isListVariable(varName);
                           const isTable = isTableVariable(varName);
                           const editable = isLabelEditable(varName);
+                          const context = getVariableContext(varName);
                           
                           return (
                             <div key={varName} className={styles.formField}>
@@ -567,7 +627,12 @@ const RunTemplates = () => {
                                     {`{{${varName}}}`}
                                   </Badge>
                                 )}
-                                <span>{varName}</span>
+                                <span className="font-medium">{varName}</span>
+                                {context && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {context.sectionType}
+                                  </Badge>
+                                )}
                                 {isList && (
                                   <Badge variant="secondary" className="text-xs">
                                     List
@@ -584,6 +649,11 @@ const RunTemplates = () => {
                                   </Badge>
                                 )}
                               </Label>
+                              {context && context.context && (
+                                <p className="text-xs text-muted-foreground italic mt-1 mb-2">
+                                  {context.context}
+                                </p>
+                              )}
                               {isTable ? (
                                 <div className="space-y-2 border rounded-lg p-4">
                                   <div className="flex items-center justify-between mb-2">
