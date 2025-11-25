@@ -164,15 +164,6 @@ const RunTemplates = () => {
           return;
         }
         
-        // For heading sections (h1-h6), extract variables from content
-        if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6'].includes(section.type)) {
-          if (section.variables?.content) {
-            const headingVars = extractVariables(section.variables.content as string);
-            headingVars.forEach(v => varsFromSections.add(v));
-          }
-          return;
-        }
-        
         // For mixed-content sections, extract from content variable
         if (section.type === 'mixed-content' && section.variables?.content) {
           const mixedVars = extractVariables(section.variables.content as string);

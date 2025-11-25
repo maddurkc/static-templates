@@ -73,69 +73,6 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
     );
   }
   
-  // For headings with mixed content (h1-h6)
-  if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6'].includes(section.type)) {
-    const contentText = (section.variables?.content as string) || sectionDef?.defaultContent || '';
-    
-    // Extract all placeholders from content
-    const placeholders = Array.from(contentText.matchAll(/<th:utext="\$\{(\w+)\}">/g))
-      .map(match => match[1])
-      .filter((value, index, self) => self.indexOf(value) === index);
-    
-    const headingTag = section.type.replace('heading', 'h');
-    
-    return (
-      <div className={styles.container}>
-        <div className={styles.header}>
-          <h3 className={styles.title}>{sectionDef?.label || 'Heading'}</h3>
-        </div>
-        <Separator />
-        <div className={styles.section}>
-          <Label className={styles.label}>
-            Heading Content (mix static text with placeholders)
-          </Label>
-          <ThymeleafEditor
-            value={contentText}
-            onChange={(value) => onUpdate({
-              ...section,
-              variables: { ...section.variables, content: value }
-            })}
-            placeholder={`Enter heading text with placeholders like: Report for <th:utext="\${date}"> - Status: <th:utext="\${status}">`}
-            className={styles.thymeleafEditor}
-          />
-          <p className={styles.description}>
-            Use <code>&lt;th:utext="$&#123;variableName&#125;"&gt;</code> for dynamic content that users can fill when running the template.
-          </p>
-        </div>
-        
-        {placeholders.length > 0 && (
-          <>
-            <Separator />
-            <div className={styles.section}>
-              <Label className={styles.label}>Default Values for Placeholders</Label>
-              <p className={styles.description}>
-                Set default values for the placeholders you've added:
-              </p>
-              {placeholders.map((placeholder) => (
-                <div key={placeholder} className={styles.inputGroup}>
-                  <Label>{placeholder}</Label>
-                  <Input
-                    value={(section.variables?.[placeholder] as string) || ''}
-                    onChange={(e) => onUpdate({
-                      ...section,
-                      variables: { ...section.variables, [placeholder]: e.target.value }
-                    })}
-                    placeholder={`Default value for ${placeholder}`}
-                  />
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
-  
   // For mixed-content sections - free-form text with embedded placeholders
   if (section.type === 'mixed-content') {
     const contentText = (section.variables?.content as string) || 'What\'s New: <th:utext="${update}">';
