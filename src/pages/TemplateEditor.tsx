@@ -78,6 +78,7 @@ const TemplateEditor = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'split' | 'editor-only' | 'preview-only'>('split');
+  const [copiedStyles, setCopiedStyles] = useState<Section['styles'] | null>(null);
   const { toast } = useToast();
 
   // Load template for editing if passed via navigation state
@@ -353,6 +354,65 @@ const TemplateEditor = () => {
       title: "Section deleted",
       description: "The section has been removed from your template.",
     });
+  };
+
+  const handleDuplicateSection = (id: string) => {
+    const sectionIndex = sections.findIndex(s => s.id === id);
+    if (sectionIndex === -1) return;
+
+    const sectionToDuplicate = sections[sectionIndex];
+    const duplicatedSection: Section = {
+      ...sectionToDuplicate,
+      id: `section-${Date.now()}-${Math.random()}`,
+      children: sectionToDuplicate.children?.map(child => ({
+        ...child,
+        id: `child-${Date.now()}-${Math.random()}`
+      }))
+    };
+
+    const newSections = [...sections];
+    newSections.splice(sectionIndex + 1, 0, duplicatedSection);
+    setSections(newSections);
+
+    toast({
+      title: "Section duplicated",
+      description: "The section has been duplicated successfully.",
+    });
+  };
+
+  const handleCopyStyles = (id: string) => {
+    const section = sections.find(s => s.id === id);
+    if (section?.styles) {
+      setCopiedStyles(section.styles);
+      toast({
+        title: "Styles copied",
+        description: "Section styles have been copied to clipboard.",
+      });
+    }
+  };
+
+  const handlePasteStyles = (id: string) => {
+    if (!copiedStyles) {
+      toast({
+        title: "No styles copied",
+        description: "Please copy styles from another section first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const section = sections.find(s => s.id === id);
+    if (section) {
+      const updatedSection = {
+        ...section,
+        styles: copiedStyles
+      };
+      handleUpdateSection(updatedSection);
+      toast({
+        title: "Styles pasted",
+        description: "Styles have been applied to the section.",
+      });
+    }
   };
 
   const handleSaveTemplate = () => {
@@ -779,6 +839,9 @@ const TemplateEditor = () => {
                     onMoveUp={handleMoveUp}
                     onMoveDown={handleMoveDown}
                     onAddChildToContainer={handleAddChildToContainer}
+                    onDuplicateSection={handleDuplicateSection}
+                    onCopyStyles={handleCopyStyles}
+                    onPasteStyles={handlePasteStyles}
                     apiConfig={apiConfig}
                     onApiConfigUpdate={setApiConfig}
                   />
@@ -812,6 +875,9 @@ const TemplateEditor = () => {
                       onMoveUp={handleMoveUp}
                       onMoveDown={handleMoveDown}
                       onAddChildToContainer={handleAddChildToContainer}
+                      onDuplicateSection={handleDuplicateSection}
+                      onCopyStyles={handleCopyStyles}
+                      onPasteStyles={handlePasteStyles}
                       apiConfig={apiConfig}
                       onApiConfigUpdate={setApiConfig}
                     />

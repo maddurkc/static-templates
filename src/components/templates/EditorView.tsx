@@ -5,10 +5,11 @@ import { Section } from "@/types/section";
 import { ApiConfig } from "@/types/api-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { GripVertical, Plus, Trash2, Settings2, Plug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { thymeleafToPlaceholder } from "@/lib/thymeleafUtils";
 import { InlineSectionControls } from "./InlineSectionControls";
+import { SectionContextMenu } from "./SectionContextMenu";
 import styles from "./EditorView.module.scss";
 
 
@@ -23,6 +24,9 @@ interface SortableSectionProps {
   isFirst: boolean;
   isLast: boolean;
   onAddChild?: (parentId: string) => void;
+  onDuplicate: (id: string) => void;
+  onCopyStyles: (id: string) => void;
+  onPasteStyles: (id: string) => void;
   renderChildren?: (section: Section) => React.ReactNode;
   apiConfig: ApiConfig;
   sections: Section[];
@@ -40,6 +44,9 @@ const SortableSection = ({
   isFirst,
   isLast,
   onAddChild,
+  onDuplicate,
+  onCopyStyles,
+  onPasteStyles,
   renderChildren,
   apiConfig,
   sections,
@@ -66,19 +73,25 @@ const SortableSection = ({
   });
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "group relative",
-        styles.section,
-        isSelected && styles.selected,
-        isDragging && styles.dragging,
-        isContainer && styles.container,
-        isContainer && isDropOver && styles.dropOver
-      )}
-      onClick={onSelect}
+    <SectionContextMenu
+      onDuplicate={() => onDuplicate(section.id)}
+      onCopyStyles={() => onCopyStyles(section.id)}
+      onPasteStyles={() => onPasteStyles(section.id)}
+      onDelete={() => onDelete()}
     >
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={cn(
+          "group relative",
+          styles.section,
+          isSelected && styles.selected,
+          isDragging && styles.dragging,
+          isContainer && styles.container,
+          isContainer && isDropOver && styles.dropOver
+        )}
+        onClick={onSelect}
+      >
       {/* Drag Handle */}
       <div
         {...attributes}
@@ -198,8 +211,24 @@ const SortableSection = ({
         )}
       </div>
 
+      {/* Visual Indicators */}
+      <div className="absolute left-12 top-4 flex items-center gap-1 z-10">
+        {section.variables && Object.keys(section.variables).length > 0 && (
+          <Badge variant="secondary" className="text-xs">
+            <Settings2 className="h-3 w-3 mr-1" />
+            Variables
+          </Badge>
+        )}
+        {apiConfig.enabled && apiConfig.mappings?.some(m => m.sectionId === section.id) && (
+          <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 border-green-300">
+            <Plug className="h-3 w-3 mr-1" />
+            API
+          </Badge>
+        )}
+      </div>
+
       {/* Controls */}
-      <div className="absolute right-2 top-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+      <div className="absolute right-2 top-4 flex items-center gap-1 z-10">
         {isContainer && onAddChild && (
           <Button
             size="sm"
@@ -233,6 +262,7 @@ const SortableSection = ({
         <div className={styles.selectedIndicator} />
       )}
     </div>
+    </SectionContextMenu>
   );
 };
 
@@ -247,6 +277,9 @@ interface EditorViewProps {
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
   onAddChildToContainer?: (parentId: string) => void;
+  onDuplicateSection: (id: string) => void;
+  onCopyStyles: (id: string) => void;
+  onPasteStyles: (id: string) => void;
   apiConfig: ApiConfig;
   onApiConfigUpdate: (config: ApiConfig) => void;
 }
@@ -262,6 +295,9 @@ export const EditorView = ({
   onMoveUp,
   onMoveDown,
   onAddChildToContainer,
+  onDuplicateSection,
+  onCopyStyles,
+  onPasteStyles,
   apiConfig,
   onApiConfigUpdate
 }: EditorViewProps) => {
@@ -375,6 +411,9 @@ export const EditorView = ({
               isFirst={index === 0}
               isLast={index === sections.length - 1}
               onAddChild={onAddChildToContainer}
+              onDuplicate={onDuplicateSection}
+              onCopyStyles={onCopyStyles}
+              onPasteStyles={onPasteStyles}
               renderChildren={renderNestedChildren}
               apiConfig={apiConfig}
               sections={sections}
