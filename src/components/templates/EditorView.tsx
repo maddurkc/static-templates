@@ -212,7 +212,7 @@ const SortableSection = ({
       </div>
 
       {/* Visual Indicators */}
-      <div className="absolute left-12 top-4 flex items-center gap-1 z-10">
+      <div className="absolute -top-8 left-12 flex items-center gap-1 z-10">
         {section.variables && Object.keys(section.variables).length > 0 && (
           <Badge variant="secondary" className="text-xs">
             <Settings2 className="h-3 w-3 mr-1" />
@@ -228,7 +228,7 @@ const SortableSection = ({
       </div>
 
       {/* Controls */}
-      <div className="absolute right-2 top-4 flex items-center gap-1 z-10">
+      <div className="absolute -top-8 right-2 flex items-center gap-1 z-10">
         {isContainer && onAddChild && (
           <Button
             size="sm"
