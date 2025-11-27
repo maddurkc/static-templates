@@ -199,7 +199,7 @@ const SortableSection = ({
       </div>
 
       {/* Controls */}
-      <div className={styles.controlsWrapper}>
+      <div className="absolute right-2 top-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
         {isContainer && onAddChild && (
           <Button
             size="sm"
