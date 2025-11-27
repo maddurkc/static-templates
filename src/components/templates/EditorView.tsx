@@ -2,11 +2,13 @@ import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Section } from "@/types/section";
+import { ApiConfig } from "@/types/api-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Trash2, ChevronUp, ChevronDown, Plus } from "lucide-react";
+import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { thymeleafToPlaceholder } from "@/lib/thymeleafUtils";
+import { InlineSectionControls } from "./InlineSectionControls";
 import styles from "./EditorView.module.scss";
 
 
@@ -14,6 +16,7 @@ interface SortableSectionProps {
   section: Section;
   isSelected: boolean;
   onSelect: () => void;
+  onUpdate: (section: Section) => void;
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -21,19 +24,26 @@ interface SortableSectionProps {
   isLast: boolean;
   onAddChild?: (parentId: string) => void;
   renderChildren?: (section: Section) => React.ReactNode;
+  apiConfig: ApiConfig;
+  sections: Section[];
+  onApiConfigUpdate: (config: ApiConfig) => void;
 }
 
 const SortableSection = ({
   section,
   isSelected,
   onSelect,
+  onUpdate,
   onDelete,
   onMoveUp,
   onMoveDown,
   isFirst,
   isLast,
   onAddChild,
-  renderChildren
+  renderChildren,
+  apiConfig,
+  sections,
+  onApiConfigUpdate
 }: SortableSectionProps) => {
   const {
     attributes,
@@ -189,7 +199,7 @@ const SortableSection = ({
       </div>
 
       {/* Controls */}
-      <div className={styles.controls}>
+      <div className={styles.controlsWrapper}>
         {isContainer && onAddChild && (
           <Button
             size="sm"
@@ -204,41 +214,18 @@ const SortableSection = ({
             Add
           </Button>
         )}
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveUp();
-          }}
-          disabled={isFirst}
-          className="h-8 w-8"
-        >
-          <ChevronUp className={styles.icon} />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveDown();
-          }}
-          disabled={isLast}
-          className="h-8 w-8"
-        >
-          <ChevronDown className={styles.icon} />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className={styles.deleteButton}
-        >
-          <Trash2 />
-        </Button>
+        <InlineSectionControls
+          section={section}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+          isFirst={isFirst}
+          isLast={isLast}
+          apiConfig={apiConfig}
+          sections={sections}
+          onApiConfigUpdate={onApiConfigUpdate}
+        />
       </div>
 
       {/* Selected Indicator */}
@@ -255,10 +242,13 @@ interface EditorViewProps {
   sections: Section[];
   selectedSection: Section | null;
   onSelectSection: (section: Section) => void;
+  onUpdateSection: (section: Section) => void;
   onDeleteSection: (id: string) => void;
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
   onAddChildToContainer?: (parentId: string) => void;
+  apiConfig: ApiConfig;
+  onApiConfigUpdate: (config: ApiConfig) => void;
 }
 
 export const EditorView = ({
@@ -267,10 +257,13 @@ export const EditorView = ({
   sections,
   selectedSection,
   onSelectSection,
+  onUpdateSection,
   onDeleteSection,
   onMoveUp,
   onMoveDown,
-  onAddChildToContainer
+  onAddChildToContainer,
+  apiConfig,
+  onApiConfigUpdate
 }: EditorViewProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'editor-drop-zone',
@@ -375,6 +368,7 @@ export const EditorView = ({
               section={section}
               isSelected={selectedSection?.id === section.id}
               onSelect={() => onSelectSection(section)}
+              onUpdate={onUpdateSection}
               onDelete={() => onDeleteSection(section.id)}
               onMoveUp={() => onMoveUp(section.id)}
               onMoveDown={() => onMoveDown(section.id)}
@@ -382,6 +376,9 @@ export const EditorView = ({
               isLast={index === sections.length - 1}
               onAddChild={onAddChildToContainer}
               renderChildren={renderNestedChildren}
+              apiConfig={apiConfig}
+              sections={sections}
+              onApiConfigUpdate={onApiConfigUpdate}
             />
           ))
         )}

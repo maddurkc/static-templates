@@ -7,7 +7,7 @@ import { sectionTypes } from "@/data/sectionTypes";
 import { SectionLibrary } from "@/components/templates/SectionLibrary";
 import { EditorView } from "@/components/templates/EditorView";
 import { PreviewView } from "@/components/templates/PreviewView";
-import { CustomizationToolbar } from "@/components/templates/CustomizationToolbar";
+import { TextSelectionToolbar } from "@/components/templates/TextSelectionToolbar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -711,18 +711,26 @@ const TemplateEditor = () => {
                 </DialogContent>
               </Dialog>
             </div>
-          
-          <CustomizationToolbar
-            section={selectedSection}
-            onUpdate={handleUpdateSection}
-            apiConfig={apiConfig}
-            sections={sections}
-            onApiConfigUpdate={setApiConfig}
-          />
-        </div>
+          </div>
 
-        {/* Main Content */}
-        <div className={styles.contentArea}>
+          {/* Main Content */}
+          <div className={styles.contentArea}>
+            {/* Text Selection Toolbar */}
+            <TextSelectionToolbar 
+              onApplyStyle={(styles) => {
+                // Apply styles to selected text
+                if (selectedSection) {
+                  handleUpdateSection({
+                    ...selectedSection,
+                    styles: {
+                      ...selectedSection.styles,
+                      ...styles
+                    }
+                  });
+                }
+              }}
+            />
+          
           {/* View Mode Controls - Floating */}
           <div className={styles.floatingViewControls}>
             <Button
@@ -766,10 +774,13 @@ const TemplateEditor = () => {
                     sections={sections}
                     selectedSection={selectedSection}
                     onSelectSection={setSelectedSection}
+                    onUpdateSection={handleUpdateSection}
                     onDeleteSection={handleDeleteSection}
                     onMoveUp={handleMoveUp}
                     onMoveDown={handleMoveDown}
                     onAddChildToContainer={handleAddChildToContainer}
+                    apiConfig={apiConfig}
+                    onApiConfigUpdate={setApiConfig}
                   />
                 </SortableContext>
               </ResizablePanel>
@@ -796,10 +807,13 @@ const TemplateEditor = () => {
                       sections={sections}
                       selectedSection={selectedSection}
                       onSelectSection={setSelectedSection}
+                      onUpdateSection={handleUpdateSection}
                       onDeleteSection={handleDeleteSection}
                       onMoveUp={handleMoveUp}
                       onMoveDown={handleMoveDown}
                       onAddChildToContainer={handleAddChildToContainer}
+                      apiConfig={apiConfig}
+                      onApiConfigUpdate={setApiConfig}
                     />
                   </SortableContext>
                 </div>

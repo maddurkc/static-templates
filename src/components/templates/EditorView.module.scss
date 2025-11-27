@@ -120,6 +120,10 @@
   }
 }
 
+.controlsWrapper {
+  composes: controls;
+}
+
 .selectedIndicator {
   position: absolute;
   left: -0.25rem;

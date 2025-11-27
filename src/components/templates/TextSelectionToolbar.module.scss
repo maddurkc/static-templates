@@ -1,0 +1,60 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.toolbarButton {
+  height: 2rem;
+  width: 2rem;
+  padding: 0;
+
+  &:hover {
+    background-color: hsl(var(--accent));
+  }
+}
+
+.icon {
+  height: 1rem;
+  width: 1rem;
+}
+
+.separator {
+  height: 1.5rem;
+  background-color: hsl(var(--border));
+}
+
+.selectTrigger {
+  height: 2rem;
+  width: 3rem;
+  padding: 0 0.5rem;
+}
+
+.colorInput {
+  height: 2rem;
+  width: 2.5rem;
+  padding: 0.25rem;
+  cursor: pointer;
+  border: 1px solid hsl(var(--border));
+  
+  &:hover {
+    border-color: hsl(var(--primary));
+  }
+}
