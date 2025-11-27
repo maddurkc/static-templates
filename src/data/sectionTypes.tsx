@@ -27,7 +27,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 1',
     icon: Heading1,
     description: 'Large heading - supports {{variable}} placeholders',
-    defaultContent: '<h1>Main Title</h1>',
+    defaultContent: 'Main Title',
     category: 'text',
     variables: []
   },
@@ -36,7 +36,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 2',
     icon: Heading2,
     description: 'Section heading - supports {{variable}} placeholders',
-    defaultContent: '<h2>Section Title</h2>',
+    defaultContent: 'Section Title',
     category: 'text',
     variables: []
   },
@@ -45,7 +45,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 3',
     icon: Heading3,
     description: 'Subsection heading - supports {{variable}} placeholders',
-    defaultContent: '<h3>Subsection Title</h3>',
+    defaultContent: 'Subsection Title',
     category: 'text',
     variables: []
   },
@@ -54,7 +54,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 4',
     icon: Heading4,
     description: 'Minor heading - supports {{variable}} placeholders',
-    defaultContent: '<h4>Minor Title</h4>',
+    defaultContent: 'Minor Title',
     category: 'text',
     variables: []
   },
@@ -63,7 +63,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 5',
     icon: Heading5,
     description: 'Small heading - supports {{variable}} placeholders',
-    defaultContent: '<h5>Small Title</h5>',
+    defaultContent: 'Small Title',
     category: 'text',
     variables: []
   },
@@ -72,7 +72,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 6',
     icon: Heading6,
     description: 'Smallest heading - supports {{variable}} placeholders',
-    defaultContent: '<h6>Tiny Title</h6>',
+    defaultContent: 'Tiny Title',
     category: 'text',
     variables: []
   },
@@ -81,7 +81,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Text',
     icon: Type,
     description: 'Simple text - supports {{variable}} placeholders',
-    defaultContent: '<span>Your text here</span>',
+    defaultContent: 'Your text here',
     category: 'text',
     variables: []
   },
@@ -90,7 +90,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Paragraph',
     icon: AlignLeft,
     description: 'Text paragraph - supports {{variable}} placeholders',
-    defaultContent: '<p>This is a paragraph with multiple lines of text. You can add more content here.</p>',
+    defaultContent: 'This is a paragraph with multiple lines of text. You can add more content here.',
     category: 'text',
     variables: []
   },

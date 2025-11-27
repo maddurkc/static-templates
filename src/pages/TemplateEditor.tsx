@@ -413,7 +413,21 @@ const TemplateEditor = () => {
       const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
       if (inlinePlaceholderTypes.includes(section.type) && section.content) {
         const contentWithThymeleaf = section.content.replace(/\{\{(\w+)\}\}/g, '<th:utext="${$1}">');
-        return `${indent}<div style="${styleString}">\n${indent}  ${contentWithThymeleaf}\n${indent}</div>`;
+        
+        // Wrap in appropriate HTML tag
+        const tagMap: Record<string, string> = {
+          'heading1': 'h1',
+          'heading2': 'h2',
+          'heading3': 'h3',
+          'heading4': 'h4',
+          'heading5': 'h5',
+          'heading6': 'h6',
+          'text': 'span',
+          'paragraph': 'p'
+        };
+        const tag = tagMap[section.type] || 'div';
+        
+        return `${indent}<${tag} style="${styleString}">${contentWithThymeleaf}</${tag}>`;
       }
       
       // Handle container sections with children

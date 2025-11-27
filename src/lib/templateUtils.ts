@@ -204,7 +204,20 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       processedContent = processedContent.replace(new RegExp(match.replace(/[{}]/g, '\\$&'), 'g'), value);
     });
     
-    return processedContent;
+    // Wrap content in appropriate HTML tags
+    const tagMap: Record<string, string> = {
+      'heading1': 'h1',
+      'heading2': 'h2',
+      'heading3': 'h3',
+      'heading4': 'h4',
+      'heading5': 'h5',
+      'heading6': 'h6',
+      'text': 'span',
+      'paragraph': 'p'
+    };
+    
+    const tag = tagMap[section.type] || 'div';
+    return `<${tag}>${processedContent}</${tag}>`;
   }
   
   // Handle line-break sections
