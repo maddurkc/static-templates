@@ -181,6 +181,32 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${sanitizeHTML(mixedContent).replace(/\n/g, '<br/>')}</div>`;
   }
   
+  // Handle heading and text sections with inline placeholders
+  const isInlinePlaceholderSection = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type);
+  if (isInlinePlaceholderSection && section.content) {
+    let processedContent = section.content;
+    
+    // Replace {{variable}} placeholders with values
+    const placeholderMatches = processedContent.match(/\{\{(\w+)\}\}/g) || [];
+    placeholderMatches.forEach(match => {
+      const varName = match.replace(/\{\{|\}\}/g, '');
+      let value = '';
+      
+      // Check runtime variables first, then section variables
+      if (variables && variables[varName] !== undefined) {
+        value = sanitizeInput(String(variables[varName]));
+      } else if (section.variables && section.variables[varName] !== undefined) {
+        value = sanitizeInput(String(section.variables[varName]));
+      } else {
+        value = match; // Keep placeholder if no value
+      }
+      
+      processedContent = processedContent.replace(new RegExp(match.replace(/[{}]/g, '\\$&'), 'g'), value);
+    });
+    
+    return processedContent;
+  }
+  
   // Handle line-break sections
   if (section.type === 'line-break') {
     return '<br/>';

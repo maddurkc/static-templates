@@ -18,12 +18,20 @@ export const thymeleafToPlaceholder = (content: string): string => {
  * Example: {{title}} -> <th:utext="${title}">
  */
 export const placeholderToThymeleaf = (content: string): string => {
-  return content
+  // Process inline placeholders within HTML tags (e.g., <h1>Title {{name}}</h1>)
+  let result = content;
+  
+  // First handle structured tags
+  result = result
     .replace(/\{\{if\s+(\w+)\}\}/g, '<th:if="${$1}">')
     .replace(/\{\{\/if\}\}/g, '</th:if>')
     .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<th:each="$1 : ${$2}">')
-    .replace(/\{\{\/each\}\}/g, '</th:each>')
-    .replace(/\{\{(\w+)\}\}/g, '<th:utext="${$1}">');
+    .replace(/\{\{\/each\}\}/g, '</th:each>');
+  
+  // Then convert simple placeholders to Thymeleaf
+  result = result.replace(/\{\{(\w+)\}\}/g, '<th:utext="${$1}">');
+  
+  return result;
 };
 
 /**

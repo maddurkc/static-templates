@@ -26,89 +26,73 @@ export const sectionTypes: SectionDefinition[] = [
     type: 'heading1',
     label: 'Heading 1',
     icon: Heading1,
-    description: 'Large heading for main titles',
-    defaultContent: '<h1><th:utext="${title}"></h1>',
+    description: 'Large heading - supports {{variable}} placeholders',
+    defaultContent: '<h1>Main Title</h1>',
     category: 'text',
-    variables: [
-      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Main Title' }
-    ]
+    variables: []
   },
   {
     type: 'heading2',
     label: 'Heading 2',
     icon: Heading2,
-    description: 'Section heading',
-    defaultContent: '<h2><th:utext="${title}"></h2>',
+    description: 'Section heading - supports {{variable}} placeholders',
+    defaultContent: '<h2>Section Title</h2>',
     category: 'text',
-    variables: [
-      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Section Title' }
-    ]
+    variables: []
   },
   {
     type: 'heading3',
     label: 'Heading 3',
     icon: Heading3,
-    description: 'Subsection heading',
-    defaultContent: '<h3><th:utext="${title}"></h3>',
+    description: 'Subsection heading - supports {{variable}} placeholders',
+    defaultContent: '<h3>Subsection Title</h3>',
     category: 'text',
-    variables: [
-      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Subsection Title' }
-    ]
+    variables: []
   },
   {
     type: 'heading4',
     label: 'Heading 4',
     icon: Heading4,
-    description: 'Minor heading',
-    defaultContent: '<h4><th:utext="${title}"></h4>',
+    description: 'Minor heading - supports {{variable}} placeholders',
+    defaultContent: '<h4>Minor Title</h4>',
     category: 'text',
-    variables: [
-      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Minor Title' }
-    ]
+    variables: []
   },
   {
     type: 'heading5',
     label: 'Heading 5',
     icon: Heading5,
-    description: 'Small heading',
-    defaultContent: '<h5><th:utext="${title}"></h5>',
+    description: 'Small heading - supports {{variable}} placeholders',
+    defaultContent: '<h5>Small Title</h5>',
     category: 'text',
-    variables: [
-      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Small Title' }
-    ]
+    variables: []
   },
   {
     type: 'heading6',
     label: 'Heading 6',
     icon: Heading6,
-    description: 'Smallest heading',
-    defaultContent: '<h6><th:utext="${title}"></h6>',
+    description: 'Smallest heading - supports {{variable}} placeholders',
+    defaultContent: '<h6>Tiny Title</h6>',
     category: 'text',
-    variables: [
-      { name: 'title', label: 'Title', type: 'text', defaultValue: 'Tiny Title' }
-    ]
+    variables: []
   },
   {
     type: 'text',
     label: 'Text',
     icon: Type,
-    description: 'Simple text element',
-    defaultContent: '<span><th:utext="${text}"></span>',
+    description: 'Simple text - supports {{variable}} placeholders',
+    defaultContent: '<span>Your text here</span>',
     category: 'text',
-    variables: [
-      { name: 'text', label: 'Text', type: 'text', defaultValue: 'Your text here' }
-    ]
+    variables: []
   },
   {
     type: 'paragraph',
     label: 'Paragraph',
     icon: AlignLeft,
-    description: 'Text paragraph with spacing',
-    defaultContent: '<p><th:utext="${text}"></p>',
+    description: 'Text paragraph - supports {{variable}} placeholders',
+    defaultContent: '<p>This is a paragraph with multiple lines of text. You can add more content here.</p>',
     category: 'text',
-    variables: [
-      { name: 'text', label: 'Text', type: 'text', defaultValue: 'This is a paragraph with multiple lines of text. You can add more content here.' }
-    ]
+    variables: []
   },
   {
     type: 'table',

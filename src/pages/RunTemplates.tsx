@@ -133,6 +133,12 @@ const RunTemplates = () => {
         return (section.variables.content as string) || '';
       }
       
+      // For heading/text sections with inline placeholders
+      const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
+      if (inlinePlaceholderTypes.includes(section.type) && section.variables && section.variables[varName] !== undefined) {
+        return String(section.variables[varName]);
+      }
+      
       if (section.variables && section.variables[varName] !== undefined) {
         const value = section.variables[varName];
         return Array.isArray(value) ? value : String(value);
@@ -187,6 +193,30 @@ const RunTemplates = () => {
         }
       }
       
+      // Check heading/text sections with inline placeholders
+      const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
+      if (inlinePlaceholderTypes.includes(section.type) && section.content) {
+        if (section.content.includes(`{{${varName}}}`)) {
+          const typeLabel = section.type.replace(/(\d)/, ' $1').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          // Extract surrounding text for context
+          const regex = new RegExp(`([^{]*)\\{\\{${varName}\\}\\}([^{]*)`, 'g');
+          const match = regex.exec(section.content);
+          if (match) {
+            const before = match[1].trim().slice(-30); // Last 30 chars before
+            const after = match[2].trim().slice(0, 30); // First 30 chars after
+            const contextText = before + ' {{' + varName + '}} ' + after;
+            return {
+              sectionType: typeLabel,
+              context: `In ${typeLabel.toLowerCase()}: "${contextText}"`
+            };
+          }
+          return {
+            sectionType: typeLabel,
+            context: `Used in ${typeLabel.toLowerCase()}`
+          };
+        }
+      }
+      
       // Check regular sections
       if (section.variables && section.variables[varName] !== undefined) {
         const typeLabel = section.type.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -227,6 +257,16 @@ const RunTemplates = () => {
         if (section.type === 'mixed-content' && section.variables?.content) {
           const mixedVars = extractVariables(section.variables.content as string);
           mixedVars.forEach(v => varsFromSections.add(v));
+        }
+        
+        // For heading/text sections with inline placeholders, extract from content
+        const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
+        if (inlinePlaceholderTypes.includes(section.type) && section.content) {
+          const placeholderMatches = section.content.match(/\{\{(\w+)\}\}/g) || [];
+          placeholderMatches.forEach(match => {
+            const varName = match.replace(/\{\{|\}\}/g, '');
+            varsFromSections.add(varName);
+          });
         }
         
         // Extract variables from section content
