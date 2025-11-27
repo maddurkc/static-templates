@@ -105,7 +105,7 @@
   margin-bottom: 0.5rem;
 }
 
-.controls {
+.controlsWrapper {
   position: absolute;
   right: 0.5rem;
   top: 1rem;
@@ -114,14 +114,11 @@
   gap: 0.25rem;
   opacity: 0;
   transition: opacity 0.2s ease;
-
-  .section:hover & {
-    opacity: 1;
-  }
+  z-index: 10;
 }
 
-.controlsWrapper {
-  composes: controls;
+.section:hover .controlsWrapper {
+  opacity: 1;
 }
 
 .selectedIndicator {
