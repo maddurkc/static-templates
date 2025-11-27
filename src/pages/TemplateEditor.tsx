@@ -409,6 +409,13 @@ const TemplateEditor = () => {
         .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
         .join('; ');
       
+      // Handle heading/text sections with inline placeholders
+      const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
+      if (inlinePlaceholderTypes.includes(section.type) && section.content) {
+        const contentWithThymeleaf = section.content.replace(/\{\{(\w+)\}\}/g, '<th:utext="${$1}">');
+        return `${indent}<div style="${styleString}">\n${indent}  ${contentWithThymeleaf}\n${indent}</div>`;
+      }
+      
       // Handle container sections with children
       if (section.type === 'container' && section.children && section.children.length > 0) {
         const childrenHTML = section.children.map(child => generateSectionHTML(child, indent + '  ')).join('\n');

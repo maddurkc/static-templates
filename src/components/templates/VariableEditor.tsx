@@ -18,6 +18,18 @@ interface VariableEditorProps {
 export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   const sectionDef = sectionTypes.find(s => s.type === section.type);
   
+  // Extract placeholders from content for heading/text sections
+  const extractPlaceholders = (content: string): string[] => {
+    const placeholderMatches = content.match(/\{\{(\w+)\}\}/g) || [];
+    return [...new Set(placeholderMatches.map(m => {
+      const match = m.match(/\{\{(\w+)\}\}/);
+      return match ? match[1] : '';
+    }).filter(Boolean))];
+  };
+
+  // Check if section supports inline placeholders
+  const isInlinePlaceholderSection = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type);
+  
   // Show TableEditor for table sections
   if (section.type === 'table') {
     return <TableEditor section={section} onUpdate={onUpdate} />;
@@ -78,9 +90,9 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
     const contentText = (section.variables?.content as string) || 'What\'s New: <th:utext="${update}">';
     
     // Extract all placeholders from content
-    const placeholderMatches = contentText.match(/<th:utext="\$\{(\w+)\}">/g) || [];
+    const placeholderMatches = contentText.match(/<th:utext="\$\{(\w+)\}"></g) || [];
     const placeholders = [...new Set(placeholderMatches.map(m => {
-      const match = m.match(/<th:utext="\$\{(\w+)\}">/);
+      const match = m.match(/<th:utext="\$\{(\w+)\}"></);
       return match ? match[1] : '';
     }).filter(Boolean))];
     
@@ -415,9 +427,9 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               </Button>
             </div>
             
-            <div className="space-y-2 pl-2 border-l-2 border-muted">
+            <div className="space-y-1">
               {((section.variables?.items as string[]) || ['']).map((item, index) => (
-                <div key={index} className="flex items-center gap-2 ml-2">
+                <div key={index} className="flex gap-1">
                   <Input
                     value={item}
                     onChange={(e) => {
@@ -452,142 +464,180 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              These list items appear below the label and can be replaced with API data.
+              Add list items that will appear under this label.
             </p>
           </div>
         )}
       </div>
     );
   }
-  
-  if (!sectionDef?.variables || sectionDef.variables.length === 0) {
-    return null;
+
+  // Handle heading and text sections with inline placeholders
+  if (isInlinePlaceholderSection) {
+    const contentText = section.content || sectionDef?.defaultContent || '';
+    const placeholders = extractPlaceholders(contentText);
+    
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>{sectionDef?.label || 'Content'}</h3>
+        </div>
+        <Separator />
+        
+        <div className={styles.section}>
+          <Label className={styles.label}>Content (use {`{{`} variable {`}}`} for dynamic data)</Label>
+          <Textarea
+            value={contentText}
+            onChange={(e) => {
+              const newContent = e.target.value;
+              const newPlaceholders = extractPlaceholders(newContent);
+              
+              // Preserve existing variable values and add new ones
+              const updatedVariables = { ...section.variables };
+              newPlaceholders.forEach(placeholder => {
+                if (!updatedVariables[placeholder]) {
+                  updatedVariables[placeholder] = '';
+                }
+              });
+              
+              onUpdate({
+                ...section,
+                content: newContent,
+                variables: updatedVariables
+              });
+            }}
+            className={styles.staticTextArea}
+            placeholder={`Example: Incident Report {{incidentNumber}} - Status: {{status}}`}
+          />
+          <p className={styles.description}>
+            Type your content and use {`{{`} variableName {`}}`} syntax for dynamic values.
+            Multiple placeholders are supported.
+          </p>
+        </div>
+        
+        {placeholders.length > 0 && (
+          <>
+            <Separator />
+            <div className={styles.variablesSection}>
+              <Label className={styles.label}>Variable Default Values</Label>
+              <p className={styles.description}>
+                Set default values for your placeholders (used when running the template):
+              </p>
+              {placeholders.map(placeholder => (
+                <div key={placeholder} className={styles.variableField}>
+                  <Label className={styles.variableLabel}>
+                    {`{{` + placeholder + `}}`} 
+                  </Label>
+                  <Input
+                    value={(section.variables?.[placeholder] as string) || ''}
+                    onChange={(e) => onUpdate({
+                      ...section,
+                      variables: { ...section.variables, [placeholder]: e.target.value }
+                    })}
+                    placeholder={`Default value for ${placeholder}`}
+                    className={styles.variableInput}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
   }
-
-  const updateVariable = (name: string, value: string | string[]) => {
-    onUpdate({
-      ...section,
-      variables: {
-        ...section.variables,
-        [name]: value,
-      },
-    });
-  };
-
-  const addListItem = (varName: string) => {
-    const currentValue = section.variables?.[varName] as string[] || [];
-    updateVariable(varName, [...currentValue, '']);
-  };
-
-  const removeListItem = (varName: string, index: number) => {
-    const currentValue = section.variables?.[varName] as string[] || [];
-    updateVariable(varName, currentValue.filter((_, i) => i !== index));
-  };
-
-  const updateListItem = (varName: string, index: number, value: string) => {
-    const currentValue = section.variables?.[varName] as string[] || [];
-    const newValue = [...currentValue];
-    newValue[index] = value;
-    updateVariable(varName, newValue);
-  };
+  
+  if (!sectionDef || !sectionDef.variables || sectionDef.variables.length === 0) {
+    return (
+      <div className={styles.centerText}>
+        No variables for this section type
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h3 className={styles.title}>Variables</h3>
+        <h3 className={styles.title}>{sectionDef.label}</h3>
       </div>
-      
       <Separator />
-
-      {sectionDef.variables.map((varDef) => {
-        const currentValue = section.variables?.[varDef.name] ?? varDef.defaultValue;
-
-        if (varDef.type === 'list') {
-          const listValues = Array.isArray(currentValue) ? currentValue : [currentValue as string];
+      
+      {sectionDef.variables.map((variable) => (
+        <div key={variable.name} className={styles.section}>
+          <Label className={styles.label}>{variable.label}</Label>
           
-          return (
-            <div key={varDef.name} className={styles.section}>
-              <div className={styles.header}>
-                <Label className={styles.label}>{varDef.label}</Label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => addListItem(varDef.name)}
-                  className="h-7 px-2"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add Item
-                </Button>
-              </div>
-              
-              <div className={styles.listItems}>
-                {listValues.map((item, index) => (
-                  <div key={index} className={styles.listItem}>
-                    <Input
-                      value={item}
-                      onChange={(e) => updateListItem(varDef.name, index, e.target.value)}
-                      className={styles.listInput}
-                      placeholder={`Item ${index + 1}`}
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => removeListItem(varDef.name, index)}
-                      className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                      disabled={listValues.length === 1}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+          {variable.type === 'list' ? (
+            <div className={styles.listSection}>
+              {(section.variables?.[variable.name] as string[] || [variable.defaultValue as string]).map((item, index) => (
+                <div key={index} className={styles.listItemWrapper}>
+                  <Input
+                    value={item}
+                    onChange={(e) => {
+                      const items = section.variables?.[variable.name] as string[] || [variable.defaultValue as string];
+                      const newItems = [...items];
+                      newItems[index] = e.target.value;
+                      onUpdate({
+                        ...section,
+                        variables: { ...section.variables, [variable.name]: newItems }
+                      });
+                    }}
+                    className={styles.listItemInput}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => {
+                      const items = section.variables?.[variable.name] as string[] || [variable.defaultValue as string];
+                      const newItems = items.filter((_, i) => i !== index);
+                      onUpdate({
+                        ...section,
+                        variables: { ...section.variables, [variable.name]: newItems }
+                      });
+                    }}
+                    className={styles.deleteButton}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const items = section.variables?.[variable.name] as string[] || [variable.defaultValue as string];
+                  onUpdate({
+                    ...section,
+                    variables: { ...section.variables, [variable.name]: [...items, ''] }
+                  });
+                }}
+                className={styles.addButton}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Item
+              </Button>
             </div>
-          );
-        }
-
-        if (varDef.type === 'text') {
-          const textValue = currentValue as string;
-          const isLongText = textValue.length > 50 || textValue.includes('\n');
-          
-          return (
-            <div key={varDef.name} className={styles.section}>
-              <Label className={styles.label}>{varDef.label}</Label>
-              {isLongText ? (
-                <Textarea
-                  value={textValue}
-                  onChange={(e) => updateVariable(varDef.name, e.target.value)}
-                  className={styles.staticTextArea}
-                  placeholder={varDef.defaultValue as string}
-                />
-              ) : (
-                <Input
-                  value={textValue}
-                  onChange={(e) => updateVariable(varDef.name, e.target.value)}
-                  className="h-8 text-sm"
-                  placeholder={varDef.defaultValue as string}
-                />
-              )}
-            </div>
-          );
-        }
-
-        if (varDef.type === 'url') {
-          return (
-            <div key={varDef.name} className={styles.section}>
-              <Label className={styles.label}>{varDef.label}</Label>
-              <Input
-                type="url"
-                value={currentValue as string}
-                onChange={(e) => updateVariable(varDef.name, e.target.value)}
-                className="h-8 text-sm font-mono"
-                placeholder={varDef.defaultValue as string}
-              />
-            </div>
-          );
-        }
-
-        return null;
-      })}
+          ) : variable.type === 'url' ? (
+            <Input
+              type="url"
+              value={(section.variables?.[variable.name] as string) || variable.defaultValue}
+              onChange={(e) => onUpdate({
+                ...section,
+                variables: { ...section.variables, [variable.name]: e.target.value }
+              })}
+              className={styles.input}
+            />
+          ) : (
+            <Textarea
+              value={(section.variables?.[variable.name] as string) || variable.defaultValue}
+              onChange={(e) => onUpdate({
+                ...section,
+                variables: { ...section.variables, [variable.name]: e.target.value }
+              })}
+              className={styles.textarea}
+            />
+          )}
+        </div>
+      ))}
     </div>
   );
 };
+
