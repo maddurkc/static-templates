@@ -193,7 +193,9 @@ CREATE TABLE template_sections (
   template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
   section_type VARCHAR(50) NOT NULL,
   content TEXT NOT NULL,
+  variables JSONB DEFAULT '{}',
   styles JSONB DEFAULT '{}',
+  is_label_editable BOOLEAN DEFAULT true,
   order_index INTEGER NOT NULL,
   parent_section_id UUID REFERENCES template_sections(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
