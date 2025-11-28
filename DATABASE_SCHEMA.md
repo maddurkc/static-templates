@@ -9,7 +9,10 @@
 -- ================================================================
 CREATE TABLE sections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  type VARCHAR(50) NOT NULL UNIQUE, -- 'heading1', 'paragraph', 'container', 'mixed-content', etc.
+  type VARCHAR(50) NOT NULL UNIQUE, -- Section types: heading1-6, text, paragraph, table, 
+                                     -- bullet-list-circle/disc/square, number-list-1/i/a,
+                                     -- image, link, button, grid, html-content, header, footer,
+                                     -- line-break, static-text, mixed-content, labeled-content, container
   label VARCHAR(100) NOT NULL,
   description TEXT,
   category VARCHAR(50) NOT NULL, -- 'text', 'media', 'layout', 'interactive'
@@ -50,8 +53,9 @@ CREATE TABLE template_sections (
   template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
   section_type VARCHAR(50) NOT NULL, -- References sections.type
   content TEXT NOT NULL, -- Actual content (can include variables like {{placeholder}})
-  variables JSONB DEFAULT '{}', -- Section-specific variables: {"name": "value", "items": [...]}
-  styles JSONB DEFAULT '{}', -- Custom styles: {"fontSize": "16px", "color": "#000"}
+  variables JSONB DEFAULT '{}', -- Section-specific variables: {"name": "value", "items": [{"text": "...", "color": "...", "bold": true}]}
+  styles JSONB DEFAULT '{}', -- Custom styles: {"fontSize": "16px", "color": "#000", "backgroundColor": "#fff"}
+  is_label_editable BOOLEAN DEFAULT true, -- For labeled-content: whether label can be edited at runtime
   order_index INTEGER NOT NULL, -- Position in template or within parent
   parent_section_id UUID REFERENCES template_sections(id) ON DELETE CASCADE, -- For nested sections (container)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -390,13 +394,16 @@ VALUES (
 1. **Nested Section Support**: Container sections can hold child sections via `parent_section_id`
 2. **Drag-and-Drop Ready**: Sections can be dragged into containers with proper parent-child relationships
 3. **Flexible Variables**: Each section stores its own variables as JSONB for complete flexibility
-4. **API Integration**: Templates can fetch dynamic data from APIs with configurable mappings
-5. **Custom Sections**: Users can create and save custom section types with `is_custom` flag
-6. **Mixed Content**: Support for sections combining static text with dynamic placeholders
-7. **Complete Audit Trail**: `template_runs` stores every execution with all variable values
-8. **JSON Flexibility**: Styles, variables, and API configs stored as JSONB for dynamic customization
-9. **Scalable**: Uses UUID for all IDs, proper indexing, and foreign keys with CASCADE
-10. **Email Support**: Separate arrays for TO, CC, and BCC recipients
+4. **Text Styling Per Item**: Variables support per-item styling with properties like `color`, `bold`, `italic`, `underline`, `backgroundColor`, `fontSize`
+5. **Label Editability Control**: `is_label_editable` flag controls whether labeled-content labels can be edited at runtime
+6. **API Integration**: Templates can fetch dynamic data from APIs with configurable mappings
+7. **Custom Sections**: Users can create and save custom section types with `is_custom` flag
+8. **Mixed Content**: Support for sections combining static text with dynamic placeholders using `{{variable}}` syntax
+9. **Thymeleaf Integration**: Placeholders automatically convert to Thymeleaf syntax (`<th:utext="${variable}">`) in generated HTML
+10. **Complete Audit Trail**: `template_runs` stores every execution with all variable values
+11. **JSON Flexibility**: Styles, variables, and API configs stored as JSONB for dynamic customization
+12. **Scalable**: Uses UUID for all IDs, proper indexing, and foreign keys with CASCADE
+13. **Email Support**: Separate arrays for TO, CC, and BCC recipients
 
 ## Migrations
 
