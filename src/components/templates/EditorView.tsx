@@ -182,18 +182,25 @@ const SortableSection = ({
             )}
           </div>
         ) : !isContainer && (
-          <div
-            className="prose max-w-none"
-            dangerouslySetInnerHTML={{ 
-              __html: thymeleafToPlaceholder(section.content)
-                .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
-                .replace(/\{\{if\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">if $1</span>')
-                .replace(/\{\{\/if\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">/if</span>')
-                .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">each $1 in $2</span>')
-                .replace(/\{\{\/each\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">/each</span>')
-            }}
-            style={section.styles as React.CSSProperties}
-          />
+          <>
+            <div
+              className="prose max-w-none"
+              dangerouslySetInnerHTML={{ 
+                __html: thymeleafToPlaceholder(section.content)
+                  .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
+                  .replace(/\{\{if\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">if $1</span>')
+                  .replace(/\{\{\/if\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">/if</span>')
+                  .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">each $1 in $2</span>')
+                  .replace(/\{\{\/each\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">/each</span>')
+              }}
+              style={section.styles as React.CSSProperties}
+            />
+            {section.content.includes('{{') && !section.isLabelEditable && (
+              <Badge variant="outline" className={cn(styles.badgeSmall, "mt-2")}>
+                Content locked
+              </Badge>
+            )}
+          </>
         )}
         
         {/* Nested Children for Container */}
@@ -223,6 +230,11 @@ const SortableSection = ({
           <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 border-green-300">
             <Plug className="h-3 w-3 mr-1" />
             API
+          </Badge>
+        )}
+        {!section.isLabelEditable && (section.type === 'labeled-content' || section.content.includes('{{')) && (
+          <Badge variant="outline" className="text-xs">
+            🔒 Locked
           </Badge>
         )}
       </div>
