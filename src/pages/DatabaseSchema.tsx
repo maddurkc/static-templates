@@ -26,7 +26,7 @@ const DatabaseSchema = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <p className={styles.cardValue}>1</p>
+              <p className={styles.cardValue}>24</p>
               <CardDescription>Available section types</CardDescription>
             </CardContent>
           </Card>
@@ -71,7 +71,7 @@ const DatabaseSchema = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <p className={styles.cardValue}>9</p>
+              <p className={styles.cardValue}>10</p>
               <CardDescription>Core database tables</CardDescription>
             </CardContent>
           </Card>
@@ -90,6 +90,10 @@ const DatabaseSchema = () => {
               <div className={styles.tableItem}>
                 <span>sections</span>
                 <Badge variant="secondary">Master data</Badge>
+              </div>
+              <div className={styles.tableItem}>
+                <span>section_variables</span>
+                <Badge variant="outline">Section Metadata</Badge>
               </div>
               <div className={styles.tableItem}>
                 <span>templates</span>
@@ -134,6 +138,10 @@ const DatabaseSchema = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className={styles.tablesList}>
+              <div className={styles.relationItem}>
+                <p>sections → section_variables</p>
+                <p>One section type can have many variables</p>
+              </div>
               <div className={styles.relationItem}>
                 <p>sections → template_sections</p>
                 <p>One section type can be used in many templates</p>
@@ -195,6 +203,25 @@ CREATE TABLE sections (
 
 CREATE INDEX idx_sections_type ON sections(type);
 CREATE INDEX idx_sections_category ON sections(category);
+
+-- ================================================================
+-- SECTION_VARIABLES TABLE
+-- Defines available variables for each section type
+-- ================================================================
+CREATE TABLE section_variables (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  section_type NVARCHAR(50) NOT NULL,
+  variable_name NVARCHAR(100) NOT NULL,
+  variable_label NVARCHAR(100) NOT NULL,
+  variable_type NVARCHAR(50) NOT NULL,
+  default_value NVARCHAR(MAX), -- JSON string for complex defaults
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  CONSTRAINT uk_section_variables UNIQUE(section_type, variable_name),
+  CONSTRAINT fk_section_variables_type FOREIGN KEY (section_type) 
+    REFERENCES sections(type)
+);
+
+CREATE INDEX idx_section_variables_type ON section_variables(section_type);
 
 -- ================================================================
 -- TEMPLATES TABLE
@@ -453,6 +480,59 @@ VALUES
   -- Interactive Elements
   ('link', 'Link', 'Hyperlink element', 'interactive', 'Link', 'Hyperlink'),
   ('button', 'Button', 'Button element', 'interactive', 'MousePointerClick', 'Button');
+
+-- ================================================================
+-- SEED DATA - INSERT SECTION VARIABLES
+-- ================================================================
+
+INSERT INTO section_variables (section_type, variable_name, variable_label, variable_type, default_value)
+VALUES
+  -- Table variables
+  ('table', 'tableData', 'Table Data', 'table', '{"rows":[["Header 1","Header 2"],["Data 1","Data 2"]],"showBorder":true,"mergedCells":{}}'),
+  
+  -- Bullet list variables (Circle)
+  ('bullet-list-circle', 'items', 'List Items', 'list', '["Item 1","Item 2","Item 3"]'),
+  
+  -- Bullet list variables (Disc)
+  ('bullet-list-disc', 'items', 'List Items', 'list', '["Item 1","Item 2","Item 3"]'),
+  
+  -- Bullet list variables (Square)
+  ('bullet-list-square', 'items', 'List Items', 'list', '["Item 1","Item 2","Item 3"]'),
+  
+  -- Number list variables (1,2,3)
+  ('number-list-1', 'items', 'List Items', 'list', '["First item","Second item","Third item"]'),
+  
+  -- Number list variables (i,ii,iii)
+  ('number-list-i', 'items', 'List Items', 'list', '["First item","Second item","Third item"]'),
+  
+  -- Number list variables (a,b,c)
+  ('number-list-a', 'items', 'List Items', 'list', '["First item","Second item","Third item"]'),
+  
+  -- Image variables
+  ('image', 'src', 'Image URL', 'url', 'https://placehold.co/600x400'),
+  ('image', 'alt', 'Alt Text', 'text', 'Placeholder'),
+  
+  -- Link variables
+  ('link', 'href', 'Link URL', 'url', '#'),
+  ('link', 'text', 'Link Text', 'text', 'Click here'),
+  
+  -- Button variables
+  ('button', 'text', 'Button Text', 'text', 'Click me'),
+  
+  -- HTML Content variables
+  ('html-content', 'htmlContent', 'HTML Content', 'text', '<div style="padding: 20px; border: 1px solid #ddd;"><h3>Sample HTML</h3><p>Content here</p></div>'),
+  
+  -- Static Text variables
+  ('static-text', 'content', 'Text Content', 'text', 'Enter your static text here.'),
+  
+  -- Mixed Content variables
+  ('mixed-content', 'content', 'Content (mix static text with variables)', 'text', 'Status: Dynamic value here'),
+  
+  -- Labeled Content variables
+  ('labeled-content', 'label', 'Label/Heading (can include variables)', 'text', 'Incident Report'),
+  ('labeled-content', 'contentType', 'Content Type', 'text', 'text'),
+  ('labeled-content', 'content', 'Text Content', 'text', 'Messages journaled in exchange online'),
+  ('labeled-content', 'items', 'List Items (if content type is list)', 'list', '["Item 1","Item 2"]');
 
 GO`}</code>
               </pre>
