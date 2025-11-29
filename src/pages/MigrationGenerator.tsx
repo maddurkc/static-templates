@@ -226,6 +226,48 @@ VALUES
   ('link', 'Link', 'Hyperlink element', 'interactive', 'Link', 'Hyperlink', 0),
   ('button', 'Button', 'Button element', 'interactive', 'MousePointerClick', 'Button', 0);
 
+-- Insert Section Variables
+INSERT INTO section_variables (section_type, variable_name, variable_label, variable_type, default_value)
+VALUES
+  -- Table variables
+  ('table', 'tableData', 'Table Data', 'table', '{"rows":[["Header 1","Header 2"],["Data 1","Data 2"]],"showBorder":true,"mergedCells":{}}'),
+  
+  -- Bullet list variables
+  ('bullet-list-circle', 'items', 'List Items', 'list', '["Item 1","Item 2","Item 3"]'),
+  ('bullet-list-disc', 'items', 'List Items', 'list', '["Item 1","Item 2","Item 3"]'),
+  ('bullet-list-square', 'items', 'List Items', 'list', '["Item 1","Item 2","Item 3"]'),
+  
+  -- Number list variables
+  ('number-list-1', 'items', 'List Items', 'list', '["First item","Second item","Third item"]'),
+  ('number-list-i', 'items', 'List Items', 'list', '["First item","Second item","Third item"]'),
+  ('number-list-a', 'items', 'List Items', 'list', '["First item","Second item","Third item"]'),
+  
+  -- Image variables
+  ('image', 'src', 'Image URL', 'url', 'https://placehold.co/600x400'),
+  ('image', 'alt', 'Alt Text', 'text', 'Placeholder'),
+  
+  -- Link variables
+  ('link', 'href', 'Link URL', 'url', '#'),
+  ('link', 'text', 'Link Text', 'text', 'Click here'),
+  
+  -- Button variables
+  ('button', 'text', 'Button Text', 'text', 'Click me'),
+  
+  -- HTML Content variables
+  ('html-content', 'htmlContent', 'HTML Content', 'text', '<div style="padding: 20px;"><h3>Sample HTML</h3></div>'),
+  
+  -- Static Text variables
+  ('static-text', 'content', 'Text Content', 'text', 'Enter your static text here.'),
+  
+  -- Mixed Content variables
+  ('mixed-content', 'content', 'Content (mix static with variables)', 'text', 'Status: Dynamic value'),
+  
+  -- Labeled Content variables
+  ('labeled-content', 'label', 'Label/Heading', 'text', 'Incident Report'),
+  ('labeled-content', 'contentType', 'Content Type', 'text', 'text'),
+  ('labeled-content', 'content', 'Text Content', 'text', 'Messages journaled'),
+  ('labeled-content', 'items', 'List Items', 'list', '["Item 1","Item 2"]');
+
 GO`
   };
 
