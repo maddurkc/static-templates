@@ -143,7 +143,7 @@ const DatabaseSchema = () => {
           <CardHeader>
             <CardTitle className={styles.schemaTitle}>Complete SQL Schema</CardTitle>
             <CardDescription>
-              PostgreSQL database schema with all tables, indexes, and relationships
+              MS SQL Server database schema with all tables, indexes, and relationships
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -154,14 +154,14 @@ const DatabaseSchema = () => {
 -- Stores all available section types (heading, paragraph, etc.)
 -- ================================================================
 CREATE TABLE sections (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  type VARCHAR(50) NOT NULL UNIQUE,
-  label VARCHAR(100) NOT NULL,
-  description TEXT,
-  category VARCHAR(50) NOT NULL,
-  default_content TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  type NVARCHAR(50) NOT NULL UNIQUE,
+  label NVARCHAR(100) NOT NULL,
+  description NVARCHAR(MAX),
+  category NVARCHAR(50) NOT NULL,
+  default_content NVARCHAR(MAX),
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  updated_at DATETIME2 DEFAULT GETUTCDATE()
 );
 
 CREATE INDEX idx_sections_type ON sections(type);
@@ -172,12 +172,12 @@ CREATE INDEX idx_sections_category ON sections(category);
 -- Stores user-created templates
 -- ================================================================
 CREATE TABLE templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(255) NOT NULL,
-  html TEXT NOT NULL,
-  user_id UUID,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  name NVARCHAR(255) NOT NULL,
+  html NVARCHAR(MAX) NOT NULL,
+  user_id UNIQUEIDENTIFIER,
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  updated_at DATETIME2 DEFAULT GETUTCDATE()
 );
 
 CREATE INDEX idx_templates_user_id ON templates(user_id);
@@ -189,16 +189,20 @@ CREATE INDEX idx_templates_created_at ON templates(created_at DESC);
 -- Supports nested sections via parent_section_id
 -- ================================================================
 CREATE TABLE template_sections (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-  section_type VARCHAR(50) NOT NULL,
-  content TEXT NOT NULL,
-  variables JSONB DEFAULT '{}',
-  styles JSONB DEFAULT '{}',
-  is_label_editable BOOLEAN DEFAULT true,
-  order_index INTEGER NOT NULL,
-  parent_section_id UUID REFERENCES template_sections(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  template_id UNIQUEIDENTIFIER NOT NULL,
+  section_type NVARCHAR(50) NOT NULL,
+  content NVARCHAR(MAX) NOT NULL,
+  variables NVARCHAR(MAX), -- JSON object
+  styles NVARCHAR(MAX), -- JSON object
+  is_label_editable BIT DEFAULT 1,
+  order_index INT NOT NULL,
+  parent_section_id UNIQUEIDENTIFIER,
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  CONSTRAINT fk_template_sections_template FOREIGN KEY (template_id) 
+    REFERENCES templates(id) ON DELETE CASCADE,
+  CONSTRAINT fk_template_sections_parent FOREIGN KEY (parent_section_id) 
+    REFERENCES template_sections(id)
 );
 
 CREATE INDEX idx_template_sections_template_id ON template_sections(template_id);
@@ -210,16 +214,18 @@ CREATE INDEX idx_template_sections_parent ON template_sections(parent_section_id
 -- Stores history of template executions/sends
 -- ================================================================
 CREATE TABLE template_runs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-  to_emails TEXT[] NOT NULL,
-  cc_emails TEXT[] DEFAULT ARRAY[]::TEXT[],
-  bcc_emails TEXT[] DEFAULT ARRAY[]::TEXT[],
-  variables JSONB DEFAULT '{}',
-  html_output TEXT NOT NULL,
-  run_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  status VARCHAR(50) DEFAULT 'sent',
-  user_id UUID
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  template_id UNIQUEIDENTIFIER NOT NULL,
+  to_emails NVARCHAR(MAX), -- JSON array
+  cc_emails NVARCHAR(MAX), -- JSON array
+  bcc_emails NVARCHAR(MAX), -- JSON array
+  variables NVARCHAR(MAX), -- JSON object
+  html_output NVARCHAR(MAX) NOT NULL,
+  run_at DATETIME2 DEFAULT GETUTCDATE(),
+  status NVARCHAR(50) DEFAULT 'sent',
+  user_id UNIQUEIDENTIFIER,
+  CONSTRAINT fk_template_runs_template FOREIGN KEY (template_id) 
+    REFERENCES templates(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_template_runs_template_id ON template_runs(template_id);
@@ -231,14 +237,16 @@ CREATE INDEX idx_template_runs_user_id ON template_runs(user_id);
 -- Tracks available variables per template for validation
 -- ================================================================
 CREATE TABLE template_variables (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-  variable_name VARCHAR(100) NOT NULL,
-  variable_type VARCHAR(50) DEFAULT 'text',
-  required BOOLEAN DEFAULT false,
-  default_value TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(template_id, variable_name)
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  template_id UNIQUEIDENTIFIER NOT NULL,
+  variable_name NVARCHAR(100) NOT NULL,
+  variable_type NVARCHAR(50) DEFAULT 'text',
+  required BIT DEFAULT 0,
+  default_value NVARCHAR(MAX),
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  CONSTRAINT uk_template_variables UNIQUE(template_id, variable_name),
+  CONSTRAINT fk_template_variables_template FOREIGN KEY (template_id) 
+    REFERENCES templates(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_template_variables_template_id ON template_variables(template_id);
@@ -252,20 +260,16 @@ SELECT
   t.id,
   t.name,
   t.html,
-  json_agg(
-    json_build_object(
-      'id', ts.id,
-      'section_type', ts.section_type,
-      'content', ts.content,
-      'styles', ts.styles,
-      'order_index', ts.order_index,
-      'parent_section_id', ts.parent_section_id
-    ) ORDER BY ts.order_index
+  (
+    SELECT ts.id, ts.section_type, ts.content, ts.styles, 
+           ts.order_index, ts.parent_section_id
+    FROM template_sections ts
+    WHERE ts.template_id = t.id
+    ORDER BY ts.order_index
+    FOR JSON PATH
   ) as sections
 FROM templates t
-LEFT JOIN template_sections ts ON t.id = ts.template_id
-WHERE t.id = 'YOUR_TEMPLATE_ID'
-GROUP BY t.id, t.name, t.html;
+WHERE t.id = 'YOUR_TEMPLATE_ID';
 
 -- Get template run history with details
 SELECT 
@@ -291,7 +295,9 @@ SELECT
 FROM templates t
 LEFT JOIN template_sections ts ON t.id = ts.template_id
 GROUP BY t.id, t.name, t.created_at
-ORDER BY t.created_at DESC;`}</code>
+ORDER BY t.created_at DESC;
+
+GO`}</code>
               </pre>
             </ScrollArea>
           </CardContent>
