@@ -29,6 +29,8 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
 
   // Check if section supports inline placeholders
   const isInlinePlaceholderSection = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type);
+  const placeholders = isInlinePlaceholderSection ? extractPlaceholders(section.content) : [];
+  const hasPlaceholders = placeholders.length > 0;
   
   // Show TableEditor for table sections
   if (section.type === 'table') {
@@ -539,6 +541,32 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                   />
                 </div>
               ))}
+            </div>
+          </>
+        )}
+
+        {hasPlaceholders && (
+          <>
+            <Separator />
+            <div className={styles.section}>
+              <div className={styles.checkboxGroup}>
+                <input
+                  type="checkbox"
+                  id="content-editable"
+                  checked={section.isLabelEditable !== false}
+                  onChange={(e) => onUpdate({
+                    ...section,
+                    isLabelEditable: e.target.checked
+                  })}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="content-editable" className={styles.checkboxLabel}>
+                  Content editable at runtime
+                </Label>
+              </div>
+              <p className={styles.description}>
+                When unchecked, users won't be able to modify the placeholder values when running the template.
+              </p>
             </div>
           </>
         )}
