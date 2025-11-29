@@ -545,31 +545,27 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           </>
         )}
 
-        {hasPlaceholders && (
-          <>
-            <Separator />
-            <div className={styles.section}>
-              <div className={styles.checkboxGroup}>
-                <input
-                  type="checkbox"
-                  id="content-editable"
-                  checked={section.isLabelEditable !== false}
-                  onChange={(e) => onUpdate({
-                    ...section,
-                    isLabelEditable: e.target.checked
-                  })}
-                  className="h-4 w-4"
-                />
-                <Label htmlFor="content-editable" className={styles.checkboxLabel}>
-                  Content editable at runtime
-                </Label>
-              </div>
-              <p className={styles.description}>
-                When unchecked, users won't be able to modify the placeholder values when running the template.
-              </p>
-            </div>
-          </>
-        )}
+        <Separator />
+        <div className={styles.section}>
+          <div className={styles.checkboxGroup}>
+            <input
+              type="checkbox"
+              id="content-editable"
+              checked={section.isLabelEditable !== false}
+              onChange={(e) => onUpdate({
+                ...section,
+                isLabelEditable: e.target.checked
+              })}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="content-editable" className={styles.checkboxLabel}>
+              Content editable at runtime
+            </Label>
+          </div>
+          <p className={styles.description}>
+            When unchecked, users won't be able to modify the content when running the template.
+          </p>
+        </div>
       </div>
     );
   }
