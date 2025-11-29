@@ -20,6 +20,7 @@ CREATE TABLE sections (
   label NVARCHAR(100) NOT NULL,
   description NVARCHAR(MAX),
   category NVARCHAR(50) NOT NULL,
+  icon NVARCHAR(50), -- Lucide icon name (e.g., 'Heading1', 'Type', 'Table')
   default_content NVARCHAR(MAX),
   is_custom BIT DEFAULT 0,
   created_by UNIQUEIDENTIFIER,
@@ -186,27 +187,44 @@ GO`,
     "006_seed_data": `-- Migration: 006_seed_data.sql
 -- Description: Seed initial section types
 
-INSERT INTO sections (type, label, description, category, default_content, is_custom)
+INSERT INTO sections (type, label, description, category, icon, default_content, is_custom)
 VALUES 
-  ('heading1', 'Heading 1', 'Large heading', 'text', 'Heading Text', 0),
-  ('heading2', 'Heading 2', 'Medium heading', 'text', 'Heading Text', 0),
-  ('heading3', 'Heading 3', 'Small heading', 'text', 'Heading Text', 0),
-  ('paragraph', 'Paragraph', 'Body text', 'text', 'Paragraph text', 0),
-  ('text', 'Text', 'Inline text', 'text', 'Text content', 0),
-  ('static-text', 'Static Text', 'Non-editable text', 'text', 'Static content', 0),
-  ('mixed-content', 'Mixed Content', 'Static text with placeholders', 'text', 'Static: {{placeholder}}', 0),
-  ('table', 'Table', 'Data table', 'layout', '', 0),
-  ('bullet-list-circle', 'Bullet List (Circle)', 'Circular bullets', 'text', '', 0),
-  ('bullet-list-disc', 'Bullet List (Disc)', 'Disc bullets', 'text', '', 0),
-  ('number-list-1', 'Numbered List (1,2,3)', 'Numeric list', 'text', '', 0),
-  ('image', 'Image', 'Image element', 'media', '', 0),
-  ('link', 'Link', 'Hyperlink', 'interactive', 'Link text', 0),
-  ('button', 'Button', 'Call to action', 'interactive', 'Button', 0),
-  ('container', 'Container', 'Group sections', 'layout', '', 0),
-  ('grid', 'Grid', 'Grid layout', 'layout', '', 0),
-  ('header', 'Header', 'Page header', 'layout', '', 0),
-  ('footer', 'Footer', 'Page footer', 'layout', '', 0),
-  ('line-break', 'Line Break', 'Spacing', 'layout', '', 0);
+  -- Headings
+  ('heading1', 'Heading 1', 'Large heading - supports {{variable}} placeholders', 'text', 'Heading1', 'Main Title', 0),
+  ('heading2', 'Heading 2', 'Section heading - supports {{variable}} placeholders', 'text', 'Heading2', 'Section Title', 0),
+  ('heading3', 'Heading 3', 'Subsection heading - supports {{variable}} placeholders', 'text', 'Heading3', 'Subsection Title', 0),
+  ('heading4', 'Heading 4', 'Minor heading - supports {{variable}} placeholders', 'text', 'Heading4', 'Minor Title', 0),
+  ('heading5', 'Heading 5', 'Small heading - supports {{variable}} placeholders', 'text', 'Heading5', 'Small Title', 0),
+  ('heading6', 'Heading 6', 'Smallest heading - supports {{variable}} placeholders', 'text', 'Heading6', 'Tiny Title', 0),
+  
+  -- Text Elements
+  ('text', 'Text', 'Simple text - supports {{variable}} placeholders', 'text', 'Type', 'Your text here', 0),
+  ('paragraph', 'Paragraph', 'Text paragraph - supports {{variable}} placeholders', 'text', 'AlignLeft', 'This is a paragraph', 0),
+  ('static-text', 'Static Text', 'Enter text directly without placeholders', 'text', 'FileText', 'Enter your static text here', 0),
+  ('mixed-content', 'Mixed Content', 'Combine static text with dynamic variables', 'text', 'Type', 'Thymeleaf variable content', 0),
+  ('labeled-content', 'Labeled Content', 'Section with dynamic label and content', 'text', 'FileText', 'Label with content', 0),
+  
+  -- Lists
+  ('bullet-list-circle', 'Bullet List (Circle)', 'List with circle bullets', 'text', 'List', 'Circle bullet list', 0),
+  ('bullet-list-disc', 'Bullet List (Disc)', 'List with disc bullets', 'text', 'List', 'Disc bullet list', 0),
+  ('bullet-list-square', 'Bullet List (Square)', 'List with square bullets', 'text', 'List', 'Square bullet list', 0),
+  ('number-list-1', 'Numbered List (1,2,3)', 'List with numbers', 'text', 'ListOrdered', 'Numbered list', 0),
+  ('number-list-i', 'Numbered List (i,ii,iii)', 'List with roman numerals', 'text', 'ListOrdered', 'Roman numeral list', 0),
+  ('number-list-a', 'Numbered List (a,b,c)', 'List with letters', 'text', 'ListOrdered', 'Letter list', 0),
+  
+  -- Layout Elements
+  ('table', 'Table', 'Data table', 'layout', 'Table', 'Data table', 0),
+  ('grid', 'Grid', 'Grid layout container', 'layout', 'Grid3x3', 'Grid layout', 0),
+  ('container', 'Container', 'Container to group nested sections', 'layout', 'Box', 'Container', 0),
+  ('html-content', 'HTML Content', 'Display raw HTML content', 'layout', 'Code', 'HTML content', 0),
+  ('line-break', 'Line Break', 'Add vertical spacing', 'text', 'Minus', 'Line break', 0),
+  
+  -- Media
+  ('image', 'Image', 'Image element', 'media', 'Image', 'Image', 0),
+  
+  -- Interactive Elements
+  ('link', 'Link', 'Hyperlink element', 'interactive', 'Link', 'Hyperlink', 0),
+  ('button', 'Button', 'Button element', 'interactive', 'MousePointerClick', 'Button', 0);
 
 GO`
   };

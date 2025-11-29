@@ -187,6 +187,7 @@ CREATE TABLE sections (
   label NVARCHAR(100) NOT NULL,
   description NVARCHAR(MAX),
   category NVARCHAR(50) NOT NULL,
+  icon NVARCHAR(50), -- Lucide icon name (e.g., 'Heading1', 'Type', 'Table')
   default_content NVARCHAR(MAX),
   created_at DATETIME2 DEFAULT GETUTCDATE(),
   updated_at DATETIME2 DEFAULT GETUTCDATE()
@@ -409,6 +410,49 @@ FROM templates t
 LEFT JOIN template_sections ts ON t.id = ts.template_id
 GROUP BY t.id, t.name, t.created_at
 ORDER BY t.created_at DESC;
+
+-- ================================================================
+-- SEED DATA - INSERT ALL SECTIONS
+-- ================================================================
+
+INSERT INTO sections (type, label, description, category, icon, default_content)
+VALUES 
+  -- Headings
+  ('heading1', 'Heading 1', 'Large heading - supports {{variable}} placeholders', 'text', 'Heading1', 'Main Title'),
+  ('heading2', 'Heading 2', 'Section heading - supports {{variable}} placeholders', 'text', 'Heading2', 'Section Title'),
+  ('heading3', 'Heading 3', 'Subsection heading - supports {{variable}} placeholders', 'text', 'Heading3', 'Subsection Title'),
+  ('heading4', 'Heading 4', 'Minor heading - supports {{variable}} placeholders', 'text', 'Heading4', 'Minor Title'),
+  ('heading5', 'Heading 5', 'Small heading - supports {{variable}} placeholders', 'text', 'Heading5', 'Small Title'),
+  ('heading6', 'Heading 6', 'Smallest heading - supports {{variable}} placeholders', 'text', 'Heading6', 'Tiny Title'),
+  
+  -- Text Elements
+  ('text', 'Text', 'Simple text - supports {{variable}} placeholders', 'text', 'Type', 'Your text here'),
+  ('paragraph', 'Paragraph', 'Text paragraph - supports {{variable}} placeholders', 'text', 'AlignLeft', 'This is a paragraph with multiple lines of text. You can add more content here.'),
+  ('static-text', 'Static Text', 'Enter text directly without placeholders', 'text', 'FileText', 'Enter your static text here...'),
+  ('mixed-content', 'Mixed Content', 'Combine static text with dynamic variables', 'text', 'Type', 'Thymeleaf variable content'),
+  ('labeled-content', 'Labeled Content', 'Section with dynamic label and content', 'text', 'FileText', 'Label with content'),
+  
+  -- Lists
+  ('bullet-list-circle', 'Bullet List (Circle)', 'List with circle bullets', 'text', 'List', 'Circle bullet list'),
+  ('bullet-list-disc', 'Bullet List (Disc)', 'List with disc bullets', 'text', 'List', 'Disc bullet list'),
+  ('bullet-list-square', 'Bullet List (Square)', 'List with square bullets', 'text', 'List', 'Square bullet list'),
+  ('number-list-1', 'Numbered List (1,2,3)', 'List with numbers', 'text', 'ListOrdered', 'Numbered list'),
+  ('number-list-i', 'Numbered List (i,ii,iii)', 'List with roman numerals', 'text', 'ListOrdered', 'Roman numeral list'),
+  ('number-list-a', 'Numbered List (a,b,c)', 'List with letters', 'text', 'ListOrdered', 'Letter list'),
+  
+  -- Layout Elements
+  ('table', 'Table', 'Data table', 'layout', 'Table', 'Data table'),
+  ('grid', 'Grid', 'Grid layout container', 'layout', 'Grid3x3', 'Grid layout'),
+  ('container', 'Container', 'Container to group nested sections', 'layout', 'Box', 'Container'),
+  ('html-content', 'HTML Content', 'Display raw HTML content', 'layout', 'Code', 'HTML content'),
+  ('line-break', 'Line Break', 'Add vertical spacing', 'text', 'Minus', 'Line break'),
+  
+  -- Media
+  ('image', 'Image', 'Image element', 'media', 'Image', 'Image'),
+  
+  -- Interactive Elements
+  ('link', 'Link', 'Hyperlink element', 'interactive', 'Link', 'Hyperlink'),
+  ('button', 'Button', 'Button element', 'interactive', 'MousePointerClick', 'Button');
 
 GO`}</code>
               </pre>
