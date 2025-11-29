@@ -56,7 +56,7 @@ const DatabaseSchema = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <p className={styles.cardValue}>5</p>
+              <p className={styles.cardValue}>8</p>
               <CardDescription>Table relationships</CardDescription>
             </CardContent>
           </Card>
@@ -71,7 +71,7 @@ const DatabaseSchema = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <p className={styles.cardValue}>5</p>
+              <p className={styles.cardValue}>9</p>
               <CardDescription>Core database tables</CardDescription>
             </CardContent>
           </Card>
@@ -107,6 +107,22 @@ const DatabaseSchema = () => {
                 <span>template_variables</span>
                 <Badge variant="outline">Metadata</Badge>
               </div>
+              <div className={styles.tableItem}>
+                <span>api_templates</span>
+                <Badge variant="secondary">API Integration</Badge>
+              </div>
+              <div className={styles.tableItem}>
+                <span>api_template_params</span>
+                <Badge variant="outline">API Parameters</Badge>
+              </div>
+              <div className={styles.tableItem}>
+                <span>template_api_configs</span>
+                <Badge variant="outline">API Configuration</Badge>
+              </div>
+              <div className={styles.tableItem}>
+                <span>api_mappings</span>
+                <Badge variant="outline">API Mappings</Badge>
+              </div>
             </CardContent>
           </Card>
 
@@ -133,6 +149,18 @@ const DatabaseSchema = () => {
               <div className={styles.relationItem}>
                 <p>templates → template_runs</p>
                 <p>One template can have many run executions</p>
+              </div>
+              <div className={styles.relationItem}>
+                <p>api_templates → api_template_params</p>
+                <p>One API template has many parameters</p>
+              </div>
+              <div className={styles.relationItem}>
+                <p>templates → template_api_configs</p>
+                <p>One template can have one API configuration</p>
+              </div>
+              <div className={styles.relationItem}>
+                <p>template_api_configs → api_mappings</p>
+                <p>One API config has many field mappings</p>
               </div>
             </CardContent>
           </Card>
@@ -250,6 +278,91 @@ CREATE TABLE template_variables (
 );
 
 CREATE INDEX idx_template_variables_template_id ON template_variables(template_id);
+
+-- ================================================================
+-- API_TEMPLATES TABLE
+-- Stores reusable API endpoint configurations
+-- ================================================================
+CREATE TABLE api_templates (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  name NVARCHAR(255) NOT NULL,
+  description NVARCHAR(MAX),
+  category NVARCHAR(100),
+  url_template NVARCHAR(MAX) NOT NULL,
+  method NVARCHAR(10) NOT NULL,
+  headers NVARCHAR(MAX), -- JSON object
+  body_template NVARCHAR(MAX),
+  is_custom BIT DEFAULT 0,
+  created_by UNIQUEIDENTIFIER,
+  created_at DATETIME2 DEFAULT GETUTCDATE()
+);
+
+CREATE INDEX idx_api_templates_category ON api_templates(category);
+
+-- ================================================================
+-- API_TEMPLATE_PARAMS TABLE
+-- Defines parameters required for API templates
+-- ================================================================
+CREATE TABLE api_template_params (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  api_template_id UNIQUEIDENTIFIER NOT NULL,
+  param_name NVARCHAR(100) NOT NULL,
+  param_label NVARCHAR(100) NOT NULL,
+  param_type NVARCHAR(50) NOT NULL,
+  param_location NVARCHAR(50) NOT NULL,
+  placeholder NVARCHAR(MAX),
+  required BIT DEFAULT 1,
+  description NVARCHAR(MAX),
+  options NVARCHAR(MAX), -- JSON array
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  CONSTRAINT uk_api_template_params UNIQUE(api_template_id, param_name),
+  CONSTRAINT fk_api_template_params_template FOREIGN KEY (api_template_id) 
+    REFERENCES api_templates(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_api_template_params_template ON api_template_params(api_template_id);
+
+-- ================================================================
+-- TEMPLATE_API_CONFIGS TABLE
+-- Links templates to API templates with user-provided values
+-- ================================================================
+CREATE TABLE template_api_configs (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  template_id UNIQUEIDENTIFIER NOT NULL,
+  api_template_id UNIQUEIDENTIFIER NOT NULL,
+  enabled BIT DEFAULT 0,
+  param_values NVARCHAR(MAX), -- JSON object
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  updated_at DATETIME2 DEFAULT GETUTCDATE(),
+  CONSTRAINT uk_template_api_configs UNIQUE(template_id),
+  CONSTRAINT fk_template_api_configs_template FOREIGN KEY (template_id) 
+    REFERENCES templates(id) ON DELETE CASCADE,
+  CONSTRAINT fk_template_api_configs_api_template FOREIGN KEY (api_template_id) 
+    REFERENCES api_templates(id)
+);
+
+CREATE INDEX idx_template_api_configs_template ON template_api_configs(template_id);
+
+-- ================================================================
+-- API_MAPPINGS TABLE
+-- Maps API response data to specific sections within templates
+-- ================================================================
+CREATE TABLE api_mappings (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  template_api_config_id UNIQUEIDENTIFIER NOT NULL,
+  section_id UNIQUEIDENTIFIER NOT NULL,
+  api_path NVARCHAR(MAX) NOT NULL,
+  data_type NVARCHAR(50) NOT NULL,
+  variable_name NVARCHAR(100),
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  CONSTRAINT fk_api_mappings_config FOREIGN KEY (template_api_config_id) 
+    REFERENCES template_api_configs(id) ON DELETE CASCADE,
+  CONSTRAINT fk_api_mappings_section FOREIGN KEY (section_id) 
+    REFERENCES template_sections(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_api_mappings_config ON api_mappings(template_api_config_id);
+CREATE INDEX idx_api_mappings_section ON api_mappings(section_id);
 
 -- ================================================================
 -- EXAMPLE QUERIES
