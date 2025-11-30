@@ -755,6 +755,630 @@ public class SectionVariableController {
 }
 
 -- ================================================================
+-- SPRING BOOT IMPLEMENTATION - TEMPLATES MODULE
+-- ================================================================
+
+/**
+ * RELATIONSHIPS:
+ * - templates (1) → (N) template_sections
+ * - templates (1) → (N) template_runs
+ * - templates (1) → (N) template_variables
+ * - template_sections (self-reference) for nested sections
+ * - Foreign keys cascade on delete for child records
+ */
+
+-- Entity Classes:
+
+@Entity
+@Table(name = "templates")
+public class Template {
+    @Id
+    @GeneratedValue
+    private UUID id;
+    
+    @Column(nullable = false, length = 255)
+    private String name;
+    
+    @Column(nullable = false, columnDefinition = "NVARCHAR(MAX)")
+    private String html;
+    
+    @Column(name = "user_id")
+    private UUID userId;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("orderIndex ASC")
+    private List<TemplateSection> sections = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<TemplateRun> runs = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<TemplateVariable> variables = new ArrayList<>();
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+    
+    // Getters, setters, constructors
+}
+
+@Entity
+@Table(name = "template_sections")
+public class TemplateSection {
+    @Id
+    @GeneratedValue
+    private UUID id;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_id", nullable = false)
+    private Template template;
+    
+    @Column(name = "section_type", nullable = false, length = 50)
+    private String sectionType;
+    
+    @Column(nullable = false, columnDefinition = "NVARCHAR(MAX)")
+    private String content;
+    
+    @Column(columnDefinition = "NVARCHAR(MAX)")
+    private String variables;
+    
+    @Column(columnDefinition = "NVARCHAR(MAX)")
+    private String styles;
+    
+    @Column(name = "is_label_editable")
+    private Boolean isLabelEditable = true;
+    
+    @Column(name = "order_index", nullable = false)
+    private Integer orderIndex;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_section_id")
+    private TemplateSection parentSection;
+    
+    @OneToMany(mappedBy = "parentSection", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TemplateSection> childSections = new ArrayList<>();
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
+    
+    // Getters, setters, constructors
+}
+
+@Entity
+@Table(name = "template_runs")
+public class TemplateRun {
+    @Id
+    @GeneratedValue
+    private UUID id;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_id", nullable = false)
+    private Template template;
+    
+    @Column(name = "to_emails", columnDefinition = "NVARCHAR(MAX)")
+    private String toEmails;
+    
+    @Column(name = "cc_emails", columnDefinition = "NVARCHAR(MAX)")
+    private String ccEmails;
+    
+    @Column(name = "bcc_emails", columnDefinition = "NVARCHAR(MAX)")
+    private String bccEmails;
+    
+    @Column(columnDefinition = "NVARCHAR(MAX)")
+    private String variables;
+    
+    @Column(name = "html_output", nullable = false, columnDefinition = "NVARCHAR(MAX)")
+    private String htmlOutput;
+    
+    @Column(name = "run_at")
+    private LocalDateTime runAt;
+    
+    @Column(length = 50)
+    private String status = "sent";
+    
+    @Column(name = "user_id")
+    private UUID userId;
+    
+    @PrePersist
+    protected void onCreate() {
+        runAt = LocalDateTime.now();
+    }
+    
+    // Getters, setters, constructors
+}
+
+@Entity
+@Table(name = "template_variables")
+public class TemplateVariable {
+    @Id
+    @GeneratedValue
+    private UUID id;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_id", nullable = false)
+    private Template template;
+    
+    @Column(name = "variable_name", nullable = false, length = 100)
+    private String variableName;
+    
+    @Column(name = "variable_type", length = 50)
+    private String variableType = "text";
+    
+    @Column(nullable = false)
+    private Boolean required = false;
+    
+    @Column(name = "default_value", columnDefinition = "NVARCHAR(MAX)")
+    private String defaultValue;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
+    
+    // Getters, setters, constructors
+}
+
+-- Repositories:
+
+@Repository
+public interface TemplateRepository extends JpaRepository<Template, UUID> {
+    List<Template> findByUserId(UUID userId);
+    List<Template> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    
+    @Query("SELECT t FROM Template t LEFT JOIN FETCH t.sections WHERE t.id = :id")
+    Optional<Template> findByIdWithSections(@Param("id") UUID id);
+    
+    @Query("SELECT t FROM Template t " +
+           "LEFT JOIN FETCH t.sections s " +
+           "LEFT JOIN FETCH t.variables v " +
+           "WHERE t.id = :id")
+    Optional<Template> findByIdWithSectionsAndVariables(@Param("id") UUID id);
+    
+    @Query("SELECT DISTINCT t FROM Template t " +
+           "LEFT JOIN FETCH t.sections " +
+           "WHERE t.userId = :userId " +
+           "ORDER BY t.createdAt DESC")
+    List<Template> findByUserIdWithSections(@Param("userId") UUID userId);
+}
+
+@Repository
+public interface TemplateSectionRepository extends JpaRepository<TemplateSection, UUID> {
+    List<TemplateSection> findByTemplateIdOrderByOrderIndex(UUID templateId);
+    List<TemplateSection> findByParentSectionId(UUID parentSectionId);
+    List<TemplateSection> findByTemplateIdAndParentSectionIdIsNull(UUID templateId);
+    
+    @Query("SELECT ts FROM TemplateSection ts " +
+           "LEFT JOIN FETCH ts.childSections " +
+           "WHERE ts.template.id = :templateId " +
+           "ORDER BY ts.orderIndex")
+    List<TemplateSection> findByTemplateIdWithChildren(@Param("templateId") UUID templateId);
+}
+
+@Repository
+public interface TemplateRunRepository extends JpaRepository<TemplateRun, UUID> {
+    List<TemplateRun> findByTemplateIdOrderByRunAtDesc(UUID templateId);
+    List<TemplateRun> findByUserIdOrderByRunAtDesc(UUID userId);
+    List<TemplateRun> findByTemplateIdAndUserIdOrderByRunAtDesc(UUID templateId, UUID userId);
+    
+    @Query("SELECT tr FROM TemplateRun tr " +
+           "JOIN FETCH tr.template " +
+           "WHERE tr.userId = :userId " +
+           "ORDER BY tr.runAt DESC")
+    List<TemplateRun> findByUserIdWithTemplate(@Param("userId") UUID userId);
+}
+
+@Repository
+public interface TemplateVariableRepository extends JpaRepository<TemplateVariable, UUID> {
+    List<TemplateVariable> findByTemplateId(UUID templateId);
+    Optional<TemplateVariable> findByTemplateIdAndVariableName(UUID templateId, String variableName);
+    List<TemplateVariable> findByTemplateIdAndRequired(UUID templateId, Boolean required);
+}
+
+-- Services:
+
+@Service
+@Transactional
+public class TemplateService {
+    @Autowired
+    private TemplateRepository templateRepository;
+    
+    @Autowired
+    private TemplateSectionRepository templateSectionRepository;
+    
+    public List<Template> getAllTemplates() {
+        return templateRepository.findAll();
+    }
+    
+    public List<Template> getTemplatesByUserId(UUID userId) {
+        return templateRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+    
+    public Optional<Template> getTemplateById(UUID id) {
+        return templateRepository.findById(id);
+    }
+    
+    public Optional<Template> getTemplateWithSections(UUID id) {
+        return templateRepository.findByIdWithSections(id);
+    }
+    
+    public Optional<Template> getTemplateWithSectionsAndVariables(UUID id) {
+        return templateRepository.findByIdWithSectionsAndVariables(id);
+    }
+    
+    public Template createTemplate(Template template) {
+        return templateRepository.save(template);
+    }
+    
+    public Template updateTemplate(UUID id, Template template) {
+        Template existing = templateRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Template not found"));
+        existing.setName(template.getName());
+        existing.setHtml(template.getHtml());
+        return templateRepository.save(existing);
+    }
+    
+    public void deleteTemplate(UUID id) {
+        templateRepository.deleteById(id);
+    }
+    
+    public List<TemplateSection> getTemplateSections(UUID templateId) {
+        return templateSectionRepository.findByTemplateIdOrderByOrderIndex(templateId);
+    }
+    
+    public List<TemplateSection> getTemplateSectionsWithChildren(UUID templateId) {
+        return templateSectionRepository.findByTemplateIdWithChildren(templateId);
+    }
+}
+
+@Service
+@Transactional
+public class TemplateSectionService {
+    @Autowired
+    private TemplateSectionRepository templateSectionRepository;
+    
+    public List<TemplateSection> getSectionsByTemplateId(UUID templateId) {
+        return templateSectionRepository.findByTemplateIdOrderByOrderIndex(templateId);
+    }
+    
+    public Optional<TemplateSection> getSectionById(UUID id) {
+        return templateSectionRepository.findById(id);
+    }
+    
+    public List<TemplateSection> getChildSections(UUID parentSectionId) {
+        return templateSectionRepository.findByParentSectionId(parentSectionId);
+    }
+    
+    public TemplateSection createSection(TemplateSection section) {
+        return templateSectionRepository.save(section);
+    }
+    
+    public TemplateSection updateSection(UUID id, TemplateSection section) {
+        TemplateSection existing = templateSectionRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
+        existing.setSectionType(section.getSectionType());
+        existing.setContent(section.getContent());
+        existing.setVariables(section.getVariables());
+        existing.setStyles(section.getStyles());
+        existing.setIsLabelEditable(section.getIsLabelEditable());
+        existing.setOrderIndex(section.getOrderIndex());
+        return templateSectionRepository.save(existing);
+    }
+    
+    public void deleteSection(UUID id) {
+        templateSectionRepository.deleteById(id);
+    }
+    
+    public void reorderSections(UUID templateId, List<UUID> sectionIds) {
+        for (int i = 0; i < sectionIds.size(); i++) {
+            TemplateSection section = templateSectionRepository.findById(sectionIds.get(i))
+                .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
+            section.setOrderIndex(i);
+            templateSectionRepository.save(section);
+        }
+    }
+}
+
+@Service
+@Transactional
+public class TemplateRunService {
+    @Autowired
+    private TemplateRunRepository templateRunRepository;
+    
+    public List<TemplateRun> getRunsByTemplateId(UUID templateId) {
+        return templateRunRepository.findByTemplateIdOrderByRunAtDesc(templateId);
+    }
+    
+    public List<TemplateRun> getRunsByUserId(UUID userId) {
+        return templateRunRepository.findByUserIdWithTemplate(userId);
+    }
+    
+    public Optional<TemplateRun> getRunById(UUID id) {
+        return templateRunRepository.findById(id);
+    }
+    
+    public TemplateRun createRun(TemplateRun run) {
+        return templateRunRepository.save(run);
+    }
+    
+    public TemplateRun updateRunStatus(UUID id, String status) {
+        TemplateRun run = templateRunRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Template run not found"));
+        run.setStatus(status);
+        return templateRunRepository.save(run);
+    }
+    
+    public void deleteRun(UUID id) {
+        templateRunRepository.deleteById(id);
+    }
+}
+
+@Service
+@Transactional
+public class TemplateVariableService {
+    @Autowired
+    private TemplateVariableRepository templateVariableRepository;
+    
+    public List<TemplateVariable> getVariablesByTemplateId(UUID templateId) {
+        return templateVariableRepository.findByTemplateId(templateId);
+    }
+    
+    public List<TemplateVariable> getRequiredVariables(UUID templateId) {
+        return templateVariableRepository.findByTemplateIdAndRequired(templateId, true);
+    }
+    
+    public Optional<TemplateVariable> getVariable(UUID templateId, String variableName) {
+        return templateVariableRepository.findByTemplateIdAndVariableName(templateId, variableName);
+    }
+    
+    public TemplateVariable createVariable(TemplateVariable variable) {
+        return templateVariableRepository.save(variable);
+    }
+    
+    public TemplateVariable updateVariable(UUID id, TemplateVariable variable) {
+        TemplateVariable existing = templateVariableRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Variable not found"));
+        existing.setVariableType(variable.getVariableType());
+        existing.setRequired(variable.getRequired());
+        existing.setDefaultValue(variable.getDefaultValue());
+        return templateVariableRepository.save(existing);
+    }
+    
+    public void deleteVariable(UUID id) {
+        templateVariableRepository.deleteById(id);
+    }
+}
+
+-- Controllers:
+
+@RestController
+@RequestMapping("/api/templates")
+@CrossOrigin(origins = "*")
+public class TemplateController {
+    @Autowired
+    private TemplateService templateService;
+    
+    @GetMapping
+    public ResponseEntity<List<Template>> getAllTemplates(
+        @RequestParam(required = false) UUID userId,
+        @RequestParam(required = false) String include) {
+        if (userId != null) {
+            return ResponseEntity.ok(templateService.getTemplatesByUserId(userId));
+        }
+        return ResponseEntity.ok(templateService.getAllTemplates());
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<Template> getTemplateById(
+        @PathVariable UUID id,
+        @RequestParam(required = false) String include) {
+        if ("sections".equals(include)) {
+            return templateService.getTemplateWithSections(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+        }
+        if ("sections,variables".equals(include)) {
+            return templateService.getTemplateWithSectionsAndVariables(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+        }
+        return templateService.getTemplateById(id)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @GetMapping("/{id}/sections")
+    public ResponseEntity<List<TemplateSection>> getTemplateSections(
+        @PathVariable UUID id,
+        @RequestParam(required = false) String include) {
+        if ("children".equals(include)) {
+            return ResponseEntity.ok(templateService.getTemplateSectionsWithChildren(id));
+        }
+        return ResponseEntity.ok(templateService.getTemplateSections(id));
+    }
+    
+    @PostMapping
+    public ResponseEntity<Template> createTemplate(@RequestBody Template template) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(templateService.createTemplate(template));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<Template> updateTemplate(
+        @PathVariable UUID id, @RequestBody Template template) {
+        return ResponseEntity.ok(templateService.updateTemplate(id, template));
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTemplate(@PathVariable UUID id) {
+        templateService.deleteTemplate(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+@RestController
+@RequestMapping("/api/template-sections")
+@CrossOrigin(origins = "*")
+public class TemplateSectionController {
+    @Autowired
+    private TemplateSectionService templateSectionService;
+    
+    @GetMapping("/template/{templateId}")
+    public ResponseEntity<List<TemplateSection>> getSectionsByTemplateId(
+        @PathVariable UUID templateId) {
+        return ResponseEntity.ok(templateSectionService.getSectionsByTemplateId(templateId));
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<TemplateSection> getSectionById(@PathVariable UUID id) {
+        return templateSectionService.getSectionById(id)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @GetMapping("/{id}/children")
+    public ResponseEntity<List<TemplateSection>> getChildSections(@PathVariable UUID id) {
+        return ResponseEntity.ok(templateSectionService.getChildSections(id));
+    }
+    
+    @PostMapping
+    public ResponseEntity<TemplateSection> createSection(@RequestBody TemplateSection section) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(templateSectionService.createSection(section));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<TemplateSection> updateSection(
+        @PathVariable UUID id, @RequestBody TemplateSection section) {
+        return ResponseEntity.ok(templateSectionService.updateSection(id, section));
+    }
+    
+    @PostMapping("/reorder")
+    public ResponseEntity<Void> reorderSections(
+        @RequestParam UUID templateId,
+        @RequestBody List<UUID> sectionIds) {
+        templateSectionService.reorderSections(templateId, sectionIds);
+        return ResponseEntity.ok().build();
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSection(@PathVariable UUID id) {
+        templateSectionService.deleteSection(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+@RestController
+@RequestMapping("/api/template-runs")
+@CrossOrigin(origins = "*")
+public class TemplateRunController {
+    @Autowired
+    private TemplateRunService templateRunService;
+    
+    @GetMapping
+    public ResponseEntity<List<TemplateRun>> getRuns(
+        @RequestParam(required = false) UUID templateId,
+        @RequestParam(required = false) UUID userId) {
+        if (templateId != null) {
+            return ResponseEntity.ok(templateRunService.getRunsByTemplateId(templateId));
+        }
+        if (userId != null) {
+            return ResponseEntity.ok(templateRunService.getRunsByUserId(userId));
+        }
+        return ResponseEntity.badRequest().build();
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<TemplateRun> getRunById(@PathVariable UUID id) {
+        return templateRunService.getRunById(id)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @PostMapping
+    public ResponseEntity<TemplateRun> createRun(@RequestBody TemplateRun run) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(templateRunService.createRun(run));
+    }
+    
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<TemplateRun> updateRunStatus(
+        @PathVariable UUID id, @RequestParam String status) {
+        return ResponseEntity.ok(templateRunService.updateRunStatus(id, status));
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRun(@PathVariable UUID id) {
+        templateRunService.deleteRun(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+@RestController
+@RequestMapping("/api/template-variables")
+@CrossOrigin(origins = "*")
+public class TemplateVariableController {
+    @Autowired
+    private TemplateVariableService templateVariableService;
+    
+    @GetMapping("/template/{templateId}")
+    public ResponseEntity<List<TemplateVariable>> getVariablesByTemplateId(
+        @PathVariable UUID templateId,
+        @RequestParam(required = false) Boolean required) {
+        if (required != null && required) {
+            return ResponseEntity.ok(templateVariableService.getRequiredVariables(templateId));
+        }
+        return ResponseEntity.ok(templateVariableService.getVariablesByTemplateId(templateId));
+    }
+    
+    @GetMapping("/template/{templateId}/variable/{variableName}")
+    public ResponseEntity<TemplateVariable> getVariable(
+        @PathVariable UUID templateId, @PathVariable String variableName) {
+        return templateVariableService.getVariable(templateId, variableName)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @PostMapping
+    public ResponseEntity<TemplateVariable> createVariable(@RequestBody TemplateVariable variable) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(templateVariableService.createVariable(variable));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<TemplateVariable> updateVariable(
+        @PathVariable UUID id, @RequestBody TemplateVariable variable) {
+        return ResponseEntity.ok(templateVariableService.updateVariable(id, variable));
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteVariable(@PathVariable UUID id) {
+        templateVariableService.deleteVariable(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+-- ================================================================
 -- SEED DATA - INSERT ALL SECTIONS
 -- ================================================================
 
