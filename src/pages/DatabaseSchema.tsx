@@ -396,6 +396,37 @@ CREATE INDEX idx_api_mappings_section ON api_mappings(section_id);
 -- EXAMPLE QUERIES
 -- ================================================================
 
+-- Get all sections with their variables
+SELECT 
+  s.id,
+  s.type,
+  s.label,
+  s.description,
+  s.category,
+  s.icon,
+  s.default_content,
+  (
+    SELECT sv.id, sv.variable_name, sv.variable_label, 
+           sv.variable_type, sv.default_value
+    FROM section_variables sv
+    WHERE sv.section_type = s.type
+    FOR JSON PATH
+  ) as variables
+FROM sections s
+ORDER BY s.category, s.label;
+
+-- Get a specific section with its variables
+SELECT 
+  s.*,
+  sv.variable_name,
+  sv.variable_label,
+  sv.variable_type,
+  sv.default_value
+FROM sections s
+LEFT JOIN section_variables sv ON s.type = sv.section_type
+WHERE s.type = 'table'
+ORDER BY sv.variable_name;
+
 -- Get a template with all its sections (ordered)
 SELECT 
   t.id,
@@ -437,6 +468,291 @@ FROM templates t
 LEFT JOIN template_sections ts ON t.id = ts.template_id
 GROUP BY t.id, t.name, t.created_at
 ORDER BY t.created_at DESC;
+
+-- ================================================================
+-- SPRING BOOT IMPLEMENTATION
+-- ================================================================
+
+/**
+ * RELATIONSHIP: sections (1) → (N) section_variables
+ * - One section can have multiple variables
+ * - Foreign key: section_variables.section_type → sections.type
+ * - Used to define configurable properties for each section type
+ */
+
+-- Entity Classes:
+
+@Entity
+@Table(name = "sections")
+public class Section {
+    @Id
+    @GeneratedValue
+    private UUID id;
+    
+    @Column(nullable = false, unique = true, length = 50)
+    private String type;
+    
+    @Column(nullable = false, length = 100)
+    private String label;
+    
+    @Column(columnDefinition = "NVARCHAR(MAX)")
+    private String description;
+    
+    @Column(nullable = false, length = 50)
+    private String category;
+    
+    @Column(length = 50)
+    private String icon;
+    
+    @Column(name = "default_content", columnDefinition = "NVARCHAR(MAX)")
+    private String defaultContent;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<SectionVariable> variables;
+    
+    // Getters, setters, constructors
+}
+
+@Entity
+@Table(name = "section_variables")
+public class SectionVariable {
+    @Id
+    @GeneratedValue
+    private UUID id;
+    
+    @Column(name = "section_type", nullable = false, length = 50)
+    private String sectionType;
+    
+    @Column(name = "variable_name", nullable = false, length = 100)
+    private String variableName;
+    
+    @Column(name = "variable_label", nullable = false, length = 100)
+    private String variableLabel;
+    
+    @Column(name = "variable_type", nullable = false, length = 50)
+    private String variableType;
+    
+    @Column(name = "default_value", columnDefinition = "NVARCHAR(MAX)")
+    private String defaultValue;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "section_type", referencedColumnName = "type", insertable = false, updatable = false)
+    private Section section;
+    
+    // Getters, setters, constructors
+}
+
+-- Repositories:
+
+@Repository
+public interface SectionRepository extends JpaRepository<Section, UUID> {
+    Optional<Section> findByType(String type);
+    List<Section> findByCategory(String category);
+    
+    @Query("SELECT s FROM Section s LEFT JOIN FETCH s.variables WHERE s.type = :type")
+    Optional<Section> findByTypeWithVariables(@Param("type") String type);
+    
+    @Query("SELECT DISTINCT s FROM Section s LEFT JOIN FETCH s.variables ORDER BY s.category, s.label")
+    List<Section> findAllWithVariables();
+}
+
+@Repository
+public interface SectionVariableRepository extends JpaRepository<SectionVariable, UUID> {
+    List<SectionVariable> findBySectionType(String sectionType);
+    Optional<SectionVariable> findBySectionTypeAndVariableName(String sectionType, String variableName);
+}
+
+-- Services:
+
+@Service
+@Transactional
+public class SectionService {
+    @Autowired
+    private SectionRepository sectionRepository;
+    
+    @Autowired
+    private SectionVariableRepository sectionVariableRepository;
+    
+    public List<Section> getAllSections() {
+        return sectionRepository.findAll();
+    }
+    
+    public List<Section> getAllSectionsWithVariables() {
+        return sectionRepository.findAllWithVariables();
+    }
+    
+    public Optional<Section> getSectionByType(String type) {
+        return sectionRepository.findByType(type);
+    }
+    
+    public Optional<Section> getSectionByTypeWithVariables(String type) {
+        return sectionRepository.findByTypeWithVariables(type);
+    }
+    
+    public List<Section> getSectionsByCategory(String category) {
+        return sectionRepository.findByCategory(category);
+    }
+    
+    public Section createSection(Section section) {
+        section.setCreatedAt(LocalDateTime.now());
+        section.setUpdatedAt(LocalDateTime.now());
+        return sectionRepository.save(section);
+    }
+    
+    public Section updateSection(UUID id, Section section) {
+        Section existing = sectionRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
+        existing.setLabel(section.getLabel());
+        existing.setDescription(section.getDescription());
+        existing.setCategory(section.getCategory());
+        existing.setIcon(section.getIcon());
+        existing.setDefaultContent(section.getDefaultContent());
+        existing.setUpdatedAt(LocalDateTime.now());
+        return sectionRepository.save(existing);
+    }
+    
+    public void deleteSection(UUID id) {
+        sectionRepository.deleteById(id);
+    }
+}
+
+@Service
+@Transactional
+public class SectionVariableService {
+    @Autowired
+    private SectionVariableRepository sectionVariableRepository;
+    
+    public List<SectionVariable> getVariablesBySectionType(String sectionType) {
+        return sectionVariableRepository.findBySectionType(sectionType);
+    }
+    
+    public Optional<SectionVariable> getVariable(String sectionType, String variableName) {
+        return sectionVariableRepository.findBySectionTypeAndVariableName(sectionType, variableName);
+    }
+    
+    public SectionVariable createVariable(SectionVariable variable) {
+        variable.setCreatedAt(LocalDateTime.now());
+        return sectionVariableRepository.save(variable);
+    }
+    
+    public SectionVariable updateVariable(UUID id, SectionVariable variable) {
+        SectionVariable existing = sectionVariableRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Variable not found"));
+        existing.setVariableLabel(variable.getVariableLabel());
+        existing.setVariableType(variable.getVariableType());
+        existing.setDefaultValue(variable.getDefaultValue());
+        return sectionVariableRepository.save(existing);
+    }
+    
+    public void deleteVariable(UUID id) {
+        sectionVariableRepository.deleteById(id);
+    }
+}
+
+-- Controllers:
+
+@RestController
+@RequestMapping("/api/sections")
+@CrossOrigin(origins = "*")
+public class SectionController {
+    @Autowired
+    private SectionService sectionService;
+    
+    @GetMapping
+    public ResponseEntity<List<Section>> getAllSections(
+        @RequestParam(required = false) String withVariables) {
+        if ("true".equals(withVariables)) {
+            return ResponseEntity.ok(sectionService.getAllSectionsWithVariables());
+        }
+        return ResponseEntity.ok(sectionService.getAllSections());
+    }
+    
+    @GetMapping("/{type}")
+    public ResponseEntity<Section> getSectionByType(
+        @PathVariable String type,
+        @RequestParam(required = false) String withVariables) {
+        if ("true".equals(withVariables)) {
+            return sectionService.getSectionByTypeWithVariables(type)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+        }
+        return sectionService.getSectionByType(type)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @GetMapping("/category/{category}")
+    public ResponseEntity<List<Section>> getSectionsByCategory(@PathVariable String category) {
+        return ResponseEntity.ok(sectionService.getSectionsByCategory(category));
+    }
+    
+    @PostMapping
+    public ResponseEntity<Section> createSection(@RequestBody Section section) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(sectionService.createSection(section));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<Section> updateSection(
+        @PathVariable UUID id, @RequestBody Section section) {
+        return ResponseEntity.ok(sectionService.updateSection(id, section));
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSection(@PathVariable UUID id) {
+        sectionService.deleteSection(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+@RestController
+@RequestMapping("/api/section-variables")
+@CrossOrigin(origins = "*")
+public class SectionVariableController {
+    @Autowired
+    private SectionVariableService sectionVariableService;
+    
+    @GetMapping("/section/{sectionType}")
+    public ResponseEntity<List<SectionVariable>> getVariablesBySectionType(
+        @PathVariable String sectionType) {
+        return ResponseEntity.ok(sectionVariableService.getVariablesBySectionType(sectionType));
+    }
+    
+    @GetMapping("/section/{sectionType}/variable/{variableName}")
+    public ResponseEntity<SectionVariable> getVariable(
+        @PathVariable String sectionType, @PathVariable String variableName) {
+        return sectionVariableService.getVariable(sectionType, variableName)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @PostMapping
+    public ResponseEntity<SectionVariable> createVariable(@RequestBody SectionVariable variable) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(sectionVariableService.createVariable(variable));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<SectionVariable> updateVariable(
+        @PathVariable UUID id, @RequestBody SectionVariable variable) {
+        return ResponseEntity.ok(sectionVariableService.updateVariable(id, variable));
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteVariable(@PathVariable UUID id) {
+        sectionVariableService.deleteVariable(id);
+        return ResponseEntity.noContent().build();
+    }
+}
 
 -- ================================================================
 -- SEED DATA - INSERT ALL SECTIONS
