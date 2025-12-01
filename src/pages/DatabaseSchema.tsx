@@ -1378,6 +1378,464 @@ public class TemplateVariableController {
     }
 }
 
+// ================================================================
+// DTOs (DATA TRANSFER OBJECTS) AND MAPSTRUCT MAPPERS
+// ================================================================
+
+/**
+ * DTOs separate API concerns from entity structure, providing:
+ * - Clean API contracts independent of database schema
+ * - Prevention of over/under-fetching
+ * - Security by excluding sensitive fields
+ * - Validation at the API boundary
+ * 
+ * MapStruct provides compile-time type-safe mapping between entities and DTOs.
+ */
+
+// ================================================================
+// SECTION DTOs
+// ================================================================
+
+// Section Response DTO
+public class SectionResponse {
+    private String type;
+    private String label;
+    private String description;
+    private String category;
+    private String icon;
+    private String defaultContent;
+    
+    // Getters and setters
+}
+
+// Section Variable Response DTO
+public class SectionVariableResponse {
+    private UUID id;
+    private String sectionType;
+    private String variableName;
+    private String variableLabel;
+    private String variableType;
+    private String defaultValue;
+    
+    // Getters and setters
+}
+
+// Section with Variables Response DTO
+public class SectionWithVariablesResponse {
+    private String type;
+    private String label;
+    private String description;
+    private String category;
+    private String icon;
+    private String defaultContent;
+    private List<SectionVariableResponse> variables;
+    
+    // Getters and setters
+}
+
+// ================================================================
+// TEMPLATE DTOs
+// ================================================================
+
+// Template Request DTO
+public class TemplateRequest {
+    @NotBlank(message = "Template name is required")
+    @Size(max = 255)
+    private String name;
+    
+    @Size(max = 1000)
+    private String description;
+    
+    private String category;
+    
+    private Boolean isPublic = false;
+    
+    @Valid
+    private List<TemplateSectionRequest> sections;
+    
+    // Getters and setters
+}
+
+// Template Response DTO
+public class TemplateResponse {
+    private UUID id;
+    private String name;
+    private String description;
+    private String category;
+    private Boolean isPublic;
+    private UUID userId;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    // Getters and setters
+}
+
+// Template Detail Response (includes sections)
+public class TemplateDetailResponse {
+    private UUID id;
+    private String name;
+    private String description;
+    private String category;
+    private Boolean isPublic;
+    private UUID userId;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private List<TemplateSectionResponse> sections;
+    private List<TemplateVariableResponse> variables;
+    
+    // Getters and setters
+}
+
+// Template Summary Response (for lists)
+public class TemplateSummaryResponse {
+    private UUID id;
+    private String name;
+    private String description;
+    private String category;
+    private Boolean isPublic;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private Integer sectionCount;
+    private Integer variableCount;
+    
+    // Getters and setters
+}
+
+// ================================================================
+// TEMPLATE SECTION DTOs
+// ================================================================
+
+// Template Section Request DTO
+public class TemplateSectionRequest {
+    @NotBlank(message = "Section type is required")
+    @Size(max = 50)
+    private String sectionType;
+    
+    @NotBlank(message = "Content is required")
+    private String content;
+    
+    private String variables;  // JSON string
+    private String styles;     // JSON string
+    private Boolean isLabelEditable = true;
+    
+    @NotNull(message = "Order index is required")
+    private Integer orderIndex;
+    
+    private UUID parentSectionId;
+    
+    @Valid
+    private List<TemplateSectionRequest> childSections;
+    
+    // Getters and setters
+}
+
+// Template Section Response DTO
+public class TemplateSectionResponse {
+    private UUID id;
+    private UUID templateId;
+    private String sectionType;
+    private String content;
+    private String variables;
+    private String styles;
+    private Boolean isLabelEditable;
+    private Integer orderIndex;
+    private UUID parentSectionId;
+    private LocalDateTime createdAt;
+    
+    // Getters and setters
+}
+
+// Template Section with Children Response
+public class TemplateSectionWithChildrenResponse {
+    private UUID id;
+    private UUID templateId;
+    private String sectionType;
+    private String content;
+    private String variables;
+    private String styles;
+    private Boolean isLabelEditable;
+    private Integer orderIndex;
+    private UUID parentSectionId;
+    private LocalDateTime createdAt;
+    private List<TemplateSectionWithChildrenResponse> childSections;
+    
+    // Getters and setters
+}
+
+// ================================================================
+// TEMPLATE RUN DTOs
+// ================================================================
+
+// Template Run Request DTO
+public class TemplateRunRequest {
+    @NotNull(message = "Template ID is required")
+    private UUID templateId;
+    
+    @Email(message = "Invalid email format")
+    private String toEmails;
+    
+    private String ccEmails;
+    private String bccEmails;
+    
+    @NotBlank(message = "Variables are required")
+    private String variables;  // JSON string with variable values
+    
+    private String status = "sent";
+    
+    // Getters and setters
+}
+
+// Template Run Response DTO
+public class TemplateRunResponse {
+    private UUID id;
+    private UUID templateId;
+    private String templateName;
+    private String toEmails;
+    private String ccEmails;
+    private String bccEmails;
+    private String variables;
+    private String status;
+    private LocalDateTime runAt;
+    private UUID userId;
+    
+    // Getters and setters
+}
+
+// Template Run Detail Response (includes HTML output)
+public class TemplateRunDetailResponse {
+    private UUID id;
+    private UUID templateId;
+    private String templateName;
+    private String toEmails;
+    private String ccEmails;
+    private String bccEmails;
+    private String variables;
+    private String htmlOutput;
+    private String status;
+    private LocalDateTime runAt;
+    private UUID userId;
+    
+    // Getters and setters
+}
+
+// ================================================================
+// TEMPLATE VARIABLE DTOs
+// ================================================================
+
+// Template Variable Request DTO
+public class TemplateVariableRequest {
+    @NotNull(message = "Template ID is required")
+    private UUID templateId;
+    
+    @NotBlank(message = "Variable name is required")
+    @Size(max = 255)
+    private String variableName;
+    
+    @NotBlank(message = "Variable label is required")
+    @Size(max = 255)
+    private String variableLabel;
+    
+    @NotBlank(message = "Variable type is required")
+    @Size(max = 50)
+    private String variableType;
+    
+    private String defaultValue;
+    private Boolean required = false;
+    
+    // Getters and setters
+}
+
+// Template Variable Response DTO
+public class TemplateVariableResponse {
+    private UUID id;
+    private UUID templateId;
+    private String variableName;
+    private String variableLabel;
+    private String variableType;
+    private String defaultValue;
+    private Boolean required;
+    private LocalDateTime createdAt;
+    
+    // Getters and setters
+}
+
+// ================================================================
+// MAPSTRUCT MAPPERS
+// ================================================================
+
+/**
+ * MapStruct generates implementation at compile-time.
+ * Add dependency in pom.xml:
+ * <dependency>
+ *     <groupId>org.mapstruct</groupId>
+ *     <artifactId>mapstruct</artifactId>
+ *     <version>1.5.5.Final</version>
+ * </dependency>
+ */
+
+// Section Mapper
+@Mapper(componentModel = "spring")
+public interface SectionMapper {
+    SectionResponse toResponse(Section section);
+    
+    List<SectionResponse> toResponseList(List<Section> sections);
+    
+    SectionVariableResponse toVariableResponse(SectionVariable variable);
+    
+    List<SectionVariableResponse> toVariableResponseList(List<SectionVariable> variables);
+    
+    @Mapping(target = "variables", source = "variables")
+    SectionWithVariablesResponse toWithVariablesResponse(Section section, List<SectionVariable> variables);
+}
+
+// Template Mapper
+@Mapper(componentModel = "spring", uses = {TemplateSectionMapper.class, TemplateVariableMapper.class})
+public interface TemplateMapper {
+    
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "sections", ignore = true)
+    @Mapping(target = "variables", ignore = true)
+    @Mapping(target = "runs", ignore = true)
+    Template toEntity(TemplateRequest request);
+    
+    TemplateResponse toResponse(Template template);
+    
+    @Mapping(target = "sectionCount", expression = "java(template.getSections() != null ? template.getSections().size() : 0)")
+    @Mapping(target = "variableCount", expression = "java(template.getVariables() != null ? template.getVariables().size() : 0)")
+    TemplateSummaryResponse toSummaryResponse(Template template);
+    
+    @Mapping(target = "sections", source = "sections")
+    @Mapping(target = "variables", source = "variables")
+    TemplateDetailResponse toDetailResponse(Template template);
+    
+    List<TemplateResponse> toResponseList(List<Template> templates);
+    
+    List<TemplateSummaryResponse> toSummaryResponseList(List<Template> templates);
+}
+
+// Template Section Mapper
+@Mapper(componentModel = "spring")
+public interface TemplateSectionMapper {
+    
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "template", ignore = true)
+    @Mapping(target = "parentSection", ignore = true)
+    @Mapping(target = "childSections", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    TemplateSection toEntity(TemplateSectionRequest request);
+    
+    @Mapping(target = "templateId", source = "template.id")
+    @Mapping(target = "parentSectionId", source = "parentSection.id")
+    TemplateSectionResponse toResponse(TemplateSection section);
+    
+    @Mapping(target = "templateId", source = "template.id")
+    @Mapping(target = "parentSectionId", source = "parentSection.id")
+    @Mapping(target = "childSections", source = "childSections")
+    TemplateSectionWithChildrenResponse toWithChildrenResponse(TemplateSection section);
+    
+    List<TemplateSectionResponse> toResponseList(List<TemplateSection> sections);
+    
+    List<TemplateSectionWithChildrenResponse> toWithChildrenResponseList(List<TemplateSection> sections);
+}
+
+// Template Run Mapper
+@Mapper(componentModel = "spring")
+public interface TemplateRunMapper {
+    
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "template", ignore = true)
+    @Mapping(target = "htmlOutput", ignore = true)
+    @Mapping(target = "runAt", ignore = true)
+    @Mapping(target = "userId", ignore = true)
+    TemplateRun toEntity(TemplateRunRequest request);
+    
+    @Mapping(target = "templateId", source = "template.id")
+    @Mapping(target = "templateName", source = "template.name")
+    TemplateRunResponse toResponse(TemplateRun run);
+    
+    @Mapping(target = "templateId", source = "template.id")
+    @Mapping(target = "templateName", source = "template.name")
+    @Mapping(target = "htmlOutput", source = "htmlOutput")
+    TemplateRunDetailResponse toDetailResponse(TemplateRun run);
+    
+    List<TemplateRunResponse> toResponseList(List<TemplateRun> runs);
+}
+
+// Template Variable Mapper
+@Mapper(componentModel = "spring")
+public interface TemplateVariableMapper {
+    
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "template", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    TemplateVariable toEntity(TemplateVariableRequest request);
+    
+    @Mapping(target = "templateId", source = "template.id")
+    TemplateVariableResponse toResponse(TemplateVariable variable);
+    
+    List<TemplateVariableResponse> toResponseList(List<TemplateVariable> variables);
+}
+
+// ================================================================
+// USAGE EXAMPLE IN CONTROLLERS
+// ================================================================
+
+/**
+ * Example: Using DTOs and Mappers in a controller
+ */
+
+@RestController
+@RequestMapping("/api/templates-with-dtos")
+@CrossOrigin(origins = "*")
+public class TemplateDTOController {
+    @Autowired
+    private TemplateService templateService;
+    
+    @Autowired
+    private TemplateMapper templateMapper;
+    
+    // GET all templates as summaries
+    @GetMapping
+    public ResponseEntity<List<TemplateSummaryResponse>> getAllTemplates() {
+        List<Template> templates = templateService.getAllTemplates();
+        return ResponseEntity.ok(templateMapper.toSummaryResponseList(templates));
+    }
+    
+    // GET template detail with sections and variables
+    @GetMapping("/{id}")
+    public ResponseEntity<TemplateDetailResponse> getTemplateDetail(@PathVariable UUID id) {
+        return templateService.getTemplateWithSectionsAndVariables(id)
+            .map(templateMapper::toDetailResponse)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    // POST create new template
+    @PostMapping
+    public ResponseEntity<TemplateResponse> createTemplate(
+        @Valid @RequestBody TemplateRequest request) {
+        Template template = templateMapper.toEntity(request);
+        Template saved = templateService.createTemplate(template);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(templateMapper.toResponse(saved));
+    }
+    
+    // PUT update template
+    @PutMapping("/{id}")
+    public ResponseEntity<TemplateResponse> updateTemplate(
+        @PathVariable UUID id,
+        @Valid @RequestBody TemplateRequest request) {
+        Template template = templateMapper.toEntity(request);
+        Template updated = templateService.updateTemplate(id, template);
+        return ResponseEntity.ok(templateMapper.toResponse(updated));
+    }
+}
+
+// ================================================================
+
 -- ================================================================
 -- SEED DATA - INSERT ALL SECTIONS
 -- ================================================================
