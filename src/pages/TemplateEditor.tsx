@@ -197,7 +197,8 @@ const TemplateEditor = () => {
         styles: {
           fontSize: '16px',
           color: '#000000',
-        }
+        },
+        isLabelEditable: true // Default to editable at runtime
       };
       
       if (targetContainer) {

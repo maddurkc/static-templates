@@ -195,9 +195,9 @@ const SortableSection = ({
               }}
               style={section.styles as React.CSSProperties}
             />
-            {section.content.includes('{{') && !section.isLabelEditable && (
+            {section.content.includes('{{') && (
               <Badge variant="outline" className={cn(styles.badgeSmall, "mt-2")}>
-                Content locked
+                {section.isLabelEditable !== false ? 'Content editable at runtime' : 'Content locked'}
               </Badge>
             )}
           </>
@@ -232,9 +232,9 @@ const SortableSection = ({
             API
           </Badge>
         )}
-        {!section.isLabelEditable && (section.type === 'labeled-content' || section.content.includes('{{')) && (
+        {(section.type === 'labeled-content' || section.content.includes('{{')) && (
           <Badge variant="outline" className="text-xs">
-            🔒 Locked
+            {section.isLabelEditable !== false ? '✏️ Editable' : '🔒 Locked'}
           </Badge>
         )}
       </div>
