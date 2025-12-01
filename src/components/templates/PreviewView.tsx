@@ -1,6 +1,6 @@
 import { Section } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
-import { thymeleafToPlaceholder } from "@/lib/thymeleafUtils";
+import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
 import styles from "./PreviewView.module.scss";
 
 interface PreviewViewProps {
@@ -28,10 +28,20 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       );
     }
     
-    // Regular sections
-    const renderedContent = renderSectionContent(section);
-    const displayContent = thymeleafToPlaceholder(renderedContent)
-      .replace(/\{\{(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / 0.2);">${$1}</span>');
+    // Get section definition to access variables array
+    const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
+    const isInlinePlaceholder = inlinePlaceholderTypes.includes(section.type);
+    
+    // For inline placeholder sections, use the variable's default value instead of the Thymeleaf tag
+    let displayContent = section.content;
+    if (isInlinePlaceholder && section.variables && Object.keys(section.variables).length > 0) {
+      // Replace Thymeleaf tags with actual default values
+      displayContent = replaceWithDefaults(section.content, section.variables);
+    } else {
+      // For other sections, show Thymeleaf placeholders as visual badges
+      displayContent = thymeleafToPlaceholder(section.content)
+        .replace(/\{\{(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / 0.2);">${$1}</span>');
+    }
     
     return (
       <div

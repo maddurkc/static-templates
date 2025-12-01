@@ -80,25 +80,40 @@ export const getDisplayContent = (content: string, variables?: Record<string, an
 /**
  * Replaces Thymeleaf placeholders with actual default values from section variables
  */
-export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }>): string => {
-  if (!variables || variables.length === 0) {
+export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }> | Record<string, any>): string => {
+  if (!variables) {
     return content;
   }
 
   let result = content;
 
-  variables.forEach(variable => {
-    const placeholder = `<th:utext="\${${variable.name}}">`;
-    
-    if (Array.isArray(variable.defaultValue)) {
-      // For list variables, create actual <li> elements
-      const listItems = variable.defaultValue.map(item => `<li>${item}</li>`).join('');
-      result = result.replace(placeholder, listItems);
-    } else {
-      // For text variables, just replace with the default value
-      result = result.replace(placeholder, variable.defaultValue);
-    }
-  });
+  // Handle both array format and object format for variables
+  if (Array.isArray(variables)) {
+    variables.forEach(variable => {
+      const placeholder = `<th:utext="\${${variable.name}}">`;
+      
+      if (Array.isArray(variable.defaultValue)) {
+        // For list variables, create actual <li> elements
+        const listItems = variable.defaultValue.map(item => `<li>${item}</li>`).join('');
+        result = result.replace(placeholder, listItems);
+      } else {
+        // For text variables, just replace with the default value
+        result = result.replace(new RegExp(placeholder, 'g'), String(variable.defaultValue));
+      }
+    });
+  } else {
+    // Handle object format (Record<string, any>)
+    Object.entries(variables).forEach(([key, value]) => {
+      const placeholder = `<th:utext="\${${key}}">`;
+      
+      if (Array.isArray(value)) {
+        const listItems = value.map(item => `<li>${item}</li>`).join('');
+        result = result.replace(placeholder, listItems);
+      } else {
+        result = result.replace(new RegExp(placeholder, 'g'), String(value));
+      }
+    });
+  }
 
   return result;
 };

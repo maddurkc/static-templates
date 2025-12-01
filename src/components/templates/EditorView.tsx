@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical, Plus, Trash2, Settings2, Plug } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { thymeleafToPlaceholder } from "@/lib/thymeleafUtils";
+import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
 import { InlineSectionControls } from "./InlineSectionControls";
 import { SectionContextMenu } from "./SectionContextMenu";
 import styles from "./EditorView.module.scss";
@@ -186,16 +186,27 @@ const SortableSection = ({
             <div
               className="prose max-w-none"
               dangerouslySetInnerHTML={{ 
-                __html: thymeleafToPlaceholder(section.content)
-                  .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
-                  .replace(/\{\{if\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">if $1</span>')
-                  .replace(/\{\{\/if\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">/if</span>')
-                  .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">each $1 in $2</span>')
-                  .replace(/\{\{\/each\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">/each</span>')
+                __html: (() => {
+                  // For inline placeholder sections with variables, show default values
+                  const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
+                  const isInlinePlaceholder = inlinePlaceholderTypes.includes(section.type);
+                  
+                  if (isInlinePlaceholder && section.variables && Object.keys(section.variables).length > 0) {
+                    return replaceWithDefaults(section.content, section.variables);
+                  }
+                  
+                  // Otherwise show Thymeleaf placeholders as visual badges
+                  return thymeleafToPlaceholder(section.content)
+                    .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
+                    .replace(/\{\{if\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">if $1</span>')
+                    .replace(/\{\{\/if\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">/if</span>')
+                    .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">each $1 in $2</span>')
+                    .replace(/\{\{\/each\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">/each</span>');
+                })()
               }}
               style={section.styles as React.CSSProperties}
             />
-            {section.content.includes('{{') && (
+            {(section.content.includes('{{') || section.content.includes('<th:utext=')) && (
               <Badge variant="outline" className={cn(styles.badgeSmall, "mt-2")}>
                 {section.isLabelEditable !== false ? 'Content editable at runtime' : 'Content locked'}
               </Badge>
@@ -232,7 +243,7 @@ const SortableSection = ({
             API
           </Badge>
         )}
-        {(section.type === 'labeled-content' || section.content.includes('{{')) && (
+        {(section.type === 'labeled-content' || section.content.includes('{{') || section.content.includes('<th:utext=')) && (
           <Badge variant="outline" className="text-xs">
             {section.isLabelEditable !== false ? '✏️ Editable' : '🔒 Locked'}
           </Badge>
