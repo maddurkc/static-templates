@@ -476,8 +476,23 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
 
   // Handle heading and text sections with inline placeholders
   if (isInlinePlaceholderSection) {
-    const contentText = section.content || sectionDef?.defaultContent || '';
-    const placeholders = extractPlaceholders(contentText);
+    // Show content with default values, not Thymeleaf tags
+    const getDisplayContent = (): string => {
+      if (section.variables && Object.keys(section.variables).length > 0) {
+        // Show default values from variables
+        let displayContent = section.content;
+        Object.entries(section.variables).forEach(([key, value]) => {
+          const thymeleafPattern = new RegExp(`<th:utext="\\$\\{${key}\\}">`, 'g');
+          displayContent = displayContent.replace(thymeleafPattern, String(value));
+        });
+        // Remove any remaining HTML tags for clean display
+        return displayContent.replace(/<[^>]*>/g, '');
+      }
+      return section.content.replace(/<[^>]*>/g, '');
+    };
+    
+    const displayContent = getDisplayContent();
+    const placeholders = section.variables ? Object.keys(section.variables) : [];
     
     return (
       <div className={styles.container}>
@@ -487,33 +502,12 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         <Separator />
         
         <div className={styles.section}>
-          <Label className={styles.label}>Content (use {`{{`} variable {`}}`} for dynamic data)</Label>
-          <Textarea
-            value={contentText}
-            onChange={(e) => {
-              const newContent = e.target.value;
-              const newPlaceholders = extractPlaceholders(newContent);
-              
-              // Preserve existing variable values and add new ones
-              const updatedVariables = { ...section.variables };
-              newPlaceholders.forEach(placeholder => {
-                if (!updatedVariables[placeholder]) {
-                  updatedVariables[placeholder] = '';
-                }
-              });
-              
-              onUpdate({
-                ...section,
-                content: newContent,
-                variables: updatedVariables
-              });
-            }}
-            className={styles.staticTextArea}
-            placeholder={`Example: Incident Report {{incidentNumber}} - Status: {{status}}`}
-          />
+          <Label className={styles.label}>Content Preview</Label>
+          <div className="p-3 border rounded bg-muted/30 text-sm">
+            {displayContent || 'No content'}
+          </div>
           <p className={styles.description}>
-            Type your content and use {`{{`} variableName {`}}`} syntax for dynamic values.
-            Multiple placeholders are supported.
+            This shows how your content will appear with default values. Edit the variables below to change them.
           </p>
         </div>
         
@@ -523,19 +517,22 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
             <div className={styles.variablesSection}>
               <Label className={styles.label}>Variable Default Values</Label>
               <p className={styles.description}>
-                Set default values for your placeholders (used when running the template):
+                Set default values that will be shown in the editor and preview:
               </p>
               {placeholders.map(placeholder => (
                 <div key={placeholder} className={styles.variableField}>
                   <Label className={styles.variableLabel}>
-                    {`{{` + placeholder + `}}`} 
+                    {placeholder}
                   </Label>
                   <Input
                     value={(section.variables?.[placeholder] as string) || ''}
-                    onChange={(e) => onUpdate({
-                      ...section,
-                      variables: { ...section.variables, [placeholder]: e.target.value }
-                    })}
+                    onChange={(e) => {
+                      const updatedVariables = { ...section.variables, [placeholder]: e.target.value };
+                      onUpdate({
+                        ...section,
+                        variables: updatedVariables
+                      });
+                    }}
                     placeholder={`Default value for ${placeholder}`}
                     className={styles.variableInput}
                   />
