@@ -1393,63 +1393,311 @@ public class TemplateVariableController {
  */
 
 // ================================================================
-// SECTION DTOs
+// SWAGGER/OPENAPI CONFIGURATION
+// ================================================================
+
+/**
+ * Maven Dependencies (add to pom.xml):
+ * 
+ * <dependency>
+ *     <groupId>org.springdoc</groupId>
+ *     <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+ *     <version>2.3.0</version>
+ * </dependency>
+ * 
+ * <dependency>
+ *     <groupId>org.springframework.boot</groupId>
+ *     <artifactId>spring-boot-starter-validation</artifactId>
+ * </dependency>
+ * 
+ * <dependency>
+ *     <groupId>org.mapstruct</groupId>
+ *     <artifactId>mapstruct</artifactId>
+ *     <version>1.5.5.Final</version>
+ * </dependency>
+ */
+
+@Configuration
+public class OpenApiConfig {
+    @Bean
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+            .info(new Info()
+                .title("Page Builder Template API")
+                .version("1.0.0")
+                .description("REST API for template management system with dynamic sections and variables")
+                .contact(new Contact()
+                    .name("API Support")
+                    .email("support@example.com"))
+                .license(new License()
+                    .name("Apache 2.0")
+                    .url("http://www.apache.org/licenses/LICENSE-2.0.html")))
+            .externalDocs(new ExternalDocumentation()
+                .description("Full Documentation")
+                .url("https://docs.example.com"))
+            .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+            .components(new Components()
+                .addSecuritySchemes("bearerAuth", 
+                    new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")));
+    }
+    
+    @Bean
+    public GroupedOpenApi publicApi() {
+        return GroupedOpenApi.builder()
+            .group("public")
+            .pathsToMatch("/api/**")
+            .build();
+    }
+}
+
+/**
+ * Access Swagger UI at: http://localhost:8080/swagger-ui.html
+ * Access OpenAPI JSON at: http://localhost:8080/v3/api-docs
+ */
+
+// ================================================================
+// VALIDATION ANNOTATIONS GUIDE
+// ================================================================
+
+/**
+ * Comprehensive validation annotations for input security:
+ * 
+ * 1. STRING VALIDATION:
+ *    @NotBlank - Not null, not empty, not whitespace only
+ *    @NotNull - Not null (use for objects, booleans, numbers)
+ *    @Size(min=X, max=Y) - String length constraints
+ *    @Pattern(regexp="...") - Regex validation for format
+ *    @Email - Valid email format
+ * 
+ * 2. NUMERIC VALIDATION:
+ *    @Min(value) - Minimum value (inclusive)
+ *    @Max(value) - Maximum value (inclusive)
+ *    @Positive - Must be positive
+ *    @PositiveOrZero - Must be positive or zero
+ *    @Negative - Must be negative
+ *    @DecimalMin / @DecimalMax - For BigDecimal
+ * 
+ * 3. COLLECTION VALIDATION:
+ *    @NotEmpty - Collection/Map not null and not empty
+ *    @Size(min=X, max=Y) - Collection size constraints
+ * 
+ * 4. DATE/TIME VALIDATION:
+ *    @Past - Must be in the past
+ *    @PastOrPresent - Must be in past or present
+ *    @Future - Must be in the future
+ *    @FutureOrPresent - Must be in future or present
+ * 
+ * 5. NESTED VALIDATION:
+ *    @Valid - Cascade validation to nested objects
+ * 
+ * 6. CUSTOM CONSTRAINTS:
+ *    Create custom annotations extending ConstraintValidator
+ */
+
+// ================================================================
+// SECURITY BEST PRACTICES FOR INPUT VALIDATION
+// ================================================================
+
+/**
+ * CRITICAL SECURITY CONSIDERATIONS:
+ * 
+ * 1. XSS PREVENTION:
+ *    - Never trust user input
+ *    - Sanitize HTML content before storage
+ *    - Use Content Security Policy headers
+ *    - Validate and escape output when rendering
+ * 
+ * 2. SQL INJECTION PREVENTION:
+ *    - Always use parameterized queries
+ *    - Never concatenate user input into SQL
+ *    - Use JPA/Hibernate properly
+ * 
+ * 3. PATH TRAVERSAL PREVENTION:
+ *    - Validate file paths strictly
+ *    - Use whitelist approach for file operations
+ *    - Never allow "../" in user input
+ * 
+ * 4. EMAIL INJECTION PREVENTION:
+ *    - Validate email formats strictly
+ *    - Sanitize email content
+ *    - Prevent header injection in email fields
+ * 
+ * 5. JSON INJECTION PREVENTION:
+ *    - Validate JSON structure
+ *    - Use Jackson's security features
+ *    - Set size limits on JSON input
+ * 
+ * 6. REGEX DOS PREVENTION:
+ *    - Use simple, efficient regex patterns
+ *    - Set timeouts for regex evaluation
+ *    - Avoid catastrophic backtracking patterns
+ * 
+ * Example Security Configuration:
+ */
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+    
+    // Configure Content Security Policy
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .headers(headers -> headers
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")
+                )
+                .frameOptions(frame -> frame.deny())
+                .xssProtection(xss -> xss.enable())
+            )
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+            );
+        return http.build();
+    }
+    
+    // Input sanitization bean
+    @Bean
+    public HTMLInputSanitizer htmlSanitizer() {
+        return new HTMLInputSanitizer();
+    }
+}
+
+/**
+ * HTML Sanitizer to prevent XSS attacks
+ */
+@Component
+public class HTMLInputSanitizer {
+    private final Policy policy;
+    
+    public HTMLInputSanitizer() {
+        // Configure OWASP AntiSamy policy
+        this.policy = Policy.getInstance(
+            getClass().getResourceAsStream("/antisamy-policy.xml")
+        );
+    }
+    
+    public String sanitize(String input) {
+        if (input == null) return null;
+        try {
+            AntiSamy antiSamy = new AntiSamy();
+            CleanResults results = antiSamy.scan(input, policy);
+            return results.getCleanHTML();
+        } catch (Exception e) {
+            // Log error and return empty string or throw exception
+            return "";
+        }
+    }
+}
+
+// ================================================================
+// SECTION DTOs WITH SWAGGER ANNOTATIONS
 // ================================================================
 
 // Section Response DTO
+@Schema(description = "Section type definition with metadata")
 public class SectionResponse {
+    @Schema(description = "Section type identifier", example = "heading1", required = true)
     private String type;
+    
+    @Schema(description = "Human-readable label", example = "Heading 1", required = true)
     private String label;
+    
+    @Schema(description = "Section description", example = "Large heading for major sections")
     private String description;
+    
+    @Schema(description = "Section category", example = "text", allowableValues = {"text", "media", "layout", "interactive"})
     private String category;
+    
+    @Schema(description = "Icon name from icon library", example = "Type")
     private String icon;
+    
+    @Schema(description = "Default content for new section", example = "Enter heading text")
     private String defaultContent;
     
     // Getters and setters
 }
 
 // Section Variable Response DTO
+@Schema(description = "Variable definition for a section type")
 public class SectionVariableResponse {
+    @Schema(description = "Variable unique identifier")
     private UUID id;
+    
+    @Schema(description = "Associated section type", example = "table")
     private String sectionType;
+    
+    @Schema(description = "Variable name (used in code)", example = "tableData")
     private String variableName;
+    
+    @Schema(description = "Variable label (shown to users)", example = "Table Data")
     private String variableLabel;
+    
+    @Schema(description = "Data type", example = "table", allowableValues = {"text", "url", "list", "table"})
     private String variableType;
+    
+    @Schema(description = "Default value as JSON string", example = "{\"rows\":[[\"Header 1\",\"Header 2\"]]}")
     private String defaultValue;
     
     // Getters and setters
 }
 
 // Section with Variables Response DTO
+@Schema(description = "Section definition with all associated variables")
 public class SectionWithVariablesResponse {
+    @Schema(description = "Section type identifier", example = "table")
     private String type;
+    
+    @Schema(description = "Human-readable label", example = "Table")
     private String label;
+    
+    @Schema(description = "Section description")
     private String description;
+    
+    @Schema(description = "Section category", allowableValues = {"text", "media", "layout", "interactive"})
     private String category;
+    
+    @Schema(description = "Icon name")
     private String icon;
+    
+    @Schema(description = "Default content")
     private String defaultContent;
+    
+    @Schema(description = "List of variables for this section type")
     private List<SectionVariableResponse> variables;
     
     // Getters and setters
 }
 
 // ================================================================
-// TEMPLATE DTOs
+// TEMPLATE DTOs WITH VALIDATION AND SWAGGER ANNOTATIONS
 // ================================================================
 
 // Template Request DTO
+@Schema(description = "Request to create or update a template")
 public class TemplateRequest {
+    @Schema(description = "Template name (required, max 255 chars)", example = "Incident Report Template", required = true)
     @NotBlank(message = "Template name is required")
-    @Size(max = 255)
+    @Size(min = 1, max = 255, message = "Template name must be between 1 and 255 characters")
+    @Pattern(regexp = "^[a-zA-Z0-9\\s\\-_.()]+$", message = "Template name contains invalid characters")
     private String name;
     
-    @Size(max = 1000)
+    @Schema(description = "Template description (max 1000 chars)", example = "Template for incident reporting")
+    @Size(max = 1000, message = "Description must not exceed 1000 characters")
     private String description;
     
+    @Schema(description = "Template category for organization", example = "Reports")
+    @Size(max = 100, message = "Category must not exceed 100 characters")
+    @Pattern(regexp = "^[a-zA-Z0-9\\s\\-_]+$", message = "Category contains invalid characters")
     private String category;
     
+    @Schema(description = "Whether template is publicly accessible", example = "false", defaultValue = "false")
     private Boolean isPublic = false;
     
+    @Schema(description = "List of sections in the template")
     @Valid
     private List<TemplateSectionRequest> sections;
     
@@ -1457,72 +1705,143 @@ public class TemplateRequest {
 }
 
 // Template Response DTO
+@Schema(description = "Template summary information")
 public class TemplateResponse {
+    @Schema(description = "Template unique identifier")
     private UUID id;
+    
+    @Schema(description = "Template name", example = "Incident Report Template")
     private String name;
+    
+    @Schema(description = "Template description")
     private String description;
+    
+    @Schema(description = "Template category", example = "Reports")
     private String category;
+    
+    @Schema(description = "Public accessibility flag")
     private Boolean isPublic;
+    
+    @Schema(description = "User who created the template")
     private UUID userId;
+    
+    @Schema(description = "Template creation timestamp")
     private LocalDateTime createdAt;
+    
+    @Schema(description = "Last update timestamp")
     private LocalDateTime updatedAt;
     
     // Getters and setters
 }
 
 // Template Detail Response (includes sections)
+@Schema(description = "Complete template with all sections and variables")
 public class TemplateDetailResponse {
+    @Schema(description = "Template unique identifier")
     private UUID id;
+    
+    @Schema(description = "Template name")
     private String name;
+    
+    @Schema(description = "Template description")
     private String description;
+    
+    @Schema(description = "Template category")
     private String category;
+    
+    @Schema(description = "Public accessibility flag")
     private Boolean isPublic;
+    
+    @Schema(description = "User who created the template")
     private UUID userId;
+    
+    @Schema(description = "Template creation timestamp")
     private LocalDateTime createdAt;
+    
+    @Schema(description = "Last update timestamp")
     private LocalDateTime updatedAt;
+    
+    @Schema(description = "All sections in the template")
     private List<TemplateSectionResponse> sections;
+    
+    @Schema(description = "All variables used in the template")
     private List<TemplateVariableResponse> variables;
     
     // Getters and setters
 }
 
 // Template Summary Response (for lists)
+@Schema(description = "Template summary with counts")
 public class TemplateSummaryResponse {
+    @Schema(description = "Template unique identifier")
     private UUID id;
+    
+    @Schema(description = "Template name")
     private String name;
+    
+    @Schema(description = "Template description")
     private String description;
+    
+    @Schema(description = "Template category")
     private String category;
+    
+    @Schema(description = "Public accessibility flag")
     private Boolean isPublic;
+    
+    @Schema(description = "Template creation timestamp")
     private LocalDateTime createdAt;
+    
+    @Schema(description = "Last update timestamp")
     private LocalDateTime updatedAt;
+    
+    @Schema(description = "Number of sections in template", example = "5")
     private Integer sectionCount;
+    
+    @Schema(description = "Number of variables in template", example = "3")
     private Integer variableCount;
     
     // Getters and setters
 }
 
 // ================================================================
-// TEMPLATE SECTION DTOs
+// TEMPLATE SECTION DTOs WITH VALIDATION AND SWAGGER
 // ================================================================
 
 // Template Section Request DTO
+@Schema(description = "Request to create or update a template section")
 public class TemplateSectionRequest {
+    @Schema(description = "Section type (required, max 50 chars)", example = "heading1", required = true)
     @NotBlank(message = "Section type is required")
-    @Size(max = 50)
+    @Size(min = 1, max = 50, message = "Section type must be between 1 and 50 characters")
+    @Pattern(regexp = "^[a-z0-9\\-]+$", message = "Section type must be lowercase alphanumeric with hyphens only")
     private String sectionType;
     
+    @Schema(description = "Section content (required)", example = "Incident Report", required = true)
     @NotBlank(message = "Content is required")
+    @Size(min = 1, max = 10000, message = "Content must be between 1 and 10000 characters")
     private String content;
     
+    @Schema(description = "Section variables as JSON string", example = "{\"items\": [\"Item 1\", \"Item 2\"]}")
+    @Size(max = 50000, message = "Variables JSON must not exceed 50000 characters")
     private String variables;  // JSON string
+    
+    @Schema(description = "Section styles as JSON string", example = "{\"fontSize\": \"16px\", \"color\": \"#333\"}")
+    @Size(max = 10000, message = "Styles JSON must not exceed 10000 characters")
     private String styles;     // JSON string
+    
+    @Schema(description = "Whether label can be edited at runtime", example = "true", defaultValue = "true")
     private Boolean isLabelEditable = true;
     
+    @Schema(description = "Display order index (required)", example = "0", required = true)
     @NotNull(message = "Order index is required")
+    @Min(value = 0, message = "Order index must be non-negative")
+    @Max(value = 9999, message = "Order index must not exceed 9999")
     private Integer orderIndex;
     
+    @Schema(description = "Parent section ID for nested sections")
     private UUID parentSectionId;
     
+    @Schema(description = "Child sections (nested)")
     @Valid
     private List<TemplateSectionRequest> childSections;
     
@@ -1530,130 +1849,259 @@ public class TemplateSectionRequest {
 }
 
 // Template Section Response DTO
+@Schema(description = "Template section information")
 public class TemplateSectionResponse {
+    @Schema(description = "Section unique identifier")
     private UUID id;
+    
+    @Schema(description = "Template ID this section belongs to")
     private UUID templateId;
+    
+    @Schema(description = "Section type", example = "heading1")
     private String sectionType;
+    
+    @Schema(description = "Section content", example = "Incident Report")
     private String content;
+    
+    @Schema(description = "Variables as JSON string")
     private String variables;
+    
+    @Schema(description = "Styles as JSON string")
     private String styles;
+    
+    @Schema(description = "Whether label is editable")
     private Boolean isLabelEditable;
+    
+    @Schema(description = "Display order index")
     private Integer orderIndex;
+    
+    @Schema(description = "Parent section ID if nested")
     private UUID parentSectionId;
+    
+    @Schema(description = "Section creation timestamp")
     private LocalDateTime createdAt;
     
     // Getters and setters
 }
 
 // Template Section with Children Response
+@Schema(description = "Template section with nested child sections")
 public class TemplateSectionWithChildrenResponse {
+    @Schema(description = "Section unique identifier")
     private UUID id;
+    
+    @Schema(description = "Template ID this section belongs to")
     private UUID templateId;
+    
+    @Schema(description = "Section type")
     private String sectionType;
+    
+    @Schema(description = "Section content")
     private String content;
+    
+    @Schema(description = "Variables as JSON string")
     private String variables;
+    
+    @Schema(description = "Styles as JSON string")
     private String styles;
+    
+    @Schema(description = "Whether label is editable")
     private Boolean isLabelEditable;
+    
+    @Schema(description = "Display order index")
     private Integer orderIndex;
+    
+    @Schema(description = "Parent section ID if nested")
     private UUID parentSectionId;
+    
+    @Schema(description = "Section creation timestamp")
     private LocalDateTime createdAt;
+    
+    @Schema(description = "Child sections nested under this section")
     private List<TemplateSectionWithChildrenResponse> childSections;
     
     // Getters and setters
 }
 
 // ================================================================
-// TEMPLATE RUN DTOs
+// TEMPLATE RUN DTOs WITH VALIDATION AND SWAGGER
 // ================================================================
 
 // Template Run Request DTO
+@Schema(description = "Request to execute a template and optionally send via email")
 public class TemplateRunRequest {
+    @Schema(description = "Template ID to execute (required)", example = "550e8400-e29b-41d4-a716-446655440000", required = true)
     @NotNull(message = "Template ID is required")
     private UUID templateId;
     
-    @Email(message = "Invalid email format")
+    @Schema(description = "Recipient email addresses (comma-separated)", example = "user1@example.com,user2@example.com")
+    @Pattern(regexp = "^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})(,\\s*[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})*$", 
+             message = "Invalid email format. Use comma-separated emails.")
+    @Size(max = 1000, message = "Email list must not exceed 1000 characters")
     private String toEmails;
     
+    @Schema(description = "CC email addresses (comma-separated)", example = "cc@example.com")
+    @Pattern(regexp = "^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})(,\\s*[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})*$", 
+             message = "Invalid email format. Use comma-separated emails.")
+    @Size(max = 1000, message = "CC email list must not exceed 1000 characters")
     private String ccEmails;
+    
+    @Schema(description = "BCC email addresses (comma-separated)", example = "bcc@example.com")
+    @Pattern(regexp = "^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})(,\\s*[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})*$", 
+             message = "Invalid email format. Use comma-separated emails.")
+    @Size(max = 1000, message = "BCC email list must not exceed 1000 characters")
     private String bccEmails;
     
+    @Schema(description = "Variable values as JSON string (required)", example = "{\"incidentNumber\": \"INC-001\", \"description\": \"Server down\"}", required = true)
     @NotBlank(message = "Variables are required")
+    @Size(min = 2, max = 100000, message = "Variables JSON must be between 2 and 100000 characters")
     private String variables;  // JSON string with variable values
     
+    @Schema(description = "Execution status", example = "sent", defaultValue = "sent", allowableValues = {"sent", "draft", "failed", "pending"})
+    @Pattern(regexp = "^(sent|draft|failed|pending)$", message = "Status must be one of: sent, draft, failed, pending")
     private String status = "sent";
     
     // Getters and setters
 }
 
 // Template Run Response DTO
+@Schema(description = "Template execution result summary")
 public class TemplateRunResponse {
+    @Schema(description = "Run unique identifier")
     private UUID id;
+    
+    @Schema(description = "Template ID that was executed")
     private UUID templateId;
+    
+    @Schema(description = "Template name")
     private String templateName;
+    
+    @Schema(description = "Recipient email addresses")
     private String toEmails;
+    
+    @Schema(description = "CC email addresses")
     private String ccEmails;
+    
+    @Schema(description = "BCC email addresses")
     private String bccEmails;
+    
+    @Schema(description = "Variable values as JSON string")
     private String variables;
+    
+    @Schema(description = "Execution status", allowableValues = {"sent", "draft", "failed", "pending"})
     private String status;
+    
+    @Schema(description = "Execution timestamp")
     private LocalDateTime runAt;
+    
+    @Schema(description = "User who executed the template")
     private UUID userId;
     
     // Getters and setters
 }
 
 // Template Run Detail Response (includes HTML output)
+@Schema(description = "Complete template execution details including HTML output")
 public class TemplateRunDetailResponse {
+    @Schema(description = "Run unique identifier")
     private UUID id;
+    
+    @Schema(description = "Template ID that was executed")
     private UUID templateId;
+    
+    @Schema(description = "Template name")
     private String templateName;
+    
+    @Schema(description = "Recipient email addresses")
     private String toEmails;
+    
+    @Schema(description = "CC email addresses")
     private String ccEmails;
+    
+    @Schema(description = "BCC email addresses")
     private String bccEmails;
+    
+    @Schema(description = "Variable values as JSON string")
     private String variables;
+    
+    @Schema(description = "Generated HTML output")
     private String htmlOutput;
+    
+    @Schema(description = "Execution status")
     private String status;
+    
+    @Schema(description = "Execution timestamp")
     private LocalDateTime runAt;
+    
+    @Schema(description = "User who executed the template")
     private UUID userId;
     
     // Getters and setters
 }
 
 // ================================================================
-// TEMPLATE VARIABLE DTOs
+// TEMPLATE VARIABLE DTOs WITH VALIDATION AND SWAGGER
 // ================================================================
 
 // Template Variable Request DTO
+@Schema(description = "Request to create or update a template variable")
 public class TemplateVariableRequest {
+    @Schema(description = "Template ID (required)", example = "550e8400-e29b-41d4-a716-446655440000", required = true)
     @NotNull(message = "Template ID is required")
     private UUID templateId;
     
+    @Schema(description = "Variable name (required, max 255 chars, camelCase)", example = "incidentNumber", required = true)
     @NotBlank(message = "Variable name is required")
-    @Size(max = 255)
+    @Size(min = 1, max = 255, message = "Variable name must be between 1 and 255 characters")
+    @Pattern(regexp = "^[a-zA-Z][a-zA-Z0-9]*$", message = "Variable name must start with a letter and contain only letters and numbers (camelCase)")
     private String variableName;
     
+    @Schema(description = "Variable label for UI display (required, max 255 chars)", example = "Incident Number", required = true)
     @NotBlank(message = "Variable label is required")
-    @Size(max = 255)
+    @Size(min = 1, max = 255, message = "Variable label must be between 1 and 255 characters")
     private String variableLabel;
     
+    @Schema(description = "Variable data type (required, max 50 chars)", example = "text", required = true, allowableValues = {"text", "url", "list", "table"})
     @NotBlank(message = "Variable type is required")
-    @Size(max = 50)
+    @Size(min = 1, max = 50, message = "Variable type must be between 1 and 50 characters")
+    @Pattern(regexp = "^(text|url|list|table)$", message = "Variable type must be one of: text, url, list, table")
     private String variableType;
     
+    @Schema(description = "Default value for the variable", example = "INC-001")
+    @Size(max = 10000, message = "Default value must not exceed 10000 characters")
     private String defaultValue;
+    
+    @Schema(description = "Whether variable is required", example = "false", defaultValue = "false")
     private Boolean required = false;
     
     // Getters and setters
 }
 
 // Template Variable Response DTO
+@Schema(description = "Template variable information")
 public class TemplateVariableResponse {
+    @Schema(description = "Variable unique identifier")
     private UUID id;
+    
+    @Schema(description = "Template ID this variable belongs to")
     private UUID templateId;
+    
+    @Schema(description = "Variable name (camelCase)", example = "incidentNumber")
     private String variableName;
+    
+    @Schema(description = "Variable label", example = "Incident Number")
     private String variableLabel;
+    
+    @Schema(description = "Variable data type", example = "text", allowableValues = {"text", "url", "list", "table"})
     private String variableType;
+    
+    @Schema(description = "Default value", example = "INC-001")
     private String defaultValue;
+    
+    @Schema(description = "Whether variable is required")
     private Boolean required;
+    
+    @Schema(description = "Variable creation timestamp")
     private LocalDateTime createdAt;
     
     // Getters and setters
@@ -1780,16 +2228,19 @@ public interface TemplateVariableMapper {
 }
 
 // ================================================================
-// USAGE EXAMPLE IN CONTROLLERS
+// USAGE EXAMPLE: CONTROLLERS WITH OPENAPI ANNOTATIONS
 // ================================================================
 
 /**
- * Example: Using DTOs and Mappers in a controller
+ * Example: Using DTOs, Mappers, and OpenAPI annotations in controllers
+ * This provides complete API documentation automatically in Swagger UI
  */
 
 @RestController
 @RequestMapping("/api/templates-with-dtos")
 @CrossOrigin(origins = "*")
+@Tag(name = "Templates", description = "Template management API - Create, read, update, and delete templates with sections and variables")
+@SecurityRequirement(name = "bearerAuth")
 public class TemplateDTOController {
     @Autowired
     private TemplateService templateService;
@@ -1798,6 +2249,21 @@ public class TemplateDTOController {
     private TemplateMapper templateMapper;
     
     // GET all templates as summaries
+    @Operation(
+        summary = "Get all templates",
+        description = "Retrieve a list of all templates with summary information including section and variable counts"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved templates",
+            content = @Content(
+                mediaType = "application/json",
+                array = @ArraySchema(schema = @Schema(implementation = TemplateSummaryResponse.class))
+            )
+        ),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping
     public ResponseEntity<List<TemplateSummaryResponse>> getAllTemplates() {
         List<Template> templates = templateService.getAllTemplates();
@@ -1805,8 +2271,26 @@ public class TemplateDTOController {
     }
     
     // GET template detail with sections and variables
+    @Operation(
+        summary = "Get template by ID",
+        description = "Retrieve complete template details including all sections, variables, and configuration"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Template found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = TemplateDetailResponse.class)
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Template not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<TemplateDetailResponse> getTemplateDetail(@PathVariable UUID id) {
+    public ResponseEntity<TemplateDetailResponse> getTemplateDetail(
+        @Parameter(description = "Template ID", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+        @PathVariable UUID id) {
         return templateService.getTemplateWithSectionsAndVariables(id)
             .map(templateMapper::toDetailResponse)
             .map(ResponseEntity::ok)
@@ -1814,8 +2298,32 @@ public class TemplateDTOController {
     }
     
     // POST create new template
+    @Operation(
+        summary = "Create a new template",
+        description = "Create a new template with sections and variables. All validations will be applied to the request body."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "201",
+            description = "Template created successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = TemplateResponse.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request body - validation failed",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)
+            )
+        ),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping
     public ResponseEntity<TemplateResponse> createTemplate(
+        @Parameter(description = "Template data to create", required = true)
         @Valid @RequestBody TemplateRequest request) {
         Template template = templateMapper.toEntity(request);
         Template saved = templateService.createTemplate(template);
@@ -1824,13 +2332,139 @@ public class TemplateDTOController {
     }
     
     // PUT update template
+    @Operation(
+        summary = "Update an existing template",
+        description = "Update template details. All sections and variables can be modified."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Template updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = TemplateResponse.class)
+            )
+        ),
+        @ApiResponse(responseCode = "400", description = "Invalid request body - validation failed"),
+        @ApiResponse(responseCode = "404", description = "Template not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PutMapping("/{id}")
     public ResponseEntity<TemplateResponse> updateTemplate(
+        @Parameter(description = "Template ID to update", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
         @PathVariable UUID id,
+        @Parameter(description = "Updated template data", required = true)
         @Valid @RequestBody TemplateRequest request) {
         Template template = templateMapper.toEntity(request);
         Template updated = templateService.updateTemplate(id, template);
         return ResponseEntity.ok(templateMapper.toResponse(updated));
+    }
+    
+    // DELETE template
+    @Operation(
+        summary = "Delete a template",
+        description = "Permanently delete a template and all its associated sections and variables"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Template deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "Template not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTemplate(
+        @Parameter(description = "Template ID to delete", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+        @PathVariable UUID id) {
+        templateService.deleteTemplate(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+// ================================================================
+// ERROR RESPONSE DTO FOR API DOCUMENTATION
+// ================================================================
+
+@Schema(description = "Standard error response for validation failures and exceptions")
+public class ErrorResponse {
+    @Schema(description = "Error timestamp")
+    private LocalDateTime timestamp;
+    
+    @Schema(description = "HTTP status code", example = "400")
+    private int status;
+    
+    @Schema(description = "Error type", example = "Bad Request")
+    private String error;
+    
+    @Schema(description = "Error message", example = "Template name is required")
+    private String message;
+    
+    @Schema(description = "Request path that caused the error", example = "/api/templates-with-dtos")
+    private String path;
+    
+    @Schema(description = "Field validation errors")
+    private Map<String, String> fieldErrors;
+    
+    // Constructors, getters, and setters
+}
+
+// ================================================================
+// GLOBAL EXCEPTION HANDLER WITH API DOCUMENTATION
+// ================================================================
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleValidationExceptions(
+        MethodArgumentNotValidException ex,
+        HttpServletRequest request) {
+        
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(LocalDateTime.now());
+        errorResponse.setStatus(HttpStatus.BAD_REQUEST.value());
+        errorResponse.setError("Validation Failed");
+        errorResponse.setMessage("Request validation failed");
+        errorResponse.setPath(request.getRequestURI());
+        
+        Map<String, String> fieldErrors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error -> 
+            fieldErrors.put(error.getField(), error.getDefaultMessage())
+        );
+        errorResponse.setFieldErrors(fieldErrors);
+        
+        return errorResponse;
+    }
+    
+    @ExceptionHandler(ResourceNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleResourceNotFound(
+        ResourceNotFoundException ex,
+        HttpServletRequest request) {
+        
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(LocalDateTime.now());
+        errorResponse.setStatus(HttpStatus.NOT_FOUND.value());
+        errorResponse.setError("Not Found");
+        errorResponse.setMessage(ex.getMessage());
+        errorResponse.setPath(request.getRequestURI());
+        
+        return errorResponse;
+    }
+    
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErrorResponse handleGenericException(
+        Exception ex,
+        HttpServletRequest request) {
+        
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(LocalDateTime.now());
+        errorResponse.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        errorResponse.setError("Internal Server Error");
+        errorResponse.setMessage("An unexpected error occurred");
+        errorResponse.setPath(request.getRequestURI());
+        
+        return errorResponse;
     }
 }
 
