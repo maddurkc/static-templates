@@ -187,11 +187,12 @@ const SortableSection = ({
               className="prose max-w-none"
               dangerouslySetInnerHTML={{ 
                 __html: (() => {
-                  // For inline placeholder sections with variables, show default values
+                  // For heading and text sections with variables, show default values (but keep Thymeleaf in section.content)
                   const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
                   const isInlinePlaceholder = inlinePlaceholderTypes.includes(section.type);
                   
                   if (isInlinePlaceholder && section.variables && Object.keys(section.variables).length > 0) {
+                    // Display default values from variables, actual content still has Thymeleaf tags
                     return replaceWithDefaults(section.content, section.variables);
                   }
                   
