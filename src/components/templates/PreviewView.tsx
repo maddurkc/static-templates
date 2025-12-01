@@ -28,14 +28,14 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       );
     }
     
-    // Get section definition to access variables array
+    // For heading and text sections with variables, show default values (but section.content keeps Thymeleaf)
     const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
     const isInlinePlaceholder = inlinePlaceholderTypes.includes(section.type);
     
-    // For inline placeholder sections, use the variable's default value instead of the Thymeleaf tag
+    // Display logic: show default values from variables, actual content still has Thymeleaf tags
     let displayContent = section.content;
     if (isInlinePlaceholder && section.variables && Object.keys(section.variables).length > 0) {
-      // Replace Thymeleaf tags with actual default values
+      // Replace Thymeleaf tags with actual default values for display only
       displayContent = replaceWithDefaults(section.content, section.variables);
     } else {
       // For other sections, show Thymeleaf placeholders as visual badges
