@@ -87,6 +87,9 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
 
   let result = content;
 
+  // Helper to escape regex special characters
+  const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   // Handle both array format and object format for variables
   if (Array.isArray(variables)) {
     variables.forEach(variable => {
@@ -98,7 +101,7 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
         result = result.replace(placeholder, listItems);
       } else {
         // For text variables, just replace with the default value
-        result = result.replace(new RegExp(placeholder, 'g'), String(variable.defaultValue));
+        result = result.replace(new RegExp(escapeRegex(placeholder), 'g'), String(variable.defaultValue));
       }
     });
   } else {
@@ -110,7 +113,7 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
         const listItems = value.map(item => `<li>${item}</li>`).join('');
         result = result.replace(placeholder, listItems);
       } else {
-        result = result.replace(new RegExp(placeholder, 'g'), String(value));
+        result = result.replace(new RegExp(escapeRegex(placeholder), 'g'), String(value));
       }
     });
   }
