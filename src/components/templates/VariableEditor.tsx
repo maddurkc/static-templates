@@ -157,8 +157,40 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
 
   // For labeled-content sections - static label + dynamic content
   if (section.type === 'labeled-content') {
-    const label = (section.variables?.label as string) || '';
+    // Extract label placeholders
+    const labelText = (section.variables?.label as string) || '';
+    const extractLabelPlaceholders = (): string[] => {
+      const placeholderMatches = labelText.match(/<th:utext="\$\{(\w+)\}">/g) || [];
+      return [...new Set(placeholderMatches.map(m => {
+        const match = m.match(/<th:utext="\$\{(\w+)\}">/);
+        return match ? match[1] : '';
+      }).filter(Boolean))];
+    };
+    
+    // Get user-friendly label (convert Thymeleaf to {{placeholder}})
+    const getUserFriendlyLabel = (): string => {
+      let label = labelText;
+      extractLabelPlaceholders().forEach(placeholder => {
+        const thymeleafPattern = new RegExp(`<th:utext="\\$\\{${placeholder}\\}">`, 'g');
+        label = label.replace(thymeleafPattern, `{{${placeholder}}}`);
+      });
+      return label;
+    };
+    
+    const userFriendlyLabel = getUserFriendlyLabel();
+    const labelPlaceholders = extractLabelPlaceholders();
     const contentType = (section.variables?.contentType as string) || 'text';
+    
+    // Extract content placeholders (for text content type)
+    const contentText = (section.variables?.content as string) || '';
+    const extractContentPlaceholders = (): string[] => {
+      const placeholderMatches = contentText.match(/\{\{(\w+)\}\}/g) || [];
+      return [...new Set(placeholderMatches.map(m => {
+        const match = m.match(/\{\{(\w+)\}\}/);
+        return match ? match[1] : '';
+      }).filter(Boolean))];
+    };
+    const contentPlaceholders = contentType === 'text' ? extractContentPlaceholders() : [];
     
     return (
       <div className={styles.container}>
@@ -168,20 +200,72 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         <Separator />
         
         <div className={styles.section}>
-          <Label className={styles.label}>Field Label (supports dynamic content)</Label>
-          <ThymeleafEditor
-            value={label}
-            onChange={(value) => onUpdate({
-              ...section,
-              variables: { ...section.variables, label: value }
-            })}
-            placeholder='e.g., Summary or Incident <th:utext="${incidentNumber}">'
-            className="min-h-[60px]"
+          <Label className={styles.label}>Field Label (use {`{{`}variable{`}}`} for dynamic data)</Label>
+          <Textarea
+            value={userFriendlyLabel}
+            onChange={(e) => {
+              const newLabel = e.target.value;
+              const newPlaceholders = newLabel.match(/\{\{(\w+)\}\}/g) || [];
+              
+              // Convert {{placeholder}} to Thymeleaf
+              let thymeleafLabel = newLabel;
+              newPlaceholders.forEach(match => {
+                const varName = match.replace(/\{\{|\}\}/g, '');
+                thymeleafLabel = thymeleafLabel.replace(new RegExp(`\\{\\{${varName}\\}\\}`, 'g'), `<th:utext="\${${varName}}">`);
+              });
+              
+              // Update variables with new placeholders
+              const updatedVariables = { ...section.variables, label: thymeleafLabel };
+              newPlaceholders.forEach(match => {
+                const varName = match.replace(/\{\{|\}\}/g, '');
+                if (!updatedVariables[varName]) {
+                  updatedVariables[varName] = '';
+                }
+              });
+              
+              onUpdate({
+                ...section,
+                variables: updatedVariables
+              });
+            }}
+            className="min-h-[60px] text-sm"
+            placeholder='Example: Incident Report {{incidentNumber}} or Summary {{status}}'
+            rows={2}
           />
           <p className={styles.description}>
-            Use static text or add Thymeleaf expressions like {'<th:utext="${variableName}">'} for dynamic parts.
+            Type your label and use {`{{`}variableName{`}}`} syntax for dynamic values.
           </p>
         </div>
+        
+        {labelPlaceholders.length > 0 && (
+          <>
+            <Separator />
+            <div className={styles.variablesSection}>
+              <Label className={styles.label}>Label Variables - Default Values</Label>
+              <p className={styles.description}>
+                Set default values for placeholders in your label:
+              </p>
+              {labelPlaceholders.map(placeholder => (
+                <div key={placeholder} className={styles.variableField}>
+                  <Label className={styles.variableLabel}>
+                    {`{{${placeholder}}}`}
+                  </Label>
+                  <Input
+                    value={(section.variables?.[placeholder] as string) || ''}
+                    onChange={(e) => {
+                      onUpdate({
+                        ...section,
+                        variables: { ...section.variables, [placeholder]: e.target.value }
+                      });
+                    }}
+                    placeholder={`Default value for ${placeholder}`}
+                    className={styles.variableInput}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         <Separator />
 
@@ -222,23 +306,54 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           </p>
         </div>
 
+        <Separator />
+
         {contentType === 'text' ? (
           <div className="space-y-2">
             <Label className="text-sm font-medium">
-              Dynamic Content <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
+              Text Content (use {`{{`}variable{`}}`} for dynamic data)
             </Label>
             <Textarea
-              value={(section.variables?.content as string) || ''}
-              onChange={(e) => onUpdate({
-                ...section,
-                variables: { ...section.variables, content: e.target.value }
-              })}
+              value={contentText}
+              onChange={(e) => {
+                onUpdate({
+                  ...section,
+                  variables: { ...section.variables, content: e.target.value }
+                });
+              }}
               className="min-h-[100px] text-sm"
-              placeholder="Messages journaled in exchange online reasons:&#10;1. Invalid Characters&#10;2. Header too Large"
+              placeholder="Example: Status is {{status}}&#10;Issue count: {{count}}"
             />
             <p className="text-xs text-muted-foreground">
-              This content appears below the label and can be replaced with API data.
+              Type your content and use {`{{`}variableName{`}}`} for placeholders. Supports multiple lines.
             </p>
+            
+            {contentPlaceholders.length > 0 && (
+              <div className="space-y-2 mt-4 pt-4 border-t">
+                <Label className="text-sm font-medium">Content Variables - Default Values</Label>
+                <p className="text-xs text-muted-foreground">
+                  Set default values for placeholders in your content:
+                </p>
+                {contentPlaceholders.map(placeholder => (
+                  <div key={placeholder} className="flex items-center gap-2">
+                    <Label className="text-xs font-mono min-w-[120px]">
+                      {`{{${placeholder}}}`}
+                    </Label>
+                    <Input
+                      value={(section.variables?.[placeholder] as string) || ''}
+                      onChange={(e) => {
+                        onUpdate({
+                          ...section,
+                          variables: { ...section.variables, [placeholder]: e.target.value }
+                        });
+                      }}
+                      placeholder={`Default value for ${placeholder}`}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : contentType === 'table' ? (
           <div className="space-y-2">
@@ -407,10 +522,10 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">
-                Dynamic List Items <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
+                List Items
               </Label>
               <Button
                 size="sm"
@@ -427,6 +542,31 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                 <Plus className="h-3 w-3 mr-1" />
                 Add Item
               </Button>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">List Style</Label>
+              <select
+                value={(section.variables?.listStyle as string) || 'circle'}
+                onChange={(e) => onUpdate({
+                  ...section,
+                  variables: { ...section.variables, listStyle: e.target.value }
+                })}
+                className={styles.selectInput}
+              >
+                <optgroup label="Bullet Lists">
+                  <option value="circle">Circle (○)</option>
+                  <option value="disc">Disc (●)</option>
+                  <option value="square">Square (■)</option>
+                </optgroup>
+                <optgroup label="Numbered Lists">
+                  <option value="decimal">Numbers (1, 2, 3)</option>
+                  <option value="lower-roman">Roman (i, ii, iii)</option>
+                  <option value="upper-roman">Roman (I, II, III)</option>
+                  <option value="lower-alpha">Letters (a, b, c)</option>
+                  <option value="upper-alpha">Letters (A, B, C)</option>
+                </optgroup>
+              </select>
             </div>
             
             <div className="space-y-1">
@@ -466,7 +606,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              Add list items that will appear under this label.
+              Add list items that will appear under this label with your chosen style.
             </p>
           </div>
         )}
