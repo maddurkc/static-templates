@@ -28,6 +28,89 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       );
     }
     
+    // Handle labeled-content sections with special rendering
+    if (section.type === 'labeled-content') {
+      let label = (section.variables?.label as string) || 'Label';
+      
+      // Replace Thymeleaf in label with default values
+      label = label.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+        if (section.variables && section.variables[varName] !== undefined) {
+          return String(section.variables[varName]);
+        }
+        return `\${${varName}}`;
+      });
+      
+      const contentType = (section.variables?.contentType as string) || 'text';
+      let contentHtml = '';
+      
+      if (contentType === 'text') {
+        let textContent = (section.variables?.content as string) || '';
+        // Support {{variable}} placeholders in text content
+        textContent = textContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+          if (section.variables && section.variables[varName] !== undefined) {
+            return String(section.variables[varName]);
+          }
+          return match;
+        });
+        contentHtml = `<div style="white-space: pre-wrap;">${textContent}</div>`;
+      } else if (contentType === 'list') {
+        const items = (section.variables?.items as string[]) || [];
+        const listStyle = (section.variables?.listStyle as string) || 'circle';
+        contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
+      } else if (contentType === 'table') {
+        const tableData = section.variables?.tableData as any;
+        if (tableData && tableData.headers) {
+          let tableHtml = '<table style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;"><thead><tr>';
+          tableData.headers.forEach((header: string) => {
+            tableHtml += `<th style="border: 1px solid #ddd; padding: 8px; background-color: #f5f5f5; text-align: left;">${header}</th>`;
+          });
+          tableHtml += '</tr></thead><tbody>';
+          (tableData.rows || []).forEach((row: string[]) => {
+            tableHtml += '<tr>';
+            row.forEach((cell: string) => {
+              tableHtml += `<td style="border: 1px solid #ddd; padding: 8px;">${cell}</td>`;
+            });
+            tableHtml += '</tr>';
+          });
+          tableHtml += '</tbody></table>';
+          contentHtml = tableHtml;
+        }
+      }
+      
+      return (
+        <div key={section.id} style={combinedStyles as React.CSSProperties}>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>{label}</div>
+          <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
+        </div>
+      );
+    }
+    
+    // Handle list sections with proper rendering
+    const listTypes = ['bullet-list-circle', 'bullet-list-disc', 'bullet-list-square', 'number-list-1', 'number-list-i', 'number-list-a'];
+    if (listTypes.includes(section.type) && section.variables?.items) {
+      const items = section.variables.items as string[];
+      const listStyleMap: Record<string, string> = {
+        'bullet-list-circle': 'circle',
+        'bullet-list-disc': 'disc',
+        'bullet-list-square': 'square',
+        'number-list-1': 'decimal',
+        'number-list-i': 'lower-roman',
+        'number-list-a': 'lower-alpha'
+      };
+      const listStyle = listStyleMap[section.type] || 'disc';
+      const isOrdered = section.type.startsWith('number-list');
+      const tag = isOrdered ? 'ol' : 'ul';
+      const listHtml = `<${tag} style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => `<li>${item}</li>`).join('')}</${tag}>`;
+      
+      return (
+        <div
+          key={section.id}
+          dangerouslySetInnerHTML={{ __html: listHtml }}
+          style={combinedStyles as React.CSSProperties}
+        />
+      );
+    }
+    
     // For heading and text sections with variables, show default values (but section.content keeps Thymeleaf)
     const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
     const isInlinePlaceholder = inlinePlaceholderTypes.includes(section.type);
