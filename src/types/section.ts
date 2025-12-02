@@ -42,6 +42,7 @@ export interface ListItemStyle {
   underline?: boolean;
   backgroundColor?: string;
   fontSize?: string;
+  children?: ListItemStyle[];
 }
 
 export interface TextStyle {

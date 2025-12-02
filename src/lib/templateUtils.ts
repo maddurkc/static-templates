@@ -45,21 +45,33 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         tableHtml += '</tbody></table>';
         contentHtml = tableHtml;
       } else if (contentType === 'list' && Array.isArray(runtimeValue)) {
-        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
-          runtimeValue.map((item: any) => {
-            if (typeof item === 'object' && 'text' in item) {
-              const styles = [];
-              if (item.color) styles.push(`color: ${item.color}`);
-              if (item.bold) styles.push('font-weight: bold');
-              if (item.italic) styles.push('font-style: italic');
-              if (item.underline) styles.push('text-decoration: underline');
-              if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
-              if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
-              const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-              return `<li${styleAttr}>${sanitizeInput(item.text)}</li>`;
-            }
+        const renderListItem = (item: any): string => {
+          if (typeof item === 'string') {
             return `<li>${sanitizeInput(item)}</li>`;
-          }).join('') + 
+          }
+          
+          const styles = [];
+          if (item.color) styles.push(`color: ${item.color}`);
+          if (item.bold) styles.push('font-weight: bold');
+          if (item.italic) styles.push('font-style: italic');
+          if (item.underline) styles.push('text-decoration: underline');
+          if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+          if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
+          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+          
+          let html = `<li${styleAttr}>${sanitizeInput(item.text)}`;
+          if (item.children && item.children.length > 0) {
+            const listStyle = section.variables?.listStyle || 'circle';
+            html += `<ul style="list-style-type: ${listStyle}; margin-left: 20px; margin-top: 4px;">`;
+            html += item.children.map((child: any) => renderListItem(child)).join('');
+            html += '</ul>';
+          }
+          html += '</li>';
+          return html;
+        };
+        
+        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
+          runtimeValue.map((item: any) => renderListItem(item)).join('') + 
           '</ul>';
       } else if (typeof runtimeValue === 'string') {
         contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(runtimeValue)}</div>`;
@@ -86,21 +98,34 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         }
       } else if (contentType === 'list') {
         const items = (section.variables?.items as any[]) || [];
-        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
-          items.map((item: any) => {
-            if (typeof item === 'object' && 'text' in item) {
-              const styles = [];
-              if (item.color) styles.push(`color: ${item.color}`);
-              if (item.bold) styles.push('font-weight: bold');
-              if (item.italic) styles.push('font-style: italic');
-              if (item.underline) styles.push('text-decoration: underline');
-              if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
-              if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
-              const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-              return `<li${styleAttr}>${sanitizeInput(item.text)}</li>`;
-            }
+        
+        const renderListItem = (item: any): string => {
+          if (typeof item === 'string') {
             return `<li>${sanitizeInput(item)}</li>`;
-          }).join('') + 
+          }
+          
+          const styles = [];
+          if (item.color) styles.push(`color: ${item.color}`);
+          if (item.bold) styles.push('font-weight: bold');
+          if (item.italic) styles.push('font-style: italic');
+          if (item.underline) styles.push('text-decoration: underline');
+          if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+          if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
+          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+          
+          let html = `<li${styleAttr}>${sanitizeInput(item.text)}`;
+          if (item.children && item.children.length > 0) {
+            const listStyle = section.variables?.listStyle || 'circle';
+            html += `<ul style="list-style-type: ${listStyle}; margin-left: 20px; margin-top: 4px;">`;
+            html += item.children.map((child: any) => renderListItem(child)).join('');
+            html += '</ul>';
+          }
+          html += '</li>';
+          return html;
+        };
+        
+        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
+          items.map((item: any) => renderListItem(item)).join('') + 
           '</ul>';
       } else {
         const content = (section.variables?.content as string) || '';
