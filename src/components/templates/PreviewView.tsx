@@ -54,9 +54,34 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
         });
         contentHtml = `<div style="white-space: pre-wrap;">${textContent}</div>`;
       } else if (contentType === 'list') {
-        const items = (section.variables?.items as string[]) || [];
+        const items = (section.variables?.items as any[]) || [];
         const listStyle = (section.variables?.listStyle as string) || 'circle';
-        contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
+        
+        const renderListItem = (item: any): string => {
+          if (typeof item === 'string') {
+            return `<li>${item}</li>`;
+          }
+          
+          const styles = [];
+          if (item.color) styles.push(`color: ${item.color}`);
+          if (item.bold) styles.push('font-weight: bold');
+          if (item.italic) styles.push('font-style: italic');
+          if (item.underline) styles.push('text-decoration: underline');
+          if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+          if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
+          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+          
+          let html = `<li${styleAttr}>${item.text}`;
+          if (item.children && item.children.length > 0) {
+            html += `<ul style="list-style-type: ${listStyle}; margin-left: 20px; margin-top: 4px;">`;
+            html += item.children.map((child: any) => renderListItem(child)).join('');
+            html += '</ul>';
+          }
+          html += '</li>';
+          return html;
+        };
+        
+        contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => renderListItem(item)).join('')}</ul>`;
       } else if (contentType === 'table') {
         const tableData = section.variables?.tableData as any;
         if (tableData && tableData.headers) {

@@ -325,7 +325,16 @@ export const sectionTypes: SectionDefinition[] = [
         name: 'items',
         label: 'List Items (if content type is list)',
         type: 'list',
-        defaultValue: ['Item 1', 'Item 2']
+        defaultValue: [
+          { text: 'Item 1', children: [] },
+          { text: 'Item 2', children: [] }
+        ]
+      },
+      {
+        name: 'listStyle',
+        label: 'List Style',
+        type: 'text',
+        defaultValue: 'circle'
       }
     ]
   },

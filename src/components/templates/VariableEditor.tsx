@@ -1,19 +1,281 @@
-import { Section } from "@/types/section";
+import { useState } from "react";
+import { Section, ListItemStyle } from "@/types/section";
 import { sectionTypes } from "@/data/sectionTypes";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronDown, Palette, Bold, Italic, Underline } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { TableEditor } from "./TableEditor";
 import { ThymeleafEditor } from "./ThymeleafEditor";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import styles from "./VariableEditor.module.scss";
 
 interface VariableEditorProps {
   section: Section;
   onUpdate: (section: Section) => void;
 }
+
+// Helper function to normalize items to ListItemStyle format
+const normalizeListItems = (items: any[]): ListItemStyle[] => {
+  return items.map(item => {
+    if (typeof item === 'string') {
+      return { text: item, children: [] };
+    }
+    return {
+      ...item,
+      children: item.children ? normalizeListItems(item.children) : []
+    };
+  });
+};
+
+// Recursive list item editor component
+const renderListItemsEditor = (
+  section: Section, 
+  onUpdate: (section: Section) => void, 
+  level: number = 0,
+  parentPath: number[] = []
+): JSX.Element => {
+  const items = normalizeListItems((section.variables?.items as any[]) || []);
+  
+  const updateItemAtPath = (path: number[], updater: (item: ListItemStyle) => ListItemStyle) => {
+    const updateRecursive = (items: ListItemStyle[], currentPath: number[]): ListItemStyle[] => {
+      if (currentPath.length === 0) return items;
+      
+      const [index, ...rest] = currentPath;
+      return items.map((item, i) => {
+        if (i !== index) return item;
+        if (rest.length === 0) return updater(item);
+        return {
+          ...item,
+          children: updateRecursive(item.children || [], rest)
+        };
+      });
+    };
+    
+    const newItems = updateRecursive(items, path);
+    onUpdate({
+      ...section,
+      variables: { ...section.variables, items: newItems }
+    });
+  };
+  
+  const deleteItemAtPath = (path: number[]) => {
+    const deleteRecursive = (items: ListItemStyle[], currentPath: number[]): ListItemStyle[] => {
+      if (currentPath.length === 0) return items;
+      
+      const [index, ...rest] = currentPath;
+      if (rest.length === 0) {
+        return items.filter((_, i) => i !== index);
+      }
+      return items.map((item, i) => {
+        if (i !== index) return item;
+        return {
+          ...item,
+          children: deleteRecursive(item.children || [], rest)
+        };
+      });
+    };
+    
+    const newItems = deleteRecursive(items, path);
+    onUpdate({
+      ...section,
+      variables: { ...section.variables, items: newItems }
+    });
+  };
+  
+  const addSubItem = (path: number[]) => {
+    updateItemAtPath(path, (item) => ({
+      ...item,
+      children: [...(item.children || []), { text: '', children: [] }]
+    }));
+  };
+  
+  const getItemAtPath = (path: number[]): ListItemStyle | null => {
+    let current: ListItemStyle[] = items;
+    for (const index of path) {
+      if (!current[index]) return null;
+      if (path[path.length - 1] === index) return current[index];
+      current = current[index].children || [];
+    }
+    return null;
+  };
+  
+  const renderItem = (item: ListItemStyle, index: number, currentPath: number[]) => {
+    const [expanded, setExpanded] = useState(true);
+    const hasChildren = item.children && item.children.length > 0;
+    const itemPath = [...currentPath, index];
+    
+    return (
+      <div key={index} className="space-y-1">
+        <div className="flex gap-1 items-start" style={{ marginLeft: `${level * 20}px` }}>
+          {level < 3 && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setExpanded(!expanded)}
+              className="h-8 w-8 shrink-0"
+            >
+              {hasChildren && expanded ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : hasChildren ? (
+                <ChevronRight className="h-3 w-3" />
+              ) : (
+                <div className="w-3 h-3" />
+              )}
+            </Button>
+          )}
+          
+          <Input
+            value={item.text}
+            onChange={(e) => {
+              updateItemAtPath(itemPath, (i) => ({ ...i, text: e.target.value }));
+            }}
+            className="flex-1 h-8 text-sm"
+            placeholder={`Item ${index + 1}`}
+            style={{
+              fontWeight: item.bold ? 'bold' : 'normal',
+              fontStyle: item.italic ? 'italic' : 'normal',
+              textDecoration: item.underline ? 'underline' : 'none',
+              color: item.color || 'inherit',
+              backgroundColor: item.backgroundColor || 'transparent'
+            }}
+          />
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 shrink-0"
+              >
+                <Palette className="h-3 w-3" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-3">
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={item.bold ? "default" : "outline"}
+                    onClick={() => updateItemAtPath(itemPath, (i) => ({ ...i, bold: !i.bold }))}
+                    className="flex-1"
+                  >
+                    <Bold className="h-3 w-3 mr-1" />
+                    Bold
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={item.italic ? "default" : "outline"}
+                    onClick={() => updateItemAtPath(itemPath, (i) => ({ ...i, italic: !i.italic }))}
+                    className="flex-1"
+                  >
+                    <Italic className="h-3 w-3 mr-1" />
+                    Italic
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={item.underline ? "default" : "outline"}
+                    onClick={() => updateItemAtPath(itemPath, (i) => ({ ...i, underline: !i.underline }))}
+                    className="flex-1"
+                  >
+                    <Underline className="h-3 w-3 mr-1" />
+                    Underline
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs">Text Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={item.color || '#000000'}
+                      onChange={(e) => updateItemAtPath(itemPath, (i) => ({ ...i, color: e.target.value }))}
+                      className="w-12 h-8 p-1"
+                    />
+                    <Input
+                      type="text"
+                      value={item.color || ''}
+                      onChange={(e) => updateItemAtPath(itemPath, (i) => ({ ...i, color: e.target.value }))}
+                      placeholder="#000000"
+                      className="flex-1 h-8 text-xs"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs">Background Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={item.backgroundColor || '#ffffff'}
+                      onChange={(e) => updateItemAtPath(itemPath, (i) => ({ ...i, backgroundColor: e.target.value }))}
+                      className="w-12 h-8 p-1"
+                    />
+                    <Input
+                      type="text"
+                      value={item.backgroundColor || ''}
+                      onChange={(e) => updateItemAtPath(itemPath, (i) => ({ ...i, backgroundColor: e.target.value }))}
+                      placeholder="transparent"
+                      className="flex-1 h-8 text-xs"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs">Font Size</Label>
+                  <Input
+                    type="text"
+                    value={item.fontSize || ''}
+                    onChange={(e) => updateItemAtPath(itemPath, (i) => ({ ...i, fontSize: e.target.value }))}
+                    placeholder="14px"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          {level < 3 && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => addSubItem(itemPath)}
+              className="h-8 w-8 shrink-0"
+              title="Add sub-item"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          )}
+          
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => deleteItemAtPath(itemPath)}
+            className="h-8 w-8 shrink-0 hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+        
+        {hasChildren && expanded && (
+          <div className="space-y-1">
+            {item.children?.map((child, childIndex) => 
+              renderItem(child, childIndex, itemPath)
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  return (
+    <div className="space-y-1">
+      {items.map((item, index) => renderItem(item, index, parentPath))}
+    </div>
+  );
+};
 
 export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   const sectionDef = sectionTypes.find(s => s.type === section.type);
@@ -525,16 +787,19 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">
-                List Items
+                List Items with Formatting
               </Label>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  const items = (section.variables?.items as string[]) || [];
+                  const items = (section.variables?.items as any[]) || [];
                   onUpdate({
                     ...section,
-                    variables: { ...section.variables, items: [...items, ''] }
+                    variables: { 
+                      ...section.variables, 
+                      items: [...items, { text: '', children: [] }] 
+                    }
                   });
                 }}
                 className="h-7 px-2"
@@ -569,44 +834,10 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               </select>
             </div>
             
-            <div className="space-y-1">
-              {((section.variables?.items as string[]) || ['']).map((item, index) => (
-                <div key={index} className="flex gap-1">
-                  <Input
-                    value={item}
-                    onChange={(e) => {
-                      const items = (section.variables?.items as string[]) || [];
-                      const newItems = [...items];
-                      newItems[index] = e.target.value;
-                      onUpdate({
-                        ...section,
-                        variables: { ...section.variables, items: newItems }
-                      });
-                    }}
-                    className="flex-1 h-8 text-sm"
-                    placeholder={`Item ${index + 1}`}
-                  />
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => {
-                      const items = (section.variables?.items as string[]) || [];
-                      const newItems = items.filter((_, i) => i !== index);
-                      onUpdate({
-                        ...section,
-                        variables: { ...section.variables, items: newItems }
-                      });
-                    }}
-                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                    disabled={((section.variables?.items as string[]) || []).length === 1}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+            {renderListItemsEditor(section, onUpdate, 0)}
+            
             <p className="text-xs text-muted-foreground">
-              Add list items that will appear under this label with your chosen style.
+              Add list items with formatting (bold, italic, colors) and create nested sub-items.
             </p>
           </div>
         )}
