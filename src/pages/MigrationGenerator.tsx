@@ -93,8 +93,9 @@ CREATE TABLE template_sections (
   template_id UNIQUEIDENTIFIER NOT NULL,
   section_type NVARCHAR(50) NOT NULL,
   content NVARCHAR(MAX) NOT NULL,
-  variables NVARCHAR(MAX), -- JSON object
-  styles NVARCHAR(MAX), -- JSON object
+  variables NVARCHAR(MAX), -- JSON object: supports nested lists with formatting
+  styles NVARCHAR(MAX), -- JSON object: section-level styles
+  is_label_editable BIT DEFAULT 1, -- For labeled-content: controls runtime editability
   order_index INT NOT NULL,
   parent_section_id UNIQUEIDENTIFIER,
   created_at DATETIME2 DEFAULT GETUTCDATE(),
@@ -262,11 +263,34 @@ VALUES
   -- Mixed Content variables
   ('mixed-content', 'content', 'Content (mix static with variables)', 'text', 'Status: Dynamic value'),
   
-  -- Labeled Content variables
+  -- Labeled Content variables (supports nested lists with rich formatting)
   ('labeled-content', 'label', 'Label/Heading', 'text', 'Incident Report'),
   ('labeled-content', 'contentType', 'Content Type', 'text', 'text'),
   ('labeled-content', 'content', 'Text Content', 'text', 'Messages journaled'),
-  ('labeled-content', 'items', 'List Items', 'list', '["Item 1","Item 2"]');
+  ('labeled-content', 'listStyle', 'List Style', 'text', 'disc'),
+  ('labeled-content', 'items', 'List Items', 'list', '[{"text":"Item 1","children":[]},{"text":"Item 2","children":[]}]');
+
+GO`,
+
+    "007_add_label_editable": `-- Migration: 007_add_label_editable.sql
+-- Description: Add is_label_editable column to template_sections for runtime edit control
+
+-- Add new column
+ALTER TABLE template_sections 
+ADD is_label_editable BIT DEFAULT 1;
+
+-- Update existing rows to have the default value
+UPDATE template_sections 
+SET is_label_editable = 1 
+WHERE is_label_editable IS NULL;
+
+-- Add comment/documentation (SQL Server extended properties)
+EXEC sp_addextendedproperty 
+  @name = N'MS_Description', 
+  @value = N'Controls whether the label can be edited at runtime. True = editable, False = locked.', 
+  @level0type = N'SCHEMA', @level0name = N'dbo',
+  @level1type = N'TABLE',  @level1name = N'template_sections',
+  @level2type = N'COLUMN', @level2name = N'is_label_editable';
 
 GO`
   };
