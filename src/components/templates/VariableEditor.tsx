@@ -476,23 +476,36 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
 
   // Handle heading and text sections with inline placeholders
   if (isInlinePlaceholderSection) {
-    // Show content with default values, not Thymeleaf tags
-    const getDisplayContent = (): string => {
+    // Get user-friendly content (without HTML tags, with placeholders)
+    const getUserFriendlyContent = (): string => {
+      let content = section.content;
+      // Convert Thymeleaf tags back to {{placeholder}} format for editing
       if (section.variables && Object.keys(section.variables).length > 0) {
-        // Show default values from variables
-        let displayContent = section.content;
-        Object.entries(section.variables).forEach(([key, value]) => {
+        Object.keys(section.variables).forEach(key => {
           const thymeleafPattern = new RegExp(`<th:utext="\\$\\{${key}\\}">`, 'g');
-          displayContent = displayContent.replace(thymeleafPattern, String(value));
+          content = content.replace(thymeleafPattern, `{{${key}}}`);
         });
-        // Remove any remaining HTML tags for clean display
-        return displayContent.replace(/<[^>]*>/g, '');
       }
-      return section.content.replace(/<[^>]*>/g, '');
+      // Remove HTML tags for clean editing
+      return content.replace(/<[^>]*>/g, '');
     };
     
-    const displayContent = getDisplayContent();
-    const placeholders = section.variables ? Object.keys(section.variables) : [];
+    // Get preview with default values
+    const getPreviewContent = (): string => {
+      if (section.variables && Object.keys(section.variables).length > 0) {
+        let displayContent = getUserFriendlyContent();
+        Object.entries(section.variables).forEach(([key, value]) => {
+          const placeholderPattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+          displayContent = displayContent.replace(placeholderPattern, String(value));
+        });
+        return displayContent;
+      }
+      return getUserFriendlyContent();
+    };
+    
+    const userContent = getUserFriendlyContent();
+    const previewContent = getPreviewContent();
+    const detectedPlaceholders = extractPlaceholders(userContent);
     
     return (
       <div className={styles.container}>
@@ -502,27 +515,81 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         <Separator />
         
         <div className={styles.section}>
-          <Label className={styles.label}>Content Preview</Label>
-          <div className="p-3 border rounded bg-muted/30 text-sm">
-            {displayContent || 'No content'}
-          </div>
+          <Label className={styles.label}>Content (use {`{{`}variable{`}}`} for dynamic data)</Label>
+          <Textarea
+            value={userContent}
+            onChange={(e) => {
+              const newContent = e.target.value;
+              const newPlaceholders = extractPlaceholders(newContent);
+              
+              // Get the section's HTML tag wrapper
+              const tagMatch = section.content.match(/^<(\w+)>/);
+              const htmlTag = tagMatch ? tagMatch[1] : 'div';
+              
+              // Convert placeholders to Thymeleaf syntax
+              let thymeleafContent = newContent;
+              newPlaceholders.forEach(placeholder => {
+                const placeholderPattern = new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g');
+                thymeleafContent = thymeleafContent.replace(placeholderPattern, `<th:utext="\${${placeholder}}">`);
+              });
+              
+              // Wrap in HTML tag
+              const wrappedContent = `<${htmlTag}>${thymeleafContent}</${htmlTag}>`;
+              
+              // Preserve existing variable values and add new ones with empty defaults
+              const updatedVariables = { ...section.variables };
+              newPlaceholders.forEach(placeholder => {
+                if (!updatedVariables[placeholder]) {
+                  updatedVariables[placeholder] = '';
+                }
+              });
+              
+              // Remove variables that are no longer in content
+              Object.keys(updatedVariables).forEach(key => {
+                if (!newPlaceholders.includes(key)) {
+                  delete updatedVariables[key];
+                }
+              });
+              
+              onUpdate({
+                ...section,
+                content: wrappedContent,
+                variables: updatedVariables
+              });
+            }}
+            className={styles.staticTextArea}
+            placeholder={`Example: Incident Report {{incidentNumber}} - Status: {{status}}`}
+            rows={3}
+          />
           <p className={styles.description}>
-            This shows how your content will appear with default values. Edit the variables below to change them.
+            Type your content and use {`{{`}variableName{`}}`} syntax for dynamic values. Multiple placeholders are supported.
           </p>
         </div>
         
-        {placeholders.length > 0 && (
+        {detectedPlaceholders.length > 0 && (
+          <>
+            <Separator />
+            <div className={styles.section}>
+              <Label className={styles.label}>Preview with Default Values</Label>
+              <div className="p-3 border rounded bg-muted/30 text-sm">
+                {previewContent || 'No content'}
+              </div>
+            </div>
+          </>
+        )}
+        
+        {detectedPlaceholders.length > 0 && (
           <>
             <Separator />
             <div className={styles.variablesSection}>
               <Label className={styles.label}>Variable Default Values</Label>
               <p className={styles.description}>
-                Set default values that will be shown in the editor and preview:
+                Set default values for your placeholders (used in preview and when running):
               </p>
-              {placeholders.map(placeholder => (
+              {detectedPlaceholders.map(placeholder => (
                 <div key={placeholder} className={styles.variableField}>
                   <Label className={styles.variableLabel}>
-                    {placeholder}
+                    {`{{${placeholder}}}`}
                   </Label>
                   <Input
                     value={(section.variables?.[placeholder] as string) || ''}
