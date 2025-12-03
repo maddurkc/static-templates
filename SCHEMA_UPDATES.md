@@ -127,6 +127,19 @@ The `listStyle` property supports the following values:
 
 ## Migration Scripts
 
+### Migration: Add subject Column to Templates
+
+```sql
+-- Migration: 009_add_template_subject.sql
+-- Description: Add subject column to templates for email subject line with placeholders
+
+-- Add subject column
+ALTER TABLE templates 
+ADD subject NVARCHAR(500);
+
+GO
+```
+
 ### Migration: Add is_label_editable Column
 
 ```sql

@@ -32,6 +32,7 @@ const RunTemplates = () => {
   const [viewMode, setViewMode] = useState<'template' | 'execution'>('template'); // New: toggle between template view and execution view
   const [executedOn, setExecutedOn] = useState<string>("");
   const [emailSubject, setEmailSubject] = useState<string>("");
+  const [subjectVariables, setSubjectVariables] = useState<Record<string, string>>({}); // Variables extracted from template subject
   const [emailTitle, setEmailTitle] = useState<string>("");
   const { toast } = useToast();
 
@@ -357,6 +358,24 @@ const RunTemplates = () => {
     return result;
   };
 
+  // Extract placeholders from subject
+  const extractSubjectVariables = (subject: string): string[] => {
+    const regex = /\{\{(\w+)\}\}/g;
+    const matches = subject.matchAll(regex);
+    return Array.from(new Set(Array.from(matches, m => m[1])));
+  };
+
+  // Get processed subject with variables replaced
+  const getProcessedSubject = (): string => {
+    if (!selectedTemplate?.subject) return emailSubject;
+    
+    let processed = selectedTemplate.subject;
+    Object.entries(subjectVariables).forEach(([key, value]) => {
+      processed = processed.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    });
+    return processed;
+  };
+
   const handleRunTemplate = (template: Template) => {
     setSelectedTemplate(template);
     const vars = extractAllVariables(template);
@@ -377,21 +396,54 @@ const RunTemplates = () => {
     
     // Set initial execution metadata
     setExecutedOn(new Date().toLocaleString());
-    setEmailSubject(`${template.name} - ${new Date().toLocaleDateString()}`);
+    
+    // Initialize subject from template or default
+    if (template.subject) {
+      setEmailSubject(template.subject);
+      // Extract subject variables and initialize them
+      const subjectVars = extractSubjectVariables(template.subject);
+      const initialSubjectVars: Record<string, string> = {};
+      subjectVars.forEach(v => {
+        initialSubjectVars[v] = ''; // Empty by default, user needs to fill
+      });
+      setSubjectVariables(initialSubjectVars);
+    } else {
+      setEmailSubject(`${template.name} - ${new Date().toLocaleDateString()}`);
+      setSubjectVariables({});
+    }
+    
     setEmailTitle(template.name);
   };
 
   const handleSendTemplate = () => {
     if (!selectedTemplate) return;
 
+    // Get the final subject (either processed from template or manual input)
+    const finalSubject = selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 
+      ? getProcessedSubject() 
+      : emailSubject;
+
     // Validate subject
-    if (!emailSubject.trim()) {
+    if (!finalSubject.trim()) {
       toast({
         title: "Validation Error",
         description: "Please enter an email subject.",
         variant: "destructive",
       });
       return;
+    }
+
+    // Validate subject variables are filled
+    if (selectedTemplate?.subject && Object.keys(subjectVariables).length > 0) {
+      const emptyVars = Object.entries(subjectVariables).filter(([_, value]) => !value.trim());
+      if (emptyVars.length > 0) {
+        toast({
+          title: "Validation Error",
+          description: `Please fill in all subject variables: ${emptyVars.map(([k]) => k).join(', ')}`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     // Validate emails
@@ -407,7 +459,9 @@ const RunTemplates = () => {
     // Save to database (mock)
     const runData = {
       templateId: selectedTemplate.id,
-      subject: emailSubject,
+      subject: finalSubject,
+      subjectTemplate: selectedTemplate?.subject || null,
+      subjectVariables: subjectVariables,
       toEmails: toEmails.split(',').map(e => e.trim()),
       ccEmails: ccEmails.split(',').map(e => e.trim()).filter(Boolean),
       bccEmails: bccEmails.split(',').map(e => e.trim()).filter(Boolean),
@@ -421,7 +475,7 @@ const RunTemplates = () => {
 
     toast({
       title: "Template Sent",
-      description: `"${emailSubject}" sent successfully to ${runData.toEmails.length} recipient(s).`,
+      description: `"${finalSubject}" sent successfully to ${runData.toEmails.length} recipient(s).`,
     });
 
     resetForm();
@@ -434,6 +488,8 @@ const RunTemplates = () => {
     setBccEmails("");
     setVariables({});
     setListVariables({});
+    setSubjectVariables({});
+    setEmailSubject("");
   };
 
   const previewHtml = React.useMemo(() => {
@@ -597,12 +653,45 @@ const RunTemplates = () => {
                         <Label htmlFor="subject">
                           Subject <span className="text-destructive">*</span>
                         </Label>
-                        <Input
-                          id="subject"
-                          placeholder="Enter email subject"
-                          value={emailSubject}
-                          onChange={(e) => setEmailSubject(e.target.value)}
-                        />
+                        {selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 ? (
+                          <div className="space-y-3">
+                            <div className="p-3 bg-muted/50 rounded-md border">
+                              <p className="text-sm font-medium mb-1">Template Subject:</p>
+                              <p className="text-sm text-muted-foreground font-mono">{selectedTemplate.subject}</p>
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-xs text-muted-foreground">Fill in subject variables:</p>
+                              {Object.keys(subjectVariables).map((varName) => (
+                                <div key={`subject-var-${varName}`} className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs font-mono shrink-0">
+                                    {`{{${varName}}}`}
+                                  </Badge>
+                                  <Input
+                                    id={`subject-var-${varName}`}
+                                    placeholder={`Enter ${varName}...`}
+                                    value={subjectVariables[varName] || ''}
+                                    onChange={(e) => setSubjectVariables(prev => ({
+                                      ...prev,
+                                      [varName]: e.target.value
+                                    }))}
+                                    className="flex-1"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            <div className="p-3 bg-primary/5 rounded-md border border-primary/20">
+                              <p className="text-xs text-muted-foreground mb-1">Preview:</p>
+                              <p className="text-sm font-medium">{getProcessedSubject()}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <Input
+                            id="subject"
+                            placeholder="Enter email subject"
+                            value={emailSubject}
+                            onChange={(e) => setEmailSubject(e.target.value)}
+                          />
+                        )}
                       </div>
 
                       <div className={styles.formField}>

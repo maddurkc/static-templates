@@ -99,6 +99,7 @@ templateApi.clearAuthToken();
 ```typescript
 interface TemplateCreateRequest {
   name: string;
+  subject?: string; // Email subject with optional {{placeholders}}
   html: string;
   sectionCount: number;
   archived: boolean;
@@ -111,6 +112,7 @@ interface TemplateCreateRequest {
 ```typescript
 const createRequest: TemplateCreateRequest = {
   name: "My Template",
+  subject: "Order Confirmation - {{orderNumber}}", // Subject with placeholder
   html: "<div>...</div>",
   sectionCount: 5,
   archived: false,
@@ -137,6 +139,7 @@ const response = await templateApi.createTemplate(createRequest);
 ```typescript
 interface TemplateUpdateRequest {
   name?: string;
+  subject?: string; // Email subject with optional {{placeholders}}
   html?: string;
   sectionCount?: number;
   archived?: boolean;
@@ -149,6 +152,7 @@ interface TemplateUpdateRequest {
 ```typescript
 const updateRequest: TemplateUpdateRequest = {
   name: "Updated Template Name",
+  subject: "Updated Subject - {{newVariable}}",
   html: "<div>Updated HTML</div>",
   sections: flattenSectionsForApi(allSections)
 };
@@ -465,3 +469,33 @@ import { Textarea } from "@/components/ui/textarea"
 - ✅ Complete request/response type definitions
 - ✅ Error handling with user-friendly messages
 - ✅ Ready to integrate with Spring Boot backend
+- ✅ **Email subject field with {{placeholder}} support**
+
+---
+
+## Email Subject Feature
+
+Templates now support an optional `subject` field that can contain static text and/or `{{placeholders}}` for dynamic content.
+
+### Creating Templates with Subject
+When saving a template, enter the subject in the "Email Subject" field:
+- Static: `Order Confirmation`
+- Dynamic: `Order Confirmation - {{orderNumber}}`
+- Mixed: `Welcome {{customerName}} to {{companyName}}!`
+
+### Running Templates with Subject Placeholders
+When running a template with subject placeholders:
+1. The original subject template is displayed
+2. Input fields appear for each placeholder variable
+3. A live preview shows the processed subject
+4. All subject variables must be filled before sending
+
+### API Payload
+```typescript
+{
+  name: "My Template",
+  subject: "Order {{orderNumber}} - {{customerName}}",
+  html: "...",
+  sections: [...]
+}
+```
