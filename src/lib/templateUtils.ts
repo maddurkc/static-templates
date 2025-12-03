@@ -206,10 +206,21 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${sanitizeHTML(mixedContent).replace(/\n/g, '<br/>')}</div>`;
   }
   
-  // Handle heading and text sections with inline placeholders
-  const isInlinePlaceholderSection = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type);
-  if (isInlinePlaceholderSection && section.content) {
-    let processedContent = section.content;
+  // Handle heading and text sections (with or without placeholders)
+  const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
+  if (inlinePlaceholderTypes.includes(section.type)) {
+    // Get content from section.content or from section.variables
+    let processedContent = section.content || '';
+    
+    // If content is empty, try to get from variables
+    if (!processedContent && section.variables) {
+      // Check for common variable names
+      if (section.variables.content) {
+        processedContent = String(section.variables.content);
+      } else if (section.variables.text) {
+        processedContent = String(section.variables.text);
+      }
+    }
     
     // Replace {{variable}} placeholders with values
     const placeholderMatches = processedContent.match(/\{\{(\w+)\}\}/g) || [];
@@ -229,6 +240,16 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       processedContent = processedContent.replace(new RegExp(match.replace(/[{}]/g, '\\$&'), 'g'), value);
     });
     
+    // Also replace Thymeleaf-style placeholders <th:utext="${variable}">
+    processedContent = processedContent.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+      if (variables && variables[varName] !== undefined) {
+        return sanitizeInput(String(variables[varName]));
+      } else if (section.variables && section.variables[varName] !== undefined) {
+        return sanitizeInput(String(section.variables[varName]));
+      }
+      return match;
+    });
+    
     // Wrap content in appropriate HTML tags
     const tagMap: Record<string, string> = {
       'heading1': 'h1',
@@ -242,7 +263,26 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     };
     
     const tag = tagMap[section.type] || 'div';
-    return `<${tag}>${processedContent}</${tag}>`;
+    
+    // Apply section styles if available
+    let styleStr = '';
+    if (section.styles) {
+      const styleProps = [];
+      if (section.styles.fontSize) styleProps.push(`font-size: ${section.styles.fontSize}`);
+      if (section.styles.color) styleProps.push(`color: ${section.styles.color}`);
+      if (section.styles.backgroundColor) styleProps.push(`background-color: ${section.styles.backgroundColor}`);
+      if (section.styles.fontWeight) styleProps.push(`font-weight: ${section.styles.fontWeight}`);
+      if (section.styles.fontStyle) styleProps.push(`font-style: ${section.styles.fontStyle}`);
+      if (section.styles.textDecoration) styleProps.push(`text-decoration: ${section.styles.textDecoration}`);
+      if (section.styles.textAlign) styleProps.push(`text-align: ${section.styles.textAlign}`);
+      if (section.styles.margin) styleProps.push(`margin: ${section.styles.margin}`);
+      if (section.styles.padding) styleProps.push(`padding: ${section.styles.padding}`);
+      if (styleProps.length > 0) {
+        styleStr = ` style="${styleProps.join('; ')}"`;
+      }
+    }
+    
+    return `<${tag}${styleStr}>${processedContent}</${tag}>`;
   }
   
   // Handle line-break sections
