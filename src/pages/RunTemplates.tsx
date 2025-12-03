@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline, Eye } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline, Eye, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
+import { fetchTemplates } from "@/lib/templateApi";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -29,6 +31,7 @@ const RunTemplates = () => {
   const templateFromState = location.state?.template;
   
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templateFromState || null);
   const [variables, setVariables] = useState<Record<string, string | TextStyle>>({});
   const [listVariables, setListVariables] = useState<Record<string, string[] | ListItemStyle[]>>({});
@@ -44,10 +47,26 @@ const RunTemplates = () => {
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const { toast } = useToast();
 
-  // Load templates from localStorage
+  // Load templates from API (with localStorage fallback)
   useEffect(() => {
-    const loadedTemplates = getTemplates().filter(t => !t.archived);
-    setTemplates(loadedTemplates);
+    const loadTemplates = async () => {
+      setIsLoading(true);
+      try {
+        const loadedTemplates = await fetchTemplates();
+        setTemplates(loadedTemplates.filter(t => !t.archived));
+      } catch (error) {
+        console.error('Failed to load templates:', error);
+        toast({
+          title: "Error loading templates",
+          description: "Using cached templates from local storage.",
+          variant: "destructive",
+        });
+        setTemplates(getTemplates().filter(t => !t.archived));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadTemplates();
   }, []);
 
   // Initialize variables when template is selected
@@ -568,7 +587,19 @@ const RunTemplates = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.length === 0 ? (
+            {isLoading ? (
+              [1, 2, 3].map((i) => (
+                <Card key={i} className="p-6">
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2 mb-4" />
+                  <div className="flex gap-2 mb-4">
+                    <Skeleton className="h-6 w-20" />
+                    <Skeleton className="h-6 w-24" />
+                  </div>
+                  <Skeleton className="h-10 w-full" />
+                </Card>
+              ))
+            ) : templates.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <p className="text-muted-foreground">No templates found. Create a template first.</p>
                 <Button 

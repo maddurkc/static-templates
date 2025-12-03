@@ -15,19 +15,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
 import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils";
 import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
-import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpdateRequest } from "@/lib/templateApi";
+import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpdateRequest, fetchTemplateById } from "@/lib/templateApi";
 import styles from "./TemplateEditor.module.scss";
 
 const TemplateEditor = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const editingTemplate = location.state?.template;
+  const templateIdFromUrl = searchParams.get('id');
   
   // Static header section - cannot be deleted or moved
   const [headerSection, setHeaderSection] = useState<Section>({
@@ -82,43 +84,82 @@ const TemplateEditor = () => {
   const [viewMode, setViewMode] = useState<'split' | 'editor-only' | 'preview-only'>('split');
   const [copiedStyles, setCopiedStyles] = useState<Section['styles'] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const { toast } = useToast();
 
-  // Load template for editing if passed via navigation state
-  useEffect(() => {
-    if (editingTemplate) {
-      setIsEditMode(true);
-      setEditingTemplateId(editingTemplate.id);
-      setTemplateName(editingTemplate.name);
-      setTemplateSubject(editingTemplate.subject || ""); // Load subject
+  // Helper function to load template data into state
+  const loadTemplateIntoEditor = (template: any) => {
+    setIsEditMode(true);
+    setEditingTemplateId(template.id);
+    setTemplateName(template.name);
+    setTemplateSubject(template.subject || "");
+    
+    // Load sections
+    if (template.sections && template.sections.length > 0) {
+      const loadedSections = template.sections;
       
-      // Load sections
-      if (editingTemplate.sections && editingTemplate.sections.length > 0) {
-        const loadedSections = editingTemplate.sections;
-        
-        // Find header and footer
-        const header = loadedSections.find((s: Section) => s.id === 'static-header');
-        const footer = loadedSections.find((s: Section) => s.id === 'static-footer');
-        const userSections = loadedSections.filter((s: Section) => 
-          s.id !== 'static-header' && s.id !== 'static-footer'
-        );
-        
-        if (header) setHeaderSection(header);
-        if (footer) setFooterSection(footer);
-        setSections(userSections);
-      }
+      // Find header and footer
+      const header = loadedSections.find((s: Section) => s.id === 'static-header');
+      const footer = loadedSections.find((s: Section) => s.id === 'static-footer');
+      const userSections = loadedSections.filter((s: Section) => 
+        s.id !== 'static-header' && s.id !== 'static-footer'
+      );
       
-      // Load API config
-      if (editingTemplate.apiConfig) {
-        setApiConfig(editingTemplate.apiConfig);
-      }
-      
-      toast({
-        title: "Template loaded",
-        description: `Editing "${editingTemplate.name}"`,
-      });
+      if (header) setHeaderSection(header);
+      if (footer) setFooterSection(footer);
+      setSections(userSections);
     }
-  }, [editingTemplate]);
+    
+    // Load API config
+    if (template.apiConfig) {
+      setApiConfig(template.apiConfig);
+    }
+    
+    toast({
+      title: "Template loaded",
+      description: `Editing "${template.name}"`,
+    });
+  };
+
+  // Load template for editing - from state or fetch by ID
+  useEffect(() => {
+    const loadTemplate = async () => {
+      // If template passed via navigation state, use it
+      if (editingTemplate) {
+        loadTemplateIntoEditor(editingTemplate);
+        return;
+      }
+      
+      // If template ID in URL, fetch from API
+      if (templateIdFromUrl) {
+        setIsLoadingTemplate(true);
+        try {
+          const template = await fetchTemplateById(templateIdFromUrl);
+          if (template) {
+            loadTemplateIntoEditor(template);
+          } else {
+            toast({
+              title: "Template not found",
+              description: "The requested template could not be found.",
+              variant: "destructive",
+            });
+            navigate('/templates');
+          }
+        } catch (error) {
+          console.error('Failed to load template:', error);
+          toast({
+            title: "Error loading template",
+            description: "Failed to load the template. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoadingTemplate(false);
+        }
+      }
+    };
+    
+    loadTemplate();
+  }, [editingTemplate, templateIdFromUrl]);
 
   // Sync selectedSection with the latest section data from sections array
   useEffect(() => {

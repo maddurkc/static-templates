@@ -7,21 +7,42 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, updateTemplate, resetTemplatesToDefault, Template } from "@/lib/templateStorage";
+import { fetchTemplates } from "@/lib/templateApi";
 import { renderSectionContent } from "@/lib/templateUtils";
 
 const Templates = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
 
-  // Load templates from localStorage on mount
+  // Load templates from API (with localStorage fallback)
+  const loadTemplates = async () => {
+    setIsLoading(true);
+    try {
+      const loadedTemplates = await fetchTemplates();
+      setTemplates(loadedTemplates);
+    } catch (error) {
+      console.error('Failed to load templates:', error);
+      toast({
+        title: "Error loading templates",
+        description: "Using cached templates from local storage.",
+        variant: "destructive",
+      });
+      setTemplates(getTemplates());
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setTemplates(getTemplates());
+    loadTemplates();
   }, []);
 
   const handleRunTemplate = (template: Template) => {
@@ -44,9 +65,9 @@ const Templates = () => {
     }
   };
 
-  const handleArchiveTemplate = (id: string, name: string, currentlyArchived: boolean) => {
+  const handleArchiveTemplate = async (id: string, name: string, currentlyArchived: boolean) => {
     updateTemplate(id, { archived: !currentlyArchived });
-    setTemplates(getTemplates());
+    await loadTemplates(); // Reload from API
     
     toast({
       title: currentlyArchived ? "Template restored" : "Template archived",
@@ -61,9 +82,9 @@ const Templates = () => {
     setShowPreviewDialog(true);
   };
 
-  const handleResetTemplates = () => {
+  const handleResetTemplates = async () => {
     resetTemplatesToDefault();
-    setTemplates(getTemplates());
+    await loadTemplates(); // Reload from API
     toast({
       title: "Templates reset",
       description: "All templates have been reset to default demos including the API demo template.",
@@ -132,7 +153,18 @@ const Templates = () => {
             <Badge variant="secondary">{activeTemplates.length}</Badge>
           </div>
 
-          {activeTemplates.length === 0 ? (
+          {isLoading ? (
+            <div className={styles.cardsGrid}>
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className={styles.templateCard}>
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2 mb-4" />
+                  <Skeleton className="h-6 w-20 mb-4" />
+                  <Skeleton className="h-10 w-full" />
+                </Card>
+              ))}
+            </div>
+          ) : activeTemplates.length === 0 ? (
             <Card className={styles.emptyCard}>
               <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}>

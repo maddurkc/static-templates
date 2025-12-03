@@ -3,7 +3,7 @@
  * Handles all backend API calls for template management
  */
 
-import { Section } from "@/types/section";
+import { Section, SectionType } from "@/types/section";
 import { ApiConfig } from "@/types/api-config";
 
 // API Configuration - Update this to match your backend
@@ -337,3 +337,89 @@ export const templateApi = new TemplateApiClient();
 
 // Export class for custom configurations
 export { TemplateApiClient };
+
+// Helper function to convert API response to local Template type
+import { Template } from "@/lib/templateStorage";
+
+const inferSectionType = (content: string, sectionId: string): SectionType => {
+  // Try to infer type from content or sectionId
+  if (content.includes('<h1')) return 'heading1';
+  if (content.includes('<h2')) return 'heading2';
+  if (content.includes('<h3')) return 'heading3';
+  if (content.includes('<h4')) return 'heading4';
+  if (content.includes('<h5')) return 'heading5';
+  if (content.includes('<h6')) return 'heading6';
+  if (content.includes('<p')) return 'paragraph';
+  if (content.includes('<ul')) return 'bullet-list-disc';
+  if (content.includes('<ol')) return 'number-list-1';
+  if (content.includes('<table')) return 'table';
+  if (content.includes('<img')) return 'image';
+  if (content.includes('<a')) return 'link';
+  if (content.includes('<button')) return 'button';
+  if (sectionId === 'static-header') return 'header';
+  if (sectionId === 'static-footer') return 'footer';
+  return 'text';
+};
+
+export const responseToTemplate = (response: TemplateResponse): Template => {
+  // Convert API sections to local Section format
+  const sections: Section[] = response.sections?.map(s => ({
+    id: s.sectionId || s.id,
+    type: inferSectionType(s.content, s.sectionId || s.id),
+    content: s.content,
+    variables: s.variables || {},
+    styles: s.styles || {},
+    isLabelEditable: s.isLabelEditable ?? true,
+    children: [],
+  })) || [];
+
+  return {
+    id: response.id,
+    name: response.name,
+    subject: response.subject,
+    html: response.html,
+    createdAt: response.createdAt,
+    sectionCount: response.sectionCount,
+    archived: response.archived,
+    apiConfig: response.apiConfig ? {
+      enabled: response.apiConfig.enabled,
+      templateId: response.apiConfig.templateId,
+      paramValues: response.apiConfig.paramValues,
+      mappings: response.apiConfig.mappings.map(m => ({
+        id: m.id,
+        sectionId: m.sectionId,
+        apiPath: m.apiPath,
+        dataType: m.dataType as 'text' | 'list' | 'html',
+        variableName: m.variableName,
+      })),
+    } : undefined,
+    sections,
+  };
+};
+
+// Helper to fetch templates from API with localStorage fallback
+export const fetchTemplates = async (): Promise<Template[]> => {
+  try {
+    const response = await templateApi.getTemplates();
+    return response.map(responseToTemplate);
+  } catch (error) {
+    console.warn('Failed to fetch templates from API, using localStorage:', error);
+    // Fallback to localStorage
+    const { getTemplates } = await import('@/lib/templateStorage');
+    return getTemplates();
+  }
+};
+
+// Helper to fetch single template by ID from API with localStorage fallback
+export const fetchTemplateById = async (id: string): Promise<Template | null> => {
+  try {
+    const response = await templateApi.getTemplateById(id);
+    return responseToTemplate(response);
+  } catch (error) {
+    console.warn('Failed to fetch template from API, using localStorage:', error);
+    // Fallback to localStorage
+    const { getTemplates } = await import('@/lib/templateStorage');
+    const templates = getTemplates();
+    return templates.find(t => t.id === id) || null;
+  }
+};

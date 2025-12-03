@@ -499,3 +499,114 @@ When running a template with subject placeholders:
   sections: [...]
 }
 ```
+
+---
+
+## Template List API Integration
+
+### Overview
+Templates are now fetched from the backend API instead of localStorage. The system includes automatic fallback to localStorage if the API is unavailable.
+
+### Helper Functions
+
+```typescript
+import { fetchTemplates, fetchTemplateById } from "@/lib/templateApi";
+
+// Fetch all templates (with localStorage fallback)
+const templates = await fetchTemplates();
+
+// Fetch single template by ID (with localStorage fallback)
+const template = await fetchTemplateById('template-123');
+```
+
+### API Endpoints
+
+#### GET /api/templates
+Returns list of all templates.
+
+**Response:**
+```typescript
+interface TemplateResponse[] {
+  id: string;
+  name: string;
+  subject?: string;
+  html: string;
+  sectionCount: number;
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  sections: TemplateSectionResponse[];
+}
+```
+
+#### GET /api/templates/{id}
+Returns single template by ID.
+
+**Response:** Same as above (single `TemplateResponse`)
+
+### Usage in Pages
+
+#### Templates.tsx (List Page)
+```typescript
+// Uses fetchTemplates() to load templates with loading state
+const [templates, setTemplates] = useState<Template[]>([]);
+const [isLoading, setIsLoading] = useState(true);
+
+useEffect(() => {
+  const loadTemplates = async () => {
+    setIsLoading(true);
+    try {
+      const loadedTemplates = await fetchTemplates();
+      setTemplates(loadedTemplates);
+    } catch (error) {
+      // Falls back to localStorage automatically
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  loadTemplates();
+}, []);
+```
+
+#### TemplateEditor.tsx (Edit Page)
+Supports loading template by ID via URL parameter:
+```
+/templates/editor?id=template-123
+```
+
+```typescript
+const [searchParams] = useSearchParams();
+const templateIdFromUrl = searchParams.get('id');
+
+useEffect(() => {
+  if (templateIdFromUrl) {
+    const template = await fetchTemplateById(templateIdFromUrl);
+    // Load template into editor
+  }
+}, [templateIdFromUrl]);
+```
+
+#### RunTemplates.tsx (Execution Page)
+```typescript
+// Uses fetchTemplates() with filtering for non-archived templates
+const loadedTemplates = await fetchTemplates();
+setTemplates(loadedTemplates.filter(t => !t.archived));
+```
+
+### Error Handling
+All API calls include automatic fallback to localStorage:
+```typescript
+try {
+  const response = await templateApi.getTemplates();
+  return response.map(responseToTemplate);
+} catch (error) {
+  console.warn('API failed, using localStorage:', error);
+  return getTemplates(); // localStorage fallback
+}
+```
+
+### Response Conversion
+API responses are automatically converted to local `Template` type using `responseToTemplate()` helper:
+- Section types are inferred from HTML content
+- Nested sections are properly structured
+- API config is mapped to local format
