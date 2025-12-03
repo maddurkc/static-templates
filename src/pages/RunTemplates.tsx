@@ -9,7 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline, Eye } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
@@ -34,6 +41,7 @@ const RunTemplates = () => {
   const [emailSubject, setEmailSubject] = useState<string>("");
   const [subjectVariables, setSubjectVariables] = useState<Record<string, string>>({}); // Variables extracted from template subject
   const [emailTitle, setEmailTitle] = useState<string>("");
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
   const { toast } = useToast();
 
   // Load templates from localStorage
@@ -627,13 +635,22 @@ const RunTemplates = () => {
                   </p>
                 </div>
               </div>
-              <Button
-                onClick={handleSendTemplate}
-                className="shadow-lg shadow-primary/20"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Send Template
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEmailPreview(true)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview Email
+                </Button>
+                <Button
+                  onClick={handleSendTemplate}
+                  className="shadow-lg shadow-primary/20"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Template
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -1445,6 +1462,68 @@ const RunTemplates = () => {
           </div>
         </div>
       )}
+
+      {/* Email Preview Dialog */}
+      <Dialog open={showEmailPreview} onOpenChange={setShowEmailPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Email Preview</DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-auto space-y-4">
+            {/* Subject Preview */}
+            <div className="bg-muted/50 rounded-lg p-4 border">
+              <Label className="text-sm font-medium text-muted-foreground">Subject</Label>
+              <p className="text-lg font-semibold mt-1">
+                {selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 
+                  ? getProcessedSubject() 
+                  : emailSubject || '(No subject)'}
+              </p>
+            </div>
+
+            {/* Recipients Preview */}
+            <div className="bg-muted/50 rounded-lg p-4 border space-y-2">
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">To</Label>
+                <p className="text-sm">{toEmails || '(No recipients)'}</p>
+              </div>
+              {ccEmails && (
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">CC</Label>
+                  <p className="text-sm">{ccEmails}</p>
+                </div>
+              )}
+              {bccEmails && (
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">BCC</Label>
+                  <p className="text-sm">{bccEmails}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Email Body Preview */}
+            <div className="border rounded-lg p-4 bg-white">
+              <Label className="text-sm font-medium text-muted-foreground mb-2 block">Email Body</Label>
+              <ScrollArea className="h-[400px]">
+                <div
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  className={styles.previewContent}
+                />
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowEmailPreview(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setShowEmailPreview(false); handleSendTemplate(); }}>
+              <Send className="h-4 w-4 mr-2" />
+              Send Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
