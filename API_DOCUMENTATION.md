@@ -2,7 +2,7 @@
 
 ## Overview
 
-RESTful API for managing templates, sections, and runs with support for nested multi-level lists and rich text formatting.
+RESTful API for managing templates, sections, and runs with support for nested multi-level lists and rich text formatting. **Backend uses MS SQL Server database.**
 
 Base URL: `http://localhost:8080/api/v1`
 
@@ -13,6 +13,148 @@ All endpoints require authentication. Include the JWT token in the Authorization
 ```
 Authorization: Bearer <your_jwt_token>
 ```
+
+---
+
+## Sections API
+
+### Get All Section Types
+
+Retrieves all available section types from the master catalog.
+
+**Endpoint:** `GET /sections`
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "id": "uuid",
+    "type": "heading1",
+    "label": "Heading 1",
+    "description": "Large heading - supports {{variable}} placeholders",
+    "category": "text",
+    "icon": "Heading1",
+    "defaultContent": "Main Title",
+    "createdAt": "2025-12-02T10:30:00",
+    "updatedAt": "2025-12-02T10:30:00"
+  }
+]
+```
+
+### Get Section Variables
+
+Retrieves variable definitions for a specific section type.
+
+**Endpoint:** `GET /sections/{type}/variables`
+
+**Parameters:**
+- `type` (path, required): Section type (e.g., 'labeled-content')
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "id": "uuid",
+    "sectionType": "labeled-content",
+    "variableName": "items",
+    "variableLabel": "List Items",
+    "variableType": "list",
+    "defaultValue": "[{\"text\":\"Item 1\",\"children\":[]}]"
+  }
+]
+```
+
+---
+
+## Templates API
+
+### Get All Templates
+
+Retrieves all templates for the authenticated user.
+
+**Endpoint:** `GET /templates`
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 0)
+- `size` (optional): Page size (default: 20)
+- `sort` (optional): Sort field (default: createdAt,desc)
+
+**Response:** `200 OK`
+```json
+{
+  "content": [
+    {
+      "id": "uuid",
+      "name": "Incident Report",
+      "html": "<h1>...</h1>",
+      "userId": "uuid",
+      "createdAt": "2025-12-02T10:30:00",
+      "updatedAt": "2025-12-02T10:30:00"
+    }
+  ],
+  "totalElements": 15,
+  "totalPages": 1,
+  "number": 0
+}
+```
+
+### Get Template by ID
+
+**Endpoint:** `GET /templates/{templateId}`
+
+**Response:** `200 OK`
+```json
+{
+  "id": "uuid",
+  "name": "Incident Report",
+  "html": "<h1><th:utext=\"${title}\"></th:utext></h1>...",
+  "userId": "uuid",
+  "createdAt": "2025-12-02T10:30:00",
+  "updatedAt": "2025-12-02T10:30:00",
+  "sections": [...],
+  "variables": [...]
+}
+```
+
+### Create Template
+
+**Endpoint:** `POST /templates`
+
+**Request Body:**
+```json
+{
+  "name": "Incident Report",
+  "html": "<h1><th:utext=\"${title}\"></th:utext></h1>...",
+  "sections": [
+    {
+      "sectionType": "heading1",
+      "content": "<h1><th:utext=\"${title}\"></th:utext></h1>",
+      "variables": {"title": "Main Title"},
+      "styles": {"fontSize": "24px"},
+      "isLabelEditable": true,
+      "orderIndex": 0
+    }
+  ]
+}
+```
+
+**Response:** `201 Created`
+
+### Update Template
+
+**Endpoint:** `PUT /templates/{templateId}`
+
+**Request Body:** Same as Create Template
+
+**Response:** `200 OK`
+
+### Delete Template
+
+**Endpoint:** `DELETE /templates/{templateId}`
+
+**Response:** `204 No Content`
+
+---
 
 ## Template Sections API
 
@@ -157,6 +299,7 @@ Creates a new template section with variables and styling.
 - `sectionType`: Required, max 50 characters
 - `content`: Required, must contain valid Thymeleaf syntax
 - `orderIndex`: Required, non-negative integer
+- `isLabelEditable`: Optional, defaults to true
 - List nesting: Maximum 3 levels
 - Color format: Must be valid hex color (#RRGGBB)
 
@@ -224,6 +367,263 @@ Updates the order of sections within a template.
 
 **Error Responses:**
 - `404 Not Found`: Template or section not found
+
+---
+
+## Template Variables API
+
+### Get Variables for Template
+
+Retrieves all variables defined for a template.
+
+**Endpoint:** `GET /template-variables/template/{templateId}`
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "id": "uuid",
+    "templateId": "uuid",
+    "variableName": "customerName",
+    "variableLabel": "Customer Name",
+    "variableType": "text",
+    "defaultValue": "John Doe",
+    "isRequired": true,
+    "placeholder": "Enter customer name",
+    "sectionId": "uuid"
+  }
+]
+```
+
+### Create Template Variable
+
+**Endpoint:** `POST /template-variables`
+
+**Request Body:**
+```json
+{
+  "templateId": "uuid",
+  "variableName": "incidentNumber",
+  "variableLabel": "Incident Number",
+  "variableType": "text",
+  "defaultValue": "INC-001",
+  "isRequired": true,
+  "placeholder": "e.g., INC-12345",
+  "sectionId": "uuid"
+}
+```
+
+**Response:** `201 Created`
+
+---
+
+## Template Runs API
+
+### Get Runs for Template
+
+Retrieves execution history for a template.
+
+**Endpoint:** `GET /template-runs/template/{templateId}`
+
+**Query Parameters:**
+- `page` (optional): Page number
+- `size` (optional): Page size
+- `startDate` (optional): Filter by start date
+- `endDate` (optional): Filter by end date
+
+**Response:** `200 OK`
+```json
+{
+  "content": [
+    {
+      "id": "uuid",
+      "templateId": "uuid",
+      "toEmails": "user@example.com,user2@example.com",
+      "ccEmails": "cc@example.com",
+      "bccEmails": null,
+      "variables": {
+        "customerName": "John Doe",
+        "incidentNumber": "INC-123"
+      },
+      "htmlOutput": "<h1>Incident Report</h1>...",
+      "runAt": "2025-12-02T10:30:00",
+      "status": "sent",
+      "userId": "uuid"
+    }
+  ],
+  "totalElements": 50,
+  "totalPages": 3
+}
+```
+
+### Create Template Run
+
+Executes a template with provided variables.
+
+**Endpoint:** `POST /template-runs`
+
+**Request Body:**
+```json
+{
+  "templateId": "uuid",
+  "toEmails": "recipient@example.com",
+  "ccEmails": "cc@example.com",
+  "bccEmails": "bcc@example.com",
+  "variables": {
+    "customerName": "John Doe",
+    "incidentNumber": "INC-456",
+    "priority": "High"
+  }
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "id": "uuid",
+  "templateId": "uuid",
+  "htmlOutput": "<h1>Incident Report INC-456</h1>...",
+  "runAt": "2025-12-02T10:30:00",
+  "status": "sent"
+}
+```
+
+---
+
+## API Templates API
+
+### Get All API Templates
+
+Retrieves all available API templates.
+
+**Endpoint:** `GET /api-templates`
+
+**Query Parameters:**
+- `category` (optional): Filter by category ('jira', 'github', 'servicenow', etc.)
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Jira - Get Issue",
+    "description": "Fetch issue details from Jira",
+    "category": "jira",
+    "urlTemplate": "https://{domain}.atlassian.net/rest/api/{version}/issue/{issueKey}",
+    "method": "GET",
+    "headers": "{\"Authorization\": \"Bearer {apiToken}\"}",
+    "isCustom": false,
+    "params": [...]
+  }
+]
+```
+
+### Get API Template Parameters
+
+**Endpoint:** `GET /api-templates/{apiTemplateId}/params`
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "id": "uuid",
+    "apiTemplateId": "uuid",
+    "paramName": "domain",
+    "paramLabel": "JIRA Domain",
+    "paramType": "text",
+    "paramLocation": "path",
+    "placeholder": "e.g., mycompany",
+    "required": true,
+    "description": "Your Jira subdomain"
+  }
+]
+```
+
+---
+
+## Template API Configs API
+
+### Get API Config for Template
+
+**Endpoint:** `GET /template-api-configs/template/{templateId}`
+
+**Response:** `200 OK`
+```json
+{
+  "id": "uuid",
+  "templateId": "uuid",
+  "apiTemplateId": "uuid",
+  "paramValues": {
+    "domain": "mycompany",
+    "version": "3",
+    "apiToken": "abc123"
+  },
+  "isEnabled": true,
+  "mappings": [...]
+}
+```
+
+### Create/Update API Config
+
+**Endpoint:** `PUT /template-api-configs/template/{templateId}`
+
+**Request Body:**
+```json
+{
+  "apiTemplateId": "uuid",
+  "paramValues": {
+    "domain": "mycompany",
+    "version": "3",
+    "apiToken": "abc123"
+  },
+  "isEnabled": true
+}
+```
+
+**Response:** `200 OK`
+
+---
+
+## API Mappings API
+
+### Get Mappings for Config
+
+**Endpoint:** `GET /api-mappings/config/{apiConfigId}`
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "id": "uuid",
+    "apiConfigId": "uuid",
+    "sourcePath": "$.issue.summary",
+    "targetSectionId": "uuid",
+    "targetVariable": "content",
+    "transformation": "none",
+    "defaultValue": "No summary available"
+  }
+]
+```
+
+### Create API Mapping
+
+**Endpoint:** `POST /api-mappings`
+
+**Request Body:**
+```json
+{
+  "apiConfigId": "uuid",
+  "sourcePath": "$.issue.priority.name",
+  "targetSectionId": "uuid",
+  "targetVariable": "priority",
+  "transformation": "uppercase",
+  "defaultValue": "NORMAL"
+}
+```
+
+**Response:** `201 Created`
+
+---
 
 ## Nested List Examples
 
@@ -309,33 +709,7 @@ Updates the order of sections within a template.
 }
 ```
 
-### Mixed Formatting in List
-
-```json
-{
-  "contentType": "list",
-  "listStyle": "lower-alpha",
-  "items": [
-    {
-      "text": "Important point",
-      "bold": true,
-      "color": "#FF0000",
-      "backgroundColor": "#FFFF00",
-      "fontSize": "20px",
-      "children": [
-        {
-          "text": "Supporting detail",
-          "italic": true,
-          "underline": true,
-          "color": "#0000FF",
-          "fontSize": "16px",
-          "children": []
-        }
-      ]
-    }
-  ]
-}
-```
+---
 
 ## List Style Reference
 
@@ -357,6 +731,8 @@ Updates the order of sections within a template.
 | `lower-alpha` | `list-style-type: lower-alpha` | a, b, c |
 | `upper-alpha` | `list-style-type: upper-alpha` | A, B, C |
 
+---
+
 ## Error Response Format
 
 All error responses follow this structure:
@@ -367,32 +743,48 @@ All error responses follow this structure:
   "status": 400,
   "error": "Bad Request",
   "message": "Validation failed: List nesting cannot exceed 3 levels",
-  "path": "/api/v1/template-sections"
+  "path": "/api/v1/template-sections",
+  "errors": [
+    {
+      "field": "variables.items[0].children[0].children[0].children",
+      "message": "Maximum nesting level (3) exceeded"
+    }
+  ]
 }
 ```
+
+### Common Error Codes
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| 400 | Bad Request | Invalid request data or validation failed |
+| 401 | Unauthorized | Missing or invalid JWT token |
+| 403 | Forbidden | Insufficient permissions |
+| 404 | Not Found | Resource not found |
+| 409 | Conflict | Duplicate resource or constraint violation |
+| 429 | Too Many Requests | Rate limit exceeded |
+| 500 | Internal Server Error | Server error |
+
+---
 
 ## Rate Limiting
 
 - Rate limit: 100 requests per minute per user
 - Header: `X-RateLimit-Remaining`
+- Header: `X-RateLimit-Reset` (timestamp)
 - When exceeded: `429 Too Many Requests`
+
+---
 
 ## Swagger UI
 
 Interactive API documentation available at:
 `http://localhost:8080/swagger-ui.html`
 
-## WebSocket Support (Future)
+OpenAPI spec available at:
+`http://localhost:8080/v3/api-docs`
 
-Real-time updates for collaborative editing:
-
-**Endpoint:** `ws://localhost:8080/ws/templates/{templateId}`
-
-**Messages:**
-- `section.created`: New section added
-- `section.updated`: Section modified
-- `section.deleted`: Section removed
-- `section.reordered`: Section order changed
+---
 
 ## Bulk Operations
 
@@ -408,12 +800,17 @@ Real-time updates for collaborative editing:
     {
       "sectionType": "heading1",
       "content": "<h1>Title</h1>",
+      "variables": {},
+      "styles": {},
+      "isLabelEditable": true,
       "orderIndex": 0
     },
     {
       "sectionType": "labeled-content",
       "content": "...",
       "variables": {...},
+      "styles": {},
+      "isLabelEditable": true,
       "orderIndex": 1
     }
   ]
@@ -450,6 +847,8 @@ Real-time updates for collaborative editing:
 }
 ```
 
+---
+
 ## Filtering and Search
 
 ### Search Sections
@@ -475,6 +874,8 @@ GET /template-sections/search?templateId=uuid&sectionType=labeled-content&hasNes
 }
 ```
 
+---
+
 ## Export and Import
 
 ### Export Template with Sections
@@ -484,10 +885,16 @@ GET /template-sections/search?templateId=uuid&sectionType=labeled-content&hasNes
 **Response:** `200 OK`
 ```json
 {
-  "template": {...},
+  "template": {
+    "name": "Incident Report",
+    "html": "..."
+  },
   "sections": [...],
+  "variables": [...],
+  "apiConfig": {...},
   "format": "json",
-  "version": "1.0"
+  "version": "1.0",
+  "exportedAt": "2025-12-02T10:30:00"
 }
 ```
 
@@ -501,11 +908,14 @@ GET /template-sections/search?templateId=uuid&sectionType=labeled-content&hasNes
 ```json
 {
   "templateId": "new-uuid",
-  "sectionsCreated": 10
+  "sectionsImported": 5,
+  "variablesImported": 3
 }
 ```
 
-## Validation Endpoints
+---
+
+## Validation Endpoint
 
 ### Validate Section Structure
 
@@ -515,6 +925,7 @@ GET /template-sections/search?templateId=uuid&sectionType=labeled-content&hasNes
 ```json
 {
   "sectionType": "labeled-content",
+  "content": "...",
   "variables": {...}
 }
 ```
@@ -523,89 +934,50 @@ GET /template-sections/search?templateId=uuid&sectionType=labeled-content&hasNes
 ```json
 {
   "valid": true,
-  "errors": [],
-  "warnings": [
-    "List nesting depth is 3, which is the maximum allowed"
-  ]
+  "warnings": [],
+  "errors": []
 }
 ```
 
-## Testing with cURL
-
-### Create a section with nested list
-
-```bash
-curl -X POST http://localhost:8080/api/v1/template-sections \
-  -H "Authorization: Bearer your-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "templateId": "your-template-id",
-    "sectionType": "labeled-content",
-    "content": "<div>...</div>",
-    "variables": {
-      "label": "Test List",
-      "contentType": "list",
-      "listStyle": "disc",
-      "items": [
-        {
-          "text": "Item 1",
-          "bold": true,
-          "children": []
-        }
-      ]
-    },
-    "orderIndex": 0
-  }'
+Or if invalid:
+```json
+{
+  "valid": false,
+  "warnings": ["Color #GGGGGG may not render correctly"],
+  "errors": ["List nesting exceeds maximum of 3 levels"]
+}
 ```
 
-### Get all sections
+---
 
-```bash
-curl -X GET http://localhost:8080/api/v1/template-sections/template/{templateId} \
-  -H "Authorization: Bearer your-token"
-```
+## WebSocket Support (Future)
 
-### Update a section
+Real-time updates for collaborative editing:
 
-```bash
-curl -X PUT http://localhost:8080/api/v1/template-sections/{sectionId} \
-  -H "Authorization: Bearer your-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "templateId": "your-template-id",
-    "sectionType": "labeled-content",
-    "content": "<div>Updated...</div>",
-    "variables": {...},
-    "orderIndex": 0
-  }'
-```
+**Endpoint:** `ws://localhost:8080/ws/templates/{templateId}`
 
-### Delete a section
+**Messages:**
+- `section.created`: New section added
+- `section.updated`: Section modified
+- `section.deleted`: Section removed
+- `section.reordered`: Section order changed
 
-```bash
-curl -X DELETE http://localhost:8080/api/v1/template-sections/{sectionId} \
-  -H "Authorization: Bearer your-token"
-```
+---
 
 ## Performance Tips
 
-1. **Use pagination** for large result sets
-2. **Cache frequently accessed sections** on the client side
-3. **Batch operations** when creating multiple sections
-4. **Use WebSocket** for real-time collaborative editing
-5. **Minimize JSON payload** by excluding empty children arrays
-6. **Index JSON columns** for better query performance
-7. **Use database connection pooling** (HikariCP recommended)
+1. **Pagination**: Always use pagination for list endpoints
+2. **Field Selection**: Use `fields` query param when available
+3. **Caching**: Respect cache headers for static data (sections catalog)
+4. **Batch Operations**: Use bulk endpoints for multiple operations
+5. **Compression**: Enable gzip for large responses
+
+---
 
 ## Security Best Practices
 
-1. **Always validate** user input on the server side
-2. **Sanitize HTML** content before storing
-3. **Use parameterized queries** to prevent SQL injection
-4. **Implement rate limiting** to prevent abuse
-5. **Validate color codes** to prevent XSS attacks
-6. **Limit nesting depth** to prevent DoS attacks
-7. **Use HTTPS** in production
-8. **Implement CORS** properly
-9. **Log all modifications** for audit trail
-10. **Validate JWT tokens** on every request
+1. **Authentication**: Always include valid JWT token
+2. **HTTPS**: Use HTTPS in production
+3. **Input Validation**: All inputs are validated server-side
+4. **Rate Limiting**: Respect rate limits to avoid blocking
+5. **Sensitive Data**: Never include API tokens in URLs
