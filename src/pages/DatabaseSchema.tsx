@@ -185,211 +185,802 @@ const DatabaseSchema = () => {
           <CardContent>
             <ScrollArea className={styles.schemaCode}>
               <pre className="p-6 text-sm font-mono">
-                <code>{`-- ================================================================
--- SECTIONS TABLE
--- Stores all available section types (heading, paragraph, etc.)
--- ================================================================
+                <code>{`-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║                        PAGE BUILDER DATABASE SCHEMA                            ║
+-- ║                            MS SQL Server Edition                               ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DATABASE OVERVIEW:
+-- This schema supports a flexible page builder system where users create templates
+-- using reusable sections, integrate with external APIs, and execute templates
+-- with dynamic variables.
+--
+-- TABLE COUNT: 10 tables
+-- RELATIONSHIP COUNT: 8 foreign key relationships
+--
+-- ============================================================================
+-- TABLE RELATIONSHIP MAP (Foreign Keys):
+-- ============================================================================
+--
+--   ┌─────────────────┐                    ┌────────────────────┐
+--   │    sections     │◄───────────────────│  section_variables │
+--   │  (Master Data)  │   FK: section_type │    (Metadata)      │
+--   └─────────────────┘                    └────────────────────┘
+--           │
+--           │ (logical reference via section_type, NOT FK)
+--           ▼
+--   ┌─────────────────┐      FK: template_id    ┌────────────────────┐
+--   │   templates     │◄────────────────────────│  template_sections │
+--   │ (User Docs)     │                         │  (Section Instances)│
+--   └────────┬────────┘                         └─────────┬──────────┘
+--            │                                            │
+--            │ FK: template_id                            │ FK: parent_section_id
+--            ▼                                            │ (SELF-REFERENCE)
+--   ┌─────────────────┐                                   ▼
+--   │  template_runs  │                         ┌────────────────────┐
+--   │ (Execution Log) │                         │  (Nested Sections) │
+--   └─────────────────┘                         └────────────────────┘
+--
+--   ┌─────────────────┐      FK: template_id    ┌────────────────────┐
+--   │   templates     │◄────────────────────────│template_api_configs│
+--   └────────┬────────┘     (1:1 - UNIQUE)      └─────────┬──────────┘
+--            │                                            │
+--            │                                            │ FK: api_template_id
+--            │                                            ▼
+--            │                                  ┌────────────────────┐
+--            │                                  │   api_templates    │
+--            │                                  │  (API Definitions) │
+--            │                                  └─────────┬──────────┘
+--            │                                            │
+--            │                                            │ FK: api_template_id
+--            │                                            ▼
+--            │                                  ┌────────────────────┐
+--            │                                  │ api_template_params│
+--            │                                  │  (API Parameters)  │
+--            │                                  └────────────────────┘
+--
+-- ============================================================================
+
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 1: sections                                                             ║
+-- ║ PURPOSE: Master catalog of all available section types (building blocks)      ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   This is the MASTER DATA table containing all available section types that
+--   users can add to their templates. Think of it as a "menu" of building blocks.
+--
+-- RELATIONSHIPS:
+--   • NO FOREIGN KEYS (This is a parent/reference table)
+--   • REFERENCED BY: section_variables.section_type → sections.type
+--   • REFERENCED BY: template_sections.section_type (logical, not FK)
+--
+-- EXAMPLES OF SECTION TYPES:
+--   heading1, heading2, paragraph, labeled-content, table, bullet-list, container
+--
+-- ============================================================================
 CREATE TABLE sections (
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ PRIMARY KEY: Unique identifier for each section type                    │
+  -- │ Type: UNIQUEIDENTIFIER (MS SQL Server's UUID equivalent)                │
+  -- │ Generated automatically using NEWID() function                          │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ UNIQUE KEY: Section type identifier                                     │
+  -- │ Examples: 'heading1', 'paragraph', 'labeled-content', 'table'           │
+  -- │ UNIQUE constraint ensures no duplicate section types                    │
+  -- │ Referenced by: section_variables.section_type, template_sections        │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   type NVARCHAR(50) NOT NULL UNIQUE,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Human-readable name displayed in UI                                     │
+  -- │ Examples: "Heading 1", "Bullet List (Circle)", "Labeled Content"        │
+  -- │ Users see this label when selecting sections to add to templates        │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   label NVARCHAR(100) NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Explanation of what this section does                                   │
+  -- │ Shown as tooltip/help text in the section library                       │
+  -- │ Example: "Large heading - supports {{variable}} placeholders"           │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   description NVARCHAR(MAX),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Category for grouping sections in UI                                    │
+  -- │ Values: 'text', 'media', 'layout', 'interactive'                        │
+  -- │ Sections are organized by category in the section library sidebar       │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   category NVARCHAR(50) NOT NULL,
-  icon NVARCHAR(50), -- Lucide icon name (e.g., 'Heading1', 'Type', 'Table')
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Lucide icon name for visual identification in UI                        │
+  -- │ Examples: 'Heading1', 'Type', 'Table', 'List', 'Image', 'Box'           │
+  -- │ Used to render the icon next to section name in library                 │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  icon NVARCHAR(50),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Default placeholder content when section is first added                 │
+  -- │ Provides example text so users don't start with empty sections          │
+  -- │ Example: "Main Title" for heading1, "Your text here" for paragraph      │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   default_content NVARCHAR(MAX),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ AUDIT TIMESTAMPS                                                        │
+  -- │ created_at: When this section type was created                          │
+  -- │ updated_at: When this section type was last modified                    │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   created_at DATETIME2 DEFAULT GETUTCDATE(),
   updated_at DATETIME2 DEFAULT GETUTCDATE()
 );
 
+-- INDEX: Fast lookup by type (frequently queried when loading sections)
 CREATE INDEX idx_sections_type ON sections(type);
+-- INDEX: Filter sections by category (for section library grouping)
 CREATE INDEX idx_sections_category ON sections(category);
 
--- ================================================================
--- SECTION_VARIABLES TABLE
--- Defines available variables for each section type
--- ================================================================
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 2: section_variables                                                    ║
+-- ║ PURPOSE: Defines what variables are available for each section type           ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   This table defines the configurable properties for each section type.
+--   Determines what editor UI to show (text input, list editor, table editor).
+--
+-- RELATIONSHIPS:
+--   • FOREIGN KEY: section_type → sections.type (CASCADE DELETE)
+--     "Each variable definition belongs to exactly one section type"
+--   • UNIQUE CONSTRAINT: (section_type, variable_name) prevents duplicates
+--
+-- VARIABLE TYPES & THEIR EDITORS:
+--   'text'  → Simple text input field
+--   'url'   → URL input with validation
+--   'list'  → List editor (add/remove items, supports nesting)
+--   'table' → Table/grid editor (rows and columns)
+--
+-- ============================================================================
 CREATE TABLE section_variables (
+  -- PRIMARY KEY
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ FOREIGN KEY: References sections.type                                   │
+  -- │ Determines which section type this variable belongs to                  │
+  -- │ CASCADE DELETE: When section type deleted, variables are removed        │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   section_type NVARCHAR(50) NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Internal variable name used in code                                     │
+  -- │ Examples: 'items', 'tableData', 'label', 'content', 'listStyle'         │
+  -- │ This name is used in Thymeleaf: <th:utext="\${variable_name}">          │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   variable_name NVARCHAR(100) NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Display label shown in editor UI                                        │
+  -- │ Examples: "List Items", "Table Data", "Field Label", "Content Type"     │
+  -- │ Users see this when editing section properties                          │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   variable_label NVARCHAR(100) NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Data type determines which editor component to render                   │
+  -- │ Values: 'text' | 'url' | 'list' | 'table'                               │
+  -- │ 'text' → TextInput, 'list' → ListEditor, 'table' → TableEditor          │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   variable_type NVARCHAR(50) NOT NULL,
-  default_value NVARCHAR(MAX), -- JSON string for complex defaults
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Default value when section is first added (stored as JSON string)       │
+  -- │ Examples:                                                               │
+  -- │   text: "Default text"                                                  │
+  -- │   list: '["Item 1", "Item 2"]'                                          │
+  -- │   list (nested): '[{"text":"Item 1","children":[]}]'                    │
+  -- │   table: '{"rows":[["H1","H2"],["D1","D2"]]}'                            │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  default_value NVARCHAR(MAX),
+  
   created_at DATETIME2 DEFAULT GETUTCDATE(),
+  
+  -- UNIQUE CONSTRAINT: No duplicate variable names per section type
   CONSTRAINT uk_section_variables UNIQUE(section_type, variable_name),
+  
+  -- FOREIGN KEY: Links to sections.type
+  -- ON DELETE CASCADE: Remove variables when section type is deleted
   CONSTRAINT fk_section_variables_type FOREIGN KEY (section_type) 
     REFERENCES sections(type)
 );
 
+-- INDEX: Fast lookup of variables by section type
 CREATE INDEX idx_section_variables_type ON section_variables(section_type);
 
--- ================================================================
--- TEMPLATES TABLE
--- Stores user-created templates
--- ================================================================
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 3: templates                                                            ║
+-- ║ PURPOSE: Stores user-created templates (the main documents users build)       ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   This is the main table for user-created templates. Each template contains
+--   the final HTML output with Thymeleaf variables for dynamic content.
+--
+-- RELATIONSHIPS:
+--   • NO FOREIGN KEYS (This is a parent table)
+--   • REFERENCED BY: template_sections.template_id (1:Many)
+--   • REFERENCED BY: template_runs.template_id (1:Many)
+--   • REFERENCED BY: template_api_configs.template_id (1:1)
+--   • REFERENCED BY: template_variables.template_id (1:Many)
+--
+-- CASCADE BEHAVIOR (when template deleted):
+--   → All template_sections are deleted
+--   → All template_runs are deleted
+--   → The template_api_configs is deleted
+--   → All template_variables are deleted
+--
+-- ============================================================================
 CREATE TABLE templates (
+  -- PRIMARY KEY
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Template name displayed in lists and headers                            │
+  -- │ Examples: "Welcome Email", "Incident Report", "Weekly Newsletter"       │
+  -- │ Users identify and search templates by this name                        │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   name NVARCHAR(255) NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Complete generated HTML output with Thymeleaf variables                 │
+  -- │ Contains: <th:utext="\${variableName}"> placeholders for dynamic content│
+  -- │ This is the FINAL HTML that gets rendered when template is executed     │
+  -- │ Example: "<h1><th:utext='\${title}'></th:utext></h1><p>...</p>"          │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   html NVARCHAR(MAX) NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Owner user ID (for multi-user systems)                                  │
+  -- │ Used for filtering: show users only their own templates                 │
+  -- │ Can reference your authentication system's user table                   │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   user_id UNIQUEIDENTIFIER,
+  
+  -- AUDIT TIMESTAMPS
   created_at DATETIME2 DEFAULT GETUTCDATE(),
   updated_at DATETIME2 DEFAULT GETUTCDATE()
 );
 
+-- INDEX: Filter templates by user (for multi-user systems)
 CREATE INDEX idx_templates_user_id ON templates(user_id);
+-- INDEX: Sort templates by creation date (newest first)
 CREATE INDEX idx_templates_created_at ON templates(created_at DESC);
 
--- ================================================================
--- TEMPLATE_SECTIONS TABLE
--- Junction table storing sections within a template
--- Supports nested sections via parent_section_id
--- ================================================================
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 4: template_sections                                                    ║
+-- ║ PURPOSE: Stores section instances within templates (content & styling)        ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   This is the JUNCTION TABLE linking sections to templates. Each row represents
+--   one section placed in a template with its specific content, variables, and styling.
+--   Supports NESTED sections via self-referencing parent_section_id.
+--
+-- RELATIONSHIPS:
+--   • FOREIGN KEY: template_id → templates.id (CASCADE DELETE)
+--     "Each section instance belongs to exactly one template"
+--   
+--   • FOREIGN KEY: parent_section_id → template_sections.id (SELF-REFERENCE)
+--     "Container sections can hold child sections (nested structure)"
+--     NULL = root-level section, UUID = child of that parent section
+--
+-- JSON COLUMNS:
+--   • variables: Section-specific data (list items, table data, labels)
+--   • styles: Section-specific styling (fontSize, color, backgroundColor)
+--
+-- NESTED LIST STRUCTURE (in variables JSON):
+--   {
+--     "items": [
+--       {"text": "Item 1", "bold": true, "color": "#FF0000", "children": [
+--         {"text": "Sub-item 1.1", "italic": true, "children": []}
+--       ]}
+--     ]
+--   }
+--
+-- ============================================================================
 CREATE TABLE template_sections (
+  -- PRIMARY KEY
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ FOREIGN KEY: Links to templates.id                                      │
+  -- │ Each section must belong to exactly one template                        │
+  -- │ CASCADE DELETE: Remove all sections when template is deleted            │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   template_id UNIQUEIDENTIFIER NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Section type (logical reference to sections.type, NOT a FK)             │
+  -- │ Determines how this section renders and what features it has            │
+  -- │ Examples: 'heading1', 'paragraph', 'labeled-content', 'table'           │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   section_type NVARCHAR(50) NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ The actual content for this section instance                            │
+  -- │ Can include {{variable}} placeholders that convert to Thymeleaf         │
+  -- │ Example: "Welcome {{customerName}} to our service"                      │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   content NVARCHAR(MAX) NOT NULL,
-  variables NVARCHAR(MAX), -- JSON object
-  styles NVARCHAR(MAX), -- JSON object
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Section-specific variables and data (stored as JSON object)             │
+  -- │ Structure varies by section_type:                                       │
+  -- │                                                                         │
+  -- │ labeled-content:                                                        │
+  -- │   {"label": "Field Name", "contentType": "list", "items": [...],        │
+  -- │    "listStyle": "disc"}                                                 │
+  -- │                                                                         │
+  -- │ table:                                                                  │
+  -- │   {"rows": [[{text, style}]], "showBorder": true, "mergedCells": {}}    │
+  -- │                                                                         │
+  -- │ list types:                                                             │
+  -- │   {"items": ["Item 1", "Item 2"]} or                                    │
+  -- │   {"items": [{"text": "Item", "bold": true, "children": [...]}]}        │
+  -- │                                                                         │
+  -- │ NESTED LIST with rich formatting (ListItemStyle):                       │
+  -- │   {                                                                     │
+  -- │     "items": [                                                          │
+  -- │       {                                                                 │
+  -- │         "text": "Main item",           // Display text                  │
+  -- │         "bold": true,                  // Bold formatting               │
+  -- │         "italic": false,               // Italic formatting             │
+  -- │         "underline": false,            // Underline formatting          │
+  -- │         "color": "#000000",            // Text color (hex)              │
+  -- │         "backgroundColor": "#FFFFFF",  // Background color (hex)        │
+  -- │         "fontSize": "14px",            // Font size                     │
+  -- │         "children": [                  // Nested sub-items (max 3 lvls) │
+  -- │           {"text": "Sub-item", "children": []}                          │
+  -- │         ]                                                               │
+  -- │       }                                                                 │
+  -- │     ]                                                                   │
+  -- │   }                                                                     │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  variables NVARCHAR(MAX),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Custom styling for this specific section instance (JSON object)         │
+  -- │ Example: {"fontSize": "18px", "color": "#333",                          │
+  -- │           "backgroundColor": "#f5f5f5", "textAlign": "center",          │
+  -- │           "fontWeight": "bold", "padding": "10px"}                      │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  styles NVARCHAR(MAX),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ For labeled-content: controls if label can be edited at runtime         │
+  -- │ 1 = Users CAN edit the label when running template                      │
+  -- │ 0 = Label is LOCKED and read-only at runtime                            │
+  -- │ Allows template designers to control which fields end-users can edit    │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   is_label_editable BIT DEFAULT 1,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Position/order within the template or parent container (0, 1, 2, ...)   │
+  -- │ Sections render in ascending order_index order                          │
+  -- │ Used for drag-and-drop reordering of sections                           │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   order_index INT NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ SELF-REFERENCING FOREIGN KEY for nested sections                        │
+  -- │ NULL = This is a ROOT-LEVEL section (top level of template)             │
+  -- │ UUID = This section is INSIDE another section (the parent container)    │
+  -- │ Used for: Container sections that hold child sections                   │
+  -- │ CASCADE: Deleting a container should delete all children inside it      │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   parent_section_id UNIQUEIDENTIFIER,
+  
   created_at DATETIME2 DEFAULT GETUTCDATE(),
+  
+  -- FOREIGN KEY: Links to templates.id (CASCADE DELETE)
   CONSTRAINT fk_template_sections_template FOREIGN KEY (template_id) 
     REFERENCES templates(id) ON DELETE CASCADE,
+    
+  -- SELF-REFERENCING FOREIGN KEY for nested structure
   CONSTRAINT fk_template_sections_parent FOREIGN KEY (parent_section_id) 
     REFERENCES template_sections(id)
 );
 
+-- INDEX: Find all sections of a specific template
 CREATE INDEX idx_template_sections_template_id ON template_sections(template_id);
+-- INDEX: Order sections within a template
 CREATE INDEX idx_template_sections_order ON template_sections(template_id, order_index);
+-- INDEX: Find child sections of a parent container
 CREATE INDEX idx_template_sections_parent ON template_sections(parent_section_id);
 
--- ================================================================
--- TEMPLATE_RUNS TABLE
--- Stores history of template executions/sends
--- ================================================================
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 5: template_runs                                                        ║
+-- ║ PURPOSE: Audit log of every template execution                                ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   This table records every time a template is executed/sent. It stores the
+--   recipients, variable values used, and the final rendered HTML output.
+--
+-- RELATIONSHIPS:
+--   • FOREIGN KEY: template_id → templates.id (CASCADE DELETE)
+--     "Each run record belongs to exactly one template"
+--
+-- USE CASES:
+--   • Audit trail: "When was this email sent? To whom? With what data?"
+--   • Debugging: Compare expected vs actual output
+--   • Analytics: Track template usage frequency
+--
+-- ============================================================================
 CREATE TABLE template_runs (
+  -- PRIMARY KEY
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ FOREIGN KEY: Links to templates.id                                      │
+  -- │ CASCADE DELETE: Remove run history when template is deleted             │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   template_id UNIQUEIDENTIFIER NOT NULL,
-  to_emails NVARCHAR(MAX), -- JSON array
-  cc_emails NVARCHAR(MAX), -- JSON array
-  bcc_emails NVARCHAR(MAX), -- JSON array
-  variables NVARCHAR(MAX), -- JSON object
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Primary recipient email addresses (stored as JSON array)                │
+  -- │ Example: '["user1@example.com", "user2@example.com"]'                   │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  to_emails NVARCHAR(MAX),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ CC (carbon copy) recipients (stored as JSON array)                      │
+  -- │ Example: '["manager@example.com"]' or '[]' if none                      │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  cc_emails NVARCHAR(MAX),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ BCC (blind carbon copy) recipients (stored as JSON array)               │
+  -- │ Hidden recipients - Example: '["audit@company.com"]'                    │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  bcc_emails NVARCHAR(MAX),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Variable values used in this specific run (stored as JSON object)       │
+  -- │ Records the EXACT data that was substituted into the template           │
+  -- │ Example: {"name": "John Doe", "incidentNumber": "INC-123"}              │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  variables NVARCHAR(MAX),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Final rendered HTML with all variables replaced                         │
+  -- │ This is the EXACT output that was sent (for auditing/debugging)         │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   html_output NVARCHAR(MAX) NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Timestamp when this template was executed                               │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   run_at DATETIME2 DEFAULT GETUTCDATE(),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Execution status: 'sent', 'failed', 'pending'                           │
+  -- │ Track if the send succeeded or failed                                   │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   status NVARCHAR(50) DEFAULT 'sent',
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ User who executed this template (for accountability)                    │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   user_id UNIQUEIDENTIFIER,
+  
+  -- FOREIGN KEY: Links to templates.id (CASCADE DELETE)
   CONSTRAINT fk_template_runs_template FOREIGN KEY (template_id) 
     REFERENCES templates(id) ON DELETE CASCADE
 );
 
+-- INDEX: Find all runs of a specific template
 CREATE INDEX idx_template_runs_template_id ON template_runs(template_id);
+-- INDEX: Sort runs by date (newest first)
 CREATE INDEX idx_template_runs_run_at ON template_runs(run_at DESC);
+-- INDEX: Find all runs by a specific user
 CREATE INDEX idx_template_runs_user_id ON template_runs(user_id);
 
--- ================================================================
--- TEMPLATE_VARIABLES TABLE
--- Tracks available variables per template for validation
--- ================================================================
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 6: template_variables                                                   ║
+-- ║ PURPOSE: Tracks available variables per template for validation               ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   Tracks all variables used in a template for validation during template runs.
+--   Helps ensure users provide all required variable values.
+--
+-- RELATIONSHIPS:
+--   • FOREIGN KEY: template_id → templates.id (CASCADE DELETE)
+--
+-- ============================================================================
 CREATE TABLE template_variables (
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- FOREIGN KEY: Links to templates.id
   template_id UNIQUEIDENTIFIER NOT NULL,
+  
+  -- Variable name used in template (e.g., 'customerName', 'incidentNumber')
   variable_name NVARCHAR(100) NOT NULL,
+  
+  -- Data type: 'text', 'number', 'date', etc.
   variable_type NVARCHAR(50) DEFAULT 'text',
+  
+  -- Whether this variable must be provided (1 = required, 0 = optional)
   required BIT DEFAULT 0,
+  
+  -- Default value if user doesn't provide one
   default_value NVARCHAR(MAX),
+  
   created_at DATETIME2 DEFAULT GETUTCDATE(),
+  
+  -- UNIQUE: No duplicate variable names per template
   CONSTRAINT uk_template_variables UNIQUE(template_id, variable_name),
+  
+  -- FOREIGN KEY: CASCADE DELETE when template is deleted
   CONSTRAINT fk_template_variables_template FOREIGN KEY (template_id) 
     REFERENCES templates(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_template_variables_template_id ON template_variables(template_id);
 
--- ================================================================
--- API_TEMPLATES TABLE
--- Stores reusable API endpoint configurations
--- ================================================================
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 7: api_templates                                                        ║
+-- ║ PURPOSE: Pre-configured API endpoint templates (Jira, GitHub, etc.)           ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   Stores reusable API endpoint configurations that templates can use to fetch
+--   external data. These are "blueprints" for API calls.
+--
+-- RELATIONSHIPS:
+--   • NO FOREIGN KEYS (This is a parent table for API configs)
+--   • REFERENCED BY: api_template_params.api_template_id (1:Many)
+--   • REFERENCED BY: template_api_configs.api_template_id (Many:1)
+--
+-- URL TEMPLATE PLACEHOLDERS:
+--   url_template contains {placeholder} values that get replaced with user values:
+--   'https://{domain}.atlassian.net/rest/api/{version}/issue/{issueKey}'
+--
+-- ============================================================================
 CREATE TABLE api_templates (
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Display name for this API template (shown in dropdown)                  │
+  -- │ Examples: "Jira - Get Issue", "GitHub - Repository Info"                │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   name NVARCHAR(255) NOT NULL,
+  
+  -- Description of what this API does
   description NVARCHAR(MAX),
+  
+  -- Category for grouping: 'jira', 'github', 'servicenow', 'rest', 'custom'
   category NVARCHAR(100),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ API URL with {parameter} placeholders                                   │
+  -- │ Example: 'https://{domain}.atlassian.net/rest/api/{version}/issue/{key}'│
+  -- │ Placeholders in {braces} are replaced with user-provided values         │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   url_template NVARCHAR(MAX) NOT NULL,
+  
+  -- HTTP method: 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'
   method NVARCHAR(10) NOT NULL,
-  headers NVARCHAR(MAX), -- JSON object
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ HTTP headers with {parameter} placeholders (JSON object)                │
+  -- │ Example: {"Authorization": "Bearer {apiToken}"}                         │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  headers NVARCHAR(MAX),
+  
+  -- Request body template for POST/PUT requests (JSON with placeholders)
   body_template NVARCHAR(MAX),
+  
+  -- Flag: 1 = user-created custom API, 0 = built-in system API
   is_custom BIT DEFAULT 0,
+  
+  -- User who created this custom API template
   created_by UNIQUEIDENTIFIER,
+  
   created_at DATETIME2 DEFAULT GETUTCDATE()
 );
 
 CREATE INDEX idx_api_templates_category ON api_templates(category);
 
--- ================================================================
--- API_TEMPLATE_PARAMS TABLE
--- Defines parameters required for API templates
--- ================================================================
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 8: api_template_params                                                  ║
+-- ║ PURPOSE: Defines parameters required for each API template                    ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   Defines what parameters each API template requires. Parameters are substituted
+--   into url_template, headers, and body_template.
+--
+-- RELATIONSHIPS:
+--   • FOREIGN KEY: api_template_id → api_templates.id (CASCADE DELETE)
+--     "Each parameter belongs to exactly one API template"
+--
+-- PARAM_LOCATION VALUES:
+--   'path'   → Parameter replaces {placeholder} in URL path
+--   'query'  → Parameter added as ?param=value in URL
+--   'header' → Parameter goes into HTTP headers
+--   'body'   → Parameter inserted into request body
+--
+-- ============================================================================
 CREATE TABLE api_template_params (
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- FOREIGN KEY: Links to api_templates.id (CASCADE DELETE)
   api_template_id UNIQUEIDENTIFIER NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ Parameter name (MUST match {placeholder} in url_template/headers/body)  │
+  -- │ Examples: 'domain', 'version', 'issueKey', 'apiToken'                   │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   param_name NVARCHAR(100) NOT NULL,
+  
+  -- Display label shown in configuration UI
   param_label NVARCHAR(100) NOT NULL,
+  
+  -- Input type: 'text', 'number', 'select' (determines form control)
   param_type NVARCHAR(50) NOT NULL,
+  
+  -- Where parameter goes: 'path', 'query', 'header', 'body'
   param_location NVARCHAR(50) NOT NULL,
+  
+  -- Placeholder text for input field (e.g., "e.g., mycompany")
   placeholder NVARCHAR(MAX),
+  
+  -- Whether required: 1 = mandatory, 0 = optional
   required BIT DEFAULT 1,
+  
+  -- Help text for users
   description NVARCHAR(MAX),
-  options NVARCHAR(MAX), -- JSON array
+  
+  -- Options for 'select' type: '["v1", "v2", "v3"]' (JSON array)
+  options NVARCHAR(MAX),
+  
   created_at DATETIME2 DEFAULT GETUTCDATE(),
+  
+  -- UNIQUE: No duplicate param names per API template
   CONSTRAINT uk_api_template_params UNIQUE(api_template_id, param_name),
+  
+  -- FOREIGN KEY: CASCADE DELETE when API template is deleted
   CONSTRAINT fk_api_template_params_template FOREIGN KEY (api_template_id) 
     REFERENCES api_templates(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_api_template_params_template ON api_template_params(api_template_id);
 
--- ================================================================
--- TEMPLATE_API_CONFIGS TABLE
--- Links templates to API templates with user-provided values
--- ================================================================
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 9: template_api_configs                                                 ║
+-- ║ PURPOSE: Links templates to API templates with user-provided parameter values ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   Links a template to an API template with user-provided parameter values.
+--   Each template can have ONE API configuration (1:1 relationship enforced by UNIQUE).
+--
+-- RELATIONSHIPS:
+--   • FOREIGN KEY: template_id → templates.id (CASCADE DELETE) [UNIQUE - 1:1]
+--   • FOREIGN KEY: api_template_id → api_templates.id
+--   • REFERENCED BY: api_mappings.template_api_config_id (1:Many)
+--
+-- ============================================================================
 CREATE TABLE template_api_configs (
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ FOREIGN KEY: Links to templates.id                                      │
+  -- │ UNIQUE constraint creates 1:1 relationship (one API per template)       │
+  -- │ CASCADE DELETE: Remove API config when template is deleted              │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   template_id UNIQUEIDENTIFIER NOT NULL,
+  
+  -- FOREIGN KEY: Links to api_templates.id (which API to use)
   api_template_id UNIQUEIDENTIFIER NOT NULL,
+  
+  -- Toggle: 1 = API active, 0 = API disabled (can toggle without losing config)
   enabled BIT DEFAULT 0,
-  param_values NVARCHAR(MAX), -- JSON object
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ User-provided values for API parameters (JSON object)                   │
+  -- │ Keys MUST match param_name from api_template_params                     │
+  -- │ Example: {"domain": "mycompany", "issueKey": "PROJ-123"}               │
+  -- └─────────────────────────────────────────────────────────────────────────┘
+  param_values NVARCHAR(MAX),
+  
   created_at DATETIME2 DEFAULT GETUTCDATE(),
   updated_at DATETIME2 DEFAULT GETUTCDATE(),
+  
+  -- UNIQUE: Each template can have only ONE API configuration (1:1)
   CONSTRAINT uk_template_api_configs UNIQUE(template_id),
+  
+  -- FOREIGN KEY: CASCADE DELETE when template is deleted
   CONSTRAINT fk_template_api_configs_template FOREIGN KEY (template_id) 
     REFERENCES templates(id) ON DELETE CASCADE,
+    
+  -- FOREIGN KEY: Links to api_templates.id (NO CASCADE - keep config if API deleted)
   CONSTRAINT fk_template_api_configs_api_template FOREIGN KEY (api_template_id) 
     REFERENCES api_templates(id)
 );
 
 CREATE INDEX idx_template_api_configs_template ON template_api_configs(template_id);
 
--- ================================================================
--- API_MAPPINGS TABLE
--- Maps API response data to specific sections within templates
--- ================================================================
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 10: api_mappings                                                        ║
+-- ║ PURPOSE: Maps API response data to specific sections within templates         ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   Maps data from API responses to specific sections in templates. Extracts
+--   fields from API JSON response and populates section variables.
+--
+-- RELATIONSHIPS:
+--   • FOREIGN KEY: template_api_config_id → template_api_configs.id (CASCADE)
+--   • FOREIGN KEY: section_id → template_sections.id (CASCADE)
+--
+-- DATA FLOW:
+--   1. API returns JSON response
+--   2. api_path extracts specific field (e.g., "fields.summary")
+--   3. Extracted data populates variable_name in the target section
+--
+-- ============================================================================
 CREATE TABLE api_mappings (
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- FOREIGN KEY: Links to template_api_configs.id (CASCADE DELETE)
   template_api_config_id UNIQUEIDENTIFIER NOT NULL,
+  
+  -- FOREIGN KEY: Links to template_sections.id (CASCADE DELETE)
   section_id UNIQUEIDENTIFIER NOT NULL,
+  
+  -- ┌─────────────────────────────────────────────────────────────────────────┐
+  -- │ JSONPath expression to extract data from API response                   │
+  -- │ Examples: 'fields.summary', 'data.items[0].title'                       │
+  -- └─────────────────────────────────────────────────────────────────────────┘
   api_path NVARCHAR(MAX) NOT NULL,
+  
+  -- Data type: 'text', 'list', 'html' (determines processing)
   data_type NVARCHAR(50) NOT NULL,
+  
+  -- Which variable in section to populate (NULL = replace entire content)
   variable_name NVARCHAR(100),
+  
   created_at DATETIME2 DEFAULT GETUTCDATE(),
+  
+  -- FOREIGN KEY: CASCADE DELETE when API config is deleted
   CONSTRAINT fk_api_mappings_config FOREIGN KEY (template_api_config_id) 
     REFERENCES template_api_configs(id) ON DELETE CASCADE,
+    
+  -- FOREIGN KEY: CASCADE DELETE when section is deleted
   CONSTRAINT fk_api_mappings_section FOREIGN KEY (section_id) 
     REFERENCES template_sections(id) ON DELETE CASCADE
 );
 
+-- INDEX: Find all mappings for an API config
 CREATE INDEX idx_api_mappings_config ON api_mappings(template_api_config_id);
+-- INDEX: Find all mappings targeting a specific section
 CREATE INDEX idx_api_mappings_section ON api_mappings(section_id);
 
 -- ================================================================
