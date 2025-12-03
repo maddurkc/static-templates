@@ -36,6 +36,7 @@ export interface TableDataRequest {
 
 export interface TemplateCreateRequest {
   name: string;
+  subject?: string; // Email subject - can contain {{placeholders}}
   html: string;
   sectionCount: number;
   archived: boolean;
@@ -45,6 +46,7 @@ export interface TemplateCreateRequest {
 
 export interface TemplateUpdateRequest {
   name?: string;
+  subject?: string; // Email subject - can contain {{placeholders}}
   html?: string;
   sectionCount?: number;
   archived?: boolean;
@@ -69,6 +71,7 @@ export interface ApiMappingRequest {
 export interface TemplateResponse {
   id: string;
   name: string;
+  subject?: string; // Email subject - can contain {{placeholders}}
   html: string;
   sectionCount: number;
   archived: boolean;

@@ -76,6 +76,7 @@ const TemplateEditor = () => {
   const [copied, setCopied] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [templateSubject, setTemplateSubject] = useState(""); // Email subject with {{placeholders}} support
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'split' | 'editor-only' | 'preview-only'>('split');
@@ -89,6 +90,7 @@ const TemplateEditor = () => {
       setIsEditMode(true);
       setEditingTemplateId(editingTemplate.id);
       setTemplateName(editingTemplate.name);
+      setTemplateSubject(editingTemplate.subject || ""); // Load subject
       
       // Load sections
       if (editingTemplate.sections && editingTemplate.sections.length > 0) {
@@ -455,6 +457,7 @@ const TemplateEditor = () => {
         // UPDATE: Call backend API to update existing template
         const updateRequest: TemplateUpdateRequest = {
           name: templateName,
+          subject: templateSubject || undefined, // Include subject if provided
           html,
           sectionCount: allSections.length,
           archived: false,
@@ -469,6 +472,7 @@ const TemplateEditor = () => {
         // Also update local storage as fallback
         updateTemplate(editingTemplateId, {
           name: templateName,
+          subject: templateSubject || undefined,
           html,
           sectionCount: allSections.length,
           archived: false,
@@ -484,6 +488,7 @@ const TemplateEditor = () => {
         // CREATE: Call backend API to create new template
         const createRequest: TemplateCreateRequest = {
           name: templateName,
+          subject: templateSubject || undefined, // Include subject if provided
           html,
           sectionCount: allSections.length,
           archived: false,
@@ -498,6 +503,7 @@ const TemplateEditor = () => {
         // Also save to local storage as fallback
         saveTemplate({
           name: templateName,
+          subject: templateSubject || undefined,
           html,
           createdAt: new Date().toISOString(),
           sectionCount: allSections.length,
@@ -514,6 +520,7 @@ const TemplateEditor = () => {
 
       setShowSaveDialog(false);
       setTemplateName("");
+      setTemplateSubject("");
       
       // Navigate back to templates list
       setTimeout(() => navigate('/templates'), 500);
@@ -527,6 +534,7 @@ const TemplateEditor = () => {
       if (isEditMode && editingTemplateId) {
         updateTemplate(editingTemplateId, {
           name: templateName,
+          subject: templateSubject || undefined,
           html,
           sectionCount: allSections.length,
           archived: false,
@@ -536,6 +544,7 @@ const TemplateEditor = () => {
       } else {
         saveTemplate({
           name: templateName,
+          subject: templateSubject || undefined,
           html,
           createdAt: new Date().toISOString(),
           sectionCount: allSections.length,
@@ -553,6 +562,7 @@ const TemplateEditor = () => {
       
       setShowSaveDialog(false);
       setTemplateName("");
+      setTemplateSubject("");
       setTimeout(() => navigate('/templates'), 500);
     } finally {
       setIsSaving(false);
@@ -847,12 +857,24 @@ const TemplateEditor = () => {
                         placeholder="Enter template name..."
                         value={templateName}
                         onChange={(e) => setTemplateName(e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.inputGroup}>
+                      <Label htmlFor="template-subject">Email Subject</Label>
+                      <Input
+                        id="template-subject"
+                        placeholder="Enter subject (supports {{placeholders}})..."
+                        value={templateSubject}
+                        onChange={(e) => setTemplateSubject(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             handleSaveTemplate();
                           }
                         }}
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use {"{{variableName}}"} for dynamic content, e.g., "Order Confirmation - {"{{orderNumber}}"}"
+                      </p>
                     </div>
                     <div className={styles.dialogActions}>
                       <Button
@@ -861,8 +883,8 @@ const TemplateEditor = () => {
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handleSaveTemplate}>
-                        Save
+                      <Button onClick={handleSaveTemplate} disabled={isSaving}>
+                        {isSaving ? 'Saving...' : 'Save'}
                       </Button>
                     </div>
                   </div>

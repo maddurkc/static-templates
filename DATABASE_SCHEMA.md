@@ -198,6 +198,10 @@ CREATE TABLE templates (
   -- Examples: "Welcome Email", "Incident Report", "Weekly Newsletter"
   name NVARCHAR(255) NOT NULL,
   
+  -- Email subject line with optional {{placeholders}} for dynamic content
+  -- Examples: "Order Confirmation - {{orderNumber}}", "Welcome to {{companyName}}!"
+  subject NVARCHAR(500),
+  
   -- Complete generated HTML with Thymeleaf variables
   -- Contains: <th:utext="${variableName}"> placeholders
   html NVARCHAR(MAX) NOT NULL,
