@@ -39,6 +39,7 @@ src/lib/templateUtils.ts       (Template rendering)
 src/lib/thymeleafUtils.ts      (Thymeleaf processing)
 src/lib/tableUtils.ts          (Table utilities)
 src/lib/sanitize.ts            (HTML sanitization)
+src/lib/templateApi.ts         (Backend API client)
 src/data/sectionTypes.tsx      (Section type definitions)
 src/data/apiTemplates.ts       (API template definitions)
 ```
@@ -49,6 +50,350 @@ src/components/ui/*            (All UI components)
 src/components/sections/*      (Section components)
 src/components/templates/*     (Template components)
 ```
+
+---
+
+# Backend API Integration
+
+## Overview
+The template editor integrates with a Spring Boot backend API for persisting templates. The API client (`src/lib/templateApi.ts`) handles all CRUD operations.
+
+## Configuration
+
+### Environment Variables
+Create a `.env` file with:
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
+```
+
+### API Base URL
+Default: `http://localhost:8080/api`
+
+## API Client Usage
+
+### Import
+```typescript
+import { 
+  templateApi, 
+  flattenSectionsForApi, 
+  TemplateCreateRequest, 
+  TemplateUpdateRequest 
+} from "@/lib/templateApi";
+```
+
+### Authentication
+```typescript
+// Set JWT token for authenticated requests
+templateApi.setAuthToken('your-jwt-token');
+
+// Clear token on logout
+templateApi.clearAuthToken();
+```
+
+## API Endpoints
+
+### 1. Create Template
+**Endpoint:** `POST /api/templates`
+
+**Request Payload:**
+```typescript
+interface TemplateCreateRequest {
+  name: string;
+  html: string;
+  sectionCount: number;
+  archived: boolean;
+  sections: TemplateSectionRequest[];
+  apiConfig?: ApiConfigRequest;
+}
+```
+
+**Example:**
+```typescript
+const createRequest: TemplateCreateRequest = {
+  name: "My Template",
+  html: "<div>...</div>",
+  sectionCount: 5,
+  archived: false,
+  sections: [
+    {
+      sectionId: "section-123",
+      orderIndex: 0,
+      parentSectionId: null,
+      content: "<h1><th:utext=\"${title}\"></h1>",
+      variables: { title: "Default Title" },
+      styles: { fontSize: "24px", color: "#333" },
+      isLabelEditable: true
+    }
+  ]
+};
+
+const response = await templateApi.createTemplate(createRequest);
+```
+
+### 2. Update Template
+**Endpoint:** `PUT /api/templates/{id}`
+
+**Request Payload:**
+```typescript
+interface TemplateUpdateRequest {
+  name?: string;
+  html?: string;
+  sectionCount?: number;
+  archived?: boolean;
+  sections?: TemplateSectionRequest[];
+  apiConfig?: ApiConfigRequest;
+}
+```
+
+**Example:**
+```typescript
+const updateRequest: TemplateUpdateRequest = {
+  name: "Updated Template Name",
+  html: "<div>Updated HTML</div>",
+  sections: flattenSectionsForApi(allSections)
+};
+
+const response = await templateApi.updateTemplate(templateId, updateRequest);
+```
+
+### 3. Get All Templates
+**Endpoint:** `GET /api/templates`
+
+```typescript
+const templates = await templateApi.getTemplates();
+```
+
+### 4. Get Template by ID
+**Endpoint:** `GET /api/templates/{id}`
+
+```typescript
+const template = await templateApi.getTemplateById(templateId);
+```
+
+### 5. Delete Template
+**Endpoint:** `DELETE /api/templates/{id}`
+
+```typescript
+await templateApi.deleteTemplate(templateId);
+```
+
+### 6. Archive/Unarchive Template
+**Endpoint:** `PATCH /api/templates/{id}/archive`
+
+```typescript
+await templateApi.archiveTemplate(templateId, true); // Archive
+await templateApi.archiveTemplate(templateId, false); // Unarchive
+```
+
+### 7. Duplicate Template
+**Endpoint:** `POST /api/templates/{id}/duplicate`
+
+```typescript
+const duplicatedTemplate = await templateApi.duplicateTemplate(templateId, "Copy of Template");
+```
+
+## Request/Response Types
+
+### TemplateSectionRequest
+```typescript
+interface TemplateSectionRequest {
+  sectionId: string;           // Unique section identifier
+  orderIndex: number;          // Position in the template (0-based)
+  parentSectionId: string | null; // Parent section ID for nested sections
+  content: string;             // HTML content with Thymeleaf tags
+  variables: Record<string, string | string[]>; // Variable values
+  styles: Record<string, string>; // CSS styles
+  isLabelEditable: boolean;    // Whether section is editable at runtime
+  listItems?: ListItemRequest[]; // For list sections
+  tableData?: TableDataRequest;  // For table sections
+}
+```
+
+### ListItemRequest
+```typescript
+interface ListItemRequest {
+  id: string;
+  content: string;
+  styles: Record<string, string>;
+  children?: ListItemRequest[]; // For nested lists (up to 3 levels)
+}
+```
+
+### TableDataRequest
+```typescript
+interface TableDataRequest {
+  headers: string[];
+  rows: string[][];
+}
+```
+
+### ApiConfigRequest
+```typescript
+interface ApiConfigRequest {
+  enabled: boolean;
+  templateId: string;
+  paramValues: Record<string, string>;
+  mappings: ApiMappingRequest[];
+}
+
+interface ApiMappingRequest {
+  sectionId: string;
+  apiPath: string;
+  dataType: 'text' | 'list' | 'html';
+  variableName?: string;
+}
+```
+
+### TemplateResponse
+```typescript
+interface TemplateResponse {
+  id: string;
+  name: string;
+  html: string;
+  sectionCount: number;
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  sections: TemplateSectionResponse[];
+  apiConfig?: ApiConfigResponse;
+}
+```
+
+## Helper Functions
+
+### flattenSectionsForApi
+Converts nested Section objects to flat array with proper ordering:
+
+```typescript
+import { flattenSectionsForApi } from "@/lib/templateApi";
+
+const allSections = [headerSection, ...userSections, footerSection];
+const apiSections = flattenSectionsForApi(allSections);
+// Result: Flat array with orderIndex and parentSectionId populated
+```
+
+### sectionToRequest
+Converts a single Section to TemplateSectionRequest:
+
+```typescript
+import { sectionToRequest } from "@/lib/templateApi";
+
+const sectionRequest = sectionToRequest(section, orderIndex, parentSectionId);
+```
+
+## Error Handling
+
+The API client throws `ApiError` on failures:
+
+```typescript
+interface ApiError {
+  message: string;
+  status: number;
+  errors?: Record<string, string[]>; // Validation errors
+}
+
+try {
+  await templateApi.createTemplate(request);
+} catch (error) {
+  if (error.status === 400) {
+    // Validation error
+    console.error('Validation errors:', error.errors);
+  } else if (error.status === 401) {
+    // Unauthorized - token expired
+    templateApi.clearAuthToken();
+    // Redirect to login
+  } else if (error.status === 404) {
+    // Template not found
+  } else {
+    // Other error
+    console.error('API error:', error.message);
+  }
+}
+```
+
+## Complete Save Template Flow
+
+```typescript
+const handleSaveTemplate = async () => {
+  setIsSaving(true);
+
+  try {
+    // 1. Generate HTML with Thymeleaf placeholders
+    const html = generateHTMLWithPlaceholders();
+    
+    // 2. Prepare sections for API
+    const allSections = [headerSection, ...sections, footerSection];
+    const apiSections = flattenSectionsForApi(allSections);
+    
+    // 3. Build API config if enabled
+    const apiConfigRequest = apiConfig.enabled ? {
+      enabled: apiConfig.enabled,
+      templateId: apiConfig.templateId,
+      paramValues: apiConfig.paramValues,
+      mappings: apiConfig.mappings.map(m => ({
+        sectionId: m.sectionId,
+        apiPath: m.apiPath,
+        dataType: m.dataType,
+        variableName: m.variableName,
+      })),
+    } : undefined;
+
+    // 4. Call appropriate API endpoint
+    if (isEditMode && editingTemplateId) {
+      const updateRequest: TemplateUpdateRequest = {
+        name: templateName,
+        html,
+        sectionCount: allSections.length,
+        archived: false,
+        sections: apiSections,
+        apiConfig: apiConfigRequest,
+      };
+      await templateApi.updateTemplate(editingTemplateId, updateRequest);
+    } else {
+      const createRequest: TemplateCreateRequest = {
+        name: templateName,
+        html,
+        sectionCount: allSections.length,
+        archived: false,
+        sections: apiSections,
+        apiConfig: apiConfigRequest,
+      };
+      await templateApi.createTemplate(createRequest);
+    }
+
+    // 5. Success handling
+    toast({ title: "Template saved successfully" });
+    navigate('/templates');
+    
+  } catch (error) {
+    // 6. Error handling with local storage fallback
+    console.error('API error:', error);
+    toast({ 
+      title: "Saved locally", 
+      description: "API unavailable, saved to local storage",
+      variant: "destructive" 
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
+```
+
+## Backend API Mapping
+
+| Frontend Field | Backend DTO Field | Database Column |
+|----------------|-------------------|-----------------|
+| `sectionId` | `sectionId` | `section_id` |
+| `orderIndex` | `orderIndex` | `order_index` |
+| `parentSectionId` | `parentSectionId` | `parent_section_id` |
+| `content` | `content` | `content` |
+| `variables` | `variables` | `variables` (JSON) |
+| `styles` | `styles` | `styles` (JSON) |
+| `isLabelEditable` | `isLabelEditable` | `is_label_editable` |
+| `listItems` | `listItems` | `list_items` (JSON) |
+| `tableData` | `tableData` | `table_data` (JSON) |
+
+---
 
 ## Integration Steps
 
@@ -62,7 +407,10 @@ yarn add sass
 ### 2. Copy Files
 Copy all the files listed above to your existing project, maintaining the same directory structure.
 
-### 3. Adapt UI Components to Material-UI
+### 3. Configure API Base URL
+Set the `VITE_API_BASE_URL` environment variable to point to your Spring Boot backend.
+
+### 4. Adapt UI Components to Material-UI
 
 The current code uses Shadcn UI components. You'll need to replace them with Material-UI equivalents:
 
@@ -94,134 +442,26 @@ import { Textarea } from "@/components/ui/textarea"
 → import { TextField } with multiline prop
 ```
 
-### 4. Example: Converting Sections.tsx to Use MUI
-
-```tsx
-// Before (Shadcn)
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-
-// After (Material-UI)
-import { Card, CardContent, CardHeader, Typography, Button } from '@mui/material';
-```
-
-```tsx
-// Before (Shadcn)
-<Card className={styles.sectionCard}>
-  <CardHeader className={styles.cardHeader}>
-    <CardTitle className={styles.cardTitle}>{section.label}</CardTitle>
-  </CardHeader>
-  <CardContent className={styles.cardContent}>
-    {/* content */}
-  </CardContent>
-</Card>
-
-// After (Material-UI) 
-<Card className={styles.sectionCard}>
-  <CardHeader className={styles.cardHeader}>
-    <Typography variant="h6" className={styles.cardTitle}>
-      {section.label}
-    </Typography>
-  </CardHeader>
-  <CardContent className={styles.cardContent}>
-    {/* content */}
-  </CardContent>
-</Card>
-```
-
-### 5. Use sx Prop for Dynamic Styles (Optional)
-
-For dynamic/conditional styles, you can use MUI's `sx` prop alongside CSS Modules:
-
-```tsx
-<Button
-  className={styles.actionButton}
-  sx={{
-    mb: 2,  // margin-bottom: 16px
-    '&:hover': {
-      backgroundColor: 'primary.dark'
-    }
-  }}
->
-  Click Me
-</Button>
-```
-
 ## Style Isolation Guarantee
 
 ✅ **Fully Scoped**: All styles in `.module.scss` files are automatically scoped to their component
 ✅ **No Global Pollution**: Styles won't leak to other parts of your application
 ✅ **No Conflicts**: CSS class names are hashed (e.g., `.container` becomes `.Sections_container__a1b2c`)
 
-Example:
-```scss
-// Sections.module.scss
-.container {
-  padding: 2rem;
-  background: #f8f9fa;
-}
-
-// Compiles to:
-.Sections_container__3xY2k {
-  padding: 2rem;
-  background: #f8f9fa;
-}
-```
-
-## Color System
-
-The SCSS files use standard hex colors that you can easily customize:
-
-```scss
-// Primary color (blue)
---primary: #4361ee
-
-// Accent color (teal)  
---accent: #14b8a6
-
-// Text colors
---text-primary: #212529
---text-muted: #6c757d
-
-// Backgrounds
---bg-light: #f8f9fa
---bg-white: #ffffff
-```
-
 ## Testing Integration
 
 1. **Start your dev server** with the new files
 2. **Navigate to /sections** to test the Sections page
-3. **Check browser DevTools** - all styles should be scoped (e.g., `Sections_container__abc123`)
-4. **Verify isolation** - modify styles in `.module.scss` and confirm they only affect that component
-
-## Need Help?
-
-Common issues:
-
-### SCSS not compiling?
-Make sure you have `sass` installed: `npm install sass`
-
-### Styles not applying?
-Check that you're importing the SCSS file: `import styles from "./Component.module.scss"`
-
-### Class names not found?
-Verify your TypeScript config allows CSS modules. Add to `tsconfig.json`:
-```json
-{
-  "compilerOptions": {
-    "plugins": [{ "name": "typescript-plugin-css-modules" }]
-  }
-}
-```
+3. **Check browser DevTools** - all styles should be scoped
+4. **Verify API calls** - check Network tab for API requests to your backend
+5. **Test save functionality** - templates should persist to backend
 
 ## Summary
 
 🎉 **You now have**:
 - ✅ Fully isolated, scoped styles for all template pages
-- ✅ No Tailwind dependency
-- ✅ Easy to integrate with your existing Material-UI project
-- ✅ Standard CSS that won't conflict with your existing styles
-- ✅ Ready to customize colors, spacing, and typography
-
-Simply copy the files, replace Shadcn components with Material-UI equivalents, and you're ready to go!
+- ✅ Backend API integration for template persistence
+- ✅ Automatic local storage fallback if API is unavailable
+- ✅ Complete request/response type definitions
+- ✅ Error handling with user-friendly messages
+- ✅ Ready to integrate with Spring Boot backend

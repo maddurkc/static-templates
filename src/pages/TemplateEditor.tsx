@@ -21,6 +21,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
 import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils";
 import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
+import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpdateRequest } from "@/lib/templateApi";
 import styles from "./TemplateEditor.module.scss";
 
 const TemplateEditor = () => {
@@ -79,6 +80,7 @@ const TemplateEditor = () => {
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'split' | 'editor-only' | 'preview-only'>('split');
   const [copiedStyles, setCopiedStyles] = useState<Section['styles'] | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   // Load template for editing if passed via navigation state
@@ -416,7 +418,7 @@ const TemplateEditor = () => {
     }
   };
 
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
       toast({
         title: "Name Required",
@@ -426,71 +428,135 @@ const TemplateEditor = () => {
       return;
     }
 
-    // Save with placeholders, not rendered values
-    const html = generateHTMLWithPlaceholders();
-    
-    // Helper function to prepare sections with order_index and parent_section_id
-    const prepareSectionsForSave = (
-      sectionList: Section[], 
-      parentSectionId: string | null = null
-    ): Section[] => {
-      return sectionList.map((section, index) => {
-        const preparedSection: Section = {
-          ...section,
-          order: index, // order_index - position in the list
-          isLabelEditable: section.isLabelEditable ?? true, // Default to true if not set
+    setIsSaving(true);
+
+    try {
+      // Generate HTML with placeholders, not rendered values
+      const html = generateHTMLWithPlaceholders();
+      
+      // Prepare all sections for API using flattenSectionsForApi helper
+      const allSections = [headerSection, ...sections, footerSection];
+      const apiSections = flattenSectionsForApi(allSections);
+      
+      // Build API config request if enabled
+      const apiConfigRequest = apiConfig.enabled ? {
+        enabled: apiConfig.enabled,
+        templateId: apiConfig.templateId,
+        paramValues: apiConfig.paramValues,
+        mappings: apiConfig.mappings.map(m => ({
+          sectionId: m.sectionId,
+          apiPath: m.apiPath,
+          dataType: m.dataType,
+          variableName: m.variableName,
+        })),
+      } : undefined;
+
+      if (isEditMode && editingTemplateId) {
+        // UPDATE: Call backend API to update existing template
+        const updateRequest: TemplateUpdateRequest = {
+          name: templateName,
+          html,
+          sectionCount: allSections.length,
+          archived: false,
+          sections: apiSections,
+          apiConfig: apiConfigRequest,
         };
-        
-        // Add parent_section_id for nested sections (null for top-level)
-        if (parentSectionId !== null) {
-          (preparedSection as any).parent_section_id = parentSectionId;
-        }
-        
-        // Recursively prepare children with their parent's ID
-        if (section.children && section.children.length > 0) {
-          preparedSection.children = prepareSectionsForSave(section.children, section.id);
-        }
-        
-        return preparedSection;
-      });
-    };
-    
-    // Prepare all sections with proper order and parent references
-    const preparedHeader = { ...headerSection, order: 0, isLabelEditable: headerSection.isLabelEditable ?? false };
-    const preparedSections = prepareSectionsForSave(sections, null).map((s, i) => ({ ...s, order: i + 1 }));
-    const preparedFooter = { ...footerSection, order: preparedSections.length + 1, isLabelEditable: footerSection.isLabelEditable ?? false };
-    
-    const templateData = {
-      name: templateName,
-      html,
-      createdAt: isEditMode && editingTemplate ? editingTemplate.createdAt : new Date().toISOString(),
-      sectionCount: sections.length + 2, // Include header and footer
-      archived: false,
-      apiConfig: apiConfig.enabled ? apiConfig : undefined,
-      sections: [preparedHeader, ...preparedSections, preparedFooter],
-    };
 
-    if (isEditMode && editingTemplateId) {
-      // Update existing template
-      updateTemplate(editingTemplateId, templateData);
+        // Call backend API
+        const response = await templateApi.updateTemplate(editingTemplateId, updateRequest);
+        console.log('Template updated via API:', response);
+        
+        // Also update local storage as fallback
+        updateTemplate(editingTemplateId, {
+          name: templateName,
+          html,
+          sectionCount: allSections.length,
+          archived: false,
+          apiConfig: apiConfig.enabled ? apiConfig : undefined,
+          sections: allSections,
+        });
+
+        toast({
+          title: "Template updated",
+          description: `"${templateName}" has been updated successfully.`,
+        });
+      } else {
+        // CREATE: Call backend API to create new template
+        const createRequest: TemplateCreateRequest = {
+          name: templateName,
+          html,
+          sectionCount: allSections.length,
+          archived: false,
+          sections: apiSections,
+          apiConfig: apiConfigRequest,
+        };
+
+        // Call backend API
+        const response = await templateApi.createTemplate(createRequest);
+        console.log('Template created via API:', response);
+        
+        // Also save to local storage as fallback
+        saveTemplate({
+          name: templateName,
+          html,
+          createdAt: new Date().toISOString(),
+          sectionCount: allSections.length,
+          archived: false,
+          apiConfig: apiConfig.enabled ? apiConfig : undefined,
+          sections: allSections,
+        });
+
+        toast({
+          title: "Template saved",
+          description: `"${templateName}" has been saved successfully.`,
+        });
+      }
+
+      setShowSaveDialog(false);
+      setTemplateName("");
+      
+      // Navigate back to templates list
+      setTimeout(() => navigate('/templates'), 500);
+    } catch (error: any) {
+      console.error('Error saving template:', error);
+      
+      // Fallback to local storage only if API fails
+      const allSections = [headerSection, ...sections, footerSection];
+      const html = generateHTMLWithPlaceholders();
+      
+      if (isEditMode && editingTemplateId) {
+        updateTemplate(editingTemplateId, {
+          name: templateName,
+          html,
+          sectionCount: allSections.length,
+          archived: false,
+          apiConfig: apiConfig.enabled ? apiConfig : undefined,
+          sections: allSections,
+        });
+      } else {
+        saveTemplate({
+          name: templateName,
+          html,
+          createdAt: new Date().toISOString(),
+          sectionCount: allSections.length,
+          archived: false,
+          apiConfig: apiConfig.enabled ? apiConfig : undefined,
+          sections: allSections,
+        });
+      }
+
       toast({
-        title: "Template updated",
-        description: `"${templateName}" has been updated successfully.`,
+        title: "Saved locally",
+        description: `Template saved to local storage. API error: ${error.message || 'Unknown error'}`,
+        variant: "destructive",
       });
-    } else {
-      // Save new template
-      saveTemplate(templateData);
-      toast({
-        title: "Template saved",
-        description: `"${templateName}" has been saved successfully.`,
-      });
+      
+      setShowSaveDialog(false);
+      setTemplateName("");
+      setTimeout(() => navigate('/templates'), 500);
+    } finally {
+      setIsSaving(false);
     }
-
-    setShowSaveDialog(false);
-    setTemplateName("");
-    
-    // Navigate back to templates list
-    setTimeout(() => navigate('/templates'), 500);
   };
 
   const generateHTMLWithPlaceholders = () => {
