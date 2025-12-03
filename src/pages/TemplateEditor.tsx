@@ -429,6 +429,37 @@ const TemplateEditor = () => {
     // Save with placeholders, not rendered values
     const html = generateHTMLWithPlaceholders();
     
+    // Helper function to prepare sections with order_index and parent_section_id
+    const prepareSectionsForSave = (
+      sectionList: Section[], 
+      parentSectionId: string | null = null
+    ): Section[] => {
+      return sectionList.map((section, index) => {
+        const preparedSection: Section = {
+          ...section,
+          order: index, // order_index - position in the list
+          isLabelEditable: section.isLabelEditable ?? true, // Default to true if not set
+        };
+        
+        // Add parent_section_id for nested sections (null for top-level)
+        if (parentSectionId !== null) {
+          (preparedSection as any).parent_section_id = parentSectionId;
+        }
+        
+        // Recursively prepare children with their parent's ID
+        if (section.children && section.children.length > 0) {
+          preparedSection.children = prepareSectionsForSave(section.children, section.id);
+        }
+        
+        return preparedSection;
+      });
+    };
+    
+    // Prepare all sections with proper order and parent references
+    const preparedHeader = { ...headerSection, order: 0, isLabelEditable: headerSection.isLabelEditable ?? false };
+    const preparedSections = prepareSectionsForSave(sections, null).map((s, i) => ({ ...s, order: i + 1 }));
+    const preparedFooter = { ...footerSection, order: preparedSections.length + 1, isLabelEditable: footerSection.isLabelEditable ?? false };
+    
     const templateData = {
       name: templateName,
       html,
@@ -436,7 +467,7 @@ const TemplateEditor = () => {
       sectionCount: sections.length + 2, // Include header and footer
       archived: false,
       apiConfig: apiConfig.enabled ? apiConfig : undefined,
-      sections: [headerSection, ...sections, footerSection],
+      sections: [preparedHeader, ...preparedSections, preparedFooter],
     };
 
     if (isEditMode && editingTemplateId) {
