@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import * as React from "react";
 import styles from "./RunTemplates.module.scss";
 import { Card } from "@/components/ui/card";
@@ -20,19 +20,19 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
-import { fetchTemplates } from "@/lib/templateApi";
+import { fetchTemplates, fetchTemplateById } from "@/lib/templateApi";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const templateFromState = location.state?.template;
+  const { id: templateId } = useParams<{ id: string }>();
   
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templateFromState || null);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [variables, setVariables] = useState<Record<string, string | TextStyle>>({});
   const [listVariables, setListVariables] = useState<Record<string, string[] | ListItemStyle[]>>({});
   const [tableVariables, setTableVariables] = useState<Record<string, any>>({});
@@ -47,8 +47,48 @@ const RunTemplates = () => {
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const { toast } = useToast();
 
-  // Load templates from API (with localStorage fallback)
+  // Load template by ID from API if templateId is present in URL
   useEffect(() => {
+    const loadTemplateById = async () => {
+      if (!templateId) return;
+      
+      setIsLoadingTemplate(true);
+      try {
+        const template = await fetchTemplateById(templateId);
+        if (template) {
+          handleRunTemplate(template);
+        } else {
+          toast({
+            title: "Template not found",
+            description: "The requested template could not be found.",
+            variant: "destructive",
+          });
+          navigate('/run-templates');
+        }
+      } catch (error) {
+        console.error('Failed to load template:', error);
+        toast({
+          title: "Error loading template",
+          description: "Failed to load template from server.",
+          variant: "destructive",
+        });
+        navigate('/run-templates');
+      } finally {
+        setIsLoadingTemplate(false);
+      }
+    };
+    
+    loadTemplateById();
+  }, [templateId]);
+
+  // Load templates list from API (with localStorage fallback) - only when no templateId
+  useEffect(() => {
+    if (templateId) return; // Skip loading list if we have a specific template ID
+    
+    // Reset selected template when navigating to list view
+    setSelectedTemplate(null);
+    resetForm();
+    
     const loadTemplates = async () => {
       setIsLoading(true);
       try {
@@ -67,7 +107,7 @@ const RunTemplates = () => {
       }
     };
     loadTemplates();
-  }, []);
+  }, [templateId]);
 
   // Initialize variables when template is selected
   React.useEffect(() => {
@@ -564,7 +604,15 @@ const RunTemplates = () => {
 
   return (
     <div className={styles.container}>
-      {!selectedTemplate ? (
+      {isLoadingTemplate ? (
+        // Loading state when fetching template by ID
+        <div className="flex items-center justify-center h-[50vh]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading template...</p>
+          </div>
+        </div>
+      ) : !selectedTemplate ? (
         // Template Selection View
         <div className={styles.innerContainer}>
           <div className={styles.header}>
@@ -632,7 +680,7 @@ const RunTemplates = () => {
                     </div>
 
                     <Button
-                      onClick={() => handleRunTemplate(template)}
+                      onClick={() => navigate(`/run-templates/${template.id}`)}
                       className="w-full shadow-lg shadow-primary/20"
                     >
                       <PlayCircle className="h-4 w-4 mr-2" />
@@ -654,7 +702,7 @@ const RunTemplates = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSelectedTemplate(null)}
+                  onClick={() => navigate('/run-templates')}
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Change Template
