@@ -43,6 +43,7 @@ const App = () => (
                   <Route path="/templates" element={<Templates />} />
                   <Route path="/templates/editor" element={<TemplateEditor />} />
                   <Route path="/run-templates" element={<RunTemplates />} />
+                  <Route path="/run-templates/:id" element={<RunTemplates />} />
                   <Route path="/database-schema" element={<DatabaseSchema />} />
                   <Route path="/er-diagram" element={<ERDiagram />} />
                   <Route path="/migrations" element={<MigrationGenerator />} />
