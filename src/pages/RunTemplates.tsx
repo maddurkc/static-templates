@@ -693,831 +693,685 @@ const RunTemplates = () => {
           </div>
         </div>
       ) : (
-        // Side-by-Side Run View
+        // Outlook-style Email Composition View
         <div className="h-screen flex flex-col">
-          {/* Header */}
-          <div className="border-b bg-card/50 backdrop-blur-sm p-4">
-            <div className="container mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/run-templates')}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Change Template
-                </Button>
-                <div>
-                  <h1 className="text-xl font-bold">{selectedTemplate.name}</h1>
-                  <p className="text-xs text-muted-foreground">
-                    Configure and send template
-                  </p>
-                </div>
+          {/* Top Navigation Bar */}
+          <div className="border-b bg-card/50 backdrop-blur-sm px-4 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/run-templates')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <div>
+                <h1 className="text-lg font-bold">{selectedTemplate.name}</h1>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowEmailPreview(true)}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Preview Email
-                </Button>
-                <Button
-                  onClick={handleSendTemplate}
-                  className="shadow-lg shadow-primary/20"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Template
-                </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEmailPreview(true)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+            </div>
+          </div>
+
+          {/* Outlook-style Email Header */}
+          <div className={styles.emailHeader}>
+            {/* Send Button Container */}
+            <div className={styles.sendButtonContainer}>
+              <button
+                className={styles.sendButton}
+                onClick={handleSendTemplate}
+              >
+                <Send />
+                Send
+              </button>
+            </div>
+
+            {/* Email Fields */}
+            <div className={styles.emailFieldsContainer}>
+              {/* To Field */}
+              <div className={styles.emailFieldRow}>
+                <label>To:</label>
+                <input
+                  type="text"
+                  placeholder="Enter email addresses (comma separated)"
+                  value={toEmails}
+                  onChange={(e) => setToEmails(e.target.value)}
+                />
+              </div>
+
+              {/* CC Field */}
+              <div className={styles.emailFieldRow}>
+                <label>CC:</label>
+                <input
+                  type="text"
+                  placeholder="Enter CC addresses (optional)"
+                  value={ccEmails}
+                  onChange={(e) => setCcEmails(e.target.value)}
+                />
+              </div>
+
+              {/* BCC Field */}
+              <div className={styles.emailFieldRow}>
+                <label>BCC:</label>
+                <input
+                  type="text"
+                  placeholder="Enter BCC addresses (optional)"
+                  value={bccEmails}
+                  onChange={(e) => setBccEmails(e.target.value)}
+                />
+              </div>
+
+              {/* Subject Field */}
+              <div className={styles.emailFieldRow}>
+                <label>Subject:</label>
+                {selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 ? (
+                  <div className="flex-1 flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground font-mono shrink-0">
+                      {selectedTemplate.subject.replace(/\{\{(\w+)\}\}/g, (_, varName) => 
+                        subjectVariables[varName] || `{{${varName}}}`
+                      )}
+                    </span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                          Edit Variables
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80" align="start">
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-sm">Subject Variables</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Template: <code className="bg-muted px-1 rounded">{selectedTemplate.subject}</code>
+                          </p>
+                          {Object.keys(subjectVariables).map((varName) => (
+                            <div key={`subject-var-${varName}`} className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs font-mono shrink-0">
+                                {`{{${varName}}}`}
+                              </Badge>
+                              <Input
+                                id={`subject-var-${varName}`}
+                                placeholder={`Enter ${varName}...`}
+                                value={subjectVariables[varName] || ''}
+                                onChange={(e) => setSubjectVariables(prev => ({
+                                  ...prev,
+                                  [varName]: e.target.value
+                                }))}
+                                className="flex-1 h-8"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Enter email subject"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                  />
+                )}
               </div>
             </div>
           </div>
 
-          {/* Side-by-Side Layout */}
+          {/* Main Content: Variables (left) | Preview/Body (right) */}
           <div className={styles.mainContent}>
-            {/* Left Panel - Configuration */}
-            <div className={styles.editorSection}>
-              <ScrollArea className="h-full">
-                <div>
-                  {/* Email Recipients */}
-                  <Card>
-                    <div className={styles.sectionHeader}>
-                      <h2>Email Configuration</h2>
+            {/* Left Panel - Template Variables */}
+            <div className={styles.variablesPanel}>
+              <div className={styles.variablesPanelHeader}>
+                <h2>Template Variables</h2>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className={styles.variablesList}>
+                  {extractAllVariables(selectedTemplate).length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">No variables in this template</p>
                     </div>
+                  ) : (
                     <div className={styles.formGrid}>
-                      <div className={styles.formField}>
-                        <Label htmlFor="subject">
-                          Subject <span className="text-destructive">*</span>
-                        </Label>
-                        {selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 ? (
-                          <div className="space-y-3">
-                            <div className="p-3 bg-muted/50 rounded-md border">
-                              <p className="text-sm font-medium mb-1">Template Subject:</p>
-                              <p className="text-sm text-muted-foreground font-mono">{selectedTemplate.subject}</p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs text-muted-foreground">Fill in subject variables:</p>
-                              {Object.keys(subjectVariables).map((varName) => (
-                                <div key={`subject-var-${varName}`} className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-xs font-mono shrink-0">
-                                    {`{{${varName}}}`}
-                                  </Badge>
-                                  <Input
-                                    id={`subject-var-${varName}`}
-                                    placeholder={`Enter ${varName}...`}
-                                    value={subjectVariables[varName] || ''}
-                                    onChange={(e) => setSubjectVariables(prev => ({
-                                      ...prev,
-                                      [varName]: e.target.value
-                                    }))}
-                                    className="flex-1"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                            <div className="p-3 bg-primary/5 rounded-md border border-primary/20">
-                              <p className="text-xs text-muted-foreground mb-1">Preview:</p>
-                              <p className="text-sm font-medium">{getProcessedSubject()}</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <Input
-                            id="subject"
-                            placeholder="Enter email subject"
-                            value={emailSubject}
-                            onChange={(e) => setEmailSubject(e.target.value)}
-                          />
-                        )}
-                      </div>
-
-                      <div className={styles.formField}>
-                        <Label htmlFor="to-emails">
-                          To <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="to-emails"
-                          placeholder="email1@example.com, email2@example.com"
-                          value={toEmails}
-                          onChange={(e) => setToEmails(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Enter comma-separated email addresses
-                        </p>
-                      </div>
-
-                      <div className={styles.formField}>
-                        <Label htmlFor="cc-emails">CC (Optional)</Label>
-                        <Input
-                          id="cc-emails"
-                          placeholder="email@example.com, email2@example.com"
-                          value={ccEmails}
-                          onChange={(e) => setCcEmails(e.target.value)}
-                        />
-                      </div>
-
-                      <div className={styles.formField}>
-                        <Label htmlFor="bcc-emails">BCC (Optional)</Label>
-                        <Input
-                          id="bcc-emails"
-                          placeholder="email@example.com, email2@example.com"
-                          value={bccEmails}
-                          onChange={(e) => setBccEmails(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Template Variables */}
-                  {extractAllVariables(selectedTemplate).length > 0 && (
-                    <Card>
-                      <div className={styles.sectionHeader}>
-                        <h2>Template Variables</h2>
-                      </div>
-                      <div className={styles.formGrid}>
-                        {extractAllVariables(selectedTemplate).map((varName) => {
-                          const isList = isListVariable(varName);
-                          const isTable = isTableVariable(varName);
-                          const editable = isLabelEditable(varName);
-                          const context = getVariableContext(varName);
-                          
-                          return (
-                            <div key={varName} className={styles.formField}>
-                              <Label htmlFor={`var-${varName}`} className="flex items-center gap-2 flex-wrap">
-                                {editable ? (
-                                  <Badge variant="outline" className="text-xs font-mono">
-                                    {`{{${varName}}}`}
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-xs font-mono bg-muted">
-                                    {`{{${varName}}}`}
-                                  </Badge>
-                                )}
-                                <span className="font-medium">{varName}</span>
-                                {context && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {context.sectionType}
-                                  </Badge>
-                                )}
-                                {isList && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    List
-                                  </Badge>
-                                )}
-                                {isTable && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    Table
-                                  </Badge>
-                                )}
-                                {!editable && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Label locked
-                                  </Badge>
-                                )}
-                              </Label>
-                              {context && context.context && (
-                                <p className="text-xs text-muted-foreground italic mt-1 mb-2">
-                                  {context.context}
-                                </p>
+                      {extractAllVariables(selectedTemplate).map((varName) => {
+                        const isList = isListVariable(varName);
+                        const isTable = isTableVariable(varName);
+                        const editable = isLabelEditable(varName);
+                        const context = getVariableContext(varName);
+                        
+                        return (
+                          <div key={varName} className={styles.formField}>
+                            <Label htmlFor={`var-${varName}`} className="flex items-center gap-2 flex-wrap">
+                              {editable ? (
+                                <Badge variant="outline" className="text-xs font-mono">
+                                  {`{{${varName}}}`}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs font-mono bg-muted">
+                                  {`{{${varName}}}`}
+                                </Badge>
                               )}
-                              {isTable ? (
-                                <div className="space-y-2 border rounded-lg p-4">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs text-muted-foreground">
-                                      Edit table content
-                                    </p>
-                                    <div className="flex gap-2">
-                                                       <Button
-                                                         size="sm"
-                                                         variant="outline"
-                                                         onClick={() => {
-                                                           const tableData = tableVariables[varName] || { headers: [], rows: [] };
-                                                           setTableVariables(prev => ({
-                                                             ...prev,
-                                                             [varName]: {
-                                                               ...tableData,
-                                                               headers: [...(tableData.headers || []), `Column ${(tableData.headers?.length || 0) + 1}`]
-                                                             }
-                                                           }));
-                                                         }}
-                                                         className="h-7 px-2"
-                                                         disabled={!editable}
-                                                       >
-                                                         <Plus className="h-3 w-3 mr-1" />
-                                                         Add Column
-                                                       </Button>
-                                                       <Button
-                                                         size="sm"
-                                                         variant="outline"
-                                                         onClick={() => {
-                                                           const tableData = tableVariables[varName] || { headers: [], rows: [] };
-                                                           const newRow = new Array(tableData.headers?.length || 1).fill('');
-                                                           setTableVariables(prev => ({
-                                                             ...prev,
-                                                             [varName]: {
-                                                               ...tableData,
-                                                               rows: [...(tableData.rows || []), newRow]
-                                                             }
-                                                           }));
-                                                         }}
-                                                         className="h-7 px-2"
-                                                         disabled={!editable}
-                                                       >
-                                                         <Plus className="h-3 w-3 mr-1" />
-                                                         Add Row
-                                                       </Button>
-                                    </div>
+                              <span className="font-medium">{varName}</span>
+                              {context && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {context.sectionType}
+                                </Badge>
+                              )}
+                              {isList && (
+                                <Badge variant="secondary" className="text-xs">
+                                  List
+                                </Badge>
+                              )}
+                              {isTable && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Table
+                                </Badge>
+                              )}
+                              {!editable && (
+                                <Badge variant="outline" className="text-xs">
+                                  Locked
+                                </Badge>
+                              )}
+                            </Label>
+                            {context && context.context && (
+                              <p className="text-xs text-muted-foreground italic mt-1 mb-2">
+                                {context.context}
+                              </p>
+                            )}
+                            {isTable ? (
+                              <div className="space-y-2 border rounded-lg p-4 bg-background">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-xs text-muted-foreground">
+                                    Edit table content
+                                  </p>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        const tableData = tableVariables[varName] || { headers: [], rows: [] };
+                                        setTableVariables(prev => ({
+                                          ...prev,
+                                          [varName]: {
+                                            ...tableData,
+                                            headers: [...(tableData.headers || []), `Column ${(tableData.headers?.length || 0) + 1}`]
+                                          }
+                                        }));
+                                      }}
+                                      className="h-7 px-2"
+                                      disabled={!editable}
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Column
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        const tableData = tableVariables[varName] || { headers: [], rows: [] };
+                                        const newRow = new Array(tableData.headers?.length || 1).fill('');
+                                        setTableVariables(prev => ({
+                                          ...prev,
+                                          [varName]: {
+                                            ...tableData,
+                                            rows: [...(tableData.rows || []), newRow]
+                                          }
+                                        }));
+                                      }}
+                                      className="h-7 px-2"
+                                      disabled={!editable}
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Row
+                                    </Button>
                                   </div>
+                                </div>
+                                
+                                {(() => {
+                                  const tableData = tableVariables[varName] || { headers: [], rows: [] };
+                                  if (!tableData.headers || tableData.headers.length === 0) {
+                                    return <p className="text-xs text-muted-foreground text-center py-4">Click "Column" to start</p>;
+                                  }
                                   
-                                  {(() => {
-                                    const tableData = tableVariables[varName] || { headers: [], rows: [] };
-                                    if (!tableData.headers || tableData.headers.length === 0) {
-                                      return <p className="text-xs text-muted-foreground text-center py-4">Click "Add Column" to start</p>;
-                                    }
+                                  return (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse border text-sm">
+                                        <thead>
+                                          <tr>
+                                            {tableData.headers.map((header: string, colIdx: number) => (
+                                              <th key={colIdx} className="border p-1 bg-muted">
+                                                <div className="flex items-center gap-1">
+                                                  <Input
+                                                    value={header}
+                                                    onChange={(e) => {
+                                                      const newHeaders = [...tableData.headers];
+                                                      newHeaders[colIdx] = e.target.value;
+                                                      setTableVariables(prev => ({
+                                                        ...prev,
+                                                        [varName]: { ...tableData, headers: newHeaders }
+                                                      }));
+                                                    }}
+                                                    className="h-7 text-xs font-semibold"
+                                                    placeholder={`Header ${colIdx + 1}`}
+                                                    disabled={!editable}
+                                                  />
+                                                  <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={() => {
+                                                      const newHeaders = tableData.headers.filter((_: any, i: number) => i !== colIdx);
+                                                      const newRows = tableData.rows.map((row: string[]) => 
+                                                        row.filter((_: any, i: number) => i !== colIdx)
+                                                      );
+                                                      setTableVariables(prev => ({
+                                                        ...prev,
+                                                        [varName]: { headers: newHeaders, rows: newRows }
+                                                      }));
+                                                    }}
+                                                    className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+                                                    disabled={!editable || tableData.headers.length <= 1}
+                                                  >
+                                                    <Trash2 className="h-3 w-3" />
+                                                  </Button>
+                                                </div>
+                                              </th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {(tableData.rows || []).map((row: string[], rowIdx: number) => (
+                                            <tr key={rowIdx}>
+                                              {row.map((cell: string, colIdx: number) => (
+                                                <td key={colIdx} className="border p-1">
+                                                  <div className="flex items-center gap-1">
+                                                    <Input
+                                                      value={cell}
+                                                      onChange={(e) => {
+                                                        const newRows = [...tableData.rows];
+                                                        newRows[rowIdx][colIdx] = e.target.value;
+                                                        setTableVariables(prev => ({
+                                                          ...prev,
+                                                          [varName]: { ...tableData, rows: newRows }
+                                                        }));
+                                                      }}
+                                                      className="h-7 text-xs"
+                                                      placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
+                                                      disabled={!editable}
+                                                    />
+                                                  </div>
+                                                </td>
+                                              ))}
+                                              <td className="border p-1 w-8">
+                                                <Button
+                                                  size="icon"
+                                                  variant="ghost"
+                                                  onClick={() => {
+                                                    const newRows = tableData.rows.filter((_: any, i: number) => i !== rowIdx);
+                                                    setTableVariables(prev => ({
+                                                      ...prev,
+                                                      [varName]: { ...tableData, rows: newRows }
+                                                    }));
+                                                  }}
+                                                  className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
+                                                  disabled={!editable}
+                                                >
+                                                  <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ) : isList ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setListVariables(prev => ({
+                                        ...prev,
+                                        [varName]: [...(prev[varName] || []), ''] as string[] | ListItemStyle[]
+                                      }));
+                                    }}
+                                    className="h-7 px-2"
+                                    disabled={!editable}
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Add Item
+                                  </Button>
+                                </div>
+                                <div className="space-y-2">
+                                  {((listVariables[varName] || ['']) as (string | ListItemStyle)[]).map((item, index) => {
+                                    const itemValue = typeof item === 'object' && 'text' in item ? item.text : item as string;
+                                    const itemStyle = typeof item === 'object' && 'text' in item ? item as ListItemStyle : { text: item as string };
                                     
                                     return (
-                                      <div className="overflow-x-auto">
-                                        <table className="w-full border-collapse border">
-                                          <thead>
-                                            <tr>
-                                              {tableData.headers.map((header: string, colIdx: number) => (
-                                                <th key={colIdx} className="border p-1 bg-muted">
-                                                   <div className="flex items-center gap-1">
-                                                     <Input
-                                                       value={header}
-                                                       onChange={(e) => {
-                                                         const newHeaders = [...tableData.headers];
-                                                         newHeaders[colIdx] = e.target.value;
-                                                         setTableVariables(prev => ({
-                                                           ...prev,
-                                                           [varName]: { ...tableData, headers: newHeaders }
-                                                         }));
-                                                       }}
-                                                       className="h-7 text-xs font-semibold"
-                                                       placeholder={`Header ${colIdx + 1}`}
-                                                       disabled={!editable}
-                                                     />
-                                                     <Button
-                                                       size="icon"
-                                                       variant="ghost"
-                                                       onClick={() => {
-                                                         const newHeaders = tableData.headers.filter((_: any, i: number) => i !== colIdx);
-                                                         const newRows = tableData.rows.map((row: string[]) => 
-                                                           row.filter((_: any, i: number) => i !== colIdx)
-                                                         );
-                                                         setTableVariables(prev => ({
-                                                           ...prev,
-                                                           [varName]: { headers: newHeaders, rows: newRows }
-                                                         }));
-                                                       }}
-                                                       className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
-                                                       disabled={!editable || tableData.headers.length <= 1}
-                                                     >
-                                                       <Trash2 className="h-3 w-3" />
-                                                     </Button>
-                                                   </div>
-                                                </th>
-                                              ))}
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {(tableData.rows || []).map((row: string[], rowIdx: number) => (
-                                              <tr key={rowIdx}>
-                                                {row.map((cell: string, colIdx: number) => (
-                                                  <td key={colIdx} className="border p-1">
-                                                     <div className="flex items-center gap-1">
-                                                       <Input
-                                                         value={cell}
-                                                         onChange={(e) => {
-                                                           const newRows = [...tableData.rows];
-                                                           newRows[rowIdx][colIdx] = e.target.value;
-                                                           setTableVariables(prev => ({
-                                                             ...prev,
-                                                             [varName]: { ...tableData, rows: newRows }
-                                                           }));
-                                                         }}
-                                                         className="h-7 text-xs"
-                                                         placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
-                                                         disabled={!editable}
-                                                       />
-                                                       {colIdx === row.length - 1 && (
-                                                         <Button
-                                                           size="icon"
-                                                           variant="ghost"
-                                                           onClick={() => {
-                                                             const newRows = tableData.rows.filter((_: any, i: number) => i !== rowIdx);
-                                                             setTableVariables(prev => ({
-                                                               ...prev,
-                                                               [varName]: { ...tableData, rows: newRows }
-                                                             }));
-                                                           }}
-                                                           className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
-                                                           disabled={!editable || tableData.rows.length <= 1}
-                                                         >
-                                                           <Trash2 className="h-3 w-3" />
-                                                         </Button>
-                                                      )}
-                                                    </div>
-                                                  </td>
-                                                ))}
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              ) : isList ? (
-                                <div className="space-y-2">
-                                   <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs text-muted-foreground">List Items</span>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setListVariables(prev => ({
-                                            ...prev,
-                                            [varName]: [...(prev[varName] || []), ''] as string[] | ListItemStyle[]
-                                          }));
-                                        }}
-                                        className="h-7 px-2"
-                                        disabled={!editable}
-                                      >
-                                        <Plus className="h-3 w-3 mr-1" />
-                                        Add Item
-                                      </Button>
-                                   </div>
-                                   <div className="space-y-2 pl-2 border-l-2 border-muted">
-                                     {(listVariables[varName] || ['']).map((item, index) => {
-                                      const isStyled = typeof item === 'object' && 'text' in item;
-                                      const itemValue = isStyled ? (item as ListItemStyle).text : (item as string);
-                                      const itemStyle = isStyled ? (item as ListItemStyle) : { text: item as string };
-                                      
-                                      return (
-                                         <div key={index} className="flex items-center gap-2 ml-2">
-                                           <Input
-                                            value={itemValue}
-                                            onChange={(e) => {
-                                              setListVariables(prev => {
-                                                const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                if (typeof newItems[index] === 'object' && 'text' in newItems[index]) {
-                                                  newItems[index] = { ...(newItems[index] as ListItemStyle), text: e.target.value };
-                                                } else {
-                                                  newItems[index] = e.target.value;
-                                                }
-                                                return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                              });
-                                            }}
-                                            placeholder={`Item ${index + 1}`}
-                                            className="h-8 text-sm flex-1"
-                                            disabled={!editable}
-                                            style={{
-                                              color: itemStyle.color,
-                                              fontWeight: itemStyle.bold ? 'bold' : 'normal',
-                                              fontStyle: itemStyle.italic ? 'italic' : 'normal',
-                                              textDecoration: itemStyle.underline ? 'underline' : 'none',
-                                              backgroundColor: itemStyle.backgroundColor,
-                                              fontSize: itemStyle.fontSize
-                                            }}
-                                          />
-                                          
-                                          {/* Formatting Popover */}
-                                          <Popover>
-                                            <PopoverTrigger asChild>
-                                              <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-8 w-8 hover:bg-primary/10"
-                                                disabled={!editable}
-                                              >
-                                                <Palette className="h-3.5 w-3.5" />
-                                              </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-72" align="start">
-                                              <div className="space-y-4">
-                                                <h4 className="font-medium text-sm">Text Formatting</h4>
-                                                
-                                                {/* Font Size */}
-                                                <div className="space-y-2">
-                                                  <Label className="text-xs">Font Size</Label>
-                                                  <div className="flex gap-2">
-                                                    <select
-                                                      value={itemStyle.fontSize || '14px'}
-                                                      onChange={(e) => {
-                                                        setListVariables(prev => {
-                                                          const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                          const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                            ? (newItems[index] as ListItemStyle)
-                                                            : { text: newItems[index] as string };
-                                                          newItems[index] = { ...current, fontSize: e.target.value } as ListItemStyle;
-                                                          return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                        });
-                                                      }}
-                                                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                                                    >
-                                                      <option value="10px">10px</option>
-                                                      <option value="12px">12px</option>
-                                                      <option value="14px">14px</option>
-                                                      <option value="16px">16px</option>
-                                                      <option value="18px">18px</option>
-                                                      <option value="20px">20px</option>
-                                                      <option value="24px">24px</option>
-                                                      <option value="28px">28px</option>
-                                                      <option value="32px">32px</option>
-                                                    </select>
-                                                  </div>
-                                                </div>
-                                                
-                                                {/* Text Style Toggles */}
-                                                <div className="space-y-2">
-                                                  <Label className="text-xs">Text Style</Label>
-                                                  <div className="flex gap-2">
-                                                    <Button
-                                                      size="sm"
-                                                      variant={itemStyle.bold ? "default" : "outline"}
-                                                      onClick={() => {
-                                                        setListVariables(prev => {
-                                                          const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                          const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                            ? (newItems[index] as ListItemStyle)
-                                                            : { text: newItems[index] as string };
-                                                          newItems[index] = { ...current, bold: !current.bold } as ListItemStyle;
-                                                          return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                        });
-                                                      }}
-                                                      className="h-8 w-8 p-0"
-                                                      title="Bold"
-                                                    >
-                                                      <Bold className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button
-                                                      size="sm"
-                                                      variant={itemStyle.italic ? "default" : "outline"}
-                                                      onClick={() => {
-                                                        setListVariables(prev => {
-                                                          const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                          const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                            ? (newItems[index] as ListItemStyle)
-                                                            : { text: newItems[index] as string };
-                                                          newItems[index] = { ...current, italic: !current.italic } as ListItemStyle;
-                                                          return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                        });
-                                                      }}
-                                                      className="h-8 w-8 p-0"
-                                                      title="Italic"
-                                                    >
-                                                      <Italic className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button
-                                                      size="sm"
-                                                      variant={itemStyle.underline ? "default" : "outline"}
-                                                      onClick={() => {
-                                                        setListVariables(prev => {
-                                                          const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                          const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                            ? (newItems[index] as ListItemStyle)
-                                                            : { text: newItems[index] as string };
-                                                          newItems[index] = { ...current, underline: !current.underline } as ListItemStyle;
-                                                          return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                        });
-                                                      }}
-                                                      className="h-8 w-8 p-0"
-                                                      title="Underline"
-                                                    >
-                                                      <Underline className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                  </div>
-                                                </div>
-                                                
-                                                {/* Text Color */}
-                                                <div className="space-y-2">
-                                                  <Label className="text-xs">Text Color</Label>
-                                                  <div className="flex gap-2">
-                                                    <Input
-                                                      type="color"
-                                                      value={itemStyle.color || '#000000'}
-                                                      onChange={(e) => {
-                                                        setListVariables(prev => {
-                                                          const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                          const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                            ? (newItems[index] as ListItemStyle)
-                                                            : { text: newItems[index] as string };
-                                                          newItems[index] = { ...current, color: e.target.value } as ListItemStyle;
-                                                          return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                        });
-                                                      }}
-                                                      className="h-8 w-16"
-                                                    />
-                                                    <Button
-                                                      size="sm"
-                                                      variant="outline"
-                                                      onClick={() => {
-                                                        setListVariables(prev => {
-                                                          const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                          const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                            ? (newItems[index] as ListItemStyle)
-                                                            : { text: newItems[index] as string };
-                                                          const { color, ...rest } = current;
-                                                          newItems[index] = rest as ListItemStyle;
-                                                          return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                        });
-                                                      }}
-                                                      className="h-8"
-                                                    >
-                                                      Clear
-                                                    </Button>
-                                                  </div>
-                                                </div>
-                                                
-                                                {/* Background Color */}
-                                                <div className="space-y-2">
-                                                  <Label className="text-xs">Background Color</Label>
-                                                  <div className="flex gap-2">
-                                                    <Input
-                                                      type="color"
-                                                      value={itemStyle.backgroundColor || '#ffffff'}
-                                                      onChange={(e) => {
-                                                        setListVariables(prev => {
-                                                          const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                          const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                            ? (newItems[index] as ListItemStyle)
-                                                            : { text: newItems[index] as string };
-                                                          newItems[index] = { ...current, backgroundColor: e.target.value } as ListItemStyle;
-                                                          return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                        });
-                                                      }}
-                                                      className="h-8 w-16"
-                                                    />
-                                                    <Button
-                                                      size="sm"
-                                                      variant="outline"
-                                                      onClick={() => {
-                                                        setListVariables(prev => {
-                                                          const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                          const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                            ? (newItems[index] as ListItemStyle)
-                                                            : { text: newItems[index] as string };
-                                                          const { backgroundColor, ...rest } = current;
-                                                          newItems[index] = rest as ListItemStyle;
-                                                          return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                        });
-                                                      }}
-                                                      className="h-8"
-                                                    >
-                                                      Clear
-                                                    </Button>
-                                                  </div>
+                                      <div key={index} className={styles.listItemRow}>
+                                        <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
+                                        <Input
+                                          value={itemValue}
+                                          placeholder={`Item ${index + 1}`}
+                                          onChange={(e) => {
+                                            setListVariables(prev => {
+                                              const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                              if (typeof newItems[index] === 'object' && 'text' in newItems[index]) {
+                                                newItems[index] = { ...(newItems[index] as ListItemStyle), text: e.target.value };
+                                              } else {
+                                                newItems[index] = e.target.value;
+                                              }
+                                              return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                            });
+                                          }}
+                                          className="flex-1 h-8"
+                                          disabled={!editable}
+                                          style={{
+                                            color: itemStyle.color,
+                                            fontWeight: itemStyle.bold ? 'bold' : 'normal',
+                                            fontStyle: itemStyle.italic ? 'italic' : 'normal',
+                                            textDecoration: itemStyle.underline ? 'underline' : 'none',
+                                            backgroundColor: itemStyle.backgroundColor,
+                                            fontSize: itemStyle.fontSize
+                                          }}
+                                        />
+                                        
+                                        {/* Formatting Popover */}
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-8 w-8 hover:bg-primary/10"
+                                              disabled={!editable}
+                                            >
+                                              <Palette className="h-3.5 w-3.5" />
+                                            </Button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-72" align="start">
+                                            <div className="space-y-4">
+                                              <h4 className="font-medium text-sm">Item Formatting</h4>
+                                              
+                                              {/* Text Style Toggles */}
+                                              <div className="space-y-2">
+                                                <Label className="text-xs">Text Style</Label>
+                                                <div className="flex gap-2">
+                                                  <Button
+                                                    size="sm"
+                                                    variant={itemStyle.bold ? "default" : "outline"}
+                                                    onClick={() => {
+                                                      setListVariables(prev => {
+                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                          ? (newItems[index] as ListItemStyle)
+                                                          : { text: newItems[index] as string };
+                                                        newItems[index] = { ...current, bold: !current.bold } as ListItemStyle;
+                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                      });
+                                                    }}
+                                                    className="h-8 w-8 p-0"
+                                                  >
+                                                    <Bold className="h-3.5 w-3.5" />
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant={itemStyle.italic ? "default" : "outline"}
+                                                    onClick={() => {
+                                                      setListVariables(prev => {
+                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                          ? (newItems[index] as ListItemStyle)
+                                                          : { text: newItems[index] as string };
+                                                        newItems[index] = { ...current, italic: !current.italic } as ListItemStyle;
+                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                      });
+                                                    }}
+                                                    className="h-8 w-8 p-0"
+                                                  >
+                                                    <Italic className="h-3.5 w-3.5" />
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant={itemStyle.underline ? "default" : "outline"}
+                                                    onClick={() => {
+                                                      setListVariables(prev => {
+                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                          ? (newItems[index] as ListItemStyle)
+                                                          : { text: newItems[index] as string };
+                                                        newItems[index] = { ...current, underline: !current.underline } as ListItemStyle;
+                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                      });
+                                                    }}
+                                                    className="h-8 w-8 p-0"
+                                                  >
+                                                    <Underline className="h-3.5 w-3.5" />
+                                                  </Button>
                                                 </div>
                                               </div>
-                                            </PopoverContent>
-                                          </Popover>
-                                          
-                                           <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            onClick={() => {
-                                              setListVariables(prev => {
-                                                const newItems = ((prev[varName] || []) as (string | ListItemStyle)[]).filter((_, i) => i !== index);
-                                                return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                              });
-                                            }}
-                                            className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                                            disabled={!editable || (listVariables[varName] || ['']).length <= 1}
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                               ) : (
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    id={`var-${varName}`}
-                                    placeholder={`Enter ${varName}`}
-                                    value={typeof variables[varName] === 'object' && variables[varName] !== null && 'text' in variables[varName] 
-                                      ? (variables[varName] as TextStyle).text 
-                                      : (variables[varName] as string || "")}
-                                    onChange={(e) => {
-                                      const currentVar = variables[varName];
-                                      if (typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar) {
-                                        setVariables({ ...variables, [varName]: { ...currentVar, text: e.target.value } });
-                                      } else {
-                                        setVariables({ ...variables, [varName]: e.target.value });
-                                      }
-                                    }}
-                                    className="flex-1"
-                                    disabled={!editable}
-                                    style={typeof variables[varName] === 'object' && variables[varName] !== null && 'text' in variables[varName]
-                                      ? {
-                                          color: (variables[varName] as TextStyle).color,
-                                          fontWeight: (variables[varName] as TextStyle).bold ? 'bold' : 'normal',
-                                          fontStyle: (variables[varName] as TextStyle).italic ? 'italic' : 'normal',
-                                          textDecoration: (variables[varName] as TextStyle).underline ? 'underline' : 'none',
-                                          backgroundColor: (variables[varName] as TextStyle).backgroundColor,
-                                          fontSize: (variables[varName] as TextStyle).fontSize
-                                        }
-                                      : undefined
-                                    }
-                                  />
-                                  
-                                  {/* Text Formatting Popover */}
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 hover:bg-primary/10"
-                                        disabled={!editable}
-                                      >
-                                        <Palette className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-72" align="start">
-                                      <div className="space-y-4">
-                                        <h4 className="font-medium text-sm">Text Formatting</h4>
+                                              
+                                              {/* Text Color */}
+                                              <div className="space-y-2">
+                                                <Label className="text-xs">Text Color</Label>
+                                                <div className="flex gap-2">
+                                                  <Input
+                                                    type="color"
+                                                    value={itemStyle.color || '#000000'}
+                                                    onChange={(e) => {
+                                                      setListVariables(prev => {
+                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
+                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
+                                                          ? (newItems[index] as ListItemStyle)
+                                                          : { text: newItems[index] as string };
+                                                        newItems[index] = { ...current, color: e.target.value } as ListItemStyle;
+                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                                      });
+                                                    }}
+                                                    className="h-8 w-16"
+                                                  />
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </PopoverContent>
+                                        </Popover>
                                         
-                                        {/* Font Size */}
-                                        <div className="space-y-2">
-                                          <Label className="text-xs">Font Size</Label>
-                                          <select
-                                            value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'fontSize' in variables[varName] 
-                                              ? (variables[varName] as TextStyle).fontSize 
-                                              : undefined) || '14px'}
-                                            onChange={(e) => {
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setListVariables(prev => {
+                                              const newItems = ((prev[varName] || []) as (string | ListItemStyle)[]).filter((_, i) => i !== index);
+                                              return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
+                                            });
+                                          }}
+                                          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                                          disabled={!editable || (listVariables[varName] || ['']).length <= 1}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  id={`var-${varName}`}
+                                  placeholder={`Enter ${varName}`}
+                                  value={typeof variables[varName] === 'object' && variables[varName] !== null && 'text' in variables[varName] 
+                                    ? (variables[varName] as TextStyle).text 
+                                    : (variables[varName] as string || "")}
+                                  onChange={(e) => {
+                                    const currentVar = variables[varName];
+                                    if (typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar) {
+                                      setVariables({ ...variables, [varName]: { ...currentVar, text: e.target.value } });
+                                    } else {
+                                      setVariables({ ...variables, [varName]: e.target.value });
+                                    }
+                                  }}
+                                  className="flex-1"
+                                  disabled={!editable}
+                                  style={typeof variables[varName] === 'object' && variables[varName] !== null && 'text' in variables[varName]
+                                    ? {
+                                        color: (variables[varName] as TextStyle).color,
+                                        fontWeight: (variables[varName] as TextStyle).bold ? 'bold' : 'normal',
+                                        fontStyle: (variables[varName] as TextStyle).italic ? 'italic' : 'normal',
+                                        textDecoration: (variables[varName] as TextStyle).underline ? 'underline' : 'none',
+                                        backgroundColor: (variables[varName] as TextStyle).backgroundColor,
+                                        fontSize: (variables[varName] as TextStyle).fontSize
+                                      }
+                                    : undefined
+                                  }
+                                />
+                                
+                                {/* Text Formatting Popover */}
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 hover:bg-primary/10"
+                                      disabled={!editable}
+                                    >
+                                      <Palette className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-72" align="start">
+                                    <div className="space-y-4">
+                                      <h4 className="font-medium text-sm">Text Formatting</h4>
+                                      
+                                      {/* Font Size */}
+                                      <div className="space-y-2">
+                                        <Label className="text-xs">Font Size</Label>
+                                        <select
+                                          value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'fontSize' in variables[varName] 
+                                            ? (variables[varName] as TextStyle).fontSize 
+                                            : undefined) || '14px'}
+                                          onChange={(e) => {
+                                            const currentVar = variables[varName];
+                                            const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                              ? currentVar as TextStyle
+                                              : { text: currentVar as string || '' };
+                                            setVariables({ ...variables, [varName]: { ...current, fontSize: e.target.value } });
+                                          }}
+                                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                                        >
+                                          <option value="10px">10px</option>
+                                          <option value="12px">12px</option>
+                                          <option value="14px">14px</option>
+                                          <option value="16px">16px</option>
+                                          <option value="18px">18px</option>
+                                          <option value="20px">20px</option>
+                                          <option value="24px">24px</option>
+                                        </select>
+                                      </div>
+                                      
+                                      {/* Text Style Toggles */}
+                                      <div className="space-y-2">
+                                        <Label className="text-xs">Text Style</Label>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'bold' in variables[varName] && (variables[varName] as TextStyle).bold) ? "default" : "outline"}
+                                            onClick={() => {
                                               const currentVar = variables[varName];
                                               const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
                                                 ? currentVar as TextStyle
                                                 : { text: currentVar as string || '' };
-                                              setVariables({ ...variables, [varName]: { ...current, fontSize: e.target.value } });
+                                              setVariables({ ...variables, [varName]: { ...current, bold: !current.bold } });
                                             }}
-                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                            className="h-8 w-8 p-0"
                                           >
-                                            <option value="10px">10px</option>
-                                            <option value="12px">12px</option>
-                                            <option value="14px">14px</option>
-                                            <option value="16px">16px</option>
-                                            <option value="18px">18px</option>
-                                            <option value="20px">20px</option>
-                                            <option value="24px">24px</option>
-                                            <option value="28px">28px</option>
-                                            <option value="32px">32px</option>
-                                          </select>
-                                        </div>
-                                        
-                                        {/* Text Style Toggles */}
-                                        <div className="space-y-2">
-                                          <Label className="text-xs">Text Style</Label>
-                                          <div className="flex gap-2">
-                                            <Button
-                                              size="sm"
-                                              variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'bold' in variables[varName] && (variables[varName] as TextStyle).bold) ? "default" : "outline"}
-                                              onClick={() => {
-                                                const currentVar = variables[varName];
-                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                                  ? currentVar as TextStyle
-                                                  : { text: currentVar as string || '' };
-                                                setVariables({ ...variables, [varName]: { ...current, bold: !current.bold } });
-                                              }}
-                                              className="h-8 w-8 p-0"
-                                              title="Bold"
-                                            >
-                                              <Bold className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                              size="sm"
-                                              variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'italic' in variables[varName] && (variables[varName] as TextStyle).italic) ? "default" : "outline"}
-                                              onClick={() => {
-                                                const currentVar = variables[varName];
-                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                                  ? currentVar as TextStyle
-                                                  : { text: currentVar as string || '' };
-                                                setVariables({ ...variables, [varName]: { ...current, italic: !current.italic } });
-                                              }}
-                                              className="h-8 w-8 p-0"
-                                              title="Italic"
-                                            >
-                                              <Italic className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                              size="sm"
-                                              variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'underline' in variables[varName] && (variables[varName] as TextStyle).underline) ? "default" : "outline"}
-                                              onClick={() => {
-                                                const currentVar = variables[varName];
-                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                                  ? currentVar as TextStyle
-                                                  : { text: currentVar as string || '' };
-                                                setVariables({ ...variables, [varName]: { ...current, underline: !current.underline } });
-                                              }}
-                                              className="h-8 w-8 p-0"
-                                              title="Underline"
-                                            >
-                                              <Underline className="h-3.5 w-3.5" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Text Color */}
-                                        <div className="space-y-2">
-                                          <Label className="text-xs">Text Color</Label>
-                                          <div className="flex gap-2">
-                                            <Input
-                                              type="color"
-                                              value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'color' in variables[varName] 
-                                                ? (variables[varName] as TextStyle).color 
-                                                : undefined) || '#000000'}
-                                              onChange={(e) => {
-                                                const currentVar = variables[varName];
-                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                                  ? currentVar as TextStyle
-                                                  : { text: currentVar as string || '' };
-                                                setVariables({ ...variables, [varName]: { ...current, color: e.target.value } });
-                                              }}
-                                              className="h-8 w-16"
-                                            />
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              onClick={() => {
-                                                const currentVar = variables[varName];
-                                                if (typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar) {
-                                                  const { color, ...rest } = currentVar as TextStyle;
-                                                  setVariables({ ...variables, [varName]: rest });
-                                                }
-                                              }}
-                                              className="h-8"
-                                            >
-                                              Clear
-                                            </Button>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Background Color */}
-                                        <div className="space-y-2">
-                                          <Label className="text-xs">Background Color</Label>
-                                          <div className="flex gap-2">
-                                            <Input
-                                              type="color"
-                                              value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'backgroundColor' in variables[varName] 
-                                                ? (variables[varName] as TextStyle).backgroundColor 
-                                                : undefined) || '#ffffff'}
-                                              onChange={(e) => {
-                                                const currentVar = variables[varName];
-                                                const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                                  ? currentVar as TextStyle
-                                                  : { text: currentVar as string || '' };
-                                                setVariables({ ...variables, [varName]: { ...current, backgroundColor: e.target.value } });
-                                              }}
-                                              className="h-8 w-16"
-                                            />
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              onClick={() => {
-                                                const currentVar = variables[varName];
-                                                if (typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar) {
-                                                  const { backgroundColor, ...rest } = currentVar as TextStyle;
-                                                  setVariables({ ...variables, [varName]: rest });
-                                                }
-                                              }}
-                                              className="h-8"
-                                            >
-                                              Clear
-                                            </Button>
-                                          </div>
+                                            <Bold className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'italic' in variables[varName] && (variables[varName] as TextStyle).italic) ? "default" : "outline"}
+                                            onClick={() => {
+                                              const currentVar = variables[varName];
+                                              const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                                ? currentVar as TextStyle
+                                                : { text: currentVar as string || '' };
+                                              setVariables({ ...variables, [varName]: { ...current, italic: !current.italic } });
+                                            }}
+                                            className="h-8 w-8 p-0"
+                                          >
+                                            <Italic className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'underline' in variables[varName] && (variables[varName] as TextStyle).underline) ? "default" : "outline"}
+                                            onClick={() => {
+                                              const currentVar = variables[varName];
+                                              const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                                ? currentVar as TextStyle
+                                                : { text: currentVar as string || '' };
+                                              setVariables({ ...variables, [varName]: { ...current, underline: !current.underline } });
+                                            }}
+                                            className="h-8 w-8 p-0"
+                                          >
+                                            <Underline className="h-3.5 w-3.5" />
+                                          </Button>
                                         </div>
                                       </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </div>
-                               )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </Card>
+                                      
+                                      {/* Text Color */}
+                                      <div className="space-y-2">
+                                        <Label className="text-xs">Text Color</Label>
+                                        <Input
+                                          type="color"
+                                          value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'color' in variables[varName] 
+                                            ? (variables[varName] as TextStyle).color 
+                                            : undefined) || '#000000'}
+                                          onChange={(e) => {
+                                            const currentVar = variables[varName];
+                                            const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
+                                              ? currentVar as TextStyle
+                                              : { text: currentVar as string || '' };
+                                            setVariables({ ...variables, [varName]: { ...current, color: e.target.value } });
+                                          }}
+                                          className="h-8 w-16"
+                                        />
+                                      </div>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </ScrollArea>
             </div>
 
-            {/* Right Panel - Live Preview */}
-            <div className={styles.previewSection}>
-              <div className={styles.sectionHeader}>
-                <h2>Live Preview</h2>
-                <p className="text-xs text-muted-foreground">
-                  Preview updates as you enter variable values
-                </p>
+            {/* Right Panel - Preview (Email Body) */}
+            <div className={styles.previewPanel}>
+              <div className={styles.previewPanelHeader}>
+                <h2>
+                  <Eye className="h-4 w-4" />
+                  Email Body Preview
+                </h2>
               </div>
-              <ScrollArea className="h-[calc(100vh-180px)]">
-                <div>
+              <ScrollArea className="flex-1">
+                <div className={styles.previewBody}>
                   {selectedTemplate.sections && selectedTemplate.sections.length > 0 ? (
-                    // Render from sections with runtime values
                     <div
                       dangerouslySetInnerHTML={{ 
                         __html: selectedTemplate.sections.map(section => {
-                          // Combine variables, listVariables, and tableVariables for rendering
                           const runtimeVars: Record<string, string | string[] | any> = {
                             ...variables,
                             ...listVariables,
@@ -1529,7 +1383,6 @@ const RunTemplates = () => {
                       className={styles.previewContent}
                     />
                   ) : (
-                    // Render from HTML for legacy templates
                     <div
                       dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables, listVariables) }}
                       className={styles.previewContent}
