@@ -76,7 +76,6 @@ const TemplateEditor = () => {
   const [showPreview, setShowPreview] = useState(true);
   const [showLibrary, setShowLibrary] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateSubject, setTemplateSubject] = useState(""); // Email subject with {{placeholders}} support
   const [isEditMode, setIsEditMode] = useState(false);
@@ -559,10 +558,6 @@ const TemplateEditor = () => {
         });
       }
 
-      setShowSaveDialog(false);
-      setTemplateName("");
-      setTemplateSubject("");
-      
       // Navigate back to templates list
       setTimeout(() => navigate('/templates'), 500);
     } catch (error: any) {
@@ -601,9 +596,6 @@ const TemplateEditor = () => {
         variant: "destructive",
       });
       
-      setShowSaveDialog(false);
-      setTemplateName("");
-      setTemplateSubject("");
       setTimeout(() => navigate('/templates'), 500);
     } finally {
       setIsSaving(false);
@@ -777,23 +769,43 @@ const TemplateEditor = () => {
       <div className={styles.container}>
         {/* Top Bar */}
         <div className={styles.topBar}>
-          <div className={styles.titleSection}>
+          <div className={styles.topBarRow}>
+            <div className={styles.titleSection}>
               <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/templates')}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Static Templates
-            </Button>
-            <div>
-              <h1>Static Template Editor</h1>
-              <p className="text-xs text-muted-foreground font-medium">
-                Drag, drop, and customize your sections
-              </p>
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/templates')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
             </div>
-          </div>
-          <div className={styles.viewControls}>
+            
+            {/* Inline Template Name and Subject Fields */}
+            <div className={styles.templateMetaFields}>
+              <div className={styles.metaField}>
+                <Label htmlFor="inline-template-name" className={styles.metaLabel}>Template Name</Label>
+                <Input
+                  id="inline-template-name"
+                  placeholder="Enter template name..."
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  className={styles.metaInput}
+                />
+              </div>
+              <div className={styles.metaField}>
+                <Label htmlFor="inline-template-subject" className={styles.metaLabel}>Subject</Label>
+                <Input
+                  id="inline-template-subject"
+                  placeholder="Email subject (supports {{placeholders}})..."
+                  value={templateSubject}
+                  onChange={(e) => setTemplateSubject(e.target.value)}
+                  className={styles.metaInput}
+                />
+              </div>
+            </div>
+            
+            <div className={styles.viewControls}>
               <Sheet open={showLibrary} onOpenChange={setShowLibrary}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -876,63 +888,27 @@ const TemplateEditor = () => {
                 </Button>
               )}
               
-              <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                <DialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    className="shadow-lg shadow-primary/20"
-                  >
+              <Button
+                size="sm"
+                className="shadow-lg shadow-primary/20"
+                onClick={handleSaveTemplate}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Static Template
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Save Static Template</DialogTitle>
-                  </DialogHeader>
-                  <div className={styles.saveDialogContent}>
-                    <div className={styles.inputGroup}>
-                      <Label htmlFor="template-name">Static Template Name</Label>
-                      <Input
-                        id="template-name"
-                        placeholder="Enter template name..."
-                        value={templateName}
-                        onChange={(e) => setTemplateName(e.target.value)}
-                      />
-                    </div>
-                    <div className={styles.inputGroup}>
-                      <Label htmlFor="template-subject">Email Subject</Label>
-                      <Input
-                        id="template-subject"
-                        placeholder="Enter subject (supports {{placeholders}})..."
-                        value={templateSubject}
-                        onChange={(e) => setTemplateSubject(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSaveTemplate();
-                          }
-                        }}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Use {"{{variableName}}"} for dynamic content, e.g., "Order Confirmation - {"{{orderNumber}}"}"
-                      </p>
-                    </div>
-                    <div className={styles.dialogActions}>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowSaveDialog(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSaveTemplate} disabled={isSaving}>
-                        {isSaving ? 'Saving...' : 'Save'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                    Save Template
+                  </>
+                )}
+              </Button>
             </div>
           </div>
+        </div>
 
           {/* Main Content */}
           <div className={styles.contentArea}>
