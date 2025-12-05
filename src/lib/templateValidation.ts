@@ -1,0 +1,271 @@
+import { Section } from "@/types/section";
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  sectionId?: string;
+  sectionType?: string;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+}
+
+// Extract all {{placeholder}} patterns from a string
+export const extractPlaceholders = (text: string): string[] => {
+  const regex = /\{\{(\w+)\}\}/g;
+  const placeholders: string[] = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    placeholders.push(match[1]);
+  }
+  return [...new Set(placeholders)]; // Remove duplicates
+};
+
+// Validate template name
+export const validateTemplateName = (name: string): ValidationError | null => {
+  const trimmedName = name.trim();
+  
+  if (!trimmedName) {
+    return {
+      field: 'templateName',
+      message: 'Template name is required'
+    };
+  }
+  
+  if (trimmedName.length < 3) {
+    return {
+      field: 'templateName',
+      message: 'Template name must be at least 3 characters'
+    };
+  }
+  
+  if (trimmedName.length > 100) {
+    return {
+      field: 'templateName',
+      message: 'Template name must be less than 100 characters'
+    };
+  }
+  
+  // Check for valid characters (alphanumeric, spaces, hyphens, underscores)
+  const validNameRegex = /^[\w\s\-_.()]+$/;
+  if (!validNameRegex.test(trimmedName)) {
+    return {
+      field: 'templateName',
+      message: 'Template name contains invalid characters'
+    };
+  }
+  
+  return null;
+};
+
+// Validate subject line
+export const validateSubject = (subject: string): ValidationError | null => {
+  if (!subject.trim()) {
+    return null; // Subject is optional
+  }
+  
+  if (subject.length > 200) {
+    return {
+      field: 'templateSubject',
+      message: 'Subject must be less than 200 characters'
+    };
+  }
+  
+  // Check for unclosed placeholders
+  const openCount = (subject.match(/\{\{/g) || []).length;
+  const closeCount = (subject.match(/\}\}/g) || []).length;
+  
+  if (openCount !== closeCount) {
+    return {
+      field: 'templateSubject',
+      message: 'Subject has unclosed placeholder brackets'
+    };
+  }
+  
+  // Check for empty placeholders {{}}
+  if (/\{\{\s*\}\}/.test(subject)) {
+    return {
+      field: 'templateSubject',
+      message: 'Subject has empty placeholder brackets'
+    };
+  }
+  
+  return null;
+};
+
+// Validate section placeholders against defined variables
+export const validateSectionPlaceholders = (section: Section): ValidationError[] => {
+  const errors: ValidationError[] = [];
+  
+  // Skip static sections
+  if (section.type === 'header' || section.type === 'footer') {
+    return errors;
+  }
+  
+  // Get defined variables
+  const definedVars = Object.keys(section.variables || {});
+  
+  // Extract placeholders from content
+  const contentPlaceholders = extractPlaceholders(section.content || '');
+  
+  // Check for undefined placeholders in content
+  for (const placeholder of contentPlaceholders) {
+    if (!definedVars.includes(placeholder)) {
+      errors.push({
+        field: 'sectionContent',
+        message: `Placeholder "{{${placeholder}}}" is used but not defined as a variable`,
+        sectionId: section.id,
+        sectionType: section.type
+      });
+    }
+  }
+  
+  // Check variables for proper values
+  if (section.variables) {
+    for (const [varName, varValue] of Object.entries(section.variables)) {
+      // Check for empty required values
+      if (varValue === '' || varValue === undefined || varValue === null) {
+        errors.push({
+          field: 'sectionVariable',
+          message: `Variable "${varName}" has no default value`,
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      }
+      
+      // For arrays, check if they're empty
+      if (Array.isArray(varValue) && varValue.length === 0) {
+        errors.push({
+          field: 'sectionVariable',
+          message: `Variable "${varName}" list is empty`,
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      }
+    }
+  }
+  
+  // Validate nested children
+  if (section.children) {
+    for (const child of section.children) {
+      errors.push(...validateSectionPlaceholders(child));
+    }
+  }
+  
+  return errors;
+};
+
+// Validate all sections
+export const validateSections = (sections: Section[]): ValidationError[] => {
+  const errors: ValidationError[] = [];
+  
+  // Check if there are any user sections (excluding header/footer)
+  const userSections = sections.filter(s => s.type !== 'header' && s.type !== 'footer');
+  
+  if (userSections.length === 0) {
+    errors.push({
+      field: 'sections',
+      message: 'Template must have at least one content section'
+    });
+  }
+  
+  // Validate each section
+  for (const section of sections) {
+    // Check for empty content in content-bearing sections
+    const contentTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
+    if (contentTypes.includes(section.type)) {
+      if (!section.content || section.content.trim() === '') {
+        errors.push({
+          field: 'sectionContent',
+          message: `${section.type} section has no content`,
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      }
+    }
+    
+    // Validate placeholders
+    errors.push(...validateSectionPlaceholders(section));
+    
+    // Validate table sections
+    if (section.type === 'table' && section.variables?.tableData) {
+      const tableData = section.variables.tableData;
+      if (Array.isArray(tableData) && tableData.length === 0) {
+        errors.push({
+          field: 'sectionContent',
+          message: 'Table section has no data rows',
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      }
+    }
+    
+    // Validate list sections
+    const listTypes = ['bullet-list-circle', 'bullet-list-disc', 'bullet-list-square', 'number-list-1', 'number-list-i', 'number-list-a'];
+    if (listTypes.includes(section.type) && section.variables?.items) {
+      const items = section.variables.items;
+      if (Array.isArray(items) && items.length === 0) {
+        errors.push({
+          field: 'sectionContent',
+          message: 'List section has no items',
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      }
+    }
+  }
+  
+  return errors;
+};
+
+// Main validation function
+export const validateTemplate = (
+  templateName: string,
+  templateSubject: string,
+  sections: Section[]
+): ValidationResult => {
+  const errors: ValidationError[] = [];
+  
+  // Validate name
+  const nameError = validateTemplateName(templateName);
+  if (nameError) errors.push(nameError);
+  
+  // Validate subject
+  const subjectError = validateSubject(templateSubject);
+  if (subjectError) errors.push(subjectError);
+  
+  // Validate sections
+  errors.push(...validateSections(sections));
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+// Format errors for display
+export const formatValidationErrors = (errors: ValidationError[]): string => {
+  if (errors.length === 0) return '';
+  
+  const grouped: Record<string, ValidationError[]> = {};
+  
+  for (const error of errors) {
+    const key = error.sectionId ? `Section: ${error.sectionType}` : 'General';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(error);
+  }
+  
+  const parts: string[] = [];
+  for (const [group, groupErrors] of Object.entries(grouped)) {
+    if (group === 'General') {
+      parts.push(...groupErrors.map(e => `• ${e.message}`));
+    } else {
+      parts.push(`${group}:`);
+      parts.push(...groupErrors.map(e => `  • ${e.message}`));
+    }
+  }
+  
+  return parts.join('\n');
+};

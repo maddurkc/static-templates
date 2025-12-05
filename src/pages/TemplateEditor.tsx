@@ -15,13 +15,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2 } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
 import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils";
 import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
 import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpdateRequest, fetchTemplateById } from "@/lib/templateApi";
+import { validateTemplate, validateTemplateName, validateSubject, ValidationError } from "@/lib/templateValidation";
 import styles from "./TemplateEditor.module.scss";
 
 const TemplateEditor = () => {
@@ -84,6 +85,9 @@ const TemplateEditor = () => {
   const [copiedStyles, setCopiedStyles] = useState<Section['styles'] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [subjectError, setSubjectError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Helper function to load template data into state
@@ -460,11 +464,41 @@ const TemplateEditor = () => {
     }
   };
 
+  // Real-time validation handlers
+  const handleNameChange = (value: string) => {
+    setTemplateName(value);
+    const error = validateTemplateName(value);
+    setNameError(error?.message || null);
+  };
+
+  const handleSubjectChange = (value: string) => {
+    setTemplateSubject(value);
+    const error = validateSubject(value);
+    setSubjectError(error?.message || null);
+  };
+
   const handleSaveTemplate = async () => {
-    if (!templateName.trim()) {
+    // Run comprehensive validation
+    const allSections = [headerSection, ...sections, footerSection];
+    const validation = validateTemplate(templateName, templateSubject, allSections);
+    
+    setValidationErrors(validation.errors);
+    
+    if (!validation.isValid) {
+      // Show first few errors in toast
+      const errorMessages = validation.errors.slice(0, 3).map(e => e.message);
+      const moreCount = validation.errors.length - 3;
+      
       toast({
-        title: "Name Required",
-        description: "Please enter a template name.",
+        title: "Validation Failed",
+        description: (
+          <div className="space-y-1">
+            {errorMessages.map((msg, i) => (
+              <p key={i}>• {msg}</p>
+            ))}
+            {moreCount > 0 && <p className="text-muted-foreground">...and {moreCount} more issues</p>}
+          </div>
+        ),
         variant: "destructive",
       });
       return;
@@ -783,25 +817,33 @@ const TemplateEditor = () => {
             
             {/* Inline Template Name and Subject Fields */}
             <div className={styles.templateMetaFields}>
-              <div className={styles.metaField}>
-                <Label htmlFor="inline-template-name" className={styles.metaLabel}>Template Name</Label>
-                <Input
-                  id="inline-template-name"
-                  placeholder="Enter template name..."
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  className={styles.metaInput}
-                />
+              <div className={`${styles.metaField} ${nameError ? styles.hasError : ''}`}>
+                <Label htmlFor="inline-template-name" className={styles.metaLabel}>
+                  Template Name <span className={styles.required}>*</span>
+                </Label>
+                <div className={styles.inputWrapper}>
+                  <Input
+                    id="inline-template-name"
+                    placeholder="Enter template name..."
+                    value={templateName}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    className={`${styles.metaInput} ${nameError ? styles.inputError : ''}`}
+                  />
+                  {nameError && <span className={styles.errorText}>{nameError}</span>}
+                </div>
               </div>
-              <div className={styles.metaField}>
+              <div className={`${styles.metaField} ${subjectError ? styles.hasError : ''}`}>
                 <Label htmlFor="inline-template-subject" className={styles.metaLabel}>Subject</Label>
-                <Input
-                  id="inline-template-subject"
-                  placeholder="Email subject (supports {{placeholders}})..."
-                  value={templateSubject}
-                  onChange={(e) => setTemplateSubject(e.target.value)}
-                  className={styles.metaInput}
-                />
+                <div className={styles.inputWrapper}>
+                  <Input
+                    id="inline-template-subject"
+                    placeholder="Email subject (supports {{placeholders}})..."
+                    value={templateSubject}
+                    onChange={(e) => handleSubjectChange(e.target.value)}
+                    className={`${styles.metaInput} ${subjectError ? styles.inputError : ''}`}
+                  />
+                  {subjectError && <span className={styles.errorText}>{subjectError}</span>}
+                </div>
               </div>
             </div>
             
@@ -888,11 +930,19 @@ const TemplateEditor = () => {
                 </Button>
               )}
               
+              {/* Validation indicator */}
+              {validationErrors.length > 0 && (
+                <div className={styles.validationIndicator}>
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{validationErrors.length} issue{validationErrors.length > 1 ? 's' : ''}</span>
+                </div>
+              )}
+              
               <Button
                 size="sm"
                 className="shadow-lg shadow-primary/20"
                 onClick={handleSaveTemplate}
-                disabled={isSaving}
+                disabled={isSaving || !!nameError}
               >
                 {isSaving ? (
                   <>
