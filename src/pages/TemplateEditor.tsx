@@ -833,7 +833,9 @@ const TemplateEditor = () => {
                 </div>
               </div>
               <div className={`${styles.metaField} ${subjectError ? styles.hasError : ''}`}>
-                <Label htmlFor="inline-template-subject" className={styles.metaLabel}>Subject</Label>
+                <Label htmlFor="inline-template-subject" className={styles.metaLabel}>
+                  Subject <span className={styles.required}>*</span>
+                </Label>
                 <div className={styles.inputWrapper}>
                   <Input
                     id="inline-template-subject"
@@ -942,7 +944,7 @@ const TemplateEditor = () => {
                 size="sm"
                 className="shadow-lg shadow-primary/20"
                 onClick={handleSaveTemplate}
-                disabled={isSaving || !!nameError}
+                disabled={isSaving || !!nameError || !!subjectError}
               >
                 {isSaving ? (
                   <>
