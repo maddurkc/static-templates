@@ -63,7 +63,10 @@ export const validateTemplateName = (name: string): ValidationError | null => {
 // Validate subject line
 export const validateSubject = (subject: string): ValidationError | null => {
   if (!subject.trim()) {
-    return null; // Subject is optional
+    return {
+      field: 'templateSubject',
+      message: 'Email subject is required'
+    };
   }
   
   if (subject.length > 200) {
@@ -95,6 +98,53 @@ export const validateSubject = (subject: string): ValidationError | null => {
   return null;
 };
 
+// Get human-readable section name
+const getSectionDisplayName = (section: Section): string => {
+  const typeNames: Record<string, string> = {
+    'heading1': 'Heading 1',
+    'heading2': 'Heading 2',
+    'heading3': 'Heading 3',
+    'heading4': 'Heading 4',
+    'heading5': 'Heading 5',
+    'heading6': 'Heading 6',
+    'text': 'Text',
+    'paragraph': 'Paragraph',
+    'table': 'Table',
+    'bullet-list-circle': 'Bullet List (Circle)',
+    'bullet-list-disc': 'Bullet List (Disc)',
+    'bullet-list-square': 'Bullet List (Square)',
+    'number-list-1': 'Numbered List',
+    'number-list-i': 'Roman Numeral List',
+    'number-list-a': 'Alphabetic List',
+    'image': 'Image',
+    'link': 'Link',
+    'button': 'Button',
+    'container': 'Container',
+    'labeled-content': 'Labeled Content',
+    'mixed-content': 'Mixed Content',
+  };
+  
+  const typeName = typeNames[section.type] || section.type;
+  
+  // Try to get a preview of the content for identification
+  let contentPreview = '';
+  if (section.content) {
+    // Remove HTML tags and get first 30 chars
+    const textContent = section.content.replace(/<[^>]*>/g, '').replace(/\{\{[^}]+\}\}/g, '...').trim();
+    if (textContent && textContent.length > 0) {
+      contentPreview = textContent.substring(0, 25);
+      if (textContent.length > 25) contentPreview += '...';
+    }
+  }
+  
+  // Try to get label from variables
+  if (section.variables?.label) {
+    contentPreview = String(section.variables.label).substring(0, 25);
+  }
+  
+  return contentPreview ? `${typeName}: "${contentPreview}"` : typeName;
+};
+
 // Validate section placeholders against defined variables
 export const validateSectionPlaceholders = (section: Section): ValidationError[] => {
   const errors: ValidationError[] = [];
@@ -103,6 +153,8 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
   if (section.type === 'header' || section.type === 'footer') {
     return errors;
   }
+  
+  const sectionName = getSectionDisplayName(section);
   
   // Get defined variables
   const definedVars = Object.keys(section.variables || {});
@@ -115,7 +167,7 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
     if (!definedVars.includes(placeholder)) {
       errors.push({
         field: 'sectionContent',
-        message: `Placeholder "{{${placeholder}}}" is used but not defined as a variable`,
+        message: `In "${sectionName}": Placeholder "{{${placeholder}}}" is used but not defined as a variable`,
         sectionId: section.id,
         sectionType: section.type
       });
@@ -125,11 +177,14 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
   // Check variables for proper values
   if (section.variables) {
     for (const [varName, varValue] of Object.entries(section.variables)) {
+      // Skip non-essential variables
+      if (['label', 'contentType', 'listStyle'].includes(varName)) continue;
+      
       // Check for empty required values
       if (varValue === '' || varValue === undefined || varValue === null) {
         errors.push({
           field: 'sectionVariable',
-          message: `Variable "${varName}" has no default value`,
+          message: `In "${sectionName}": Variable "${varName}" has no default value`,
           sectionId: section.id,
           sectionType: section.type
         });
@@ -139,7 +194,7 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
       if (Array.isArray(varValue) && varValue.length === 0) {
         errors.push({
           field: 'sectionVariable',
-          message: `Variable "${varName}" list is empty`,
+          message: `In "${sectionName}": Variable "${varName}" list is empty`,
           sectionId: section.id,
           sectionType: section.type
         });
@@ -173,13 +228,15 @@ export const validateSections = (sections: Section[]): ValidationError[] => {
   
   // Validate each section
   for (const section of sections) {
+    const sectionName = getSectionDisplayName(section);
+    
     // Check for empty content in content-bearing sections
     const contentTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
     if (contentTypes.includes(section.type)) {
       if (!section.content || section.content.trim() === '') {
         errors.push({
           field: 'sectionContent',
-          message: `${section.type} section has no content`,
+          message: `"${sectionName}" section has no content`,
           sectionId: section.id,
           sectionType: section.type
         });
@@ -195,7 +252,7 @@ export const validateSections = (sections: Section[]): ValidationError[] => {
       if (Array.isArray(tableData) && tableData.length === 0) {
         errors.push({
           field: 'sectionContent',
-          message: 'Table section has no data rows',
+          message: `"${sectionName}" has no data rows`,
           sectionId: section.id,
           sectionType: section.type
         });
@@ -209,7 +266,7 @@ export const validateSections = (sections: Section[]): ValidationError[] => {
       if (Array.isArray(items) && items.length === 0) {
         errors.push({
           field: 'sectionContent',
-          message: 'List section has no items',
+          message: `"${sectionName}" has no items`,
           sectionId: section.id,
           sectionType: section.type
         });
