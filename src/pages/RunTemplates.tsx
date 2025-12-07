@@ -523,26 +523,50 @@ const RunTemplates = () => {
       return;
     }
 
-    // Save to database (mock)
-    const runData = {
+    // Build body_data from all section variables
+    const bodyData: Record<string, any> = {};
+    
+    // Add text variables
+    Object.entries(variables).forEach(([key, value]) => {
+      if (typeof value === 'object' && value !== null && 'text' in value) {
+        bodyData[key] = (value as TextStyle).text;
+      } else {
+        bodyData[key] = value;
+      }
+    });
+    
+    // Add list variables
+    Object.entries(listVariables).forEach(([key, items]) => {
+      bodyData[key] = items.map((item: any) => {
+        if (typeof item === 'object' && 'text' in item) {
+          return item.text;
+        }
+        return item;
+      });
+    });
+    
+    // Add table variables
+    Object.entries(tableVariables).forEach(([key, value]) => {
+      bodyData[key] = value;
+    });
+
+    // Build the payload in the requested format
+    const payload = {
       templateId: selectedTemplate.id,
-      subject: finalSubject,
-      subjectTemplate: selectedTemplate?.subject || null,
-      subjectVariables: subjectVariables,
-      toEmails: toEmails.split(',').map(e => e.trim()),
+      toEmails: toEmails.split(',').map(e => e.trim()).filter(Boolean),
       ccEmails: ccEmails.split(',').map(e => e.trim()).filter(Boolean),
       bccEmails: bccEmails.split(',').map(e => e.trim()).filter(Boolean),
-      variables,
-      listVariables,
-      htmlOutput: replaceVariables(selectedTemplate.html, variables, listVariables),
-      runAt: new Date().toISOString(),
+      contentData: {
+        subject_data: { ...subjectVariables },
+        body_data: bodyData
+      }
     };
 
-    console.log("Template run data:", runData);
+    console.log("Email Payload:", JSON.stringify(payload, null, 2));
 
     toast({
       title: "Template Sent",
-      description: `"${finalSubject}" sent successfully to ${runData.toEmails.length} recipient(s).`,
+      description: `"${finalSubject}" sent successfully to ${payload.toEmails.length} recipient(s).`,
     });
 
     resetForm();
