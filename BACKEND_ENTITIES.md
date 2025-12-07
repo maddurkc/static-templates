@@ -2020,16 +2020,66 @@ public interface TemplateRunRepository extends JpaRepository<TemplateRun, UUID> 
 }
 
 // === TemplateVariableRepository ===
+/**
+ * Repository for template variables.
+ * 
+ * PURPOSE: Data access layer for the centralized variable registry.
+ * Provides queries to retrieve variables by template, filter by required flag,
+ * and manage variable lifecycle during template create/update.
+ */
 @Repository
 public interface TemplateVariableRepository extends JpaRepository<TemplateVariable, UUID> {
     
-    List<TemplateVariable> findByTemplateId(UUID templateId);
+    /**
+     * Find all variables for a template, ordered by name.
+     * Used to display the complete variable registry in Variables Panel.
+     */
+    List<TemplateVariable> findByTemplateIdOrderByVariableName(UUID templateId);
     
+    /**
+     * Find a specific variable by template and name.
+     * Used to check for duplicates during sync.
+     */
     Optional<TemplateVariable> findByTemplateIdAndVariableName(UUID templateId, String variableName);
     
+    /**
+     * Find variables filtered by required flag.
+     * findRequiredByTemplateId is a convenience method.
+     */
     List<TemplateVariable> findByTemplateIdAndRequired(UUID templateId, Boolean required);
     
-    void deleteByTemplateId(UUID templateId);
+    /**
+     * Find only required variables for a template.
+     * Used for validation before template execution.
+     */
+    @Query("SELECT v FROM TemplateVariable v WHERE v.template.id = :templateId AND v.required = true ORDER BY v.variableName")
+    List<TemplateVariable> findRequiredByTemplateId(@Param("templateId") UUID templateId);
+    
+    /**
+     * Find variables linked to a specific section.
+     * Used to show which variables belong to which section.
+     */
+    @Query("SELECT v FROM TemplateVariable v WHERE v.template.id = :templateId AND v.sectionId = :sectionId")
+    List<TemplateVariable> findByTemplateIdAndSectionId(@Param("templateId") UUID templateId, @Param("sectionId") UUID sectionId);
+    
+    /**
+     * Delete all variables for a template.
+     * Called during template update to sync the variable registry.
+     */
+    @Modifying
+    @Query("DELETE FROM TemplateVariable v WHERE v.template.id = :templateId")
+    void deleteByTemplateId(@Param("templateId") UUID templateId);
+    
+    /**
+     * Count variables by template.
+     */
+    long countByTemplateId(UUID templateId);
+    
+    /**
+     * Count required variables by template.
+     */
+    @Query("SELECT COUNT(v) FROM TemplateVariable v WHERE v.template.id = :templateId AND v.required = true")
+    long countRequiredByTemplateId(@Param("templateId") UUID templateId);
 }
 
 // === ApiTemplateRepository ===
@@ -2365,6 +2415,131 @@ public class TemplateRunService {
         return runMapper.toResponseDTO(saved);
     }
 }
+
+// === TemplateVariableService ===
+/**
+ * Service for managing template variables.
+ * 
+ * PURPOSE: Provides CRUD operations for template-level variable registry.
+ * Template variables are automatically extracted from sections and subject
+ * during template creation/update, creating a centralized registry.
+ * 
+ * USE CASES:
+ * - Get all variables for a template (for RunTemplates validation)
+ * - Update variable metadata (isRequired, defaultValue)
+ * - Sync variables when template sections change
+ */
+@Service
+@Slf4j
+@RequiredArgsConstructor
+@Transactional
+public class TemplateVariableService {
+
+    private final TemplateVariableRepository variableRepository;
+    private final TemplateRepository templateRepository;
+    private final TemplateVariableMapper variableMapper;
+
+    /**
+     * Get all variables for a template.
+     * Used by RunTemplates to display variable inputs with labels and validation.
+     */
+    @Transactional(readOnly = true)
+    public List<TemplateVariableResponseDTO> getTemplateVariables(UUID templateId) {
+        List<TemplateVariable> variables = variableRepository.findByTemplateIdOrderByVariableName(templateId);
+        return variableMapper.toResponseDTOList(variables);
+    }
+
+    /**
+     * Get only required variables for a template.
+     * Used for validation before template execution.
+     */
+    @Transactional(readOnly = true)
+    public List<TemplateVariableResponseDTO> getRequiredVariables(UUID templateId) {
+        List<TemplateVariable> variables = variableRepository.findRequiredByTemplateId(templateId);
+        return variableMapper.toResponseDTOList(variables);
+    }
+
+    /**
+     * Sync variables for a template.
+     * Called during template create/update to update the variable registry.
+     * Removes old variables and inserts new ones from the request.
+     */
+    public void syncTemplateVariables(UUID templateId, List<TemplateVariableRequestDTO> variableRequests) {
+        Template template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template not found with id: " + templateId));
+        
+        // Remove existing variables
+        variableRepository.deleteByTemplateId(templateId);
+        
+        // Insert new variables
+        if (variableRequests != null && !variableRequests.isEmpty()) {
+            for (TemplateVariableRequestDTO request : variableRequests) {
+                TemplateVariable variable = TemplateVariable.builder()
+                        .template(template)
+                        .variableName(request.getVariableName())
+                        .variableLabel(request.getVariableLabel())
+                        .variableType(request.getVariableType())
+                        .defaultValue(request.getDefaultValue())
+                        .required(request.getIsRequired())
+                        .placeholder(request.getPlaceholder())
+                        .build();
+                
+                // Link to section if provided
+                if (request.getSectionId() != null) {
+                    variable.setSectionId(request.getSectionId());
+                }
+                
+                variableRepository.save(variable);
+            }
+        }
+        
+        log.info("Synced {} variables for template {}", 
+                variableRequests != null ? variableRequests.size() : 0, templateId);
+    }
+
+    /**
+     * Update a single variable's metadata.
+     * Used when users modify required flag or default value in Variables Panel.
+     */
+    public TemplateVariableResponseDTO updateVariable(UUID variableId, TemplateVariableRequestDTO request) {
+        TemplateVariable existing = variableRepository.findById(variableId)
+                .orElseThrow(() -> new ResourceNotFoundException("Variable not found with id: " + variableId));
+        
+        if (request.getVariableLabel() != null) {
+            existing.setVariableLabel(request.getVariableLabel());
+        }
+        if (request.getIsRequired() != null) {
+            existing.setRequired(request.getIsRequired());
+        }
+        if (request.getDefaultValue() != null) {
+            existing.setDefaultValue(request.getDefaultValue());
+        }
+        if (request.getPlaceholder() != null) {
+            existing.setPlaceholder(request.getPlaceholder());
+        }
+        
+        TemplateVariable updated = variableRepository.save(existing);
+        return variableMapper.toResponseDTO(updated);
+    }
+
+    /**
+     * Validate that all required variables have values.
+     * Called before template execution.
+     */
+    public List<String> validateRequiredVariables(UUID templateId, Map<String, Object> providedValues) {
+        List<TemplateVariable> requiredVars = variableRepository.findRequiredByTemplateId(templateId);
+        List<String> missingVariables = new ArrayList<>();
+        
+        for (TemplateVariable var : requiredVars) {
+            Object value = providedValues.get(var.getVariableName());
+            if (value == null || (value instanceof String && ((String) value).trim().isEmpty())) {
+                missingVariables.add(var.getVariableLabel());
+            }
+        }
+        
+        return missingVariables;
+    }
+}
 ```
 
 ---
@@ -2523,6 +2698,88 @@ public class TemplateRunController {
     @Operation(summary = "Get runs for template")
     public ResponseEntity<List<TemplateRunResponseDTO>> getTemplateRuns(@PathVariable UUID templateId) {
         return ResponseEntity.ok(runService.getTemplateRuns(templateId));
+    }
+}
+
+// === TemplateVariableController ===
+/**
+ * REST Controller for template variables.
+ * 
+ * PURPOSE: Provides endpoints to manage the centralized variable registry
+ * for each template. Variables are automatically extracted during template
+ * save, but can be individually updated for metadata like isRequired.
+ * 
+ * ENDPOINTS:
+ * - GET /template-variables/template/{templateId} - Get all variables for template
+ * - GET /template-variables/template/{templateId}/required - Get only required variables
+ * - PUT /template-variables/{variableId} - Update variable metadata
+ * - POST /template-variables/template/{templateId}/validate - Validate provided values
+ */
+@RestController
+@RequestMapping("/api/v1/template-variables")
+@RequiredArgsConstructor
+@Tag(name = "Template Variables", description = "Manage template variable registry")
+public class TemplateVariableController {
+
+    private final TemplateVariableService variableService;
+
+    @GetMapping("/template/{templateId}")
+    @Operation(
+        summary = "Get all variables for template",
+        description = "Returns the centralized registry of all placeholders/variables " +
+                      "extracted from the template's subject and sections. Includes variable " +
+                      "name, label, type, default value, required flag, and source section."
+    )
+    @ApiResponse(responseCode = "200", description = "Variables retrieved successfully")
+    @ApiResponse(responseCode = "404", description = "Template not found")
+    public ResponseEntity<List<TemplateVariableResponseDTO>> getTemplateVariables(
+            @Parameter(description = "Template ID") @PathVariable UUID templateId) {
+        return ResponseEntity.ok(variableService.getTemplateVariables(templateId));
+    }
+
+    @GetMapping("/template/{templateId}/required")
+    @Operation(
+        summary = "Get required variables for template",
+        description = "Returns only the variables marked as required. " +
+                      "Used for validation before template execution."
+    )
+    @ApiResponse(responseCode = "200", description = "Required variables retrieved successfully")
+    public ResponseEntity<List<TemplateVariableResponseDTO>> getRequiredVariables(
+            @Parameter(description = "Template ID") @PathVariable UUID templateId) {
+        return ResponseEntity.ok(variableService.getRequiredVariables(templateId));
+    }
+
+    @PutMapping("/{variableId}")
+    @Operation(
+        summary = "Update variable metadata",
+        description = "Updates a variable's metadata such as label, required flag, " +
+                      "default value, or placeholder text."
+    )
+    @ApiResponse(responseCode = "200", description = "Variable updated successfully")
+    @ApiResponse(responseCode = "404", description = "Variable not found")
+    public ResponseEntity<TemplateVariableResponseDTO> updateVariable(
+            @Parameter(description = "Variable ID") @PathVariable UUID variableId,
+            @Valid @RequestBody TemplateVariableRequestDTO request) {
+        return ResponseEntity.ok(variableService.updateVariable(variableId, request));
+    }
+
+    @PostMapping("/template/{templateId}/validate")
+    @Operation(
+        summary = "Validate provided variable values",
+        description = "Validates that all required variables have been provided. " +
+                      "Returns a list of missing required variable labels."
+    )
+    @ApiResponse(responseCode = "200", description = "Validation completed")
+    public ResponseEntity<Map<String, Object>> validateVariables(
+            @Parameter(description = "Template ID") @PathVariable UUID templateId,
+            @RequestBody Map<String, Object> providedValues) {
+        List<String> missingVariables = variableService.validateRequiredVariables(templateId, providedValues);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("valid", missingVariables.isEmpty());
+        response.put("missingVariables", missingVariables);
+        
+        return ResponseEntity.ok(response);
     }
 }
 

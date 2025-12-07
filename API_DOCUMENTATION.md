@@ -374,7 +374,7 @@ Updates the order of sections within a template.
 
 ### Get Variables for Template
 
-Retrieves all variables defined for a template.
+Retrieves all variables defined for a template (centralized registry).
 
 **Endpoint:** `GET /template-variables/template/{templateId}`
 
@@ -390,30 +390,59 @@ Retrieves all variables defined for a template.
     "defaultValue": "John Doe",
     "isRequired": true,
     "placeholder": "Enter customer name",
-    "sectionId": "uuid"
+    "sectionId": "uuid",
+    "source": "section"
   }
 ]
 ```
 
-### Create Template Variable
+### Get Required Variables
 
-**Endpoint:** `POST /template-variables`
+Retrieves only required variables for validation.
+
+**Endpoint:** `GET /template-variables/template/{templateId}/required`
+
+**Response:** `200 OK` - Same structure as above, filtered to required only.
+
+### Update Template Variable
+
+Updates variable metadata (required flag, default value, label).
+
+**Endpoint:** `PUT /template-variables/{variableId}`
 
 **Request Body:**
 ```json
 {
-  "templateId": "uuid",
-  "variableName": "incidentNumber",
-  "variableLabel": "Incident Number",
-  "variableType": "text",
-  "defaultValue": "INC-001",
+  "variableLabel": "Updated Label",
   "isRequired": true,
-  "placeholder": "e.g., INC-12345",
-  "sectionId": "uuid"
+  "defaultValue": "New default",
+  "placeholder": "Enter value..."
 }
 ```
 
-**Response:** `201 Created`
+**Response:** `200 OK`
+
+### Validate Variables
+
+Validates that all required variables have values before template execution.
+
+**Endpoint:** `POST /template-variables/template/{templateId}/validate`
+
+**Request Body:**
+```json
+{
+  "customerName": "John Doe",
+  "incidentNumber": "INC-123"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "valid": true,
+  "missingVariables": []
+}
+```
 
 ---
 
