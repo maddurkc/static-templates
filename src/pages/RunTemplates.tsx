@@ -478,7 +478,9 @@ const RunTemplates = () => {
     
     // Initialize subject from template or default
     if (template.subject) {
-      setEmailSubject(template.subject);
+      // Convert Thymeleaf to placeholders for display
+      const displaySubject = subjectThymeleafToPlaceholder(template.subject);
+      setEmailSubject(displaySubject);
       // Extract subject variables and initialize them
       const subjectVars = extractSubjectVariables(template.subject);
       const initialSubjectVars: Record<string, string> = {};
@@ -812,7 +814,8 @@ const RunTemplates = () => {
                 {selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 ? (
                   <div className="flex-1 flex items-center gap-2">
                     <span className="text-sm text-muted-foreground font-mono shrink-0">
-                      {selectedTemplate.subject.replace(/\{\{(\w+)\}\}/g, (_, varName) => 
+                      {/* Show processed subject with values or placeholders */}
+                      {getDisplaySubject().replace(/\{\{(\w+)\}\}/g, (_, varName) => 
                         subjectVariables[varName] || `{{${varName}}}`
                       )}
                     </span>
@@ -826,7 +829,7 @@ const RunTemplates = () => {
                         <div className="space-y-3">
                           <h4 className="font-medium text-sm">Subject Variables</h4>
                           <p className="text-xs text-muted-foreground">
-                            Template: <code className="bg-muted px-1 rounded">{selectedTemplate.subject}</code>
+                            Template: <code className="bg-muted px-1 rounded">{getDisplaySubject()}</code>
                           </p>
                           {Object.keys(subjectVariables).map((varName) => (
                             <div key={`subject-var-${varName}`} className="flex items-center gap-2">
