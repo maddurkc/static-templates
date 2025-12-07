@@ -38,6 +38,22 @@
     border-style: dashed;
     background-color: rgba(67, 97, 238, 0.1);
   }
+
+  &.hasError {
+    border-color: hsl(0 84% 60%);
+    background-color: hsl(0 84% 60% / 0.05);
+    
+    &::before {
+      content: '';
+      position: absolute;
+      left: -0.25rem;
+      top: 0;
+      bottom: 0;
+      width: 0.25rem;
+      background: hsl(0 84% 60%);
+      border-radius: 0.25rem 0 0 0.25rem;
+    }
+  }
 }
 
 .dragHandle {
