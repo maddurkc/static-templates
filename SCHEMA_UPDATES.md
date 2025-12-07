@@ -131,13 +131,42 @@ The `listStyle` property supports the following values:
 
 ```sql
 -- Migration: 009_add_template_subject.sql
--- Description: Add subject column to templates for email subject line with placeholders
+-- Description: Add subject column to templates for email subject line with Thymeleaf placeholders
+-- 
+-- IMPORTANT: Subject is stored in Thymeleaf format, NOT placeholder format
+-- - User enters: "Report for {{clientName}}"
+-- - Stored as: "Report for <th:utext="${clientName}">"
+--
+-- This ensures consistent Thymeleaf syntax across the template (body and subject)
+-- The frontend handles conversion between formats for user display
 
 -- Add subject column
 ALTER TABLE templates 
 ADD subject NVARCHAR(500);
 
 GO
+```
+
+### Subject Field Details
+
+The `subject` column stores email subject lines with dynamic placeholders using Thymeleaf syntax:
+
+| Aspect | Details |
+|--------|---------|
+| **Storage Format** | `<th:utext="${variableName}">` |
+| **Display Format** | `{{variableName}}` (frontend converts for UI) |
+| **Max Length** | 500 characters |
+| **Nullable** | Yes (subject is optional) |
+| **Variables Source** | Extracted and stored in `template_variables` table with `source='subject'` |
+| **Required Flag** | Subject variables are always marked as `is_required=1` |
+
+**Example Storage:**
+```
+-- User enters in UI:
+"Incident {{incidentNumber}} - {{severity}} Alert for {{clientName}}"
+
+-- Stored in database:
+"Incident <th:utext="${incidentNumber}"> - <th:utext="${severity}"> Alert for <th:utext="${clientName}">"
 ```
 
 ### Migration: Add is_label_editable Column

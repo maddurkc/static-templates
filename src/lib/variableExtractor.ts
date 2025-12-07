@@ -77,11 +77,17 @@ const createLabel = (varName: string): string => {
 
 /**
  * Extract all variables from template subject line
+ * Supports both {{placeholder}} and <th:utext="${variable}"> formats
  */
 export const extractSubjectVariables = (subject: string): TemplateVariable[] => {
+  // Extract from both placeholder and Thymeleaf formats
   const placeholders = extractPlaceholders(subject);
+  const thymeleafVars = extractThymeleafVariables(subject);
   
-  return placeholders.map(varName => ({
+  // Combine and deduplicate
+  const allVars = Array.from(new Set([...placeholders, ...thymeleafVars]));
+  
+  return allVars.map(varName => ({
     variableName: varName,
     variableLabel: createLabel(varName),
     variableType: 'text' as const,

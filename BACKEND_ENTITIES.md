@@ -378,6 +378,25 @@ public class Template {
     private String name;
 
     /**
+     * Email subject line with Thymeleaf placeholders
+     * 
+     * STORAGE FORMAT: Subject is stored with Thymeleaf syntax (not user-friendly placeholders)
+     * - User enters: "Report for {{clientName}} - {{reportDate}}"
+     * - Stored as: "Report for <th:utext="${clientName}"> - <th:utext="${reportDate}">"
+     * 
+     * This conversion is done by the frontend before saving to ensure consistent
+     * format across the application. The backend stores the Thymeleaf format.
+     * 
+     * Examples:
+     * - "Incident <th:utext="${incidentNumber}"> - <th:utext="${severity}"> Alert"
+     * - "Welcome to <th:utext="${companyName}">, <th:utext="${userName}">!"
+     * 
+     * The frontend converts back to {{placeholder}} format for display in the editor.
+     */
+    @Column(name = "subject", length = 500)
+    private String subject;
+
+    /**
      * Complete generated HTML output with Thymeleaf variables
      * Contains: <th:utext="${variableName}"> placeholders for dynamic content
      * This is the FINAL HTML that gets rendered when template is executed
