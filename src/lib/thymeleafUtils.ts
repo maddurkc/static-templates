@@ -35,6 +35,23 @@ export const placeholderToThymeleaf = (content: string): string => {
 };
 
 /**
+ * Convert subject placeholders to Thymeleaf format for storage
+ * This is specifically for email subjects which don't need HTML wrapper tags
+ * Example: "Report for {{clientName}}" -> "Report for <th:utext="${clientName}">"
+ */
+export const subjectPlaceholderToThymeleaf = (subject: string): string => {
+  return subject.replace(/\{\{(\w+)\}\}/g, '<th:utext="${$1}">');
+};
+
+/**
+ * Convert subject Thymeleaf tags back to placeholders for display
+ * Example: "Report for <th:utext="${clientName}">" -> "Report for {{clientName}}"
+ */
+export const subjectThymeleafToPlaceholder = (subject: string): string => {
+  return subject.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
+};
+
+/**
  * Extract variable name from Thymeleaf tag or placeholder
  */
 export const extractVariableName = (tag: string): string | null => {
@@ -118,5 +135,23 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
     });
   }
 
+  return result;
+};
+
+/**
+ * Process subject for display - replaces Thymeleaf tags with provided values
+ */
+export const processSubjectWithValues = (subject: string, values: Record<string, string>): string => {
+  let result = subject;
+  
+  Object.entries(values).forEach(([key, value]) => {
+    // Replace both Thymeleaf and placeholder formats
+    const thymeleafPattern = new RegExp(`<th:utext="\\$\\{${key}\\}">`, 'g');
+    const placeholderPattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    
+    result = result.replace(thymeleafPattern, value);
+    result = result.replace(placeholderPattern, value);
+  });
+  
   return result;
 };

@@ -24,6 +24,7 @@ import { fetchTemplates, fetchTemplateById } from "@/lib/templateApi";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -425,22 +426,33 @@ const RunTemplates = () => {
     return result;
   };
 
-  // Extract placeholders from subject
+  // Extract placeholders from subject - supports both {{placeholder}} and Thymeleaf formats
   const extractSubjectVariables = (subject: string): string[] => {
-    const regex = /\{\{(\w+)\}\}/g;
-    const matches = subject.matchAll(regex);
-    return Array.from(new Set(Array.from(matches, m => m[1])));
+    // Match {{variableName}} pattern
+    const placeholderRegex = /\{\{(\w+)\}\}/g;
+    const placeholderMatches = subject.matchAll(placeholderRegex);
+    const placeholderVars = Array.from(placeholderMatches, m => m[1]);
+    
+    // Match <th:utext="${variableName}"> pattern
+    const thymeleafRegex = /<th:utext="\$\{(\w+)\}">/g;
+    const thymeleafMatches = subject.matchAll(thymeleafRegex);
+    const thymeleafVars = Array.from(thymeleafMatches, m => m[1]);
+    
+    // Combine and deduplicate
+    return Array.from(new Set([...placeholderVars, ...thymeleafVars]));
   };
 
-  // Get processed subject with variables replaced
+  // Get processed subject with variables replaced - handles both formats
   const getProcessedSubject = (): string => {
     if (!selectedTemplate?.subject) return emailSubject;
     
-    let processed = selectedTemplate.subject;
-    Object.entries(subjectVariables).forEach(([key, value]) => {
-      processed = processed.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
-    });
-    return processed;
+    return processSubjectWithValues(selectedTemplate.subject, subjectVariables);
+  };
+  
+  // Get display-friendly subject (converts Thymeleaf to placeholders for display)
+  const getDisplaySubject = (): string => {
+    if (!selectedTemplate?.subject) return emailSubject;
+    return subjectThymeleafToPlaceholder(selectedTemplate.subject);
   };
 
   const handleRunTemplate = (template: Template) => {
@@ -866,7 +878,7 @@ const RunTemplates = () => {
                         <span className="text-sm font-semibold text-foreground">Subject Variables</span>
                       </div>
                       <p className="text-xs text-muted-foreground mb-3">
-                        Template: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{selectedTemplate.subject}</code>
+                        Template: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{getDisplaySubject()}</code>
                       </p>
                       <div className={styles.formGrid}>
                         {Object.keys(subjectVariables).map((varName) => (

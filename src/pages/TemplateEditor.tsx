@@ -27,6 +27,7 @@ import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
 import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpdateRequest, fetchTemplateById } from "@/lib/templateApi";
 import { validateTemplate, validateTemplateName, validateSubject, ValidationError } from "@/lib/templateValidation";
 import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
+import { subjectPlaceholderToThymeleaf, subjectThymeleafToPlaceholder } from "@/lib/thymeleafUtils";
 import styles from "./TemplateEditor.module.scss";
 
 const TemplateEditor = () => {
@@ -135,7 +136,8 @@ const TemplateEditor = () => {
     setIsEditMode(true);
     setEditingTemplateId(template.id);
     setTemplateName(template.name);
-    setTemplateSubject(template.subject || "");
+    // Convert Thymeleaf tags back to placeholders for editing display
+    setTemplateSubject(template.subject ? subjectThymeleafToPlaceholder(template.subject) : "");
     
     // Load sections
     if (template.sections && template.sections.length > 0) {
@@ -553,13 +555,19 @@ const TemplateEditor = () => {
       // Generate HTML with placeholders, not rendered values
       const html = generateHTMLWithPlaceholders();
       
+      // Convert subject placeholders to Thymeleaf format for storage
+      const subjectForStorage = templateSubject 
+        ? subjectPlaceholderToThymeleaf(templateSubject) 
+        : undefined;
+      
       // Prepare all sections for API using flattenSectionsForApi helper
       const allSections = [headerSection, ...sections, footerSection];
       const apiSections = flattenSectionsForApi(allSections);
       
       // Extract all template variables for the centralized registry
+      // Use the converted subject with Thymeleaf tags for proper extraction
       const templateVariables = extractAllTemplateVariables(
-        templateSubject,
+        subjectForStorage || '',
         headerSection,
         sections,
         footerSection
@@ -567,6 +575,7 @@ const TemplateEditor = () => {
       const variableRequests = templateVariables.map(variableToRequest);
       
       console.log('Extracted template variables:', templateVariables);
+      console.log('Subject with Thymeleaf:', subjectForStorage);
       
       // Build API config request if enabled
       const apiConfigRequest = apiConfig.enabled ? {
@@ -585,7 +594,7 @@ const TemplateEditor = () => {
         // UPDATE: Call backend API to update existing template
         const updateRequest: TemplateUpdateRequest = {
           name: templateName,
-          subject: templateSubject || undefined, // Include subject if provided
+          subject: subjectForStorage, // Store subject with Thymeleaf tags
           html,
           sectionCount: allSections.length,
           archived: false,
@@ -601,7 +610,7 @@ const TemplateEditor = () => {
         // Also update local storage as fallback
         updateTemplate(editingTemplateId, {
           name: templateName,
-          subject: templateSubject || undefined,
+          subject: subjectForStorage,
           html,
           sectionCount: allSections.length,
           archived: false,
@@ -617,7 +626,7 @@ const TemplateEditor = () => {
         // CREATE: Call backend API to create new template
         const createRequest: TemplateCreateRequest = {
           name: templateName,
-          subject: templateSubject || undefined, // Include subject if provided
+          subject: subjectForStorage, // Store subject with Thymeleaf tags
           html,
           sectionCount: allSections.length,
           archived: false,
@@ -633,7 +642,7 @@ const TemplateEditor = () => {
         // Also save to local storage as fallback
         saveTemplate({
           name: templateName,
-          subject: templateSubject || undefined,
+          subject: subjectForStorage,
           html,
           createdAt: new Date().toISOString(),
           sectionCount: allSections.length,
@@ -656,11 +665,14 @@ const TemplateEditor = () => {
       // Fallback to local storage only if API fails
       const allSections = [headerSection, ...sections, footerSection];
       const html = generateHTMLWithPlaceholders();
+      const subjectForStorage = templateSubject 
+        ? subjectPlaceholderToThymeleaf(templateSubject) 
+        : undefined;
       
       if (isEditMode && editingTemplateId) {
         updateTemplate(editingTemplateId, {
           name: templateName,
-          subject: templateSubject || undefined,
+          subject: subjectForStorage,
           html,
           sectionCount: allSections.length,
           archived: false,
@@ -670,7 +682,7 @@ const TemplateEditor = () => {
       } else {
         saveTemplate({
           name: templateName,
-          subject: templateSubject || undefined,
+          subject: subjectForStorage,
           html,
           createdAt: new Date().toISOString(),
           sectionCount: allSections.length,

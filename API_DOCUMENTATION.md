@@ -107,6 +107,7 @@ Retrieves all templates for the authenticated user.
 {
   "id": "uuid",
   "name": "Incident Report",
+  "subject": "Incident <th:utext=\"${incidentNumber}\"> - <th:utext=\"${severity}\"> Alert",
   "html": "<h1><th:utext=\"${title}\"></th:utext></h1>...",
   "userId": "uuid",
   "createdAt": "2025-12-02T10:30:00",
@@ -116,6 +117,8 @@ Retrieves all templates for the authenticated user.
 }
 ```
 
+**Note:** The `subject` field is stored in Thymeleaf format (`<th:utext="${varName}">`). The frontend converts between user-friendly `{{placeholder}}` format and Thymeleaf format automatically.
+
 ### Create Template
 
 **Endpoint:** `POST /templates`
@@ -124,6 +127,7 @@ Retrieves all templates for the authenticated user.
 ```json
 {
   "name": "Incident Report",
+  "subject": "Incident <th:utext=\"${incidentNumber}\"> - <th:utext=\"${severity}\"> Alert",
   "html": "<h1><th:utext=\"${title}\"></th:utext></h1>...",
   "sections": [
     {
@@ -134,9 +138,39 @@ Retrieves all templates for the authenticated user.
       "isLabelEditable": true,
       "orderIndex": 0
     }
+  ],
+  "variables": [
+    {
+      "variableName": "incidentNumber",
+      "variableLabel": "Incident Number",
+      "variableType": "text",
+      "isRequired": true,
+      "source": "subject"
+    },
+    {
+      "variableName": "severity",
+      "variableLabel": "Severity",
+      "variableType": "text",
+      "isRequired": true,
+      "source": "subject"
+    },
+    {
+      "variableName": "title",
+      "variableLabel": "Title",
+      "variableType": "text",
+      "isRequired": false,
+      "defaultValue": "Main Title",
+      "source": "section"
+    }
   ]
 }
 ```
+
+**Subject Field Format:**
+- The `subject` field supports placeholders for dynamic email subject lines
+- **Storage format:** Thymeleaf syntax: `<th:utext="${variableName}">`
+- **Display format (frontend):** User-friendly syntax: `{{variableName}}`
+- Subject variables are automatically extracted and included in the `variables` array with `source: "subject"` and `isRequired: true`
 
 **Response:** `201 Created`
 
