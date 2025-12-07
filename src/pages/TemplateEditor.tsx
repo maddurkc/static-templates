@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
+import { TemplateVariable } from "@/types/template-variable";
 import { ApiConfig, DEFAULT_API_CONFIG } from "@/types/api-config";
 import { sectionTypes } from "@/data/sectionTypes";
 import { SectionLibrary } from "@/components/templates/SectionLibrary";
@@ -9,6 +10,7 @@ import { EditorView } from "@/components/templates/EditorView";
 import { PreviewView } from "@/components/templates/PreviewView";
 import { TextSelectionToolbar } from "@/components/templates/TextSelectionToolbar";
 import { ValidationErrorsPanel } from "@/components/templates/ValidationErrorsPanel";
+import { VariablesPanel } from "@/components/templates/VariablesPanel";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -16,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
@@ -91,7 +93,18 @@ const TemplateEditor = () => {
   const [showValidationPanel, setShowValidationPanel] = useState(true);
   const [nameError, setNameError] = useState<string | null>(null);
   const [subjectError, setSubjectError] = useState<string | null>(null);
+  const [showVariablesPanel, setShowVariablesPanel] = useState(false);
   const { toast } = useToast();
+
+  // Extract all template variables from sections and subject
+  const extractedVariables = useMemo(() => {
+    return extractAllTemplateVariables(
+      templateSubject,
+      headerSection,
+      sections,
+      footerSection
+    );
+  }, [templateSubject, headerSection, sections, footerSection]);
 
   // Compute section IDs with errors for highlighting
   const sectionIdsWithErrors = useMemo(() => {
@@ -920,6 +933,42 @@ const TemplateEditor = () => {
                     </div>
                   </SheetHeader>
                   <SectionLibrary />
+                </SheetContent>
+              </Sheet>
+              
+              {/* Variables Panel Sheet */}
+              <Sheet open={showVariablesPanel} onOpenChange={setShowVariablesPanel}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Variable className="h-4 w-4 mr-2" />
+                    Variables ({extractedVariables.length})
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-96 p-0 overflow-hidden">
+                  <SheetHeader className="p-4 border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <SheetTitle>Template Variables</SheetTitle>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          All placeholders extracted from your template
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowVariablesPanel(false)}
+                        className="h-8 w-8 hover:bg-muted"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </SheetHeader>
+                  <div className="h-[calc(100vh-80px)]">
+                    <VariablesPanel 
+                      variables={extractedVariables}
+                      readOnly={false}
+                    />
+                  </div>
                 </SheetContent>
               </Sheet>
               
