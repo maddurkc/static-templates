@@ -858,13 +858,59 @@ const RunTemplates = () => {
               </div>
               <ScrollArea className="flex-1">
                 <div className={styles.variablesList}>
-                  {extractAllVariables(selectedTemplate).length === 0 ? (
+                  {/* Subject Variables Section */}
+                  {Object.keys(subjectVariables).length > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                        <Badge variant="destructive" className="text-xs">Required</Badge>
+                        <span className="text-sm font-semibold text-foreground">Subject Variables</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Template: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{selectedTemplate.subject}</code>
+                      </p>
+                      <div className={styles.formGrid}>
+                        {Object.keys(subjectVariables).map((varName) => (
+                          <div key={`subject-var-${varName}`} className={styles.formField}>
+                            <Label htmlFor={`subject-var-input-${varName}`} className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="text-xs font-mono bg-destructive/10 border-destructive/30">
+                                {`{{${varName}}}`}
+                              </Badge>
+                              <span className="font-medium">{varName}</span>
+                              <Badge variant="secondary" className="text-xs">Subject</Badge>
+                            </Label>
+                            <Input
+                              id={`subject-var-input-${varName}`}
+                              placeholder={`Enter value for ${varName}...`}
+                              value={subjectVariables[varName] || ''}
+                              onChange={(e) => setSubjectVariables(prev => ({
+                                ...prev,
+                                [varName]: e.target.value
+                              }))}
+                              className={!subjectVariables[varName]?.trim() ? 'border-destructive/50' : ''}
+                            />
+                            {!subjectVariables[varName]?.trim() && (
+                              <p className="text-xs text-destructive">This field is required</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Body Variables Section */}
+                  {extractAllVariables(selectedTemplate).length === 0 && Object.keys(subjectVariables).length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <p className="text-sm">No variables in this template</p>
                     </div>
-                  ) : (
-                    <div className={styles.formGrid}>
-                      {extractAllVariables(selectedTemplate).map((varName) => {
+                  ) : extractAllVariables(selectedTemplate).length > 0 && (
+                    <>
+                      {Object.keys(subjectVariables).length > 0 && (
+                        <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                          <span className="text-sm font-semibold text-foreground">Body Variables</span>
+                        </div>
+                      )}
+                      <div className={styles.formGrid}>
+                        {extractAllVariables(selectedTemplate).map((varName) => {
                         const isList = isListVariable(varName);
                         const isTable = isTableVariable(varName);
                         const editable = isLabelEditable(varName);
@@ -1376,7 +1422,8 @@ const RunTemplates = () => {
                           </div>
                         );
                       })}
-                    </div>
+                      </div>
+                    </>
                   )}
                 </div>
               </ScrollArea>
