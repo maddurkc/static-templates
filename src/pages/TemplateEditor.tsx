@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
@@ -8,6 +8,7 @@ import { SectionLibrary } from "@/components/templates/SectionLibrary";
 import { EditorView } from "@/components/templates/EditorView";
 import { PreviewView } from "@/components/templates/PreviewView";
 import { TextSelectionToolbar } from "@/components/templates/TextSelectionToolbar";
+import { ValidationErrorsPanel } from "@/components/templates/ValidationErrorsPanel";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -86,9 +87,34 @@ const TemplateEditor = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [showValidationPanel, setShowValidationPanel] = useState(true);
   const [nameError, setNameError] = useState<string | null>(null);
   const [subjectError, setSubjectError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Compute section IDs with errors for highlighting
+  const sectionIdsWithErrors = useMemo(() => {
+    const ids = new Set<string>();
+    validationErrors.forEach(error => {
+      if (error.sectionId) {
+        ids.add(error.sectionId);
+      }
+    });
+    return ids;
+  }, [validationErrors]);
+
+  // Scroll to section with error
+  const handleScrollToSection = useCallback((sectionId: string) => {
+    const element = document.querySelector(`[data-section-id="${sectionId}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Find and select the section
+      const section = sections.find(s => s.id === sectionId);
+      if (section) {
+        setSelectedSection(section);
+      }
+    }
+  }, [sections]);
 
   // Helper function to load template data into state
   const loadTemplateIntoEditor = (template: any) => {
@@ -485,6 +511,9 @@ const TemplateEditor = () => {
     setValidationErrors(validation.errors);
     
     if (!validation.isValid) {
+      // Show the validation panel if hidden
+      setShowValidationPanel(true);
+      
       // Show first few errors in toast
       const errorMessages = validation.errors.slice(0, 3).map(e => e.message);
       const moreCount = validation.errors.length - 3;
@@ -962,6 +991,15 @@ const TemplateEditor = () => {
           </div>
         </div>
 
+          {/* Validation Errors Panel */}
+          {validationErrors.length > 0 && showValidationPanel && (
+            <ValidationErrorsPanel
+              errors={validationErrors}
+              onScrollToSection={handleScrollToSection}
+              onClose={() => setShowValidationPanel(false)}
+            />
+          )}
+
           {/* Main Content */}
           <div className={styles.contentArea}>
             {/* Text Selection Toolbar */}
@@ -1022,6 +1060,7 @@ const TemplateEditor = () => {
                     footerSection={footerSection}
                     sections={sections}
                     selectedSection={selectedSection}
+                    sectionIdsWithErrors={sectionIdsWithErrors}
                     onSelectSection={setSelectedSection}
                     onUpdateSection={handleUpdateSection}
                     onDeleteSection={handleDeleteSection}
@@ -1058,6 +1097,7 @@ const TemplateEditor = () => {
                       footerSection={footerSection}
                       sections={sections}
                       selectedSection={selectedSection}
+                      sectionIdsWithErrors={sectionIdsWithErrors}
                       onSelectSection={setSelectedSection}
                       onUpdateSection={handleUpdateSection}
                       onDeleteSection={handleDeleteSection}

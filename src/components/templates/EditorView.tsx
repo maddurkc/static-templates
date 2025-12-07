@@ -16,6 +16,7 @@ import styles from "./EditorView.module.scss";
 interface SortableSectionProps {
   section: Section;
   isSelected: boolean;
+  hasError: boolean;
   onSelect: () => void;
   onUpdate: (section: Section) => void;
   onDelete: () => void;
@@ -36,6 +37,7 @@ interface SortableSectionProps {
 const SortableSection = ({
   section,
   isSelected,
+  hasError,
   onSelect,
   onUpdate,
   onDelete,
@@ -82,13 +84,15 @@ const SortableSection = ({
       <div
         ref={setNodeRef}
         style={style}
+        data-section-id={section.id}
         className={cn(
           "group relative",
           styles.section,
           isSelected && styles.selected,
           isDragging && styles.dragging,
           isContainer && styles.container,
-          isContainer && isDropOver && styles.dropOver
+          isContainer && isDropOver && styles.dropOver,
+          hasError && styles.hasError
         )}
         onClick={onSelect}
       >
@@ -295,6 +299,7 @@ interface EditorViewProps {
   footerSection: Section;
   sections: Section[];
   selectedSection: Section | null;
+  sectionIdsWithErrors?: Set<string>;
   onSelectSection: (section: Section) => void;
   onUpdateSection: (section: Section) => void;
   onDeleteSection: (id: string) => void;
@@ -313,6 +318,7 @@ export const EditorView = ({
   footerSection,
   sections,
   selectedSection,
+  sectionIdsWithErrors = new Set(),
   onSelectSection,
   onUpdateSection,
   onDeleteSection,
@@ -427,6 +433,7 @@ export const EditorView = ({
               key={section.id}
               section={section}
               isSelected={selectedSection?.id === section.id}
+              hasError={sectionIdsWithErrors.has(section.id)}
               onSelect={() => onSelectSection(section)}
               onUpdate={onUpdateSection}
               onDelete={() => onDeleteSection(section.id)}
