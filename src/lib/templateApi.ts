@@ -5,6 +5,7 @@
 
 import { Section, SectionType } from "@/types/section";
 import { ApiConfig } from "@/types/api-config";
+import { TemplateVariableRequest, TemplateVariableResponse } from "@/types/template-variable";
 
 // API Configuration - Update this to match your backend
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
@@ -41,6 +42,7 @@ export interface TemplateCreateRequest {
   sectionCount: number;
   archived: boolean;
   sections: TemplateSectionRequest[];
+  variables?: TemplateVariableRequest[]; // Template-level variables registry
   apiConfig?: ApiConfigRequest;
 }
 
@@ -51,6 +53,7 @@ export interface TemplateUpdateRequest {
   sectionCount?: number;
   archived?: boolean;
   sections?: TemplateSectionRequest[];
+  variables?: TemplateVariableRequest[]; // Template-level variables registry
   apiConfig?: ApiConfigRequest;
 }
 
@@ -78,6 +81,7 @@ export interface TemplateResponse {
   createdAt: string;
   updatedAt: string;
   sections: TemplateSectionResponse[];
+  variables?: TemplateVariableResponse[]; // Template-level variables registry
   apiConfig?: ApiConfigResponse;
 }
 
