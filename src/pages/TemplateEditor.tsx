@@ -24,6 +24,7 @@ import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils
 import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
 import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpdateRequest, fetchTemplateById } from "@/lib/templateApi";
 import { validateTemplate, validateTemplateName, validateSubject, ValidationError } from "@/lib/templateValidation";
+import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
 import styles from "./TemplateEditor.module.scss";
 
 const TemplateEditor = () => {
@@ -543,6 +544,17 @@ const TemplateEditor = () => {
       const allSections = [headerSection, ...sections, footerSection];
       const apiSections = flattenSectionsForApi(allSections);
       
+      // Extract all template variables for the centralized registry
+      const templateVariables = extractAllTemplateVariables(
+        templateSubject,
+        headerSection,
+        sections,
+        footerSection
+      );
+      const variableRequests = templateVariables.map(variableToRequest);
+      
+      console.log('Extracted template variables:', templateVariables);
+      
       // Build API config request if enabled
       const apiConfigRequest = apiConfig.enabled ? {
         enabled: apiConfig.enabled,
@@ -565,6 +577,7 @@ const TemplateEditor = () => {
           sectionCount: allSections.length,
           archived: false,
           sections: apiSections,
+          variables: variableRequests, // Include extracted variables
           apiConfig: apiConfigRequest,
         };
 
@@ -596,6 +609,7 @@ const TemplateEditor = () => {
           sectionCount: allSections.length,
           archived: false,
           sections: apiSections,
+          variables: variableRequests, // Include extracted variables
           apiConfig: apiConfigRequest,
         };
 
