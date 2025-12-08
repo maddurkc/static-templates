@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { TableEditor } from "./TableEditor";
 import { ThymeleafEditor } from "./ThymeleafEditor";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { generateListVariableName, generateLabelVariableName, generateThymeleafListHtml, getListTag, getListStyleType, isValidListVariableName, sanitizeVariableName } from "@/lib/listThymeleafUtils";
+import { generateListVariableName, generateThymeleafListHtml, getListTag, getListStyleType, isValidListVariableName, sanitizeVariableName } from "@/lib/listThymeleafUtils";
 import styles from "./VariableEditor.module.scss";
 
 interface VariableEditorProps {
@@ -591,8 +591,6 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                 label: section.variables?.label || '',
                 contentType: newContentType,
                 listStyle: listStyle,
-                // Always preserve labelVariableName
-                labelVariableName: section.variables?.labelVariableName || generateLabelVariableName(section.id),
               };
               
               // Copy over any label placeholder values
@@ -655,62 +653,6 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           </p>
         </div>
         
-        {/* Custom label variable name input */}
-        <div className={styles.section}>
-          <Label className={styles.label}>Label Variable Name</Label>
-          <div className="flex gap-2">
-            <Input
-              value={(section.variables?.labelVariableName as string) || generateLabelVariableName(section.id)}
-              onChange={(e) => {
-                const rawValue = e.target.value;
-                const sanitizedValue = sanitizeVariableName(rawValue);
-                onUpdate({
-                  ...section,
-                  variables: { 
-                    ...section.variables, 
-                    labelVariableName: sanitizedValue
-                  }
-                });
-              }}
-              placeholder="e.g., incident_label"
-              className="h-8 text-sm font-mono"
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const autoName = generateLabelVariableName(section.id);
-                onUpdate({
-                  ...section,
-                  variables: { 
-                    ...section.variables, 
-                    labelVariableName: autoName
-                  }
-                });
-              }}
-              className="h-8 px-2 whitespace-nowrap"
-              title="Reset to auto-generated name"
-            >
-              Auto
-            </Button>
-          </div>
-          {!isValidListVariableName((section.variables?.labelVariableName as string) || '') && (section.variables?.labelVariableName as string) && (
-            <p className="text-xs text-destructive mt-1">
-              Variable name must start with a letter or underscore and contain only letters, numbers, and underscores.
-            </p>
-          )}
-          <p className={styles.description}>
-            Customize the variable name used for the label in Thymeleaf. Must be a valid identifier.
-          </p>
-          {/* Show generated variable preview */}
-          <div className="bg-muted/50 rounded-md p-2 mt-2">
-            <code className="text-xs font-mono">
-              {'<span th:utext="${'}
-              {(section.variables?.labelVariableName as string) || generateLabelVariableName(section.id)}
-              {'"/>'}
-            </code>
-          </div>
-        </div>
 
         <Separator />
 
