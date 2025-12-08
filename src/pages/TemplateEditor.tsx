@@ -753,7 +753,7 @@ const TemplateEditor = () => {
       // Handle heading/text sections with inline placeholders
       const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
       if (inlinePlaceholderTypes.includes(section.type) && section.content) {
-        const contentWithThymeleaf = section.content.replace(/\{\{(\w+)\}\}/g, '<th:utext="${$1}">');
+        const contentWithThymeleaf = section.content.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
         
         // Wrap in appropriate HTML tag
         const tagMap: Record<string, string> = {
@@ -771,6 +771,21 @@ const TemplateEditor = () => {
         return `${indent}<${tag} style="${styleString}">${contentWithThymeleaf}</${tag}>`;
       }
       
+      // Handle labeled-content sections
+      if (section.type === 'labeled-content') {
+        return generateLabeledContentHTML(section, indent, styleString);
+      }
+      
+      // Handle table sections
+      if (section.type === 'table') {
+        return generateTableHTML(section, indent, styleString);
+      }
+      
+      // Handle list sections (bullet-list-*, number-list-*)
+      if (section.type.includes('list')) {
+        return generateListSectionHTML(section, indent, styleString);
+      }
+      
       // Handle container sections with children
       if (section.type === 'container' && section.children && section.children.length > 0) {
         const childrenHTML = section.children.map(child => generateSectionHTML(child, indent + '  ')).join('\n');
@@ -779,6 +794,122 @@ const TemplateEditor = () => {
       
       // Keep Thymeleaf tags in content - don't render variables
       return `${indent}<div style="${styleString}">\n${indent}  ${section.content}\n${indent}</div>`;
+    };
+    
+    // Generate HTML for labeled-content sections
+    const generateLabeledContentHTML = (section: Section, indent: string, styleString: string): string => {
+      const variables = section.variables || {};
+      const label = String(variables['label'] || 'Label');
+      const contentType = String(variables['contentType'] || 'text');
+      
+      // Convert label placeholders to Thymeleaf
+      const labelWithThymeleaf = label.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
+      
+      let contentHtml = '';
+      
+      if (contentType === 'text') {
+        const content = String(variables['content'] || '');
+        const contentWithThymeleaf = content.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
+        contentHtml = `<p>${contentWithThymeleaf}</p>`;
+      } else if (contentType === 'list') {
+        const listVariableName = String(variables['listVariableName'] || 'items');
+        const listStyle = String(variables['listStyle'] || 'circle');
+        contentHtml = generateThymeleafListHtml(listVariableName, listStyle);
+      } else if (contentType === 'table') {
+        const tableData = variables['tableData'];
+        contentHtml = generateThymeleafTableHTML(tableData);
+      }
+      
+      return `${indent}<div style="${styleString}">
+${indent}  <strong><span th:utext="\${label}">${labelWithThymeleaf}</span></strong>
+${indent}  <div>${contentHtml}</div>
+${indent}</div>`;
+    };
+    
+    // Generate HTML for table sections
+    const generateTableHTML = (section: Section, indent: string, styleString: string): string => {
+      const tableData = section.variables?.['tableData'];
+      const tableHtml = generateThymeleafTableHTML(tableData);
+      return `${indent}<div style="${styleString}">\n${indent}  ${tableHtml}\n${indent}</div>`;
+    };
+    
+    // Generate Thymeleaf-compatible table HTML
+    const generateThymeleafTableHTML = (tableData: any): string => {
+      if (!tableData) return '<table><tr><td>No data</td></tr></table>';
+      
+      const { rows, headers, showBorder = true } = tableData;
+      const borderStyle = showBorder ? 'border: 1px solid #dee2e6;' : '';
+      
+      let html = `<table style="width: 100%; border-collapse: collapse; ${borderStyle}">`;
+      
+      if (headers && headers.length > 0) {
+        html += '<thead><tr>';
+        headers.forEach((header: string) => {
+          html += `<th style="padding: 8px; ${borderStyle} background: #f8f9fa; text-align: left;">${header}</th>`;
+        });
+        html += '</tr></thead>';
+      }
+      
+      if (rows && rows.length > 0) {
+        html += '<tbody>';
+        const dataRows = headers ? rows : rows.slice(1);
+        
+        if (!headers && rows.length > 0) {
+          html += '<tr>';
+          rows[0].forEach((cell: string) => {
+            html += `<th style="padding: 8px; ${borderStyle} background: #f8f9fa; text-align: left;">${cell}</th>`;
+          });
+          html += '</tr>';
+        }
+        
+        dataRows.forEach((row: string[]) => {
+          html += '<tr>';
+          row.forEach((cell: string) => {
+            html += `<td style="padding: 8px; ${borderStyle}">${cell}</td>`;
+          });
+          html += '</tr>';
+        });
+        html += '</tbody>';
+      }
+      
+      html += '</table>';
+      return html;
+    };
+    
+    // Generate HTML for standalone list sections
+    const generateListSectionHTML = (section: Section, indent: string, styleString: string): string => {
+      const sectionType = section.type;
+      const items = section.variables?.['items'] as any[];
+      
+      let listTag: 'ul' | 'ol' = 'ul';
+      let listStyleType = 'disc';
+      
+      if (sectionType.includes('number') || sectionType.includes('ordered')) {
+        listTag = 'ol';
+        if (sectionType.includes('-1') || sectionType.includes('decimal')) {
+          listStyleType = 'decimal';
+        } else if (sectionType.includes('-i')) {
+          listStyleType = 'lower-roman';
+        } else if (sectionType.includes('-a')) {
+          listStyleType = 'lower-alpha';
+        }
+      } else {
+        if (sectionType.includes('disc')) {
+          listStyleType = 'disc';
+        } else if (sectionType.includes('square')) {
+          listStyleType = 'square';
+        } else if (sectionType.includes('circle')) {
+          listStyleType = 'circle';
+        }
+      }
+      
+      // Generate Thymeleaf list with th:each
+      const variableName = `items_${section.id.replace(/[^a-zA-Z0-9]/g, '').slice(-8)}`;
+      const listHtml = `<${listTag} style="list-style-type: ${listStyleType};">` +
+        `<li th:each="item : \${${variableName}}"><span th:utext="\${item}"/></li>` +
+        `</${listTag}>`;
+      
+      return `${indent}<div style="${styleString}">\n${indent}  ${listHtml}\n${indent}</div>`;
     };
     
     return allSections.map(section => generateSectionHTML(section)).join('\n\n');
