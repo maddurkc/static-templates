@@ -279,11 +279,28 @@
   overflow-x: auto;
 }
 
+.listPreview {
+  font-size: 0.875rem;
+  border-left: 2px solid #e9ecef;
+  padding-left: 0.5rem;
+  margin-top: 0.5rem;
+  
+  ul, ol {
+    margin: 0;
+    padding-left: 1.5rem;
+  }
+  
+  li {
+    margin-bottom: 0.25rem;
+  }
+}
+
 .contentPlaceholder {
   font-size: 0.875rem;
   color: #6c757d;
   padding-left: 1rem;
   border-left: 2px solid #e9ecef;
+  white-space: pre-wrap;
 }
 
 .containerBadge {

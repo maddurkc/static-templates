@@ -143,19 +143,22 @@ export const sectionToRequest = (
   const variables = section.variables || {};
   
   // For labeled-content sections, clean up variables to store only essential data
-  let cleanVariables: Record<string, any> = { ...variables };
+  let cleanVariables: Record<string, any> = {};
   
   if (section.type === 'labeled-content') {
-    // Keep only essential labeled-content properties
-    cleanVariables = {
-      label: variables.label,
-      contentType: variables.contentType || 'text',
-      listStyle: variables.listStyle,
-    };
+    const contentType = (variables.contentType as string) || 'text';
+    
+    // Always store essential properties
+    cleanVariables.label = variables.label || '';
+    cleanVariables.contentType = contentType;
+    cleanVariables.listStyle = variables.listStyle || 'circle';
     
     // Copy any label placeholder default values (e.g., incidentNumber: "123")
     const labelText = (variables.label as string) || '';
+    // Match both {{placeholder}} and ${placeholder} formats
     const placeholderMatches = labelText.match(/\$\{(\w+)\}/g) || [];
+    const doubleBraceMatches = labelText.match(/\{\{(\w+)\}\}/g) || [];
+    
     placeholderMatches.forEach(match => {
       const varName = match.replace(/\$\{|\}/g, '');
       if (variables[varName] !== undefined) {
@@ -163,18 +166,28 @@ export const sectionToRequest = (
       }
     });
     
-    // Handle content based on contentType
-    const contentType = variables.contentType || 'text';
+    doubleBraceMatches.forEach(match => {
+      const varName = match.replace(/\{\{|\}\}/g, '');
+      if (variables[varName] !== undefined) {
+        cleanVariables[varName] = variables[varName];
+      }
+    });
+    
+    // Store ONLY the appropriate content based on contentType - mutually exclusive
     if (contentType === 'list') {
-      // Store list items - use 'items' key as that's what the editor uses
-      cleanVariables.items = variables.items || [];
+      cleanVariables.items = variables.items || [{ text: 'Item 1', children: [] }];
+      // Do NOT include content or tableData for list type
     } else if (contentType === 'table') {
-      // Store table data
-      cleanVariables.tableData = variables.tableData || { headers: [], rows: [] };
+      cleanVariables.tableData = variables.tableData || { headers: ['Column 1'], rows: [['Cell 1']] };
+      // Do NOT include content or items for table type
     } else {
-      // Store text content
+      // text content type
       cleanVariables.content = variables.content || '';
+      // Do NOT include items or tableData for text type
     }
+  } else {
+    // For non-labeled-content sections, copy all variables
+    cleanVariables = { ...variables };
   }
   
   const request: TemplateSectionRequest = {
