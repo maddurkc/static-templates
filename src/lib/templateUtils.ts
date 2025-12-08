@@ -11,8 +11,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   if (section.type === 'labeled-content') {
     let label = section.variables?.label || 'Label';
     
-    // Check for label variable override using sanitized label variable name
-    const labelVarName = generateLabelVariableName(section.id);
+    // Use stored labelVariableName or fallback to generated one for backward compatibility
+    const labelVarName = (section.variables?.labelVariableName as string) || generateLabelVariableName(section.id);
     if (variables && variables[labelVarName] !== undefined) {
       label = String(variables[labelVarName]);
     } else {

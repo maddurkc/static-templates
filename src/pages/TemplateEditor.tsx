@@ -307,8 +307,12 @@ const TemplateEditor = () => {
 
       const newSectionId = `section-${Date.now()}-${Math.random()}`;
       
-      // For labeled-content with list type, store the unique list variable name
+      // For labeled-content sections, store the unique label and list variable names
       if (sectionDef.type === 'labeled-content') {
+        // Always store labelVariableName for labeled-content sections
+        const labelVariableName = generateLabelVariableName(newSectionId);
+        variables['labelVariableName'] = labelVariableName;
+        
         const contentType = variables['contentType'] as string;
         if (contentType === 'list') {
           const listVariableName = generateListVariableName(newSectionId);
@@ -802,8 +806,8 @@ const TemplateEditor = () => {
       const label = String(variables['label'] || 'Label');
       const contentType = String(variables['contentType'] || 'text');
       
-      // Generate sanitized label variable name based on section ID
-      const labelVarName = generateLabelVariableName(section.id);
+      // Use stored labelVariableName or fallback to generated one for backward compatibility
+      const labelVarName = String(variables['labelVariableName'] || generateLabelVariableName(section.id));
       
       // Convert label placeholders to Thymeleaf - use proper self-closing spans
       const labelWithThymeleaf = label.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
