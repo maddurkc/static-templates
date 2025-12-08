@@ -351,14 +351,26 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   
   // For mixed-content sections - free-form text with embedded placeholders
   if (section.type === 'mixed-content') {
-    const contentText = (section.variables?.content as string) || 'What\'s New: <th:utext="${update}">';
+    const contentText = (section.variables?.content as string) || 'What\'s New: {{update}}';
     
-    // Extract all placeholders from content
-    const placeholderMatches = contentText.match(/<th:utext="\$\{(\w+)\}"></g) || [];
-    const placeholders = [...new Set(placeholderMatches.map(m => {
-      const match = m.match(/<th:utext="\$\{(\w+)\}"></);
-      return match ? match[1] : '';
-    }).filter(Boolean))];
+    // Extract all placeholders from content (both {{placeholder}} and Thymeleaf formats)
+    const placeholderPattern = /\{\{(\w+)\}\}/g;
+    const thymeleafPattern = /<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)|<th:utext="\$\{(\w+)\}">/g;
+    
+    const placeholders: string[] = [];
+    let match;
+    while ((match = placeholderPattern.exec(contentText)) !== null) {
+      if (!placeholders.includes(match[1])) placeholders.push(match[1]);
+    }
+    while ((match = thymeleafPattern.exec(contentText)) !== null) {
+      const varName = match[1] || match[2];
+      if (varName && !placeholders.includes(varName)) placeholders.push(varName);
+    }
+    
+    // Convert Thymeleaf to placeholders for display
+    const displayContent = contentText
+      .replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g, '{{$1}}')
+      .replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
     
     return (
       <div className={styles.container}>
@@ -370,19 +382,16 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
         <div className={styles.section}>
           <Label className={styles.label}>Template Text</Label>
           <ThymeleafEditor
-            value={contentText}
+            value={displayContent}
             onChange={(value) => onUpdate({
               ...section,
               variables: { ...section.variables, content: value }
             })}
-            placeholder='For invalid Characters issue, the team is working with Engineer- <th:utext="${incidentNumber}">'
+            placeholder='For invalid Characters issue, the team is working with Engineer- {{incidentNumber}}'
             className={styles.thymeleafEditor}
           />
           <p className={styles.description}>
-            Write your text and use Thymeleaf tags:<br/>
-            • Variables: {'<th:utext="${variableName}">'}<br/>
-            • Conditionals: {'<th:if="${condition}">'}content{'</th:if>'}<br/>
-            • Loops: {'<th:each="item : ${items}">'}{'<th:utext="${item}">'}{'</th:each>'}
+            Write your text and use {'{{variableName}}'} for dynamic placeholders.
           </p>
         </div>
         
@@ -397,7 +406,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               {placeholders.map(placeholder => (
                 <div key={placeholder} className={styles.variableField}>
                   <Label className={styles.variableLabel}>
-                    {'<th:utext="${' + placeholder + '}">'} 
+                    {`{{${placeholder}}}`}
                   </Label>
                   <Input
                     value={(section.variables?.[placeholder] as string) || ''}
@@ -419,23 +428,32 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
 
   // For labeled-content sections - static label + dynamic content
   if (section.type === 'labeled-content') {
-    // Extract label placeholders
+    // Extract label placeholders (both {{placeholder}} and Thymeleaf formats)
     const labelText = (section.variables?.label as string) || '';
     const extractLabelPlaceholders = (): string[] => {
-      const placeholderMatches = labelText.match(/<th:utext="\$\{(\w+)\}">/g) || [];
-      return [...new Set(placeholderMatches.map(m => {
-        const match = m.match(/<th:utext="\$\{(\w+)\}">/);
-        return match ? match[1] : '';
-      }).filter(Boolean))];
+      const placeholders: string[] = [];
+      // Match {{placeholder}} format
+      const placeholderMatches = labelText.match(/\{\{(\w+)\}\}/g) || [];
+      placeholderMatches.forEach(m => {
+        const match = m.match(/\{\{(\w+)\}\}/);
+        if (match && !placeholders.includes(match[1])) placeholders.push(match[1]);
+      });
+      // Match Thymeleaf formats
+      const thymeleafMatches = labelText.match(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)|<th:utext="\$\{(\w+)\}">/g) || [];
+      thymeleafMatches.forEach(m => {
+        const match = m.match(/\$\{(\w+)\}/);
+        if (match && !placeholders.includes(match[1])) placeholders.push(match[1]);
+      });
+      return placeholders;
     };
     
     // Get user-friendly label (convert Thymeleaf to {{placeholder}})
     const getUserFriendlyLabel = (): string => {
       let label = labelText;
-      extractLabelPlaceholders().forEach(placeholder => {
-        const thymeleafPattern = new RegExp(`<th:utext="\\$\\{${placeholder}\\}">`, 'g');
-        label = label.replace(thymeleafPattern, `{{${placeholder}}}`);
-      });
+      // Convert span format
+      label = label.replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g, '{{$1}}');
+      // Convert legacy format
+      label = label.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
       return label;
     };
     
@@ -469,11 +487,11 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               const newLabel = e.target.value;
               const newPlaceholders = newLabel.match(/\{\{(\w+)\}\}/g) || [];
               
-              // Convert {{placeholder}} to Thymeleaf
+              // Convert {{placeholder}} to Thymeleaf (using span format)
               let thymeleafLabel = newLabel;
               newPlaceholders.forEach(match => {
                 const varName = match.replace(/\{\{|\}\}/g, '');
-                thymeleafLabel = thymeleafLabel.replace(new RegExp(`\\{\\{${varName}\\}\\}`, 'g'), `<th:utext="\${${varName}}">`);
+                thymeleafLabel = thymeleafLabel.replace(new RegExp(`\\{\\{${varName}\\}\\}`, 'g'), `<span th:utext="\${${varName}}"/>`);
               });
               
               // Update variables with new placeholders
