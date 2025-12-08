@@ -307,7 +307,7 @@ export const sectionTypes: SectionDefinition[] = [
         name: 'label',
         label: 'Label/Heading (can include variables)',
         type: 'text',
-        defaultValue: 'Incident Report #<span th:utext="${incidentNumber}"/>'
+        defaultValue: 'Incident Report'
       },
       {
         name: 'contentType',
@@ -335,6 +335,12 @@ export const sectionTypes: SectionDefinition[] = [
         label: 'List Style',
         type: 'text',
         defaultValue: 'circle'
+      },
+      {
+        name: 'tableData',
+        label: 'Table Data (if content type is table)',
+        type: 'table',
+        defaultValue: { headers: ['Column 1', 'Column 2'], rows: [['Cell 1', 'Cell 2']] }
       }
     ]
   },

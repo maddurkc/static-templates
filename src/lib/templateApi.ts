@@ -13,6 +13,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080
 // Request/Response Types matching backend DTOs
 export interface TemplateSectionRequest {
   sectionId: string;
+  sectionType: string; // Store the section type for proper reconstruction
   orderIndex: number;
   parentSectionId: string | null;
   content: string;
@@ -88,6 +89,7 @@ export interface TemplateResponse {
 export interface TemplateSectionResponse {
   id: string;
   sectionId: string;
+  sectionType?: string; // Section type for proper reconstruction
   orderIndex: number;
   parentSectionId: string | null;
   content: string;
@@ -140,65 +142,103 @@ export const sectionToRequest = (
 ): TemplateSectionRequest => {
   const variables = section.variables || {};
   
+  // For labeled-content sections, clean up variables to store only essential data
+  let cleanVariables: Record<string, any> = { ...variables };
+  
+  if (section.type === 'labeled-content') {
+    // Keep only essential labeled-content properties
+    cleanVariables = {
+      label: variables.label,
+      contentType: variables.contentType || 'text',
+      listStyle: variables.listStyle,
+    };
+    
+    // Copy any label placeholder default values (e.g., incidentNumber: "123")
+    const labelText = (variables.label as string) || '';
+    const placeholderMatches = labelText.match(/\$\{(\w+)\}/g) || [];
+    placeholderMatches.forEach(match => {
+      const varName = match.replace(/\$\{|\}/g, '');
+      if (variables[varName] !== undefined) {
+        cleanVariables[varName] = variables[varName];
+      }
+    });
+    
+    // Handle content based on contentType
+    const contentType = variables.contentType || 'text';
+    if (contentType === 'list') {
+      // Store list items - use 'items' key as that's what the editor uses
+      cleanVariables.items = variables.items || [];
+    } else if (contentType === 'table') {
+      // Store table data
+      cleanVariables.tableData = variables.tableData || { headers: [], rows: [] };
+    } else {
+      // Store text content
+      cleanVariables.content = variables.content || '';
+    }
+  }
+  
   const request: TemplateSectionRequest = {
     sectionId: section.id,
+    sectionType: section.type, // Store section type for reconstruction
     orderIndex,
     parentSectionId,
     content: section.content,
-    variables: variables,
+    variables: cleanVariables,
     styles: section.styles || {},
     isLabelEditable: section.isLabelEditable ?? true,
   };
 
-  // Add list items if present in variables
-  const listItems = variables.listItems as any[] | undefined;
-  if (listItems && Array.isArray(listItems) && listItems.length > 0) {
-    request.listItems = listItems.map((item: any) => ({
-      id: item.id || `item-${Date.now()}`,
-      content: item.text || item.content || '',
-      styles: {
-        color: item.color,
-        backgroundColor: item.backgroundColor,
-        fontSize: item.fontSize,
-        bold: item.bold,
-        italic: item.italic,
-        underline: item.underline,
-      },
-      children: item.children?.map((child: any) => ({
-        id: child.id || `child-${Date.now()}`,
-        content: child.text || child.content || '',
+  // Add list items for non-labeled-content sections
+  if (section.type !== 'labeled-content') {
+    const listItems = variables.listItems as any[] | undefined;
+    if (listItems && Array.isArray(listItems) && listItems.length > 0) {
+      request.listItems = listItems.map((item: any) => ({
+        id: item.id || `item-${Date.now()}`,
+        content: item.text || item.content || '',
         styles: {
-          color: child.color,
-          backgroundColor: child.backgroundColor,
-          fontSize: child.fontSize,
-          bold: child.bold,
-          italic: child.italic,
-          underline: child.underline,
+          color: item.color,
+          backgroundColor: item.backgroundColor,
+          fontSize: item.fontSize,
+          bold: item.bold,
+          italic: item.italic,
+          underline: item.underline,
         },
-        children: child.children?.map((grandChild: any) => ({
-          id: grandChild.id || `grandchild-${Date.now()}`,
-          content: grandChild.text || grandChild.content || '',
+        children: item.children?.map((child: any) => ({
+          id: child.id || `child-${Date.now()}`,
+          content: child.text || child.content || '',
           styles: {
-            color: grandChild.color,
-            backgroundColor: grandChild.backgroundColor,
-            fontSize: grandChild.fontSize,
-            bold: grandChild.bold,
-            italic: grandChild.italic,
-            underline: grandChild.underline,
+            color: child.color,
+            backgroundColor: child.backgroundColor,
+            fontSize: child.fontSize,
+            bold: child.bold,
+            italic: child.italic,
+            underline: child.underline,
           },
+          children: child.children?.map((grandChild: any) => ({
+            id: grandChild.id || `grandchild-${Date.now()}`,
+            content: grandChild.text || grandChild.content || '',
+            styles: {
+              color: grandChild.color,
+              backgroundColor: grandChild.backgroundColor,
+              fontSize: grandChild.fontSize,
+              bold: grandChild.bold,
+              italic: grandChild.italic,
+              underline: grandChild.underline,
+            },
+          })),
         })),
-      })),
-    }));
-  }
+      }));
+    }
 
-  // Add table data if present in variables
-  const tableHeaders = variables.tableHeaders as string[] | undefined;
-  const tableRows = variables.tableRows as string[][] | undefined;
-  if (tableHeaders && tableRows) {
-    request.tableData = {
-      headers: tableHeaders,
-      rows: tableRows,
-    };
+    // Add table data for non-labeled-content sections
+    const tableHeaders = variables.tableHeaders as string[] | undefined;
+    const tableRows = variables.tableRows as string[][] | undefined;
+    if (tableHeaders && tableRows) {
+      request.tableData = {
+        headers: tableHeaders,
+        rows: tableRows,
+      };
+    }
   }
 
   return request;
@@ -345,7 +385,22 @@ export { TemplateApiClient };
 // Helper function to convert API response to local Template type
 import { Template } from "@/lib/templateStorage";
 
-const inferSectionType = (content: string, sectionId: string): SectionType => {
+const inferSectionType = (content: string, sectionId: string, variables?: Record<string, any>): SectionType => {
+  // Check if it's a labeled-content section based on variables
+  if (variables?.label !== undefined && variables?.contentType !== undefined) {
+    return 'labeled-content';
+  }
+  
+  // Check if it's a mixed-content section
+  if (variables?.content !== undefined && !variables?.label && sectionId.includes('mixed')) {
+    return 'mixed-content';
+  }
+  
+  // Check if it's a static-text section
+  if (variables?.content !== undefined && sectionId.includes('static-text')) {
+    return 'static-text';
+  }
+  
   // Try to infer type from content or sectionId
   if (content.includes('<h1')) return 'heading1';
   if (content.includes('<h2')) return 'heading2';
@@ -369,7 +424,8 @@ export const responseToTemplate = (response: TemplateResponse): Template => {
   // Convert API sections to local Section format
   const sections: Section[] = response.sections?.map(s => ({
     id: s.sectionId || s.id,
-    type: inferSectionType(s.content, s.sectionId || s.id),
+    // Use stored sectionType if available, otherwise infer from content
+    type: (s.sectionType as SectionType) || inferSectionType(s.content, s.sectionId || s.id, s.variables),
     content: s.content,
     variables: s.variables || {},
     styles: s.styles || {},

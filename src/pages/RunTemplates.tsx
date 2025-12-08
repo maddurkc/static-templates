@@ -141,13 +141,21 @@ const RunTemplates = () => {
     return Array.from(new Set(Array.from(matches, m => m[1])));
   };
 
+  // Check if a variable is a labeled-content section by its section ID
+  const isLabeledContentSection = (varName: string): Section | undefined => {
+    if (!selectedTemplate?.sections) return undefined;
+    return selectedTemplate.sections.find(section => 
+      section.type === 'labeled-content' && section.id === varName
+    );
+  };
+
   // Check if a variable is a list type based on sections
   const isListVariable = (varName: string): boolean => {
     if (!selectedTemplate?.sections) return false;
     
     for (const section of selectedTemplate.sections) {
-      // For labeled-content sections, check contentType
-      if (section.type === 'labeled-content' && section.variables?.label === varName) {
+      // For labeled-content sections, check contentType using section ID
+      if (section.type === 'labeled-content' && section.id === varName) {
         return section.variables?.contentType === 'list';
       }
       
@@ -163,8 +171,8 @@ const RunTemplates = () => {
     if (!selectedTemplate?.sections) return false;
     
     return selectedTemplate.sections.some(section => {
-      if (section.type === 'labeled-content' && section.variables?.label === varName) {
-        return section.variables.contentType === 'table';
+      if (section.type === 'labeled-content' && section.id === varName) {
+        return section.variables?.contentType === 'table';
       }
       return false;
     });
@@ -175,7 +183,7 @@ const RunTemplates = () => {
     if (!selectedTemplate?.sections) return true;
     
     const section = selectedTemplate.sections.find(section => 
-      section.type === 'labeled-content' && section.variables?.label === varName
+      section.type === 'labeled-content' && section.id === varName
     );
     return section?.isLabelEditable !== false;
   };
@@ -185,11 +193,11 @@ const RunTemplates = () => {
     if (!selectedTemplate?.sections) return '';
     
     for (const section of selectedTemplate.sections) {
-      // For labeled-content sections, return content or items based on contentType
-      if (section.type === 'labeled-content' && section.variables?.label === varName) {
-        if (section.variables.contentType === 'list') {
+      // For labeled-content sections, return content or items based on contentType using section ID
+      if (section.type === 'labeled-content' && section.id === varName) {
+        if (section.variables?.contentType === 'list') {
           return (section.variables.items as string[]) || [''];
-        } else if (section.variables.contentType === 'table') {
+        } else if (section.variables?.contentType === 'table') {
           const tableData = section.variables.tableData;
           if (tableData && tableData.headers) {
             return {
@@ -199,7 +207,7 @@ const RunTemplates = () => {
           }
           return { headers: [], rows: [] };
         }
-        return (section.variables.content as string) || '';
+        return (section.variables?.content as string) || '';
       }
       
       // For heading/text sections with inline placeholders
@@ -216,19 +224,26 @@ const RunTemplates = () => {
     return '';
   };
 
+  // Get the display label for a labeled-content section (convert Thymeleaf to {{placeholder}})
+  const getLabeledContentDisplayLabel = (section: Section): string => {
+    const label = (section.variables?.label as string) || 'Untitled';
+    return label
+      .replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g, '{{$1}}')
+      .replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
+  };
+
   // Get context information for a variable - shows where it's used
   const getVariableContext = (varName: string): { sectionType: string; label?: string; context?: string } | null => {
     if (!selectedTemplate?.sections) return null;
     
     for (const section of selectedTemplate.sections) {
-      // Check if this is a labeled-content section
-      if (section.type === 'labeled-content' && section.variables?.label === varName) {
-        // Extract the static parts of the label to show context
-        const labelText = section.variables.label as string;
+      // Check if this is a labeled-content section by ID
+      if (section.type === 'labeled-content' && section.id === varName) {
+        const displayLabel = getLabeledContentDisplayLabel(section);
         return {
           sectionType: 'Labeled Content',
-          label: labelText,
-          context: `Content for: ${labelText.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}')}`
+          label: displayLabel,
+          context: `Content for: ${displayLabel}`
         };
       }
       
@@ -236,10 +251,11 @@ const RunTemplates = () => {
       if (section.type === 'labeled-content' && section.variables?.label) {
         const labelText = section.variables.label as string;
         if (labelText.includes(`\${${varName}}`)) {
+          const displayLabel = getLabeledContentDisplayLabel(section);
           return {
             sectionType: 'Dynamic Label',
-            label: section.variables.label as string,
-            context: `Used in label: ${labelText.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}')}`
+            label: displayLabel,
+            context: `Used in label: ${displayLabel}`
           };
         }
       }
@@ -307,18 +323,23 @@ const RunTemplates = () => {
     // Extract from sections if available
     if (template.sections) {
       template.sections.forEach((section: Section) => {
-        // For labeled-content sections, extract variables from both label and content
+        // For labeled-content sections, use section ID as the variable name for content
         if (section.type === 'labeled-content') {
-          // Extract variables from the label itself
+          // Extract placeholder variables from the label itself
           if (section.variables?.label) {
             const labelVars = extractVariables(section.variables.label as string);
             labelVars.forEach(v => varsFromSections.add(v));
+            
+            // Also check for {{placeholder}} format in label
+            const placeholderMatches = (section.variables.label as string).match(/\{\{(\w+)\}\}/g) || [];
+            placeholderMatches.forEach(match => {
+              const varName = match.replace(/\{\{|\}\}/g, '');
+              varsFromSections.add(varName);
+            });
           }
           
-          // Also add the label as a variable name for content (if not editable, skip content variable)
-          if (section.variables?.label) {
-            varsFromSections.add(section.variables.label as string);
-          }
+          // Use section ID as the key for the content data
+          varsFromSections.add(section.id);
           return;
         }
         
