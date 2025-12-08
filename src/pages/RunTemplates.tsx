@@ -167,6 +167,12 @@ const RunTemplates = () => {
     );
   };
 
+  // List section types that can be dragged into templates
+  const LIST_SECTION_TYPES = [
+    'bullet-list-circle', 'bullet-list-disc', 'bullet-list-square',
+    'number-list-1', 'number-list-i', 'number-list-a'
+  ];
+
   // Check if a variable is a list type based on sections
   const isListVariable = (varName: string): boolean => {
     if (!selectedTemplate?.sections) return false;
@@ -180,11 +186,39 @@ const RunTemplates = () => {
         }
       }
       
+      // For standalone list sections (bullet-list-*, number-list-*)
+      if (LIST_SECTION_TYPES.includes(section.type) && section.id === varName) {
+        return true;
+      }
+      
       if (section.variables && section.variables[varName]) {
         return Array.isArray(section.variables[varName]);
       }
     }
     return false;
+  };
+  
+  // Get list style for a section
+  const getListStyle = (varName: string): string => {
+    if (!selectedTemplate?.sections) return 'disc';
+    
+    for (const section of selectedTemplate.sections) {
+      if (section.type === 'labeled-content' && section.id === varName) {
+        return (section.variables?.listStyle as string) || 'disc';
+      }
+      
+      if (LIST_SECTION_TYPES.includes(section.type) && section.id === varName) {
+        // Extract style from section type
+        if (section.type.includes('circle')) return 'circle';
+        if (section.type.includes('disc')) return 'disc';
+        if (section.type.includes('square')) return 'square';
+        if (section.type === 'number-list-1') return 'decimal';
+        if (section.type === 'number-list-i') return 'lower-roman';
+        if (section.type === 'number-list-a') return 'lower-alpha';
+        return 'disc';
+      }
+    }
+    return 'disc';
   };
 
   // Check if a variable is a table type
@@ -259,6 +293,11 @@ const RunTemplates = () => {
           }
           return (section.variables?.content as string) || '';
         }
+      }
+      
+      // For standalone list sections (bullet-list-*, number-list-*)
+      if (LIST_SECTION_TYPES.includes(section.type) && section.id === varName) {
+        return (section.variables?.items as string[]) || [''];
       }
       
       // For heading/text sections with inline placeholders
@@ -369,6 +408,15 @@ const RunTemplates = () => {
         }
       }
       
+      // Check standalone list sections (bullet-list-*, number-list-*)
+      if (LIST_SECTION_TYPES.includes(section.type) && section.id === varName) {
+        const styleType = section.type.includes('bullet') ? 'Bullet List' : 'Numbered List';
+        return {
+          sectionType: styleType,
+          context: `Editable list items`
+        };
+      }
+      
       // Check regular sections
       if (section.variables && section.variables[varName] !== undefined) {
         const typeLabel = section.type.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -467,6 +515,16 @@ const RunTemplates = () => {
           // Also extract Thymeleaf variables from content
           const contentVars = extractVariables(section.content);
           contentVars.forEach(v => varsFromSections.add(v));
+        }
+        
+        // For standalone list sections (bullet-list-*, number-list-*)
+        const listSectionTypes = [
+          'bullet-list-circle', 'bullet-list-disc', 'bullet-list-square',
+          'number-list-1', 'number-list-i', 'number-list-a'
+        ];
+        if (listSectionTypes.includes(section.type)) {
+          // Use section ID as the variable name for list content
+          varsFromSections.add(section.id);
         }
         
         // For other sections, extract user-defined variables (not metadata)

@@ -348,6 +348,54 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     return `<${tag}${styleStr}>${processedContent}</${tag}>`;
   }
   
+  // Handle standalone list sections (bullet-list-*, number-list-*)
+  const listSectionTypes = [
+    'bullet-list-circle', 'bullet-list-disc', 'bullet-list-square',
+    'number-list-1', 'number-list-i', 'number-list-a'
+  ];
+  if (listSectionTypes.includes(section.type)) {
+    // Determine list style based on section type
+    let listStyle = 'disc';
+    if (section.type.includes('circle')) listStyle = 'circle';
+    else if (section.type.includes('disc')) listStyle = 'disc';
+    else if (section.type.includes('square')) listStyle = 'square';
+    else if (section.type === 'number-list-1') listStyle = 'decimal';
+    else if (section.type === 'number-list-i') listStyle = 'lower-roman';
+    else if (section.type === 'number-list-a') listStyle = 'lower-alpha';
+    
+    const listTag = getListTag(listStyle);
+    const listStyleType = getListStyleType(listStyle);
+    
+    // Check for runtime variables first (from RunTemplates)
+    let items: any[] = [];
+    if (variables && variables[section.id] !== undefined) {
+      items = Array.isArray(variables[section.id]) ? variables[section.id] : [];
+    } else if (section.variables?.items) {
+      items = section.variables.items as any[];
+    }
+    
+    const renderListItem = (item: any): string => {
+      if (typeof item === 'string') {
+        return `<li>${sanitizeInput(item)}</li>`;
+      }
+      
+      const styles = [];
+      if (item.color) styles.push(`color: ${item.color}`);
+      if (item.bold) styles.push('font-weight: bold');
+      if (item.italic) styles.push('font-style: italic');
+      if (item.underline) styles.push('text-decoration: underline');
+      if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+      if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
+      const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+      
+      return `<li${styleAttr}>${sanitizeInput(item.text || '')}</li>`;
+    };
+    
+    return `<${listTag} style="list-style-type: ${listStyleType}; margin-left: 20px; margin: 10px 0 10px 20px;">` + 
+      items.map(renderListItem).join('') + 
+      `</${listTag}>`;
+  }
+  
   // Handle line-break sections
   if (section.type === 'line-break') {
     return '<br/>';
