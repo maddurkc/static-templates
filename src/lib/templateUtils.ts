@@ -104,6 +104,18 @@ export const renderSectionContent = (section: Section, variables?: Record<string
           `</${listTag}>`;
       } else if (typeof runtimeValue === 'string') {
         contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(runtimeValue)}</div>`;
+      } else if (typeof runtimeValue === 'object' && runtimeValue !== null && 'text' in runtimeValue) {
+        // Handle TextStyle object with styling properties
+        const textStyle = runtimeValue as { text: string; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; backgroundColor?: string; fontSize?: string };
+        const styles = [];
+        if (textStyle.color) styles.push(`color: ${textStyle.color}`);
+        if (textStyle.bold) styles.push('font-weight: bold');
+        if (textStyle.italic) styles.push('font-style: italic');
+        if (textStyle.underline) styles.push('text-decoration: underline');
+        if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
+        if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
+        const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+        contentHtml = `<div style="white-space: pre-wrap;"><span${styleAttr}>${sanitizeInput(textStyle.text)}</span></div>`;
       }
     } else {
       // Use default values from section variables
