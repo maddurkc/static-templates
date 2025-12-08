@@ -802,10 +802,18 @@ const TemplateEditor = () => {
       const label = String(variables['label'] || 'Label');
       const contentType = String(variables['contentType'] || 'text');
       
-      const labelVarName = `label_${section.id}`;
+      // Check if label contains {{placeholder}} syntax - only use Thymeleaf for dynamic labels
+      const hasPlaceholder = /\{\{(\w+)\}\}/.test(label);
+      let labelHtml = '';
       
-      // Convert label placeholders to Thymeleaf - use proper self-closing spans
-      const labelWithThymeleaf = label.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
+      if (hasPlaceholder) {
+        // Convert {{placeholder}} to Thymeleaf
+        const labelWithThymeleaf = label.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
+        labelHtml = `<strong>${labelWithThymeleaf}</strong>`;
+      } else {
+        // Static label - no Thymeleaf needed, just use the label text directly
+        labelHtml = `<strong>${label}</strong>`;
+      }
       
       let contentHtml = '';
       
@@ -814,7 +822,8 @@ const TemplateEditor = () => {
         const contentWithThymeleaf = content.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
         contentHtml = `<p>${contentWithThymeleaf}</p>`;
       } else if (contentType === 'list') {
-        const listVariableName = String(variables['listVariableName'] || 'items');
+        // Use stored listVariableName if available, otherwise generate from section ID
+        const listVariableName = String(variables['listVariableName'] || generateListVariableName(section.id));
         const listStyle = String(variables['listStyle'] || 'circle');
         contentHtml = generateThymeleafListHtml(listVariableName, listStyle);
       } else if (contentType === 'table') {
@@ -822,9 +831,8 @@ const TemplateEditor = () => {
         contentHtml = generateThymeleafTableHTML(tableData);
       }
       
-      // Use proper Thymeleaf format: <span th:utext="${labelVarName}"/> for the label
       return `${indent}<div style="${styleString}">
-${indent}  <strong><span th:utext="\${${labelVarName}}"/></strong>
+${indent}  ${labelHtml}
 ${indent}  <div>${contentHtml}</div>
 ${indent}</div>`;
     };
