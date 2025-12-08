@@ -136,7 +136,8 @@ const RunTemplates = () => {
       if (selectedTemplate.sections) {
         selectedTemplate.sections.forEach(section => {
           if (section.type === 'labeled-content') {
-            const labelVarName = generateLabelVariableName(section.id);
+            // Use stored labelVariableName or fallback to generated one for backward compatibility
+            const labelVarName = (section.variables?.labelVariableName as string) || generateLabelVariableName(section.id);
             const rawLabel = (section.variables?.label as string) || 'Label';
             // Extract clean label text (without Thymeleaf tags)
             const cleanLabel = rawLabel
@@ -227,9 +228,10 @@ const RunTemplates = () => {
   // Get section for a label variable
   const getLabelSection = (labelVarName: string): Section | undefined => {
     if (!selectedTemplate?.sections || !labelVarName.startsWith('label_')) return undefined;
-    // Find section by matching generated label variable name
+    // Find section by matching stored labelVariableName or fallback to generated name
     return selectedTemplate.sections.find(section => 
-      section.type === 'labeled-content' && generateLabelVariableName(section.id) === labelVarName
+      section.type === 'labeled-content' && 
+      ((section.variables?.labelVariableName as string) === labelVarName || generateLabelVariableName(section.id) === labelVarName)
     );
   };
 
