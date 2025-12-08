@@ -25,6 +25,7 @@ import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
+import { generateLabelVariableName } from "@/lib/listThymeleafUtils";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -135,7 +136,7 @@ const RunTemplates = () => {
       if (selectedTemplate.sections) {
         selectedTemplate.sections.forEach(section => {
           if (section.type === 'labeled-content') {
-            const labelVarName = `label_${section.id}`;
+            const labelVarName = generateLabelVariableName(section.id);
             const rawLabel = (section.variables?.label as string) || 'Label';
             // Extract clean label text (without Thymeleaf tags)
             const cleanLabel = rawLabel
@@ -226,9 +227,9 @@ const RunTemplates = () => {
   // Get section for a label variable
   const getLabelSection = (labelVarName: string): Section | undefined => {
     if (!selectedTemplate?.sections || !labelVarName.startsWith('label_')) return undefined;
-    const sectionId = labelVarName.substring(6);
+    // Find section by matching generated label variable name
     return selectedTemplate.sections.find(section => 
-      section.type === 'labeled-content' && section.id === sectionId
+      section.type === 'labeled-content' && generateLabelVariableName(section.id) === labelVarName
     );
   };
 

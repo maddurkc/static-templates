@@ -16,9 +16,21 @@ const ORDERED_STYLES = ['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 
 export const generateListVariableName = (sectionId: string): string => {
   // Remove all invalid characters (only keep letters, numbers, and underscores)
   // Thymeleaf variable names cannot contain hyphens or other special characters
-  const cleanId = sectionId.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+  const cleanId = sectionId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
   const shortId = cleanId.slice(-8); // Take last 8 chars for uniqueness
   return `items_${shortId}`;
+};
+
+/**
+ * Generate a unique label variable name based on section ID
+ * Creates a valid Thymeleaf variable name (only letters, numbers, underscores)
+ */
+export const generateLabelVariableName = (sectionId: string): string => {
+  // Remove all invalid characters (only keep letters, numbers)
+  // Then replace with underscores as separator
+  const cleanId = sectionId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const shortId = cleanId.slice(-12); // Take last 12 chars for uniqueness
+  return `label_${shortId}`;
 };
 
 /**
