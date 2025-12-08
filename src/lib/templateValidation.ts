@@ -276,6 +276,17 @@ export const validateSections = (sections: Section[]): ValidationError[] => {
     
     // Validate labeled-content sections have valid variable names
     if (section.type === 'labeled-content') {
+      // Validate labelVariableName
+      const labelVariableName = section.variables?.labelVariableName as string;
+      if (labelVariableName && !isValidListVariableName(labelVariableName)) {
+        errors.push({
+          field: 'sectionVariable',
+          message: `"${sectionName}" has invalid label variable name "${labelVariableName}". Must contain only letters, numbers, and underscores.`,
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      }
+      
       // Validate listVariableName for list content type
       if (section.variables?.contentType === 'list') {
         const listVariableName = section.variables?.listVariableName as string;
