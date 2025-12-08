@@ -624,6 +624,24 @@ const RunTemplates = () => {
       }
     }
 
+    // Validate listVariableName exists for all list sections
+    if (selectedTemplate.sections) {
+      const listSectionsWithoutVarName = selectedTemplate.sections.filter(section => 
+        section.type === 'labeled-content' && 
+        section.variables?.contentType === 'list' && 
+        !section.variables?.listVariableName
+      );
+      
+      if (listSectionsWithoutVarName.length > 0) {
+        toast({
+          title: "Validation Error",
+          description: `Some list sections are missing variable names. Please edit the template and ensure all list sections have valid variable names.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     // Validate emails
     if (!toEmails.trim()) {
       toast({

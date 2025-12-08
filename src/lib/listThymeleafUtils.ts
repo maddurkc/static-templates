@@ -11,13 +11,37 @@ const ORDERED_STYLES = ['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 
 
 /**
  * Generate a unique list variable name based on section ID
- * Takes the first 8 characters of the section ID to create a readable unique name
+ * Creates a valid Thymeleaf variable name (only letters, numbers, underscores)
  */
 export const generateListVariableName = (sectionId: string): string => {
-  // Clean the section ID and take a meaningful portion
-  const cleanId = sectionId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  // Remove all invalid characters (only keep letters, numbers, and underscores)
+  // Thymeleaf variable names cannot contain hyphens or other special characters
+  const cleanId = sectionId.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
   const shortId = cleanId.slice(-8); // Take last 8 chars for uniqueness
   return `items_${shortId}`;
+};
+
+/**
+ * Validate a list variable name for Thymeleaf compatibility
+ * Must start with a letter or underscore, contain only letters, numbers, underscores
+ */
+export const isValidListVariableName = (name: string): boolean => {
+  if (!name || name.trim().length === 0) return false;
+  // Must start with letter or underscore, only contain alphanumeric and underscores
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
+};
+
+/**
+ * Sanitize a custom variable name to be Thymeleaf-compatible
+ */
+export const sanitizeVariableName = (name: string): string => {
+  // Replace hyphens with underscores, remove other invalid characters
+  let sanitized = name.replace(/-/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+  // Ensure it starts with a letter or underscore
+  if (sanitized.length > 0 && /^[0-9]/.test(sanitized)) {
+    sanitized = '_' + sanitized;
+  }
+  return sanitized.toLowerCase();
 };
 
 /**
