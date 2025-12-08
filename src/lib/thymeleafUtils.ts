@@ -52,8 +52,10 @@ export const subjectPlaceholderToThymeleaf = (subject: string): string => {
  */
 export const subjectThymeleafToPlaceholder = (subject: string): string => {
   return subject
-    // New th:block format: <th:block th:utext="${var}"/>
-    .replace(/<th:block\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
+    // New th:block format: <th:block th:utext="${var}"/> (with optional space before />)
+    .replace(/<th:block\s+th:utext="\$\{(\w+)\}"\s*\/>/g, '{{$1}}')
+    // th:block format without self-closing: <th:block th:utext="${var}">
+    .replace(/<th:block\s+th:utext="\$\{(\w+)\}">/g, '{{$1}}')
     // Old format for backward compatibility
     .replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
 };
