@@ -27,7 +27,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 1',
     icon: Heading1,
     description: 'Large heading - supports {{variable}} placeholders',
-    defaultContent: '<h1><th:utext="${title}"></h1>',
+    defaultContent: '<h1><span th:utext="${title}"/></h1>',
     category: 'text',
     variables: [
       { name: 'title', label: 'Title', type: 'text', defaultValue: 'Main Title' }
@@ -38,7 +38,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 2',
     icon: Heading2,
     description: 'Section heading - supports {{variable}} placeholders',
-    defaultContent: '<h2><th:utext="${title}"></h2>',
+    defaultContent: '<h2><span th:utext="${title}"/></h2>',
     category: 'text',
     variables: [
       { name: 'title', label: 'Title', type: 'text', defaultValue: 'Section Title' }
@@ -49,7 +49,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 3',
     icon: Heading3,
     description: 'Subsection heading - supports {{variable}} placeholders',
-    defaultContent: '<h3><th:utext="${title}"></h3>',
+    defaultContent: '<h3><span th:utext="${title}"/></h3>',
     category: 'text',
     variables: [
       { name: 'title', label: 'Title', type: 'text', defaultValue: 'Subsection Title' }
@@ -60,7 +60,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 4',
     icon: Heading4,
     description: 'Minor heading - supports {{variable}} placeholders',
-    defaultContent: '<h4><th:utext="${title}"></h4>',
+    defaultContent: '<h4><span th:utext="${title}"/></h4>',
     category: 'text',
     variables: [
       { name: 'title', label: 'Title', type: 'text', defaultValue: 'Minor Title' }
@@ -71,7 +71,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 5',
     icon: Heading5,
     description: 'Small heading - supports {{variable}} placeholders',
-    defaultContent: '<h5><th:utext="${title}"></h5>',
+    defaultContent: '<h5><span th:utext="${title}"/></h5>',
     category: 'text',
     variables: [
       { name: 'title', label: 'Title', type: 'text', defaultValue: 'Small Title' }
@@ -82,7 +82,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 6',
     icon: Heading6,
     description: 'Smallest heading - supports {{variable}} placeholders',
-    defaultContent: '<h6><th:utext="${title}"></h6>',
+    defaultContent: '<h6><span th:utext="${title}"/></h6>',
     category: 'text',
     variables: [
       { name: 'title', label: 'Title', type: 'text', defaultValue: 'Tiny Title' }
@@ -93,7 +93,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Text',
     icon: Type,
     description: 'Simple text - supports {{variable}} placeholders',
-    defaultContent: '<span><th:utext="${text}"></span>',
+    defaultContent: '<span><span th:utext="${text}"/></span>',
     category: 'text',
     variables: [
       { name: 'text', label: 'Text', type: 'text', defaultValue: 'Your text here' }
@@ -104,7 +104,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Paragraph',
     icon: AlignLeft,
     description: 'Text paragraph - supports {{variable}} placeholders',
-    defaultContent: '<p><th:utext="${content}"></p>',
+    defaultContent: '<p><span th:utext="${content}"/></p>',
     category: 'text',
     variables: [
       { name: 'content', label: 'Content', type: 'text', defaultValue: 'This is a paragraph with multiple lines of text. You can add more content here.' }
@@ -135,7 +135,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Bullet List (Circle)',
     icon: List,
     description: 'List with circle bullets',
-    defaultContent: '<ul style="list-style-type: circle;"><th:utext="${items}"></ul>',
+    defaultContent: '<ul style="list-style-type: circle;"><span th:utext="${items}"/></ul>',
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['Item 1', 'Item 2', 'Item 3'] }
@@ -146,7 +146,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Bullet List (Disc)',
     icon: List,
     description: 'List with disc bullets',
-    defaultContent: '<ul style="list-style-type: disc;"><th:utext="${items}"></ul>',
+    defaultContent: '<ul style="list-style-type: disc;"><span th:utext="${items}"/></ul>',
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['Item 1', 'Item 2', 'Item 3'] }
@@ -157,7 +157,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Bullet List (Square)',
     icon: List,
     description: 'List with square bullets',
-    defaultContent: '<ul style="list-style-type: square;"><th:utext="${items}"></ul>',
+    defaultContent: '<ul style="list-style-type: square;"><span th:utext="${items}"/></ul>',
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['Item 1', 'Item 2', 'Item 3'] }
@@ -168,7 +168,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Numbered List (1,2,3)',
     icon: ListOrdered,
     description: 'List with numbers',
-    defaultContent: '<ol style="list-style-type: decimal;"><th:utext="${items}"></ol>',
+    defaultContent: '<ol style="list-style-type: decimal;"><span th:utext="${items}"/></ol>',
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['First item', 'Second item', 'Third item'] }
@@ -179,7 +179,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Numbered List (i,ii,iii)',
     icon: ListOrdered,
     description: 'List with roman numerals',
-    defaultContent: '<ol style="list-style-type: lower-roman;"><th:utext="${items}"></ol>',
+    defaultContent: '<ol style="list-style-type: lower-roman;"><span th:utext="${items}"/></ol>',
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['First item', 'Second item', 'Third item'] }
@@ -190,7 +190,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Numbered List (a,b,c)',
     icon: ListOrdered,
     description: 'List with letters',
-    defaultContent: '<ol style="list-style-type: lower-alpha;"><th:utext="${items}"></ol>',
+    defaultContent: '<ol style="list-style-type: lower-alpha;"><span th:utext="${items}"/></ol>',
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['First item', 'Second item', 'Third item'] }
@@ -201,7 +201,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Image',
     icon: Image,
     description: 'Image element',
-    defaultContent: '<img src="<th:utext="${src}">" alt="<th:utext="${alt}">" />',
+    defaultContent: '<img src="<span th:utext="${src}"/>" alt="<span th:utext="${alt}"/>" />',
     category: 'media',
     variables: [
       { name: 'src', label: 'Image URL', type: 'url', defaultValue: 'https://placehold.co/600x400' },
@@ -213,7 +213,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Link',
     icon: Link,
     description: 'Hyperlink element',
-    defaultContent: '<a href="<th:utext="${href}">"><th:utext="${text}"></a>',
+    defaultContent: '<a href="<span th:utext="${href}"/>"><span th:utext="${text}"/></a>',
     category: 'interactive',
     variables: [
       { name: 'href', label: 'Link URL', type: 'url', defaultValue: '#' },
@@ -225,7 +225,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Button',
     icon: MousePointerClick,
     description: 'Button element',
-    defaultContent: '<button><th:utext="${text}"></button>',
+    defaultContent: '<button><span th:utext="${text}"/></button>',
     category: 'interactive',
     variables: [
       { name: 'text', label: 'Button Text', type: 'text', defaultValue: 'Click me' }
@@ -244,7 +244,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'HTML Content',
     icon: Code,
     description: 'Display raw HTML content from API or custom input',
-    defaultContent: '<th:utext="${htmlContent}">',
+    defaultContent: '<span th:utext="${htmlContent}"/>',
     category: 'layout',
     variables: [
       { 
@@ -284,14 +284,14 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Mixed Content',
     icon: Type,
     description: 'Combine static text with dynamic variables in one field (e.g., "Status: {{status}}")',
-    defaultContent: '<th:utext="${content}">',
+    defaultContent: '<span th:utext="${content}"/>',
     category: 'text',
     variables: [
       {
         name: 'content',
         label: 'Content (mix static text with variables)',
         type: 'text',
-        defaultValue: 'Status: <th:utext="${status}">\n\n<th:if="${hasIssues}">⚠️ Found <th:utext="${issueCount}"> issues that need attention.</th:if>\n\nProcessed items:\n<th:each="item : ${items}">• <th:utext="${item}"> </th:each>'
+        defaultValue: 'Status: <span th:utext="${status}"/>\n\n<th:if="${hasIssues}">⚠️ Found <span th:utext="${issueCount}"/> issues that need attention.</th:if>\n\nProcessed items:\n<th:each="item : ${items}">• <span th:utext="${item}"/> </th:each>'
       }
     ]
   },
@@ -300,14 +300,14 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Labeled Content',
     icon: FileText,
     description: 'Section with dynamic label (e.g., "Incident {{number}}") and customizable content type',
-    defaultContent: '<div><strong><th:utext="${label}"></strong><div><th:utext="${content}"></div></div>',
+    defaultContent: '<div><strong><span th:utext="${label}"/></strong><div><span th:utext="${content}"/></div></div>',
     category: 'text',
     variables: [
       {
         name: 'label',
         label: 'Label/Heading (can include variables)',
         type: 'text',
-        defaultValue: 'Incident Report #<th:utext="${incidentNumber}">'
+        defaultValue: 'Incident Report #<span th:utext="${incidentNumber}"/>'
       },
       {
         name: 'contentType',
