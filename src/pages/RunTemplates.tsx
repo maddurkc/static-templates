@@ -37,6 +37,7 @@ const RunTemplates = () => {
   const [variables, setVariables] = useState<Record<string, string | TextStyle>>({});
   const [listVariables, setListVariables] = useState<Record<string, string[] | ListItemStyle[]>>({});
   const [tableVariables, setTableVariables] = useState<Record<string, any>>({});
+  const [labelVariables, setLabelVariables] = useState<Record<string, string>>({});
   const [toEmails, setToEmails] = useState("");
   const [ccEmails, setCcEmails] = useState("");
   const [bccEmails, setBccEmails] = useState("");
@@ -117,6 +118,7 @@ const RunTemplates = () => {
       const initialVars: Record<string, string | TextStyle> = {};
       const initialListVars: Record<string, string[]> = {};
       const initialTableVars: Record<string, any> = {};
+      const initialLabelVars: Record<string, string> = {};
       
       vars.forEach(v => {
         const defaultVal = getDefaultValue(v);
@@ -129,9 +131,25 @@ const RunTemplates = () => {
         }
       });
       
+      // Initialize label variables from labeled-content sections
+      if (selectedTemplate.sections) {
+        selectedTemplate.sections.forEach(section => {
+          if (section.type === 'labeled-content') {
+            const labelVarName = `label_${section.id}`;
+            const rawLabel = (section.variables?.label as string) || 'Label';
+            // Extract clean label text (without Thymeleaf tags)
+            const cleanLabel = rawLabel
+              .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (_, varName) => `{{${varName}}}`)
+              .replace(/<th:utext="\$\{(\w+)\}">/g, (_, varName) => `{{${varName}}}`);
+            initialLabelVars[labelVarName] = cleanLabel;
+          }
+        });
+      }
+      
       setVariables(initialVars);
       setListVariables(initialListVars);
       setTableVariables(initialTableVars);
+      setLabelVariables(initialLabelVars);
     }
   }, [selectedTemplate]);
 
@@ -185,10 +203,33 @@ const RunTemplates = () => {
   const isLabelEditable = (varName: string): boolean => {
     if (!selectedTemplate?.sections) return true;
     
+    // Handle label variables - extract section ID from label_xxx format
+    if (varName.startsWith('label_')) {
+      const sectionId = varName.substring(6);
+      const section = selectedTemplate.sections.find(section => 
+        section.type === 'labeled-content' && section.id === sectionId
+      );
+      return section?.isLabelEditable !== false;
+    }
+    
     const section = selectedTemplate.sections.find(section => 
       section.type === 'labeled-content' && section.id === varName
     );
     return section?.isLabelEditable !== false;
+  };
+  
+  // Check if variable is a label variable
+  const isLabelVariable = (varName: string): boolean => {
+    return varName.startsWith('label_');
+  };
+  
+  // Get section for a label variable
+  const getLabelSection = (labelVarName: string): Section | undefined => {
+    if (!selectedTemplate?.sections || !labelVarName.startsWith('label_')) return undefined;
+    const sectionId = labelVarName.substring(6);
+    return selectedTemplate.sections.find(section => 
+      section.type === 'labeled-content' && section.id === sectionId
+    );
   };
 
   // Get default value for a variable from sections
@@ -245,6 +286,18 @@ const RunTemplates = () => {
   const getVariableContext = (varName: string): { sectionType: string; label?: string; context?: string } | null => {
     if (!selectedTemplate?.sections) return null;
     
+    // Handle label variables
+    if (varName.startsWith('label_')) {
+      const section = getLabelSection(varName);
+      if (section) {
+        return {
+          sectionType: 'Section Label',
+          label: varName,
+          context: `Label for: ${section.variables?.contentType || 'content'} section`
+        };
+      }
+    }
+    
     for (const section of selectedTemplate.sections) {
       // Check if this is a labeled-content section by listVariableName or ID
       if (section.type === 'labeled-content') {
@@ -283,7 +336,6 @@ const RunTemplates = () => {
           const match = regex.exec(content);
           if (match) {
             const before = match[1].trim();
-            const after = match[2].trim();
             return {
               sectionType: 'Mixed Content',
               context: before ? `Appears after: "${before}"` : 'Used in mixed content section'
@@ -582,23 +634,53 @@ const RunTemplates = () => {
       return;
     }
 
+    // Helper function to generate styled HTML for a value
+    const generateStyledHtml = (value: string | TextStyle): string => {
+      if (typeof value === 'object' && value !== null && 'text' in value) {
+        const textStyle = value as TextStyle;
+        const hasStyles = textStyle.color || textStyle.bold || textStyle.italic || 
+                          textStyle.underline || textStyle.backgroundColor || textStyle.fontSize;
+        if (hasStyles) {
+          const styles = [];
+          if (textStyle.color) styles.push(`color: ${textStyle.color}`);
+          if (textStyle.bold) styles.push('font-weight: bold');
+          if (textStyle.italic) styles.push('font-style: italic');
+          if (textStyle.underline) styles.push('text-decoration: underline');
+          if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
+          if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
+          return `<span style="${styles.join('; ')}">${textStyle.text}</span>`;
+        }
+        return textStyle.text;
+      }
+      return value as string;
+    };
+
     // Build body_data from all section variables
     const bodyData: Record<string, any> = {};
     
-    // Add text variables
+    // Add text variables with styles
     Object.entries(variables).forEach(([key, value]) => {
-      if (typeof value === 'object' && value !== null && 'text' in value) {
-        bodyData[key] = (value as TextStyle).text;
-      } else {
-        bodyData[key] = value;
-      }
+      bodyData[key] = generateStyledHtml(value);
     });
     
-    // Add list variables
+    // Add list variables with styles
     Object.entries(listVariables).forEach(([key, items]) => {
       bodyData[key] = items.map((item: any) => {
         if (typeof item === 'object' && 'text' in item) {
-          return item.text;
+          const itemStyle = item as ListItemStyle;
+          const hasStyles = itemStyle.color || itemStyle.bold || itemStyle.italic || 
+                            itemStyle.underline || itemStyle.backgroundColor || itemStyle.fontSize;
+          if (hasStyles) {
+            const styles = [];
+            if (itemStyle.color) styles.push(`color: ${itemStyle.color}`);
+            if (itemStyle.bold) styles.push('font-weight: bold');
+            if (itemStyle.italic) styles.push('font-style: italic');
+            if (itemStyle.underline) styles.push('text-decoration: underline');
+            if (itemStyle.backgroundColor) styles.push(`background-color: ${itemStyle.backgroundColor}`);
+            if (itemStyle.fontSize) styles.push(`font-size: ${itemStyle.fontSize}`);
+            return `<span style="${styles.join('; ')}">${itemStyle.text}</span>`;
+          }
+          return itemStyle.text;
         }
         return item;
       });
@@ -606,6 +688,11 @@ const RunTemplates = () => {
     
     // Add table variables
     Object.entries(tableVariables).forEach(([key, value]) => {
+      bodyData[key] = value;
+    });
+    
+    // Add label variables
+    Object.entries(labelVariables).forEach(([key, value]) => {
       bodyData[key] = value;
     });
 
@@ -638,6 +725,8 @@ const RunTemplates = () => {
     setBccEmails("");
     setVariables({});
     setListVariables({});
+    setTableVariables({});
+    setLabelVariables({});
     setSubjectVariables({});
     setEmailSubject("");
   };
@@ -676,6 +765,11 @@ const RunTemplates = () => {
         allVars[key] = value;
       });
       
+      // Add label variables for preview rendering
+      Object.entries(labelVariables).forEach(([key, value]) => {
+        allVars[key] = value;
+      });
+      
       return selectedTemplate.sections
         .map((section) => renderSectionContent(section, allVars))
         .join('');
@@ -683,7 +777,7 @@ const RunTemplates = () => {
     
     // Otherwise render from html field
     return replaceVariables(selectedTemplate.html, variables, listVariables);
-  }, [selectedTemplate, variables, listVariables, tableVariables]);
+  }, [selectedTemplate, variables, listVariables, tableVariables, labelVariables]);
 
   return (
     <div className={styles.container}>
@@ -957,14 +1051,70 @@ const RunTemplates = () => {
                     </div>
                   )}
 
+                  {/* Label Variables Section */}
+                  {Object.keys(labelVariables).length > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                        <Badge variant="secondary" className="text-xs">Labels</Badge>
+                        <span className="text-sm font-semibold text-foreground">Section Labels</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Edit labels for labeled-content sections
+                      </p>
+                      <div className={styles.formGrid}>
+                        {Object.entries(labelVariables).map(([labelVarName, labelValue]) => {
+                          const section = getLabelSection(labelVarName);
+                          const editable = isLabelEditable(labelVarName);
+                          const contentType = section?.variables?.contentType || 'text';
+                          
+                          return (
+                            <div key={labelVarName} className={styles.formField}>
+                              <Label htmlFor={`label-var-${labelVarName}`} className="flex items-center gap-2 flex-wrap">
+                                {editable ? (
+                                  <Badge variant="outline" className="text-xs font-mono">
+                                    {`{{${labelVarName}}}`}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs font-mono bg-muted">
+                                    {`{{${labelVarName}}}`}
+                                  </Badge>
+                                )}
+                                <span className="font-medium">Label</span>
+                                <Badge variant="secondary" className="text-xs capitalize">
+                                  {contentType}
+                                </Badge>
+                                {!editable && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Locked
+                                  </Badge>
+                                )}
+                              </Label>
+                              <Input
+                                id={`label-var-${labelVarName}`}
+                                placeholder="Enter label..."
+                                value={labelValue}
+                                onChange={(e) => setLabelVariables(prev => ({
+                                  ...prev,
+                                  [labelVarName]: e.target.value
+                                }))}
+                                disabled={!editable}
+                                className={!editable ? 'bg-muted' : ''}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Body Variables Section */}
-                  {extractAllVariables(selectedTemplate).length === 0 && Object.keys(subjectVariables).length === 0 ? (
+                  {extractAllVariables(selectedTemplate).length === 0 && Object.keys(subjectVariables).length === 0 && Object.keys(labelVariables).length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <p className="text-sm">No variables in this template</p>
                     </div>
                   ) : extractAllVariables(selectedTemplate).length > 0 && (
                     <>
-                      {Object.keys(subjectVariables).length > 0 && (
+                      {(Object.keys(subjectVariables).length > 0 || Object.keys(labelVariables).length > 0) && (
                         <div className="flex items-center gap-2 mb-3 pb-2 border-b">
                           <span className="text-sm font-semibold text-foreground">Body Variables</span>
                         </div>

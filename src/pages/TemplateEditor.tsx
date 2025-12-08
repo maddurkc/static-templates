@@ -802,7 +802,10 @@ const TemplateEditor = () => {
       const label = String(variables['label'] || 'Label');
       const contentType = String(variables['contentType'] || 'text');
       
-      // Convert label placeholders to Thymeleaf
+      // Generate label variable name based on section ID
+      const labelVarName = `label_${section.id}`;
+      
+      // Convert label placeholders to Thymeleaf - use proper self-closing spans
       const labelWithThymeleaf = label.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
       
       let contentHtml = '';
@@ -820,8 +823,9 @@ const TemplateEditor = () => {
         contentHtml = generateThymeleafTableHTML(tableData);
       }
       
+      // Use proper Thymeleaf format: <span th:utext="${labelVarName}"/> for the label
       return `${indent}<div style="${styleString}">
-${indent}  <strong><span th:utext="\${label}">${labelWithThymeleaf}</span></strong>
+${indent}  <strong><span th:utext="\${${labelVarName}}"/></strong>
 ${indent}  <div>${contentHtml}</div>
 ${indent}</div>`;
     };
