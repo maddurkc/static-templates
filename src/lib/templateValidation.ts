@@ -1,4 +1,5 @@
 import { Section } from "@/types/section";
+import { isValidListVariableName } from "@/lib/listThymeleafUtils";
 
 export interface ValidationError {
   field: string;
@@ -267,6 +268,27 @@ export const validateSections = (sections: Section[]): ValidationError[] => {
         errors.push({
           field: 'sectionContent',
           message: `"${sectionName}" has no items`,
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      }
+    }
+    
+    // Validate labeled-content list sections have valid listVariableName
+    if (section.type === 'labeled-content' && section.variables?.contentType === 'list') {
+      const listVariableName = section.variables?.listVariableName as string;
+      
+      if (!listVariableName) {
+        errors.push({
+          field: 'sectionVariable',
+          message: `"${sectionName}" list section is missing a variable name`,
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      } else if (!isValidListVariableName(listVariableName)) {
+        errors.push({
+          field: 'sectionVariable',
+          message: `"${sectionName}" has invalid list variable name "${listVariableName}". Must contain only letters, numbers, and underscores.`,
           sectionId: section.id,
           sectionType: section.type
         });

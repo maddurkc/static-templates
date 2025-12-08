@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { TableEditor } from "./TableEditor";
 import { ThymeleafEditor } from "./ThymeleafEditor";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { generateListVariableName, generateThymeleafListHtml, getListTag, getListStyleType } from "@/lib/listThymeleafUtils";
+import { generateListVariableName, generateThymeleafListHtml, getListTag, getListStyleType, isValidListVariableName, sanitizeVariableName } from "@/lib/listThymeleafUtils";
 import styles from "./VariableEditor.module.scss";
 
 interface VariableEditorProps {
@@ -872,7 +872,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                 value={(section.variables?.listStyle as string) || 'circle'}
                 onChange={(e) => {
                   const newListStyle = e.target.value;
-                  const listVariableName = generateListVariableName(section.id);
+                  const listVariableName = (section.variables?.listVariableName as string) || generateListVariableName(section.id);
                   onUpdate({
                     ...section,
                     variables: { 
@@ -900,18 +900,73 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               </select>
             </div>
             
+            {/* Custom list variable name input */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">List Variable Name</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={(section.variables?.listVariableName as string) || generateListVariableName(section.id)}
+                  onChange={(e) => {
+                    const rawValue = e.target.value;
+                    const sanitizedValue = sanitizeVariableName(rawValue);
+                    const listStyle = (section.variables?.listStyle as string) || 'circle';
+                    onUpdate({
+                      ...section,
+                      variables: { 
+                        ...section.variables, 
+                        listVariableName: sanitizedValue,
+                        listHtml: generateThymeleafListHtml(sanitizedValue, listStyle)
+                      }
+                    });
+                  }}
+                  placeholder="e.g., incident_items"
+                  className="h-8 text-sm font-mono"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const autoName = generateListVariableName(section.id);
+                    const listStyle = (section.variables?.listStyle as string) || 'circle';
+                    onUpdate({
+                      ...section,
+                      variables: { 
+                        ...section.variables, 
+                        listVariableName: autoName,
+                        listHtml: generateThymeleafListHtml(autoName, listStyle)
+                      }
+                    });
+                  }}
+                  className="h-8 px-2 whitespace-nowrap"
+                  title="Reset to auto-generated name"
+                >
+                  Auto
+                </Button>
+              </div>
+              {!isValidListVariableName((section.variables?.listVariableName as string) || '') && (section.variables?.listVariableName as string) && (
+                <p className="text-xs text-destructive">
+                  Variable name must start with a letter or underscore and contain only letters, numbers, and underscores.
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Customize the variable name used in the Thymeleaf template. Must be a valid identifier (no hyphens or special characters).
+              </p>
+            </div>
+            
             {/* Show generated variable name info */}
             {(() => {
-              const listVariableName = generateListVariableName(section.id);
+              const listVariableName = (section.variables?.listVariableName as string) || generateListVariableName(section.id);
               const listStyle = (section.variables?.listStyle as string) || 'circle';
               const listTag = getListTag(listStyle);
               const listStyleType = getListStyleType(listStyle);
+              const isValid = isValidListVariableName(listVariableName);
               
               return (
-                <div className="bg-muted/50 rounded-md p-3 space-y-2">
+                <div className={`rounded-md p-3 space-y-2 ${isValid ? 'bg-muted/50' : 'bg-destructive/10 border border-destructive/20'}`}>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Info className="h-3 w-3" />
                     <span>Generated Thymeleaf Variable</span>
+                    {!isValid && <span className="text-destructive font-medium">(Invalid)</span>}
                   </div>
                   <code className="block text-xs bg-background p-2 rounded border font-mono">
                     {`<${listTag} style="list-style-type: ${listStyleType};">`}
