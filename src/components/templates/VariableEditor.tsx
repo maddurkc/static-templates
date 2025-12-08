@@ -869,27 +869,24 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
     const getUserFriendlyContent = (): string => {
       let content = section.content;
       // Convert Thymeleaf tags back to {{placeholder}} format for editing
-      if (section.variables && Object.keys(section.variables).length > 0) {
-        Object.keys(section.variables).forEach(key => {
-          const thymeleafPattern = new RegExp(`<th:utext="\\$\\{${key}\\}">`, 'g');
-          content = content.replace(thymeleafPattern, `{{${key}}}`);
-        });
-      }
+      // Handle new span format: <span th:utext="${varName}"/>
+      content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g, '{{$1}}');
+      // Handle legacy format: <th:utext="${varName}">
+      content = content.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
       // Remove HTML tags for clean editing
       return content.replace(/<[^>]*>/g, '');
     };
     
     // Get preview with default values
     const getPreviewContent = (): string => {
+      let displayContent = getUserFriendlyContent();
       if (section.variables && Object.keys(section.variables).length > 0) {
-        let displayContent = getUserFriendlyContent();
         Object.entries(section.variables).forEach(([key, value]) => {
           const placeholderPattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-          displayContent = displayContent.replace(placeholderPattern, String(value));
+          displayContent = displayContent.replace(placeholderPattern, String(value) || `{{${key}}}`);
         });
-        return displayContent;
       }
-      return getUserFriendlyContent();
+      return displayContent;
     };
     
     const userContent = getUserFriendlyContent();
@@ -915,11 +912,11 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               const tagMatch = section.content.match(/^<(\w+)>/);
               const htmlTag = tagMatch ? tagMatch[1] : 'div';
               
-              // Convert placeholders to Thymeleaf syntax
+              // Convert placeholders to Thymeleaf syntax (using new span format)
               let thymeleafContent = newContent;
               newPlaceholders.forEach(placeholder => {
                 const placeholderPattern = new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g');
-                thymeleafContent = thymeleafContent.replace(placeholderPattern, `<th:utext="\${${placeholder}}">`);
+                thymeleafContent = thymeleafContent.replace(placeholderPattern, `<span th:utext="\${${placeholder}}"/>`);
               });
               
               // Wrap in HTML tag
