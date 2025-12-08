@@ -21,17 +21,6 @@ export const generateListVariableName = (sectionId: string): string => {
   return `items_${shortId}`;
 };
 
-/**
- * Generate a unique label variable name based on section ID
- * Creates a valid Thymeleaf variable name (only letters, numbers, underscores)
- */
-export const generateLabelVariableName = (sectionId: string): string => {
-  // Remove all invalid characters (only keep letters, numbers)
-  // Then replace with underscores as separator
-  const cleanId = sectionId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-  const shortId = cleanId.slice(-12); // Take last 12 chars for uniqueness
-  return `label_${shortId}`;
-};
 
 /**
  * Validate a list variable name for Thymeleaf compatibility

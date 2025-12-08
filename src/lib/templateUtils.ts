@@ -2,7 +2,7 @@ import { Section } from "@/types/section";
 import { ApiMapping } from "@/types/api-config";
 import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
-import { generateListVariableName, generateLabelVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
+import { generateListVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
 
 export const renderSectionContent = (section: Section, variables?: Record<string, string | string[] | any>): string => {
   let content = section.content;
@@ -11,13 +11,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   if (section.type === 'labeled-content') {
     let label = section.variables?.label || 'Label';
     
-    // Use stored labelVariableName or fallback to generated one for backward compatibility
-    const labelVarName = (section.variables?.labelVariableName as string) || generateLabelVariableName(section.id);
-    if (variables && variables[labelVarName] !== undefined) {
-      label = String(variables[labelVarName]);
-    } else {
-      // Process Thymeleaf expressions in label - supports both new and legacy formats
-      label = String(label)
+    // Process Thymeleaf expressions in label - supports both new and legacy formats
+    label = String(label)
         .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
           if (variables && variables[varName] !== undefined) {
             return sanitizeInput(String(variables[varName]));
@@ -36,7 +31,6 @@ export const renderSectionContent = (section: Section, variables?: Record<string
           }
           return match;
         });
-    }
     
     const contentType = section.variables?.contentType || 'text';
     
