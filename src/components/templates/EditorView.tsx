@@ -179,6 +179,49 @@ const SortableSection = ({
                   })()
                 }}
               />
+            ) : section.variables.contentType === 'list' && section.variables.items ? (
+              <div 
+                className={styles.listPreview}
+                dangerouslySetInnerHTML={{ 
+                  __html: (() => {
+                    const items = section.variables.items as any[];
+                    const listStyle = (section.variables.listStyle as string) || 'circle';
+                    if (!items || items.length === 0) {
+                      return '<p class="text-muted-foreground p-2">No list items</p>';
+                    }
+                    
+                    const isNumbered = ['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 'upper-alpha'].includes(listStyle);
+                    const tag = isNumbered ? 'ol' : 'ul';
+                    
+                    const renderItems = (itemList: any[]): string => {
+                      return itemList.map(item => {
+                        const text = typeof item === 'string' ? item : item.text || '';
+                        const styles: string[] = [];
+                        if (item.color) styles.push(`color: ${item.color}`);
+                        if (item.bold) styles.push('font-weight: bold');
+                        if (item.italic) styles.push('font-style: italic');
+                        if (item.underline) styles.push('text-decoration: underline');
+                        if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+                        if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
+                        const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+                        
+                        let childHtml = '';
+                        if (item.children && item.children.length > 0) {
+                          childHtml = `<${tag} style="list-style-type: ${listStyle}; margin-left: 1rem;">${renderItems(item.children)}</${tag}>`;
+                        }
+                        
+                        return `<li${styleAttr}>${text}${childHtml}</li>`;
+                      }).join('');
+                    };
+                    
+                    return `<${tag} style="list-style-type: ${listStyle}; padding-left: 1.5rem;">${renderItems(items)}</${tag}>`;
+                  })()
+                }}
+              />
+            ) : section.variables.contentType === 'text' && section.variables.content ? (
+              <div className={styles.contentPlaceholder}>
+                {String(section.variables.content).substring(0, 100)}{String(section.variables.content).length > 100 ? '...' : ''}
+              </div>
             ) : (
               <div className={styles.contentPlaceholder}>
                 {'{'}content{'}'} - {section.variables.contentType || 'text'}

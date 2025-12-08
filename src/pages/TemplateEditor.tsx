@@ -275,9 +275,34 @@ const TemplateEditor = () => {
       const targetContainer = sections.find(s => s.id === dropTargetId && s.type === 'container');
       
       const variables: Record<string, string | string[]> = {};
-      sectionDef.variables?.forEach(varDef => {
-        variables[varDef.name] = varDef.defaultValue;
-      });
+      
+      // For labeled-content sections, only initialize essential variables based on default contentType
+      if (sectionDef.type === 'labeled-content') {
+        const labelVar = sectionDef.variables?.find(v => v.name === 'label');
+        const contentTypeVar = sectionDef.variables?.find(v => v.name === 'contentType');
+        const defaultContentType = (contentTypeVar?.defaultValue as string) || 'text';
+        
+        variables['label'] = labelVar?.defaultValue || 'Label';
+        variables['contentType'] = defaultContentType;
+        variables['listStyle'] = 'circle'; // Default list style
+        
+        // Only initialize the appropriate content field based on contentType
+        if (defaultContentType === 'list') {
+          const itemsVar = sectionDef.variables?.find(v => v.name === 'items');
+          variables['items'] = itemsVar?.defaultValue || [{ text: 'Item 1', children: [] }];
+        } else if (defaultContentType === 'table') {
+          const tableVar = sectionDef.variables?.find(v => v.name === 'tableData');
+          variables['tableData'] = tableVar?.defaultValue || { headers: ['Column 1'], rows: [['Cell 1']] };
+        } else {
+          const contentVar = sectionDef.variables?.find(v => v.name === 'content');
+          variables['content'] = contentVar?.defaultValue || 'Enter content here...';
+        }
+      } else {
+        // For other section types, copy all default variables
+        sectionDef.variables?.forEach(varDef => {
+          variables[varDef.name] = varDef.defaultValue;
+        });
+      }
 
       const newSection: Section = {
         id: `section-${Date.now()}-${Math.random()}`,

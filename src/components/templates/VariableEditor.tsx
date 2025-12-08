@@ -553,10 +553,42 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           <Label className={styles.label}>Content Type</Label>
           <select
             value={contentType}
-            onChange={(e) => onUpdate({
-              ...section,
-              variables: { ...section.variables, contentType: e.target.value }
-            })}
+            onChange={(e) => {
+              const newContentType = e.target.value;
+              // Create clean variables with only the appropriate content type data
+              const newVariables: Record<string, any> = {
+                label: section.variables?.label || '',
+                contentType: newContentType,
+                listStyle: section.variables?.listStyle || 'circle',
+              };
+              
+              // Copy over any label placeholder values
+              const labelText = (section.variables?.label as string) || '';
+              const placeholderMatches = labelText.match(/\$\{(\w+)\}/g) || [];
+              placeholderMatches.forEach(match => {
+                const varName = match.replace(/\$\{|\}/g, '');
+                if (section.variables?.[varName] !== undefined) {
+                  newVariables[varName] = section.variables[varName];
+                }
+              });
+              
+              // Initialize appropriate content based on new type
+              if (newContentType === 'list') {
+                // Carry over existing items if switching to list
+                newVariables.items = section.variables?.items || [{ text: 'Item 1', children: [] }];
+              } else if (newContentType === 'table') {
+                // Carry over existing tableData if switching to table
+                newVariables.tableData = section.variables?.tableData || { headers: ['Column 1'], rows: [['Cell 1']] };
+              } else {
+                // Carry over existing content if switching to text
+                newVariables.content = section.variables?.content || '';
+              }
+              
+              onUpdate({
+                ...section,
+                variables: newVariables
+              });
+            }}
             className={styles.selectInput}
           >
             <option value="text">Text Content</option>
