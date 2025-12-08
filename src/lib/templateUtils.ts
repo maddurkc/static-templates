@@ -2,6 +2,7 @@ import { Section } from "@/types/section";
 import { ApiMapping } from "@/types/api-config";
 import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
+import { generateListVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
 
 export const renderSectionContent = (section: Section, variables?: Record<string, string | string[] | any>): string => {
   let content = section.content;
@@ -55,7 +56,11 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         tableHtml += '</tbody></table>';
         contentHtml = tableHtml;
       } else if (contentType === 'list' && Array.isArray(runtimeValue)) {
-        const renderListItem = (item: any): string => {
+        const listStyle = (section.variables?.listStyle as string) || 'circle';
+        const listTag = getListTag(listStyle);
+        const listStyleType = getListStyleType(listStyle);
+        
+        const renderListItem = (item: any, nestedListStyle: string): string => {
           if (typeof item === 'string') {
             return `<li>${sanitizeInput(item)}</li>`;
           }
@@ -71,18 +76,19 @@ export const renderSectionContent = (section: Section, variables?: Record<string
           
           let html = `<li${styleAttr}>${sanitizeInput(item.text)}`;
           if (item.children && item.children.length > 0) {
-            const listStyle = section.variables?.listStyle || 'circle';
-            html += `<ul style="list-style-type: ${listStyle}; margin-left: 20px; margin-top: 4px;">`;
-            html += item.children.map((child: any) => renderListItem(child)).join('');
-            html += '</ul>';
+            const nestedTag = getListTag(nestedListStyle);
+            const nestedStyleType = getListStyleType(nestedListStyle);
+            html += `<${nestedTag} style="list-style-type: ${nestedStyleType}; margin-left: 20px; margin-top: 4px;">`;
+            html += item.children.map((child: any) => renderListItem(child, nestedListStyle)).join('');
+            html += `</${nestedTag}>`;
           }
           html += '</li>';
           return html;
         };
         
-        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
-          runtimeValue.map((item: any) => renderListItem(item)).join('') + 
-          '</ul>';
+        contentHtml = `<${listTag} style="list-style-type: ${listStyleType}; margin-left: 20px;">` + 
+          runtimeValue.map((item: any) => renderListItem(item, listStyle)).join('') + 
+          `</${listTag}>`;
       } else if (typeof runtimeValue === 'string') {
         contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(runtimeValue)}</div>`;
       }
@@ -108,8 +114,11 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         }
       } else if (contentType === 'list') {
         const items = (section.variables?.items as any[]) || [];
+        const listStyle = (section.variables?.listStyle as string) || 'circle';
+        const listTag = getListTag(listStyle);
+        const listStyleType = getListStyleType(listStyle);
         
-        const renderListItem = (item: any): string => {
+        const renderListItem = (item: any, nestedListStyle: string): string => {
           if (typeof item === 'string') {
             return `<li>${sanitizeInput(item)}</li>`;
           }
@@ -125,18 +134,19 @@ export const renderSectionContent = (section: Section, variables?: Record<string
           
           let html = `<li${styleAttr}>${sanitizeInput(item.text)}`;
           if (item.children && item.children.length > 0) {
-            const listStyle = section.variables?.listStyle || 'circle';
-            html += `<ul style="list-style-type: ${listStyle}; margin-left: 20px; margin-top: 4px;">`;
-            html += item.children.map((child: any) => renderListItem(child)).join('');
-            html += '</ul>';
+            const nestedTag = getListTag(nestedListStyle);
+            const nestedStyleType = getListStyleType(nestedListStyle);
+            html += `<${nestedTag} style="list-style-type: ${nestedStyleType}; margin-left: 20px; margin-top: 4px;">`;
+            html += item.children.map((child: any) => renderListItem(child, nestedListStyle)).join('');
+            html += `</${nestedTag}>`;
           }
           html += '</li>';
           return html;
         };
         
-        contentHtml = '<ul style="list-style-type: circle; margin-left: 20px;">' + 
-          items.map((item: any) => renderListItem(item)).join('') + 
-          '</ul>';
+        contentHtml = `<${listTag} style="list-style-type: ${listStyleType}; margin-left: 20px;">` + 
+          items.map((item: any) => renderListItem(item, listStyle)).join('') + 
+          `</${listTag}>`;
       } else {
         const content = (section.variables?.content as string) || '';
         contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(content)}</div>`;

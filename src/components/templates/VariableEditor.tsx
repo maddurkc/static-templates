@@ -5,11 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ChevronRight, ChevronDown, Palette, Bold, Italic, Underline } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronDown, Palette, Bold, Italic, Underline, Info } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { TableEditor } from "./TableEditor";
 import { ThymeleafEditor } from "./ThymeleafEditor";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { generateListVariableName, generateThymeleafListHtml, getListTag, getListStyleType } from "@/lib/listThymeleafUtils";
 import styles from "./VariableEditor.module.scss";
 
 interface VariableEditorProps {
@@ -555,11 +556,13 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
             value={contentType}
             onChange={(e) => {
               const newContentType = e.target.value;
+              const listStyle = (section.variables?.listStyle as string) || 'circle';
+              
               // Create clean variables with only the appropriate content type data
               const newVariables: Record<string, any> = {
                 label: section.variables?.label || '',
                 contentType: newContentType,
-                listStyle: section.variables?.listStyle || 'circle',
+                listStyle: listStyle,
               };
               
               // Copy over any label placeholder values
@@ -576,6 +579,10 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               if (newContentType === 'list') {
                 // Carry over existing items if switching to list
                 newVariables.items = section.variables?.items || [{ text: 'Item 1', children: [] }];
+                // Generate unique list variable name
+                const listVariableName = generateListVariableName(section.id);
+                newVariables.listVariableName = listVariableName;
+                newVariables.listHtml = generateThymeleafListHtml(listVariableName, listStyle);
               } else if (newContentType === 'table') {
                 // Carry over existing tableData if switching to table
                 newVariables.tableData = section.variables?.tableData || { headers: ['Column 1'], rows: [['Cell 1']] };
@@ -863,10 +870,19 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               <Label className="text-xs text-muted-foreground">List Style</Label>
               <select
                 value={(section.variables?.listStyle as string) || 'circle'}
-                onChange={(e) => onUpdate({
-                  ...section,
-                  variables: { ...section.variables, listStyle: e.target.value }
-                })}
+                onChange={(e) => {
+                  const newListStyle = e.target.value;
+                  const listVariableName = generateListVariableName(section.id);
+                  onUpdate({
+                    ...section,
+                    variables: { 
+                      ...section.variables, 
+                      listStyle: newListStyle,
+                      listVariableName: listVariableName,
+                      listHtml: generateThymeleafListHtml(listVariableName, newListStyle)
+                    }
+                  });
+                }}
                 className={styles.selectInput}
               >
                 <optgroup label="Bullet Lists">
@@ -883,6 +899,33 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                 </optgroup>
               </select>
             </div>
+            
+            {/* Show generated variable name info */}
+            {(() => {
+              const listVariableName = generateListVariableName(section.id);
+              const listStyle = (section.variables?.listStyle as string) || 'circle';
+              const listTag = getListTag(listStyle);
+              const listStyleType = getListStyleType(listStyle);
+              
+              return (
+                <div className="bg-muted/50 rounded-md p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Info className="h-3 w-3" />
+                    <span>Generated Thymeleaf Variable</span>
+                  </div>
+                  <code className="block text-xs bg-background p-2 rounded border font-mono">
+                    {`<${listTag} style="list-style-type: ${listStyleType};">`}
+                    <br />
+                    {`  <li th:each="item : \${${listVariableName}}"><span th:utext="\${item}"/></li>`}
+                    <br />
+                    {`</${listTag}>`}
+                  </code>
+                  <p className="text-xs text-muted-foreground">
+                    Variable name: <code className="bg-background px-1 rounded">${listVariableName}</code>
+                  </p>
+                </div>
+              );
+            })()}
             
             {renderListItemsEditor(section, onUpdate, 0)}
             
