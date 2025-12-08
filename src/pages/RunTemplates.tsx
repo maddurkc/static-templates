@@ -426,20 +426,25 @@ const RunTemplates = () => {
     return result;
   };
 
-  // Extract placeholders from subject - supports both {{placeholder}} and Thymeleaf formats
+  // Extract placeholders from subject - supports {{placeholder}}, <th:block>, and legacy formats
   const extractSubjectVariables = (subject: string): string[] => {
     // Match {{variableName}} pattern
     const placeholderRegex = /\{\{(\w+)\}\}/g;
     const placeholderMatches = subject.matchAll(placeholderRegex);
     const placeholderVars = Array.from(placeholderMatches, m => m[1]);
     
-    // Match <th:utext="${variableName}"> pattern
-    const thymeleafRegex = /<th:utext="\$\{(\w+)\}">/g;
-    const thymeleafMatches = subject.matchAll(thymeleafRegex);
-    const thymeleafVars = Array.from(thymeleafMatches, m => m[1]);
+    // Match new format: <th:block th:utext="${variableName}"/>
+    const blockRegex = /<th:block\s+th:utext="\$\{(\w+)\}"\/>/g;
+    const blockMatches = subject.matchAll(blockRegex);
+    const blockVars = Array.from(blockMatches, m => m[1]);
+    
+    // Match legacy format: <th:utext="${variableName}">
+    const legacyRegex = /<th:utext="\$\{(\w+)\}">/g;
+    const legacyMatches = subject.matchAll(legacyRegex);
+    const legacyVars = Array.from(legacyMatches, m => m[1]);
     
     // Combine and deduplicate
-    return Array.from(new Set([...placeholderVars, ...thymeleafVars]));
+    return Array.from(new Set([...placeholderVars, ...blockVars, ...legacyVars]));
   };
 
   // Get processed subject with variables replaced - handles both formats

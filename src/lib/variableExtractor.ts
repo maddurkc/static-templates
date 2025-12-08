@@ -14,11 +14,22 @@ const extractPlaceholders = (text: string): string[] => {
   return Array.from(new Set(Array.from(matches, m => m[1])));
 };
 
-// Extract <th:utext="${variable}"> patterns from a string
+// Extract Thymeleaf variable patterns from a string
+// Supports: <span th:utext="${var}"/>, <th:block th:utext="${var}"/>, and legacy <th:utext="${var}">
 const extractThymeleafVariables = (text: string): string[] => {
-  const regex = /<th:utext="\$\{(\w+)\}">/g;
-  const matches = text.matchAll(regex);
-  return Array.from(new Set(Array.from(matches, m => m[1])));
+  const patterns = [
+    /<span\s+th:utext="\$\{(\w+)\}"\/>/g,  // New span format
+    /<th:block\s+th:utext="\$\{(\w+)\}"\/>/g,  // Subject block format
+    /<th:utext="\$\{(\w+)\}">/g,  // Legacy format
+  ];
+  
+  const allMatches: string[] = [];
+  patterns.forEach(regex => {
+    const matches = text.matchAll(regex);
+    allMatches.push(...Array.from(matches, m => m[1]));
+  });
+  
+  return Array.from(new Set(allMatches));
 };
 
 // Infer variable type from context

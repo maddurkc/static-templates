@@ -10,16 +10,26 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   if (section.type === 'labeled-content') {
     let label = section.variables?.label || 'Label';
     
-    // Process Thymeleaf expressions in label
-    label = String(label).replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
-      if (variables && variables[varName] !== undefined) {
-        return sanitizeInput(String(variables[varName]));
-      }
-      if (section.variables && section.variables[varName]) {
-        return sanitizeInput(String(section.variables[varName]));
-      }
-      return match; // Keep placeholder if no value
-    });
+    // Process Thymeleaf expressions in label - supports both new and legacy formats
+    label = String(label)
+      .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+        if (variables && variables[varName] !== undefined) {
+          return sanitizeInput(String(variables[varName]));
+        }
+        if (section.variables && section.variables[varName]) {
+          return sanitizeInput(String(section.variables[varName]));
+        }
+        return match;
+      })
+      .replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+        if (variables && variables[varName] !== undefined) {
+          return sanitizeInput(String(variables[varName]));
+        }
+        if (section.variables && section.variables[varName]) {
+          return sanitizeInput(String(section.variables[varName]));
+        }
+        return match;
+      });
     
     const contentType = section.variables?.contentType || 'text';
     
@@ -177,7 +187,12 @@ export const renderSectionContent = (section: Section, variables?: Record<string
           if (Array.isArray(items)) {
             return items.map(item => {
               let itemContent = loopContent;
-              // Replace ${item} with actual item value
+              // Replace new format <span th:utext="${item}"/>
+              itemContent = itemContent.replace(
+                new RegExp(`<span\\s+th:utext="\\$\\{${itemName}\\}"/>`, 'g'),
+                typeof item === 'object' && item.text ? sanitizeInput(item.text) : sanitizeInput(String(item))
+              );
+              // Replace legacy format <th:utext="${item}">
               itemContent = itemContent.replace(
                 new RegExp(`<th:utext="\\$\\{${itemName}\\}">`, 'g'),
                 typeof item === 'object' && item.text ? sanitizeInput(item.text) : sanitizeInput(String(item))
@@ -195,12 +210,21 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
     );
     
-    // Replace all <th:utext="${placeholder}"> patterns with sanitized values or keep them
+    // Replace all Thymeleaf placeholder patterns with sanitized values
+    // New format: <span th:utext="${placeholder}"/>
+    mixedContent = mixedContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+      if (section.variables && section.variables[varName]) {
+        return sanitizeHTML(section.variables[varName] as string);
+      }
+      return match;
+    });
+    
+    // Legacy format: <th:utext="${placeholder}">
     mixedContent = mixedContent.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
       if (section.variables && section.variables[varName]) {
         return sanitizeHTML(section.variables[varName] as string);
       }
-      return match; // Keep placeholder if no value
+      return match;
     });
     
     return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${sanitizeHTML(mixedContent).replace(/\n/g, '<br/>')}</div>`;
@@ -240,7 +264,17 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       processedContent = processedContent.replace(new RegExp(match.replace(/[{}]/g, '\\$&'), 'g'), value);
     });
     
-    // Also replace Thymeleaf-style placeholders <th:utext="${variable}">
+    // Replace Thymeleaf-style placeholders - new format: <span th:utext="${variable}"/>
+    processedContent = processedContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+      if (variables && variables[varName] !== undefined) {
+        return sanitizeInput(String(variables[varName]));
+      } else if (section.variables && section.variables[varName] !== undefined) {
+        return sanitizeInput(String(section.variables[varName]));
+      }
+      return match;
+    });
+    
+    // Also handle legacy format: <th:utext="${variable}">
     processedContent = processedContent.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
       if (variables && variables[varName] !== undefined) {
         return sanitizeInput(String(variables[varName]));
@@ -300,21 +334,25 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     return sanitizeHTML(content);
   }
 
-  // Replace all variables in the content
+  // Replace all variables in the content - supports both new and legacy formats
   Object.entries(section.variables).forEach(([key, value]) => {
-    const placeholder = `<th:utext="\\$\\{${key}\\}">`;
-    const placeholderRegex = new RegExp(`<th:utext="\\$\\{${key}\\}">`, 'g');
+    // New format: <span th:utext="${key}"/>
+    const spanRegex = new RegExp(`<span\\s+th:utext="\\$\\{${key}\\}"/>`, 'g');
+    // Legacy format: <th:utext="${key}">
+    const legacyRegex = new RegExp(`<th:utext="\\$\\{${key}\\}">`, 'g');
     
     if (Array.isArray(value)) {
       // For list variables, generate <li> tags
       const listItems = value.map(item => `<li>${sanitizeHTML(item)}</li>`).join('');
-      content = content.replace(placeholderRegex, listItems);
+      content = content.replace(spanRegex, listItems);
+      content = content.replace(legacyRegex, listItems);
     } else if (typeof value === 'object' && value !== null) {
       // Skip complex objects like table data
       return;
     } else {
       // For text/url variables, replace directly
-      content = content.replace(placeholderRegex, sanitizeHTML(value as string));
+      content = content.replace(spanRegex, sanitizeHTML(value as string));
+      content = content.replace(legacyRegex, sanitizeHTML(value as string));
     }
   });
 
