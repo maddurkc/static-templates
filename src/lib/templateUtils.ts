@@ -2,7 +2,7 @@ import { Section } from "@/types/section";
 import { ApiMapping } from "@/types/api-config";
 import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
-import { generateListVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
+import { generateListVariableName, generateLabelVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
 
 export const renderSectionContent = (section: Section, variables?: Record<string, string | string[] | any>): string => {
   let content = section.content;
@@ -11,8 +11,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   if (section.type === 'labeled-content') {
     let label = section.variables?.label || 'Label';
     
-    // Check for label variable override (label_<sectionId>)
-    const labelVarName = `label_${section.id}`;
+    // Check for label variable override using sanitized label variable name
+    const labelVarName = generateLabelVariableName(section.id);
     if (variables && variables[labelVarName] !== undefined) {
       label = String(variables[labelVarName]);
     } else {

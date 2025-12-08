@@ -28,7 +28,7 @@ import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpda
 import { validateTemplate, validateTemplateName, validateSubject, ValidationError } from "@/lib/templateValidation";
 import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
 import { subjectPlaceholderToThymeleaf, subjectThymeleafToPlaceholder } from "@/lib/thymeleafUtils";
-import { generateListVariableName, generateThymeleafListHtml } from "@/lib/listThymeleafUtils";
+import { generateListVariableName, generateLabelVariableName, generateThymeleafListHtml } from "@/lib/listThymeleafUtils";
 import styles from "./TemplateEditor.module.scss";
 
 const TemplateEditor = () => {
@@ -802,8 +802,8 @@ const TemplateEditor = () => {
       const label = String(variables['label'] || 'Label');
       const contentType = String(variables['contentType'] || 'text');
       
-      // Generate label variable name based on section ID
-      const labelVarName = `label_${section.id}`;
+      // Generate sanitized label variable name based on section ID
+      const labelVarName = generateLabelVariableName(section.id);
       
       // Convert label placeholders to Thymeleaf - use proper self-closing spans
       const labelWithThymeleaf = label.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
