@@ -11,26 +11,32 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   if (section.type === 'labeled-content') {
     let label = section.variables?.label || 'Label';
     
-    // Process Thymeleaf expressions in label - supports both new and legacy formats
-    label = String(label)
-      .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
-        if (variables && variables[varName] !== undefined) {
-          return sanitizeInput(String(variables[varName]));
-        }
-        if (section.variables && section.variables[varName]) {
-          return sanitizeInput(String(section.variables[varName]));
-        }
-        return match;
-      })
-      .replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
-        if (variables && variables[varName] !== undefined) {
-          return sanitizeInput(String(variables[varName]));
-        }
-        if (section.variables && section.variables[varName]) {
-          return sanitizeInput(String(section.variables[varName]));
-        }
-        return match;
-      });
+    // Check for label variable override (label_<sectionId>)
+    const labelVarName = `label_${section.id}`;
+    if (variables && variables[labelVarName] !== undefined) {
+      label = String(variables[labelVarName]);
+    } else {
+      // Process Thymeleaf expressions in label - supports both new and legacy formats
+      label = String(label)
+        .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+          if (variables && variables[varName] !== undefined) {
+            return sanitizeInput(String(variables[varName]));
+          }
+          if (section.variables && section.variables[varName]) {
+            return sanitizeInput(String(section.variables[varName]));
+          }
+          return match;
+        })
+        .replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+          if (variables && variables[varName] !== undefined) {
+            return sanitizeInput(String(variables[varName]));
+          }
+          if (section.variables && section.variables[varName]) {
+            return sanitizeInput(String(section.variables[varName]));
+          }
+          return match;
+        });
+    }
     
     const contentType = section.variables?.contentType || 'text';
     
