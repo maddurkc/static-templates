@@ -25,7 +25,6 @@ import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
-import { generateLabelVariableName } from "@/lib/listThymeleafUtils";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -136,8 +135,7 @@ const RunTemplates = () => {
       if (selectedTemplate.sections) {
         selectedTemplate.sections.forEach(section => {
           if (section.type === 'labeled-content') {
-            // Use stored labelVariableName or fallback to generated one for backward compatibility
-            const labelVarName = (section.variables?.labelVariableName as string) || generateLabelVariableName(section.id);
+            const labelVarName = `label_${section.id}`;
             const rawLabel = (section.variables?.label as string) || 'Label';
             // Extract clean label text (without Thymeleaf tags)
             const cleanLabel = rawLabel
@@ -228,10 +226,10 @@ const RunTemplates = () => {
   // Get section for a label variable
   const getLabelSection = (labelVarName: string): Section | undefined => {
     if (!selectedTemplate?.sections || !labelVarName.startsWith('label_')) return undefined;
-    // Find section by matching stored labelVariableName or fallback to generated name
+    // Find section by matching label variable name pattern
     return selectedTemplate.sections.find(section => 
       section.type === 'labeled-content' && 
-      ((section.variables?.labelVariableName as string) === labelVarName || generateLabelVariableName(section.id) === labelVarName)
+      `label_${section.id}` === labelVarName
     );
   };
 
@@ -388,7 +386,7 @@ const RunTemplates = () => {
   // Metadata keys that should NOT be treated as user-editable variables
   const METADATA_KEYS = [
     'label', 'content', 'contentType', 'listStyle', 'items', 'tableData',
-    'listVariableName', 'labelVariableName', 'listHtml', 'labelColor'
+    'listVariableName', 'listHtml', 'labelColor'
   ];
 
   const extractAllVariables = (template: Template): string[] => {
