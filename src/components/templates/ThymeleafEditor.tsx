@@ -27,7 +27,18 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
     
-    // Highlight Thymeleaf tags
+    // Highlight {{placeholder}} syntax (user-friendly format)
+    escaped = escaped.replace(
+      /(\{\{(\w+)\}\})/g,
+      '<span class="text-primary font-semibold bg-primary/10 px-0.5 rounded">$1</span>'
+    );
+    
+    // Also highlight any remaining Thymeleaf tags for backwards compatibility
+    escaped = escaped.replace(
+      /(&lt;span\s+th:utext="\$\{([^}]+)\}"(?:\s*\/&gt;|&gt;))/g,
+      '<span class="text-primary font-semibold">$1</span>'
+    );
+    
     escaped = escaped.replace(
       /(&lt;th:(utext|if|each)="\$\{([^}]+)\}"&gt;)/g,
       '<span class="text-primary font-semibold">$1</span>'
@@ -37,12 +48,6 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
     escaped = escaped.replace(
       /(&lt;\/th:(if|each)&gt;)/g,
       '<span class="text-primary font-semibold">$1</span>'
-    );
-    
-    // Highlight variables inside expressions
-    escaped = escaped.replace(
-      /(\$\{[^}]+\})/g,
-      '<span class="text-accent font-bold">$1</span>'
     );
     
     return escaped.replace(/\n/g, "<br />");
