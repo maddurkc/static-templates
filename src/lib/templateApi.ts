@@ -148,16 +148,10 @@ export const sectionToRequest = (
   
   if (section.type === 'labeled-content') {
     const contentType = (variables.contentType as string) || 'text';
-    const listStyle = (variables.listStyle as string) || 'circle';
-    
-    // Generate unique list variable name based on section ID
-    const listVariableName = generateListVariableName(section.id);
     
     // Always store essential properties
     cleanVariables.label = variables.label || '';
     cleanVariables.contentType = contentType;
-    cleanVariables.listStyle = listStyle;
-    cleanVariables.listVariableName = listVariableName; // Store for reference
     
     // Copy any label placeholder default values (e.g., incidentNumber: "123")
     const labelText = (variables.label as string) || '';
@@ -181,20 +175,23 @@ export const sectionToRequest = (
     
     // Store ONLY the appropriate content based on contentType - mutually exclusive
     if (contentType === 'list') {
-      // Store items with the unique variable name
+      const listStyle = (variables.listStyle as string) || 'circle';
+      const listVariableName = generateListVariableName(section.id);
+      
+      // Store list-specific properties ONLY for list type
+      cleanVariables.listStyle = listStyle;
+      cleanVariables.listVariableName = listVariableName;
       cleanVariables[listVariableName] = variables.items || [{ text: 'Item 1', children: [] }];
-      // Also store items for backward compatibility during edit
       cleanVariables.items = variables.items || [{ text: 'Item 1', children: [] }];
-      // Generate Thymeleaf list HTML
       cleanVariables.listHtml = generateThymeleafListHtml(listVariableName, listStyle);
       // Do NOT include content or tableData for list type
     } else if (contentType === 'table') {
       cleanVariables.tableData = variables.tableData || { headers: ['Column 1'], rows: [['Cell 1']] };
-      // Do NOT include content or items for table type
+      // Do NOT include content, items, listStyle, or listVariableName for table type
     } else {
       // text content type
       cleanVariables.content = variables.content || '';
-      // Do NOT include items or tableData for text type
+      // Do NOT include items, tableData, listStyle, or listVariableName for text type
     }
   } else {
     // For non-labeled-content sections, copy all variables
