@@ -28,6 +28,7 @@ import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpda
 import { validateTemplate, validateTemplateName, validateSubject, ValidationError } from "@/lib/templateValidation";
 import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
 import { subjectPlaceholderToThymeleaf, subjectThymeleafToPlaceholder } from "@/lib/thymeleafUtils";
+import { generateListVariableName, generateThymeleafListHtml } from "@/lib/listThymeleafUtils";
 import styles from "./TemplateEditor.module.scss";
 
 const TemplateEditor = () => {
@@ -304,8 +305,20 @@ const TemplateEditor = () => {
         });
       }
 
+      const newSectionId = `section-${Date.now()}-${Math.random()}`;
+      
+      // For labeled-content with list type, store the unique list variable name
+      if (sectionDef.type === 'labeled-content') {
+        const contentType = variables['contentType'] as string;
+        if (contentType === 'list') {
+          const listVariableName = generateListVariableName(newSectionId);
+          variables['listVariableName'] = listVariableName;
+          variables['listHtml'] = generateThymeleafListHtml(listVariableName, variables['listStyle'] as string || 'circle');
+        }
+      }
+
       const newSection: Section = {
-        id: `section-${Date.now()}-${Math.random()}`,
+        id: newSectionId,
         type: sectionDef.type,
         content: sectionDef.defaultContent,
         variables,
