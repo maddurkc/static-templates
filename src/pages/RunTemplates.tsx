@@ -385,6 +385,12 @@ const RunTemplates = () => {
   };
 
   // Extract variables from both HTML and sections
+  // Metadata keys that should NOT be treated as user-editable variables
+  const METADATA_KEYS = [
+    'label', 'content', 'contentType', 'listStyle', 'items', 'tableData',
+    'listVariableName', 'labelVariableName', 'listHtml', 'labelColor'
+  ];
+
   const extractAllVariables = (template: Template): string[] => {
     const varsFromHtml = extractVariables(template.html);
     const varsFromSections = new Set<string>();
@@ -394,25 +400,46 @@ const RunTemplates = () => {
       template.sections.forEach((section: Section) => {
         // For labeled-content sections, use appropriate variable name based on content type
         if (section.type === 'labeled-content') {
-          // Extract placeholder variables from the label itself
+          // Extract placeholder variables from the label itself (e.g., {{teamName}} in label text)
           if (section.variables?.label) {
-            const labelVars = extractVariables(section.variables.label as string);
-            labelVars.forEach(v => varsFromSections.add(v));
+            const labelText = section.variables.label as string;
             
-            // Also check for {{placeholder}} format in label
-            const placeholderMatches = (section.variables.label as string).match(/\{\{(\w+)\}\}/g) || [];
+            // Check for {{placeholder}} format in label
+            const placeholderMatches = labelText.match(/\{\{(\w+)\}\}/g) || [];
             placeholderMatches.forEach(match => {
               const varName = match.replace(/\{\{|\}\}/g, '');
               varsFromSections.add(varName);
             });
+            
+            // Also extract Thymeleaf variables from label
+            const thymeleafVars = extractVariables(labelText);
+            thymeleafVars.forEach(v => varsFromSections.add(v));
           }
           
-          // For list content, use the listVariableName (e.g., items_abc123)
-          if (section.variables?.contentType === 'list' && section.variables?.listVariableName) {
-            varsFromSections.add(section.variables.listVariableName as string);
-          } else {
-            // Use section ID as the key for text/table content
+          // For list content, use the stored listVariableName
+          if (section.variables?.contentType === 'list') {
+            const listVarName = section.variables.listVariableName as string;
+            if (listVarName) {
+              varsFromSections.add(listVarName);
+            }
+          } else if (section.variables?.contentType === 'table') {
+            // For table content, use section ID as the variable key
             varsFromSections.add(section.id);
+          } else {
+            // For text content, use section ID as the variable key
+            varsFromSections.add(section.id);
+          }
+          
+          // Extract any user-defined variables (not metadata)
+          if (section.variables) {
+            Object.entries(section.variables).forEach(([key, value]) => {
+              // Skip metadata keys
+              if (METADATA_KEYS.includes(key)) return;
+              // Only add if it's a user-defined variable with a value
+              if (value !== undefined && value !== null && typeof value === 'string') {
+                varsFromSections.add(key);
+              }
+            });
           }
           return;
         }
@@ -421,6 +448,13 @@ const RunTemplates = () => {
         if (section.type === 'mixed-content' && section.variables?.content) {
           const mixedVars = extractVariables(section.variables.content as string);
           mixedVars.forEach(v => varsFromSections.add(v));
+          
+          // Also check for {{placeholder}} format
+          const placeholderMatches = (section.variables.content as string).match(/\{\{(\w+)\}\}/g) || [];
+          placeholderMatches.forEach(match => {
+            const varName = match.replace(/\{\{|\}\}/g, '');
+            varsFromSections.add(varName);
+          });
         }
         
         // For heading/text sections with inline placeholders, extract from content
@@ -431,15 +465,22 @@ const RunTemplates = () => {
             const varName = match.replace(/\{\{|\}\}/g, '');
             varsFromSections.add(varName);
           });
+          
+          // Also extract Thymeleaf variables from content
+          const contentVars = extractVariables(section.content);
+          contentVars.forEach(v => varsFromSections.add(v));
         }
         
-        // Extract variables from section content
-        const contentVars = extractVariables(section.content);
-        contentVars.forEach(v => varsFromSections.add(v));
-
-        // Extract from section variables definition
+        // For other sections, extract user-defined variables (not metadata)
         if (section.variables) {
-          Object.keys(section.variables).forEach(key => varsFromSections.add(key));
+          Object.entries(section.variables).forEach(([key, value]) => {
+            // Skip metadata keys
+            if (METADATA_KEYS.includes(key)) return;
+            // Only add if it's a meaningful variable
+            if (value !== undefined && value !== null) {
+              varsFromSections.add(key);
+            }
+          });
         }
       });
     }
