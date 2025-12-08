@@ -42,9 +42,16 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     
     let contentHtml = '';
     
+    // Determine the correct variable name for runtime data lookup
+    // For list content: use listVariableName (e.g., items_abc123)
+    // For text/table content: use section ID
+    const contentVarName = contentType === 'list' 
+      ? (section.variables?.listVariableName as string) || section.id
+      : section.id;
+    
     // Check if we have runtime variables (from RunTemplates)
-    if (variables && variables[label] !== undefined) {
-      const runtimeValue = variables[label];
+    if (variables && variables[contentVarName] !== undefined) {
+      const runtimeValue = variables[contentVarName];
       if (contentType === 'table' && typeof runtimeValue === 'object' && runtimeValue.headers) {
         // Render table from runtime data
         let tableHtml = '<table style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;"><thead><tr>';
