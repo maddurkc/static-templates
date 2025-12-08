@@ -154,9 +154,12 @@ const RunTemplates = () => {
     if (!selectedTemplate?.sections) return false;
     
     for (const section of selectedTemplate.sections) {
-      // For labeled-content sections, check contentType using section ID
-      if (section.type === 'labeled-content' && section.id === varName) {
-        return section.variables?.contentType === 'list';
+      // For labeled-content sections, check contentType using listVariableName or section ID
+      if (section.type === 'labeled-content') {
+        const listVarName = section.variables?.listVariableName as string;
+        if ((listVarName && listVarName === varName) || section.id === varName) {
+          return section.variables?.contentType === 'list';
+        }
       }
       
       if (section.variables && section.variables[varName]) {
@@ -193,21 +196,27 @@ const RunTemplates = () => {
     if (!selectedTemplate?.sections) return '';
     
     for (const section of selectedTemplate.sections) {
-      // For labeled-content sections, return content or items based on contentType using section ID
-      if (section.type === 'labeled-content' && section.id === varName) {
-        if (section.variables?.contentType === 'list') {
-          return (section.variables.items as string[]) || [''];
-        } else if (section.variables?.contentType === 'table') {
-          const tableData = section.variables.tableData;
-          if (tableData && tableData.headers) {
-            return {
-              headers: tableData.headers || [],
-              rows: tableData.rows || []
-            };
+      // For labeled-content sections, check both listVariableName and section ID
+      if (section.type === 'labeled-content') {
+        const listVarName = section.variables?.listVariableName as string;
+        const isListMatch = listVarName && listVarName === varName;
+        const isSectionIdMatch = section.id === varName;
+        
+        if (isListMatch || isSectionIdMatch) {
+          if (section.variables?.contentType === 'list') {
+            return (section.variables.items as string[]) || [''];
+          } else if (section.variables?.contentType === 'table') {
+            const tableData = section.variables.tableData;
+            if (tableData && tableData.headers) {
+              return {
+                headers: tableData.headers || [],
+                rows: tableData.rows || []
+              };
+            }
+            return { headers: [], rows: [] };
           }
-          return { headers: [], rows: [] };
+          return (section.variables?.content as string) || '';
         }
-        return (section.variables?.content as string) || '';
       }
       
       // For heading/text sections with inline placeholders
@@ -237,14 +246,19 @@ const RunTemplates = () => {
     if (!selectedTemplate?.sections) return null;
     
     for (const section of selectedTemplate.sections) {
-      // Check if this is a labeled-content section by ID
-      if (section.type === 'labeled-content' && section.id === varName) {
-        const displayLabel = getLabeledContentDisplayLabel(section);
-        return {
-          sectionType: 'Labeled Content',
-          label: displayLabel,
-          context: `Content for: ${displayLabel}`
-        };
+      // Check if this is a labeled-content section by listVariableName or ID
+      if (section.type === 'labeled-content') {
+        const listVarName = section.variables?.listVariableName as string;
+        const isMatch = (listVarName && listVarName === varName) || section.id === varName;
+        
+        if (isMatch) {
+          const displayLabel = getLabeledContentDisplayLabel(section);
+          return {
+            sectionType: section.variables?.contentType === 'list' ? 'List Content' : 'Labeled Content',
+            label: displayLabel,
+            context: `Content for: ${displayLabel}`
+          };
+        }
       }
       
       // Check if variable appears in label of labeled-content
@@ -323,7 +337,7 @@ const RunTemplates = () => {
     // Extract from sections if available
     if (template.sections) {
       template.sections.forEach((section: Section) => {
-        // For labeled-content sections, use section ID as the variable name for content
+        // For labeled-content sections, use appropriate variable name based on content type
         if (section.type === 'labeled-content') {
           // Extract placeholder variables from the label itself
           if (section.variables?.label) {
@@ -338,8 +352,13 @@ const RunTemplates = () => {
             });
           }
           
-          // Use section ID as the key for the content data
-          varsFromSections.add(section.id);
+          // For list content, use the listVariableName (e.g., items_abc123)
+          if (section.variables?.contentType === 'list' && section.variables?.listVariableName) {
+            varsFromSections.add(section.variables.listVariableName as string);
+          } else {
+            // Use section ID as the key for text/table content
+            varsFromSections.add(section.id);
+          }
           return;
         }
         
