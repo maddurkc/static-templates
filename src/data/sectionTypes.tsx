@@ -283,7 +283,7 @@ export const sectionTypes: SectionDefinition[] = [
     type: 'mixed-content',
     label: 'Mixed Content',
     icon: Type,
-    description: 'Combine static text with dynamic variables in one field (e.g., "Status: {{status}}")',
+    description: 'Combine static text with dynamic variables and links (e.g., "P3 Incident: {{label}} <a href="{{linkUrl}}">{{linkText}}</a>")',
     defaultContent: '<span th:utext="${content}"/>',
     category: 'text',
     variables: [
@@ -291,7 +291,7 @@ export const sectionTypes: SectionDefinition[] = [
         name: 'content',
         label: 'Content (mix static text with variables)',
         type: 'text',
-        defaultValue: 'Status: <span th:utext="${status}"/>\n\n<th:if="${hasIssues}">⚠️ Found <span th:utext="${issueCount}"/> issues that need attention.</th:if>\n\nProcessed items:\n<th:each="item : ${items}">• <span th:utext="${item}"/> </th:each>'
+        defaultValue: 'P3 Incident: {{label}} <a href="{{linkUrl}}">{{linkText}}</a>'
       }
     ]
   },

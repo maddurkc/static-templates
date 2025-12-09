@@ -380,7 +380,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   
   // For mixed-content sections - free-form text with embedded placeholders
   if (section.type === 'mixed-content') {
-    const contentText = (section.variables?.content as string) || 'What\'s New: {{update}}';
+    const contentText = (section.variables?.content as string) || 'P3 Incident: {{label}} <a href="{{linkUrl}}">{{linkText}}</a>';
     
     // Extract all placeholders from content (both {{placeholder}} and Thymeleaf formats)
     const placeholderPattern = /\{\{(\w+)\}\}/g;
@@ -416,11 +416,12 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
               ...section,
               variables: { ...section.variables, content: value }
             })}
-            placeholder='For invalid Characters issue, the team is working with Engineer- {{incidentNumber}}'
+            placeholder='P3 Incident: {{label}} <a href="{{linkUrl}}">{{linkText}}</a>'
             className={styles.thymeleafEditor}
           />
           <p className={styles.description}>
-            Write your text and use {'{{variableName}}'} for dynamic placeholders.
+            Write your text and use {'{{variableName}}'} for dynamic placeholders. 
+            You can also add links: {'<a href="{{linkUrl}}">{{linkText}}</a>'}
           </p>
         </div>
         
@@ -428,9 +429,9 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
           <>
             <Separator />
             <div className={styles.variablesSection}>
-              <Label className={styles.label}>Dynamic Variables</Label>
+              <Label className={styles.label}>Default Values for Variables</Label>
               <p className={styles.description}>
-                Edit the values for placeholders found in your template:
+                Set default values for placeholders (users can change these at runtime):
               </p>
               {placeholders.map(placeholder => (
                 <div key={placeholder} className={styles.variableField}>
@@ -443,7 +444,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                       ...section,
                       variables: { ...section.variables, [placeholder]: e.target.value }
                     })}
-                    placeholder={`Enter value for ${placeholder}`}
+                    placeholder={`Default value for ${placeholder}`}
                     className={styles.variableInput}
                   />
                 </div>
