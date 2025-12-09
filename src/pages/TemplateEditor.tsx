@@ -314,8 +314,12 @@ const TemplateEditor = () => {
         variables['listVariableName'] = listVariableName;
       }
       
-      // For labeled-content sections with list content, store the unique list variable name
+      // For labeled-content sections, store unique variable names for label and list
       if (sectionDef.type === 'labeled-content') {
+        // Always store labelVariableName for consistency across template updates
+        const labelVariableName = `label_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        variables['labelVariableName'] = labelVariableName;
+        
         const contentType = variables['contentType'] as string;
         if (contentType === 'list') {
           const listVariableName = generateListVariableName(newSectionId);

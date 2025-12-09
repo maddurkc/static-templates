@@ -135,7 +135,8 @@ const RunTemplates = () => {
       if (selectedTemplate.sections) {
         selectedTemplate.sections.forEach(section => {
           if (section.type === 'labeled-content') {
-            const labelVarName = `label_${section.id}`;
+            // Use stored labelVariableName, fallback to section.id for backward compatibility
+            const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
             const rawLabel = (section.variables?.label as string) || 'Label';
             // Extract clean label text (without Thymeleaf tags)
             const cleanLabel = rawLabel
@@ -243,11 +244,11 @@ const RunTemplates = () => {
   const isLabelEditable = (varName: string): boolean => {
     if (!selectedTemplate?.sections) return true;
     
-    // Handle label variables - extract section ID from label_xxx format
+    // Handle label variables - find section by stored labelVariableName or legacy pattern
     if (varName.startsWith('label_')) {
-      const sectionId = varName.substring(6);
       const section = selectedTemplate.sections.find(section => 
-        section.type === 'labeled-content' && section.id === sectionId
+        section.type === 'labeled-content' && 
+        ((section.variables?.labelVariableName as string) === varName || `label_${section.id}` === varName)
       );
       return section?.isLabelEditable !== false;
     }
@@ -266,10 +267,10 @@ const RunTemplates = () => {
   // Get section for a label variable
   const getLabelSection = (labelVarName: string): Section | undefined => {
     if (!selectedTemplate?.sections || !labelVarName.startsWith('label_')) return undefined;
-    // Find section by matching label variable name pattern
+    // Find section by matching stored labelVariableName or legacy pattern
     return selectedTemplate.sections.find(section => 
       section.type === 'labeled-content' && 
-      `label_${section.id}` === labelVarName
+      ((section.variables?.labelVariableName as string) === labelVarName || `label_${section.id}` === labelVarName)
     );
   };
 
