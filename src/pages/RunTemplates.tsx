@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
 import { fetchTemplates, fetchTemplateById } from "@/lib/templateApi";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
-import { renderSectionContent } from "@/lib/templateUtils";
+import { renderSectionContent, wrapInEmailHtml } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 
@@ -828,6 +828,18 @@ const RunTemplates = () => {
       bodyData[key] = value;
     });
 
+    // Generate full rendered HTML with email wrapper for Outlook/email client compatibility
+    const allVars: Record<string, string | string[] | any> = {
+      ...variables,
+      ...listVariables,
+      ...tableVariables,
+      ...labelVariables
+    };
+    const renderedBodyHtml = selectedTemplate.sections
+      .map((section) => renderSectionContent(section, allVars))
+      .join('');
+    const fullEmailHtml = wrapInEmailHtml(renderedBodyHtml);
+
     // Build the payload in the requested format
     const payload = {
       templateId: selectedTemplate.id,
@@ -837,7 +849,8 @@ const RunTemplates = () => {
       contentData: {
         subject_data: { ...subjectVariables },
         body_data: bodyData
-      }
+      },
+      renderedHtml: fullEmailHtml
     };
 
     console.log("Email Payload:", JSON.stringify(payload, null, 2));
