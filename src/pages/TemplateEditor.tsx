@@ -797,6 +797,16 @@ const TemplateEditor = () => {
         return generateListSectionHTML(section, indent, styleString);
       }
       
+      // Handle mixed-content sections - convert {{placeholders}} to Thymeleaf
+      if (section.type === 'mixed-content') {
+        const content = String(section.variables?.content || section.content || '');
+        // Convert {{placeholder}} to Thymeleaf format and preserve line breaks
+        const contentWithThymeleaf = content
+          .replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>')
+          .replace(/\n/g, '<br/>');
+        return `${indent}<div style="${styleString}; padding: 8px; line-height: 1.6;">${contentWithThymeleaf}</div>`;
+      }
+      
       // Handle container sections with children
       if (section.type === 'container' && section.children && section.children.length > 0) {
         const childrenHTML = section.children.map(child => generateSectionHTML(child, indent + '  ')).join('\n');

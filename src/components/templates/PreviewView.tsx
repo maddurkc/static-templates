@@ -136,13 +136,22 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       );
     }
     
-    // Handle mixed-content sections - show content with placeholders
+    // Handle mixed-content sections - show content with default values or placeholders
     if (section.type === 'mixed-content' && section.variables?.content) {
       let mixedContent = thymeleafToPlaceholder(section.variables.content as string);
       
-      // Replace placeholders with visual badges in preview
+      // First, replace placeholders with default values if available
+      mixedContent = mixedContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+        // Check if we have a default value for this placeholder
+        if (section.variables && section.variables[varName] !== undefined) {
+          return String(section.variables[varName]);
+        }
+        // If no default value, show as visual badge
+        return `<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / 0.2);">{{${varName}}}</span>`;
+      });
+      
+      // Handle special control structures (if/each)
       mixedContent = mixedContent
-        .replace(/\{\{(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / 0.2);">{{$1}}</span>')
         .replace(/\{\{if\s+(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;">if $1</span>')
         .replace(/\{\{\/if\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;">/if</span>')
         .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dcfce7; color: #15803d; border: 1px solid #86efac;">each $1 in $2</span>')
