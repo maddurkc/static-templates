@@ -243,6 +243,18 @@ const SortableSection = ({
                     return replaceWithDefaults(section.content, section.variables);
                   }
                   
+                  // For mixed-content sections, show the content with placeholders as badges
+                  if (section.type === 'mixed-content' && section.variables?.content) {
+                    const content = thymeleafToPlaceholder(section.variables.content as string);
+                    return content
+                      .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
+                      .replace(/\{\{if\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">if $1</span>')
+                      .replace(/\{\{\/if\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-blue-100 text-blue-700 border border-blue-300">/if</span>')
+                      .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">each $1 in $2</span>')
+                      .replace(/\{\{\/each\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-green-100 text-green-700 border border-green-300">/each</span>')
+                      .replace(/\n/g, '<br/>');
+                  }
+                  
                   // Otherwise show Thymeleaf placeholders as visual badges
                   return thymeleafToPlaceholder(section.content)
                     .replace(/\{\{(\w+)\}\}/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>')
@@ -254,7 +266,9 @@ const SortableSection = ({
               }}
               style={section.styles as React.CSSProperties}
             />
-            {(section.content.includes('{{') || section.content.includes('<th:utext=')) && (
+            {(section.content.includes('{{') || section.content.includes('<th:utext=') || 
+              (section.type === 'mixed-content' && section.variables?.content && 
+               (String(section.variables.content).includes('{{') || String(section.variables.content).includes('<th:utext=')))) && (
               <Badge variant="outline" className={cn(styles.badgeSmall, "mt-2")}>
                 {section.isLabelEditable !== false ? 'Content editable at runtime' : 'Content locked'}
               </Badge>

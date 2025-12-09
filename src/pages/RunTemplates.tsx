@@ -380,17 +380,25 @@ const RunTemplates = () => {
       // Check mixed-content sections
       if (section.type === 'mixed-content' && section.variables?.content) {
         const content = section.variables.content as string;
-        if (content.includes(`\${${varName}}`)) {
-          // Extract surrounding text for context
-          const regex = new RegExp(`([^<]*)<th:utext="\\$\\{${varName}\\}">([^<]*)`, 'g');
-          const match = regex.exec(content);
-          if (match) {
-            const before = match[1].trim();
+        // Check both {{placeholder}} format and Thymeleaf format
+        if (content.includes(`{{${varName}}}`) || content.includes(`\${${varName}}`)) {
+          // Extract surrounding text for context - try {{placeholder}} format first
+          const placeholderRegex = new RegExp(`([^{]{0,30})\\{\\{${varName}\\}\\}([^}]{0,30})`, 'g');
+          const placeholderMatch = placeholderRegex.exec(content);
+          if (placeholderMatch) {
+            const before = placeholderMatch[1].replace(/\{\{[^}]+\}\}/g, '').trim().slice(-20);
+            const after = placeholderMatch[2].replace(/\{\{[^}]+\}\}/g, '').trim().slice(0, 20);
+            const contextPart = before || after;
             return {
               sectionType: 'Mixed Content',
-              context: before ? `Appears after: "${before}"` : 'Used in mixed content section'
+              context: contextPart ? `Near: "${contextPart}"` : 'Used in mixed content'
             };
           }
+          // Fallback to Thymeleaf format check
+          return {
+            sectionType: 'Mixed Content',
+            context: 'Used in mixed content section'
+          };
         }
       }
       

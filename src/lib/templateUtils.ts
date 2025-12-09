@@ -326,12 +326,23 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   if (section.type === 'mixed-content' && section.variables?.content) {
     let mixedContent = section.variables.content as string;
     
+    // Helper to get value from runtime variables first, then section variables
+    const getValue = (varName: string): any => {
+      if (variables && variables[varName] !== undefined) {
+        return variables[varName];
+      }
+      if (section.variables && section.variables[varName] !== undefined) {
+        return section.variables[varName];
+      }
+      return undefined;
+    };
+    
     // Process Thymeleaf conditionals: <th:if="${condition}">content</th:if>
     mixedContent = mixedContent.replace(
       /<th:if="\$\{(\w+)\}">([\s\S]*?)<\/th:if>/g,
       (match, varName, content) => {
-        if (section.variables && section.variables[varName]) {
-          const value = section.variables[varName];
+        const value = getValue(varName);
+        if (value !== undefined) {
           // Evaluate condition: truthy values, non-empty strings, non-zero numbers
           const isTrue = value && value !== 'false' && value !== '0' && value !== 'null';
           return isTrue ? content : '';
@@ -344,52 +355,101 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     mixedContent = mixedContent.replace(
       /<th:each="(\w+)\s*:\s*\$\{(\w+)\}">([\s\S]*?)<\/th:each>/g,
       (match, itemName, arrayName, loopContent) => {
-        if (section.variables && section.variables[arrayName]) {
-          const items = section.variables[arrayName];
-          if (Array.isArray(items)) {
-            return items.map(item => {
-              let itemContent = loopContent;
-              // Replace new format <span th:utext="${item}"/>
-              itemContent = itemContent.replace(
-                new RegExp(`<span\\s+th:utext="\\$\\{${itemName}\\}"/>`, 'g'),
-                typeof item === 'object' && item.text ? sanitizeInput(item.text) : sanitizeInput(String(item))
-              );
-              // Replace legacy format <th:utext="${item}">
-              itemContent = itemContent.replace(
-                new RegExp(`<th:utext="\\$\\{${itemName}\\}">`, 'g'),
-                typeof item === 'object' && item.text ? sanitizeInput(item.text) : sanitizeInput(String(item))
-              );
-              // Also support simple ${item} references
-              itemContent = itemContent.replace(
-                new RegExp(`\\$\\{${itemName}\\}`, 'g'),
-                typeof item === 'object' && item.text ? sanitizeInput(item.text) : sanitizeInput(String(item))
-              );
-              return itemContent;
-            }).join('');
-          }
+        const items = getValue(arrayName);
+        if (items && Array.isArray(items)) {
+          return items.map(item => {
+            let itemContent = loopContent;
+            const itemText = typeof item === 'object' && item.text ? sanitizeInput(item.text) : sanitizeInput(String(item));
+            // Replace new format <span th:utext="${item}"/>
+            itemContent = itemContent.replace(
+              new RegExp(`<span\\s+th:utext="\\$\\{${itemName}\\}"/>`, 'g'),
+              itemText
+            );
+            // Replace legacy format <th:utext="${item}">
+            itemContent = itemContent.replace(
+              new RegExp(`<th:utext="\\$\\{${itemName}\\}">`, 'g'),
+              itemText
+            );
+            // Replace {{placeholder}} format
+            itemContent = itemContent.replace(
+              new RegExp(`\\{\\{${itemName}\\}\\}`, 'g'),
+              itemText
+            );
+            // Also support simple ${item} references
+            itemContent = itemContent.replace(
+              new RegExp(`\\$\\{${itemName}\\}`, 'g'),
+              itemText
+            );
+            return itemContent;
+          }).join('');
         }
         return ''; // If array doesn't exist, render nothing
       }
     );
     
-    // Replace all Thymeleaf placeholder patterns with sanitized values
-    // New format: <span th:utext="${placeholder}"/>
+    // Replace {{placeholder}} format with runtime values first
+    mixedContent = mixedContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+      const value = getValue(varName);
+      if (value !== undefined) {
+        if (typeof value === 'object' && value !== null && 'text' in value) {
+          // Handle styled text
+          const textStyle = value as { text: string; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; backgroundColor?: string; fontSize?: string };
+          const styles = [];
+          if (textStyle.color) styles.push(`color: ${textStyle.color}`);
+          if (textStyle.bold) styles.push('font-weight: bold');
+          if (textStyle.italic) styles.push('font-style: italic');
+          if (textStyle.underline) styles.push('text-decoration: underline');
+          if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
+          if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
+          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+          return `<span${styleAttr}>${sanitizeInput(textStyle.text)}</span>`;
+        }
+        return sanitizeInput(String(value));
+      }
+      return match;
+    });
+    
+    // Replace Thymeleaf patterns: <span th:utext="${placeholder}"/>
     mixedContent = mixedContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
-      if (section.variables && section.variables[varName]) {
-        return sanitizeHTML(section.variables[varName] as string);
+      const value = getValue(varName);
+      if (value !== undefined) {
+        if (typeof value === 'object' && value !== null && 'text' in value) {
+          const textStyle = value as { text: string; color?: string; bold?: boolean; italic?: boolean; underline?: string; backgroundColor?: string; fontSize?: string };
+          const styles = [];
+          if (textStyle.color) styles.push(`color: ${textStyle.color}`);
+          if (textStyle.bold) styles.push('font-weight: bold');
+          if (textStyle.italic) styles.push('font-style: italic');
+          if (textStyle.underline) styles.push('text-decoration: underline');
+          if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
+          if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
+          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+          return `<span${styleAttr}>${sanitizeInput(textStyle.text)}</span>`;
+        }
+        return sanitizeInput(String(value));
       }
       return match;
     });
     
     // Legacy format: <th:utext="${placeholder}">
     mixedContent = mixedContent.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
-      if (section.variables && section.variables[varName]) {
-        return sanitizeHTML(section.variables[varName] as string);
+      const value = getValue(varName);
+      if (value !== undefined) {
+        return sanitizeInput(String(value));
       }
       return match;
     });
     
-    const mixedHtml = `<div style="padding: 8px; line-height: 1.6;">${sanitizeHTML(mixedContent).replace(/\n/g, '<br/>')}</div>`;
+    // Handle anchor tags with placeholders for href and text
+    // Pattern: <a href="{{linkUrl}}">{{linkText}}</a>
+    mixedContent = mixedContent.replace(
+      /<a\s+href="([^"]*)"([^>]*)>([^<]*)<\/a>/g,
+      (match, href, attrs, text) => {
+        // href and text may already be processed, or contain raw values
+        return `<a href="${href}"${attrs}>${text}</a>`;
+      }
+    );
+    
+    const mixedHtml = `<div style="padding: 8px; line-height: 1.6;">${mixedContent.replace(/\n/g, '<br/>')}</div>`;
     return wrapInOutlookTable(mixedHtml);
   }
   

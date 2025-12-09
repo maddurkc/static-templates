@@ -136,6 +136,28 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       );
     }
     
+    // Handle mixed-content sections - show content with placeholders
+    if (section.type === 'mixed-content' && section.variables?.content) {
+      let mixedContent = thymeleafToPlaceholder(section.variables.content as string);
+      
+      // Replace placeholders with visual badges in preview
+      mixedContent = mixedContent
+        .replace(/\{\{(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / 0.2);">{{$1}}</span>')
+        .replace(/\{\{if\s+(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;">if $1</span>')
+        .replace(/\{\{\/if\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;">/if</span>')
+        .replace(/\{\{each\s+(\w+)\s+in\s+(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dcfce7; color: #15803d; border: 1px solid #86efac;">each $1 in $2</span>')
+        .replace(/\{\{\/each\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dcfce7; color: #15803d; border: 1px solid #86efac;">/each</span>')
+        .replace(/\n/g, '<br/>');
+      
+      return (
+        <div
+          key={section.id}
+          dangerouslySetInnerHTML={{ __html: `<div style="padding: 8px; line-height: 1.6;">${mixedContent}</div>` }}
+          style={combinedStyles as React.CSSProperties}
+        />
+      );
+    }
+    
     // For heading and text sections with variables, show default values (but section.content keeps Thymeleaf)
     const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
     const isInlinePlaceholder = inlinePlaceholderTypes.includes(section.type);
