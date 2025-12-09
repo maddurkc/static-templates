@@ -4,6 +4,186 @@ import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
 import { generateListVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
 
+// Helper function to wrap content in table for Outlook email margin compatibility
+const wrapInOutlookTable = (content: string, marginBottom: string = '20px'): string => {
+  return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: ${marginBottom};">
+    <tr>
+      <td style="padding: 0;">
+        ${content}
+      </td>
+    </tr>
+  </table>`;
+};
+
+// Render Outlook-compatible list HTML without relying on native ul/li rendering
+const renderOutlookCompatibleList = (items: any[], listTag: string, listStyleType: string): string => {
+  const isOrdered = listTag === 'ol';
+  
+  const renderItem = (item: any, index: number): string => {
+    const text = typeof item === 'string' ? item : (item.text || '');
+    const styles: string[] = [];
+    
+    if (typeof item === 'object') {
+      if (item.color) styles.push(`color: ${item.color}`);
+      if (item.bold) styles.push('font-weight: bold');
+      if (item.italic) styles.push('font-style: italic');
+      if (item.underline) styles.push('text-decoration: underline');
+      if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+      if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
+    }
+    const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+    
+    // Use bullet character or number based on list type
+    let bullet = '';
+    if (isOrdered) {
+      if (listStyleType === 'lower-roman') {
+        bullet = toRoman(index + 1).toLowerCase() + '.';
+      } else if (listStyleType === 'upper-roman') {
+        bullet = toRoman(index + 1) + '.';
+      } else if (listStyleType === 'lower-alpha') {
+        bullet = String.fromCharCode(97 + (index % 26)) + '.';
+      } else if (listStyleType === 'upper-alpha') {
+        bullet = String.fromCharCode(65 + (index % 26)) + '.';
+      } else {
+        bullet = (index + 1) + '.';
+      }
+    } else {
+      if (listStyleType === 'circle') bullet = '○';
+      else if (listStyleType === 'square') bullet = '■';
+      else bullet = '•';
+    }
+    
+    return `<tr>
+      <td style="vertical-align: top; padding-right: 8px; width: 20px;">${bullet}</td>
+      <td style="vertical-align: top;${styleAttr ? ' ' + styles.join('; ') : ''}">${sanitizeInput(text)}</td>
+    </tr>`;
+  };
+  
+  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-left: 20px;">
+    ${items.map((item, idx) => renderItem(item, idx)).join('')}
+  </table>`;
+};
+
+// Render Outlook-compatible list with nested items support (table-based)
+const renderOutlookCompatibleListWithNesting = (items: any[], listTag: string, listStyleType: string, indentLevel: number = 0): string => {
+  const isOrdered = listTag === 'ol';
+  
+  const getBullet = (index: number): string => {
+    if (isOrdered) {
+      if (listStyleType === 'lower-roman') return toRoman(index + 1).toLowerCase() + '.';
+      if (listStyleType === 'upper-roman') return toRoman(index + 1) + '.';
+      if (listStyleType === 'lower-alpha') return String.fromCharCode(97 + (index % 26)) + '.';
+      if (listStyleType === 'upper-alpha') return String.fromCharCode(65 + (index % 26)) + '.';
+      return (index + 1) + '.';
+    } else {
+      if (listStyleType === 'circle') return '○';
+      if (listStyleType === 'square') return '■';
+      return '•';
+    }
+  };
+  
+  const renderItem = (item: any, index: number): string => {
+    const text = typeof item === 'string' ? item : (item.text || '');
+    const styles: string[] = [];
+    
+    if (typeof item === 'object') {
+      if (item.color) styles.push(`color: ${item.color}`);
+      if (item.bold) styles.push('font-weight: bold');
+      if (item.italic) styles.push('font-style: italic');
+      if (item.underline) styles.push('text-decoration: underline');
+      if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+      if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
+    }
+    const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+    
+    let childrenHtml = '';
+    if (typeof item === 'object' && item.children && item.children.length > 0) {
+      // Recursively render children with increased indent
+      childrenHtml = renderOutlookCompatibleListWithNesting(item.children, listTag, listStyleType, indentLevel + 1);
+    }
+    
+    return `<tr>
+      <td style="vertical-align: top; padding-right: 8px; width: 20px;">${getBullet(index)}</td>
+      <td style="vertical-align: top;${styleAttr ? ' ' + styles.join('; ') : ''}">${sanitizeInput(text)}${childrenHtml}</td>
+    </tr>`;
+  };
+  
+  const marginLeft = 20 + (indentLevel * 20);
+  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-left: ${marginLeft}px;">
+    ${items.map((item, idx) => renderItem(item, idx)).join('')}
+  </table>`;
+};
+
+// Helper function to convert number to Roman numerals
+const toRoman = (num: number): string => {
+  const romanNumerals: [number, string][] = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+  ];
+  let result = '';
+  for (const [value, symbol] of romanNumerals) {
+    while (num >= value) {
+      result += symbol;
+      num -= value;
+    }
+  }
+  return result;
+};
+
+// Email wrapper with proper DOCTYPE, head, and meta tags for email client compatibility
+export const wrapInEmailHtml = (bodyContent: string): string => {
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:AllowPNG/>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style type="text/css">
+    body, table, td, p, a, li {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table, td {
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #333333;
+    }
+    table {
+      border-collapse: collapse !important;
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 20px; background-color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto;">
+    <tr>
+      <td style="padding: 0;">
+        ${bodyContent}
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+};
+
 export const renderSectionContent = (section: Section, variables?: Record<string, string | string[] | any>): string => {
   let content = section.content;
   
@@ -67,35 +247,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         const listTag = getListTag(listStyle);
         const listStyleType = getListStyleType(listStyle);
         
-        const renderListItem = (item: any, nestedListStyle: string): string => {
-          if (typeof item === 'string') {
-            return `<li>${sanitizeInput(item)}</li>`;
-          }
-          
-          const styles = [];
-          if (item.color) styles.push(`color: ${item.color}`);
-          if (item.bold) styles.push('font-weight: bold');
-          if (item.italic) styles.push('font-style: italic');
-          if (item.underline) styles.push('text-decoration: underline');
-          if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
-          if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
-          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-          
-          let html = `<li${styleAttr}>${sanitizeInput(item.text)}`;
-          if (item.children && item.children.length > 0) {
-            const nestedTag = getListTag(nestedListStyle);
-            const nestedStyleType = getListStyleType(nestedListStyle);
-            html += `<${nestedTag} style="list-style-type: ${nestedStyleType}; margin-left: 20px; margin-top: 4px;">`;
-            html += item.children.map((child: any) => renderListItem(child, nestedListStyle)).join('');
-            html += `</${nestedTag}>`;
-          }
-          html += '</li>';
-          return html;
-        };
-        
-        contentHtml = `<${listTag} style="list-style-type: ${listStyleType}; margin-left: 20px;">` + 
-          runtimeValue.map((item: any) => renderListItem(item, listStyle)).join('') + 
-          `</${listTag}>`;
+        // Use Outlook-compatible table-based list rendering
+        contentHtml = renderOutlookCompatibleListWithNesting(runtimeValue, listTag, listStyleType);
       } else if (typeof runtimeValue === 'string') {
         contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(runtimeValue)}</div>`;
       } else if (typeof runtimeValue === 'object' && runtimeValue !== null && 'text' in runtimeValue) {
@@ -137,35 +290,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         const listTag = getListTag(listStyle);
         const listStyleType = getListStyleType(listStyle);
         
-        const renderListItem = (item: any, nestedListStyle: string): string => {
-          if (typeof item === 'string') {
-            return `<li>${sanitizeInput(item)}</li>`;
-          }
-          
-          const styles = [];
-          if (item.color) styles.push(`color: ${item.color}`);
-          if (item.bold) styles.push('font-weight: bold');
-          if (item.italic) styles.push('font-style: italic');
-          if (item.underline) styles.push('text-decoration: underline');
-          if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
-          if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
-          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-          
-          let html = `<li${styleAttr}>${sanitizeInput(item.text)}`;
-          if (item.children && item.children.length > 0) {
-            const nestedTag = getListTag(nestedListStyle);
-            const nestedStyleType = getListStyleType(nestedListStyle);
-            html += `<${nestedTag} style="list-style-type: ${nestedStyleType}; margin-left: 20px; margin-top: 4px;">`;
-            html += item.children.map((child: any) => renderListItem(child, nestedListStyle)).join('');
-            html += `</${nestedTag}>`;
-          }
-          html += '</li>';
-          return html;
-        };
-        
-        contentHtml = `<${listTag} style="list-style-type: ${listStyleType}; margin-left: 20px;">` + 
-          items.map((item: any) => renderListItem(item, listStyle)).join('') + 
-          `</${listTag}>`;
+        // Use Outlook-compatible table-based list rendering
+        contentHtml = renderOutlookCompatibleListWithNesting(items, listTag, listStyleType);
       } else {
         const content = (section.variables?.content as string) || '';
         contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(content)}</div>`;
@@ -184,14 +310,16 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     </table>`;
   }
   
-  // Handle table sections specially
+  // Handle table sections specially - wrapped in table for Outlook margin compatibility
   if (section.type === 'table' && section.variables?.tableData) {
-    return generateTableHTML(section.variables.tableData as TableData);
+    const tableContent = generateTableHTML(section.variables.tableData as TableData);
+    return wrapInOutlookTable(tableContent);
   }
   
   // Handle static-text sections - use content variable directly
   if (section.type === 'static-text' && section.variables?.content) {
-    return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>')}</div>`;
+    const staticContent = `<div style="padding: 8px; line-height: 1.6;">${sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>')}</div>`;
+    return wrapInOutlookTable(staticContent);
   }
   
   // Handle mixed-content sections - free-form text with embedded placeholders
@@ -261,7 +389,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       return match;
     });
     
-    return `<div style="margin: 10px 0; padding: 8px; line-height: 1.6;">${sanitizeHTML(mixedContent).replace(/\n/g, '<br/>')}</div>`;
+    const mixedHtml = `<div style="padding: 8px; line-height: 1.6;">${sanitizeHTML(mixedContent).replace(/\n/g, '<br/>')}</div>`;
+    return wrapInOutlookTable(mixedHtml);
   }
   
   // Handle heading and text sections (with or without placeholders)
@@ -350,7 +479,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
     }
     
-    return `<${tag}${styleStr}>${processedContent}</${tag}>`;
+    const headingTextHtml = `<${tag}${styleStr}>${processedContent}</${tag}>`;
+    return wrapInOutlookTable(headingTextHtml);
   }
   
   // Handle standalone list sections (bullet-list-*, number-list-*)
@@ -401,9 +531,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       return `<li${styleAttr}>${sanitizeInput(item.text || '')}</li>`;
     };
     
-    return `<${listTag} style="list-style-type: ${listStyleType}; margin-left: 20px; margin: 10px 0 10px 20px;">` + 
-      items.map(renderListItem).join('') + 
-      `</${listTag}>`;
+    const listHtml = renderOutlookCompatibleList(items, listTag, listStyleType);
+    return wrapInOutlookTable(listHtml);
   }
   
   // Handle line-break sections
@@ -414,7 +543,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   // Handle container sections with nested children
   if (section.type === 'container' && section.children && section.children.length > 0) {
     const childrenHTML = section.children.map(child => renderSectionContent(child, variables)).join('');
-    return `<div style="margin: 15px 0; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa;">${childrenHTML}</div>`;
+    const containerHtml = `<div style="padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa;">${childrenHTML}</div>`;
+    return wrapInOutlookTable(containerHtml);
   }
   
   if (!section.variables) {
