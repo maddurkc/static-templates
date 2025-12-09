@@ -176,7 +176,8 @@ export const sectionToRequest = (
     // Store ONLY the appropriate content based on contentType - mutually exclusive
     if (contentType === 'list') {
       const listStyle = (variables.listStyle as string) || 'circle';
-      const listVariableName = generateListVariableName(section.id);
+      // Use stored listVariableName if available, otherwise generate (for backward compatibility)
+      const listVariableName = (variables.listVariableName as string) || generateListVariableName(section.id);
       
       // Store list-specific properties ONLY for list type
       cleanVariables.listStyle = listStyle;
