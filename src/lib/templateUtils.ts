@@ -173,10 +173,15 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     }
     
     const labelColor = section.variables?.labelColor ? `color: ${section.variables.labelColor};` : '';
-    return `<div style="margin: 15px 0;">
-      <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em; ${labelColor}">${sanitizeInput(label)}</div>
-      ${contentHtml}
-    </div>`;
+    // Use table-based layout for Outlook email client compatibility with proper margins
+    return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px;">
+      <tr>
+        <td style="padding: 0;">
+          <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em; ${labelColor}">${sanitizeInput(label)}</div>
+          ${contentHtml}
+        </td>
+      </tr>
+    </table>`;
   }
   
   // Handle table sections specially
