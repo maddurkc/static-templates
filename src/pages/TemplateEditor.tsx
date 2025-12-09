@@ -914,8 +914,8 @@ ${indent}</div>`;
         }
       }
       
-      // Generate Thymeleaf list with th:each
-      const variableName = `items_${section.id.replace(/[^a-zA-Z0-9]/g, '').slice(-8)}`;
+      // Generate Thymeleaf list with th:each - use consistent variable naming
+      const variableName = generateListVariableName(section.id);
       const listHtml = `<${listTag} style="list-style-type: ${listStyleType};">` +
         `<li th:each="item : \${${variableName}}"><span th:utext="\${item}"/></li>` +
         `</${listTag}>`;
