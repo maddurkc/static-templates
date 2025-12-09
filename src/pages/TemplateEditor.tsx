@@ -304,8 +304,15 @@ const TemplateEditor = () => {
           variables[varDef.name] = varDef.defaultValue;
         });
       }
-
+      
+      // Generate a unique ID for the new section first, so we can use it for variable names
       const newSectionId = `section-${Date.now()}-${Math.random()}`;
+      
+      // For standalone list sections (bullet-list-*, number-list-*), store the unique list variable name
+      if (sectionDef.type.includes('list') && sectionDef.type !== 'labeled-content') {
+        const listVariableName = generateListVariableName(newSectionId);
+        variables['listVariableName'] = listVariableName;
+      }
       
       // For labeled-content sections with list content, store the unique list variable name
       if (sectionDef.type === 'labeled-content') {
@@ -914,8 +921,8 @@ ${indent}</div>`;
         }
       }
       
-      // Generate Thymeleaf list with th:each - use consistent variable naming
-      const variableName = generateListVariableName(section.id);
+      // Use stored listVariableName if available, otherwise fallback (for backward compatibility)
+      const variableName = String(section.variables?.['listVariableName'] || generateListVariableName(section.id));
       const listHtml = `<${listTag} style="list-style-type: ${listStyleType};">` +
         `<li th:each="item : \${${variableName}}"><span th:utext="\${item}"/></li>` +
         `</${listTag}>`;

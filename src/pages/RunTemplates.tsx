@@ -187,8 +187,11 @@ const RunTemplates = () => {
       }
       
       // For standalone list sections (bullet-list-*, number-list-*)
-      if (LIST_SECTION_TYPES.includes(section.type) && section.id === varName) {
-        return true;
+      if (LIST_SECTION_TYPES.includes(section.type)) {
+        const listVarName = section.variables?.listVariableName as string;
+        if ((listVarName && listVarName === varName) || section.id === varName) {
+          return true;
+        }
       }
       
       if (section.variables && section.variables[varName]) {
@@ -207,15 +210,18 @@ const RunTemplates = () => {
         return (section.variables?.listStyle as string) || 'disc';
       }
       
-      if (LIST_SECTION_TYPES.includes(section.type) && section.id === varName) {
-        // Extract style from section type
-        if (section.type.includes('circle')) return 'circle';
-        if (section.type.includes('disc')) return 'disc';
-        if (section.type.includes('square')) return 'square';
-        if (section.type === 'number-list-1') return 'decimal';
-        if (section.type === 'number-list-i') return 'lower-roman';
-        if (section.type === 'number-list-a') return 'lower-alpha';
-        return 'disc';
+      if (LIST_SECTION_TYPES.includes(section.type)) {
+        const listVarName = section.variables?.listVariableName as string;
+        if ((listVarName && listVarName === varName) || section.id === varName) {
+          // Extract style from section type
+          if (section.type.includes('circle')) return 'circle';
+          if (section.type.includes('disc')) return 'disc';
+          if (section.type.includes('square')) return 'square';
+          if (section.type === 'number-list-1') return 'decimal';
+          if (section.type === 'number-list-i') return 'lower-roman';
+          if (section.type === 'number-list-a') return 'lower-alpha';
+          return 'disc';
+        }
       }
     }
     return 'disc';
@@ -296,8 +302,11 @@ const RunTemplates = () => {
       }
       
       // For standalone list sections (bullet-list-*, number-list-*)
-      if (LIST_SECTION_TYPES.includes(section.type) && section.id === varName) {
-        return (section.variables?.items as string[]) || [''];
+      if (LIST_SECTION_TYPES.includes(section.type)) {
+        const listVarName = section.variables?.listVariableName as string;
+        if ((listVarName && listVarName === varName) || section.id === varName) {
+          return (section.variables?.items as string[]) || [''];
+        }
       }
       
       // For heading/text sections with inline placeholders
@@ -409,12 +418,15 @@ const RunTemplates = () => {
       }
       
       // Check standalone list sections (bullet-list-*, number-list-*)
-      if (LIST_SECTION_TYPES.includes(section.type) && section.id === varName) {
-        const styleType = section.type.includes('bullet') ? 'Bullet List' : 'Numbered List';
-        return {
-          sectionType: styleType,
-          context: `Editable list items`
-        };
+      if (LIST_SECTION_TYPES.includes(section.type)) {
+        const listVarName = section.variables?.listVariableName as string;
+        if ((listVarName && listVarName === varName) || section.id === varName) {
+          const styleType = section.type.includes('bullet') ? 'Bullet List' : 'Numbered List';
+          return {
+            sectionType: styleType,
+            context: `Editable list items`
+          };
+        }
       }
       
       // Check regular sections
@@ -523,8 +535,9 @@ const RunTemplates = () => {
           'number-list-1', 'number-list-i', 'number-list-a'
         ];
         if (listSectionTypes.includes(section.type)) {
-          // Use section ID as the variable name for list content
-          varsFromSections.add(section.id);
+          // Use stored listVariableName if available, fallback to section ID for backward compatibility
+          const listVarName = section.variables?.listVariableName as string;
+          varsFromSections.add(listVarName || section.id);
         }
         
         // For other sections, extract user-defined variables (not metadata)
