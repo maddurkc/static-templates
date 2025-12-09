@@ -367,8 +367,13 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     const listStyleType = getListStyleType(listStyle);
     
     // Check for runtime variables first (from RunTemplates)
+    // Use stored listVariableName if available (for consistency across template updates)
+    const listVarName = section.variables?.listVariableName as string;
     let items: any[] = [];
-    if (variables && variables[section.id] !== undefined) {
+    if (variables && listVarName && variables[listVarName] !== undefined) {
+      items = Array.isArray(variables[listVarName]) ? variables[listVarName] : [];
+    } else if (variables && variables[section.id] !== undefined) {
+      // Fallback to section.id for backward compatibility
       items = Array.isArray(variables[section.id]) ? variables[section.id] : [];
     } else if (section.variables?.items) {
       items = section.variables.items as any[];
