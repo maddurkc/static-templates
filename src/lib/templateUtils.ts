@@ -477,7 +477,22 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       
       // Check runtime variables first, then section variables
       if (variables && variables[varName] !== undefined) {
-        value = sanitizeInput(String(variables[varName]));
+        const varValue = variables[varName];
+        // Handle TextStyle objects with styling properties
+        if (typeof varValue === 'object' && varValue !== null && 'text' in varValue) {
+          const textStyle = varValue as { text: string; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; backgroundColor?: string; fontSize?: string };
+          const styles = [];
+          if (textStyle.color) styles.push(`color: ${textStyle.color}`);
+          if (textStyle.bold) styles.push('font-weight: bold');
+          if (textStyle.italic) styles.push('font-style: italic');
+          if (textStyle.underline) styles.push('text-decoration: underline');
+          if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
+          if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
+          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+          value = `<span${styleAttr}>${sanitizeInput(textStyle.text)}</span>`;
+        } else {
+          value = sanitizeInput(String(varValue));
+        }
       } else if (section.variables && section.variables[varName] !== undefined) {
         value = sanitizeInput(String(section.variables[varName]));
       } else {
@@ -487,10 +502,27 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       processedContent = processedContent.replace(new RegExp(match.replace(/[{}]/g, '\\$&'), 'g'), value);
     });
     
+    // Helper function to convert value to styled HTML
+    const valueToStyledHtml = (value: any): string => {
+      if (typeof value === 'object' && value !== null && 'text' in value) {
+        const textStyle = value as { text: string; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; backgroundColor?: string; fontSize?: string };
+        const styles = [];
+        if (textStyle.color) styles.push(`color: ${textStyle.color}`);
+        if (textStyle.bold) styles.push('font-weight: bold');
+        if (textStyle.italic) styles.push('font-style: italic');
+        if (textStyle.underline) styles.push('text-decoration: underline');
+        if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
+        if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
+        const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+        return `<span${styleAttr}>${sanitizeInput(textStyle.text)}</span>`;
+      }
+      return sanitizeInput(String(value));
+    };
+    
     // Replace Thymeleaf-style placeholders - new format: <span th:utext="${variable}"/>
     processedContent = processedContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
       if (variables && variables[varName] !== undefined) {
-        return sanitizeInput(String(variables[varName]));
+        return valueToStyledHtml(variables[varName]);
       } else if (section.variables && section.variables[varName] !== undefined) {
         return sanitizeInput(String(section.variables[varName]));
       }
@@ -500,7 +532,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     // Also handle legacy format: <th:utext="${variable}">
     processedContent = processedContent.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
       if (variables && variables[varName] !== undefined) {
-        return sanitizeInput(String(variables[varName]));
+        return valueToStyledHtml(variables[varName]);
       } else if (section.variables && section.variables[varName] !== undefined) {
         return sanitizeInput(String(section.variables[varName]));
       }
