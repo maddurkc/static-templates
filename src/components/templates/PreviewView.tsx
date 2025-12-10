@@ -84,22 +84,9 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
         
         contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => renderListItem(item)).join('')}</ul>`;
       } else if (contentType === 'table') {
-        const tableData = section.variables?.tableData as any;
-        if (tableData && tableData.headers) {
-          let tableHtml = '<table style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;"><thead><tr>';
-          tableData.headers.forEach((header: string) => {
-            tableHtml += `<th style="border: 1px solid #ddd; padding: 8px; background-color: #f5f5f5; text-align: left;">${header}</th>`;
-          });
-          tableHtml += '</tr></thead><tbody>';
-          (tableData.rows || []).forEach((row: string[]) => {
-            tableHtml += '<tr>';
-            row.forEach((cell: string) => {
-              tableHtml += `<td style="border: 1px solid #ddd; padding: 8px;">${cell}</td>`;
-            });
-            tableHtml += '</tr>';
-          });
-          tableHtml += '</tbody></table>';
-          contentHtml = tableHtml;
+        const tableData = section.variables?.tableData as TableData;
+        if (tableData && tableData.rows) {
+          contentHtml = generateTableHTML(tableData);
         }
       }
       
