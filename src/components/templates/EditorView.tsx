@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { GripVertical, Plus, Trash2, Settings2, Plug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
+import { generateTableHTML, TableData } from "@/lib/tableUtils";
 import { InlineSectionControls } from "./InlineSectionControls";
 import { SectionContextMenu } from "./SectionContextMenu";
 import styles from "./EditorView.module.scss";
@@ -228,6 +229,14 @@ const SortableSection = ({
               </div>
             )}
           </div>
+        ) : !isContainer && section.type === 'table' && section.variables?.tableData ? (
+          // Handle standalone table sections
+          <div
+            className={styles.tablePreview}
+            dangerouslySetInnerHTML={{ 
+              __html: generateTableHTML(section.variables.tableData as TableData)
+            }}
+          />
         ) : !isContainer && (
           <>
             <div

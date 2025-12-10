@@ -1,12 +1,40 @@
+export interface CellStyle {
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  backgroundColor?: string;
+  fontSize?: string;
+}
+
 export interface TableData {
   rows: string[][];
   showBorder: boolean;
+  borderColor?: string;
   mergedCells: Record<string, { rowSpan: number; colSpan: number }>;
+  cellStyles?: Record<string, CellStyle>; // key format: "rowIndex-colIndex"
 }
 
+export const generateCellStyleString = (style?: CellStyle): string => {
+  if (!style) return '';
+  
+  const styles: string[] = [];
+  if (style.color) styles.push(`color: ${style.color}`);
+  if (style.bold) styles.push('font-weight: bold');
+  if (style.italic) styles.push('font-style: italic');
+  if (style.underline) styles.push('text-decoration: underline');
+  if (style.backgroundColor) styles.push(`background-color: ${style.backgroundColor}`);
+  if (style.fontSize) styles.push(`font-size: ${style.fontSize}`);
+  
+  return styles.join('; ');
+};
+
 export const generateTableHTML = (tableData: TableData): string => {
-  const borderStyle = tableData.showBorder ? ' border="1" style="border-collapse: collapse;"' : '';
-  const cellStyle = tableData.showBorder ? ' style="border: 1px solid #ddd; padding: 8px;"' : ' style="padding: 8px;"';
+  const borderColor = tableData.borderColor || '#ddd';
+  const borderStyle = tableData.showBorder ? ` border="1" style="border-collapse: collapse; border: 1px solid ${borderColor};"` : ' style="border-collapse: collapse;"';
+  const baseCellStyle = tableData.showBorder 
+    ? `border: 1px solid ${borderColor}; padding: 8px;` 
+    : 'padding: 8px;';
   
   let html = `<table${borderStyle}>`;
   
@@ -41,7 +69,13 @@ export const generateTableHTML = (tableData: TableData): string => {
         ? ` rowspan="${merge.rowSpan}" colspan="${merge.colSpan}"`
         : '';
       
-      html += `<${tag}${cellStyle}${mergeAttrs}>${cell}</${tag}>`;
+      // Get cell-specific styles
+      const cellStyle = tableData.cellStyles?.[cellKey];
+      const customStyles = generateCellStyleString(cellStyle);
+      const headerStyle = rowIndex === 0 ? 'background-color: #f5f5f5; font-weight: bold;' : '';
+      const fullStyle = `${baseCellStyle} ${headerStyle} ${customStyles}`.trim();
+      
+      html += `<${tag} style="${fullStyle}"${mergeAttrs}>${cell}</${tag}>`;
     });
     html += '</tr>';
   });

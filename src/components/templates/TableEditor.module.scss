@@ -25,10 +25,67 @@
   font-size: 0.75rem;
 }
 
+.borderColorRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.colorPickerWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.colorInput {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.25rem;
+  cursor: pointer;
+  
+  &::-webkit-color-swatch-wrapper {
+    padding: 2px;
+  }
+  
+  &::-webkit-color-swatch {
+    border-radius: 2px;
+    border: none;
+  }
+}
+
+.colorTextInput {
+  width: 5rem;
+  height: 2rem;
+  font-size: 0.75rem;
+}
+
 .actions {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.cellStyleControls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: hsl(var(--muted));
+  border-radius: 0.375rem;
+}
+
+.cellStyleLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+
+.styleButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .tableWrapper {
@@ -38,9 +95,10 @@
 
 .table {
   width: 100%;
+  border-collapse: collapse;
 
   &.bordered {
-    border: 1px solid #e9ecef;
+    border: 1px solid hsl(var(--border));
   }
 }
 
@@ -48,20 +106,27 @@
   padding: 0.25rem;
 
   &.bordered {
-    border: 1px solid #e9ecef;
+    border: 1px solid hsl(var(--border));
   }
 
   &.selected {
-    box-shadow: 0 0 0 2px #4361ee;
+    box-shadow: 0 0 0 2px hsl(var(--primary));
   }
 }
 
 .cellInput {
   height: 2rem;
   font-size: 0.75rem;
+  background: transparent;
+  border: none;
+  
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
 }
 
 .selectedInfo {
   font-size: 0.75rem;
-  color: #6c757d;
+  color: hsl(var(--muted-foreground));
 }
