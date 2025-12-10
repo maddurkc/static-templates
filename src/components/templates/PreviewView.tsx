@@ -1,6 +1,7 @@
 import { Section } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
+import { generateTableHTML, TableData } from "@/lib/tableUtils";
 import styles from "./PreviewView.module.scss";
 
 interface PreviewViewProps {
@@ -107,6 +108,20 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
           <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>{label}</div>
           <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
         </div>
+      );
+    }
+    
+    // Handle standalone table sections
+    if (section.type === 'table' && section.variables?.tableData) {
+      const tableData = section.variables.tableData as TableData;
+      const tableHtml = generateTableHTML(tableData);
+      
+      return (
+        <div
+          key={section.id}
+          dangerouslySetInnerHTML={{ __html: tableHtml }}
+          style={combinedStyles as React.CSSProperties}
+        />
       );
     }
     
