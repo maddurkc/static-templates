@@ -306,6 +306,42 @@ const ListItemsEditor = ({ section, onUpdate }: ListItemsEditorProps) => {
   );
 };
 
+// Table editor for labeled-content sections
+interface LabeledContentTableEditorProps {
+  section: Section;
+  onUpdate: (section: Section) => void;
+}
+
+const LabeledContentTableEditor = ({ section, onUpdate }: LabeledContentTableEditorProps) => {
+  // Create a virtual section that wraps the tableData for the TableEditor component
+  const virtualSection: Section = {
+    ...section,
+    type: 'table',
+    variables: {
+      tableData: section.variables?.tableData || {
+        rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
+        showBorder: true,
+        borderColor: '#ddd',
+        mergedCells: {},
+        cellStyles: {}
+      }
+    }
+  };
+
+  const handleUpdate = (updatedVirtualSection: Section) => {
+    // Update the original section's tableData
+    onUpdate({
+      ...section,
+      variables: {
+        ...section.variables,
+        tableData: updatedVirtualSection.variables?.tableData
+      }
+    });
+  };
+
+  return <TableEditor section={virtualSection} onUpdate={handleUpdate} />;
+};
+
 export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
   const sectionDef = sectionTypes.find(s => s.type === section.type);
   
@@ -709,163 +745,7 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
             <Label className="text-sm font-medium">
               Table Data <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
             </Label>
-            <div className="border rounded-lg p-4 space-y-4">
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const tableData = section.variables?.tableData || { headers: [], rows: [] };
-                    onUpdate({
-                      ...section,
-                      variables: {
-                        ...section.variables,
-                        tableData: {
-                          ...tableData,
-                          headers: [...(tableData.headers || []), `Column ${(tableData.headers?.length || 0) + 1}`],
-                          rows: (tableData.rows || []).map((row: string[]) => [...row, ''])
-                        }
-                      }
-                    });
-                  }}
-                  className="h-7 px-2"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add Column
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const tableData = section.variables?.tableData || { headers: [], rows: [] };
-                    const newRow = new Array((tableData.headers || []).length || 1).fill('');
-                    onUpdate({
-                      ...section,
-                      variables: {
-                        ...section.variables,
-                        tableData: {
-                          ...tableData,
-                          rows: [...(tableData.rows || []), newRow]
-                        }
-                      }
-                    });
-                  }}
-                  className="h-7 px-2"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add Row
-                </Button>
-              </div>
-              
-              {(() => {
-                const tableData = section.variables?.tableData || { headers: [], rows: [] };
-                if (!tableData.headers || tableData.headers.length === 0) {
-                  return <p className="text-xs text-muted-foreground text-center py-4">Click "Add Column" to start</p>;
-                }
-                
-                return (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border text-sm">
-                      <thead>
-                        <tr>
-                          {(tableData.headers || []).map((header: string, colIdx: number) => (
-                            <th key={colIdx} className="border p-2 bg-muted">
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  value={header}
-                                  onChange={(e) => {
-                                    const newHeaders = [...(tableData.headers || [])];
-                                    newHeaders[colIdx] = e.target.value;
-                                    onUpdate({
-                                      ...section,
-                                      variables: {
-                                        ...section.variables,
-                                        tableData: { ...tableData, headers: newHeaders }
-                                      }
-                                    });
-                                  }}
-                                  className="h-8 text-xs font-semibold"
-                                  placeholder={`Header ${colIdx + 1}`}
-                                />
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    const newHeaders = (tableData.headers || []).filter((_: any, i: number) => i !== colIdx);
-                                    const newRows = (tableData.rows || []).map((row: string[]) => 
-                                      row.filter((_: any, i: number) => i !== colIdx)
-                                    );
-                                    onUpdate({
-                                      ...section,
-                                      variables: {
-                                        ...section.variables,
-                                        tableData: { headers: newHeaders, rows: newRows }
-                                      }
-                                    });
-                                  }}
-                                  className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                                  disabled={(tableData.headers || []).length <= 1}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(tableData.rows || []).map((row: string[], rowIdx: number) => (
-                          <tr key={rowIdx}>
-                            {row.map((cell: string, colIdx: number) => (
-                              <td key={colIdx} className="border p-1">
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    value={cell}
-                                    onChange={(e) => {
-                                      const newRows = [...(tableData.rows || [])];
-                                      newRows[rowIdx][colIdx] = e.target.value;
-                                      onUpdate({
-                                        ...section,
-                                        variables: {
-                                          ...section.variables,
-                                          tableData: { ...tableData, rows: newRows }
-                                        }
-                                      });
-                                    }}
-                                    className="h-8 text-xs"
-                                    placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
-                                  />
-                                  {colIdx === row.length - 1 && (
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      onClick={() => {
-                                        const newRows = (tableData.rows || []).filter((_: any, i: number) => i !== rowIdx);
-                                        onUpdate({
-                                          ...section,
-                                          variables: {
-                                            ...section.variables,
-                                            tableData: { ...tableData, rows: newRows }
-                                          }
-                                        });
-                                      }}
-                                      className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                                      disabled={(tableData.rows || []).length <= 1}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })()}
-            </div>
+            <LabeledContentTableEditor section={section} onUpdate={onUpdate} />
             <p className="text-xs text-muted-foreground">
               Define the table structure that will appear under this label.
             </p>
