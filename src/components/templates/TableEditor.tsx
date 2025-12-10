@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Merge, Palette, Bold, Italic, Underline } from "lucide-react";
 import { Section } from "@/types/section";
-import { TableData, CellStyle } from "@/lib/tableUtils";
+import { TableData, CellStyle, HeaderStyle } from "@/lib/tableUtils";
 import styles from "./TableEditor.module.scss";
 
 interface TableEditorProps {
@@ -25,7 +25,8 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
           showBorder: data.showBorder !== false,
           borderColor: data.borderColor || '#ddd',
           mergedCells: data.mergedCells || {},
-          cellStyles: data.cellStyles || {}
+          cellStyles: data.cellStyles || {},
+          headerStyle: data.headerStyle || { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true }
         };
       }
     } catch (e) {
@@ -36,7 +37,8 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
       showBorder: true,
       borderColor: '#ddd',
       mergedCells: {},
-      cellStyles: {}
+      cellStyles: {},
+      headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true }
     };
   };
 
@@ -146,6 +148,16 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
     });
   };
 
+  const updateHeaderStyle = (updates: Partial<HeaderStyle>) => {
+    updateTableData({
+      ...tableData,
+      headerStyle: {
+        ...tableData.headerStyle,
+        ...updates
+      }
+    });
+  };
+
   const mergeCells = () => {
     if (!selectedCell) return;
     
@@ -248,6 +260,38 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
           </div>
         </div>
       )}
+
+      {/* Header Row Styling */}
+      <div className={styles.headerStyleSection}>
+        <Label className={styles.toggleLabel}>Header Row Styling</Label>
+        <div className={styles.headerStyleControls}>
+          <div className={styles.colorPickerWrapper}>
+            <Label className={styles.smallLabel}>Background</Label>
+            <input
+              type="color"
+              value={tableData.headerStyle?.backgroundColor || '#f5f5f5'}
+              onChange={(e) => updateHeaderStyle({ backgroundColor: e.target.value })}
+              className={styles.colorInput}
+            />
+          </div>
+          <div className={styles.colorPickerWrapper}>
+            <Label className={styles.smallLabel}>Text Color</Label>
+            <input
+              type="color"
+              value={tableData.headerStyle?.textColor || '#000000'}
+              onChange={(e) => updateHeaderStyle({ textColor: e.target.value })}
+              className={styles.colorInput}
+            />
+          </div>
+          <div className={styles.toggleGroup}>
+            <Label className={styles.smallLabel}>Bold</Label>
+            <Switch 
+              checked={tableData.headerStyle?.bold !== false} 
+              onCheckedChange={(checked) => updateHeaderStyle({ bold: checked })} 
+            />
+          </div>
+        </div>
+      </div>
 
       <div className={styles.actions}>
         <Button size="sm" variant="outline" onClick={addRow} className="h-8 px-2">

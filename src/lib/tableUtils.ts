@@ -7,12 +7,19 @@ export interface CellStyle {
   fontSize?: string;
 }
 
+export interface HeaderStyle {
+  backgroundColor?: string;
+  textColor?: string;
+  bold?: boolean;
+}
+
 export interface TableData {
   rows: string[][];
   showBorder: boolean;
   borderColor?: string;
   mergedCells: Record<string, { rowSpan: number; colSpan: number }>;
   cellStyles?: Record<string, CellStyle>; // key format: "rowIndex-colIndex"
+  headerStyle?: HeaderStyle;
 }
 
 export const generateCellStyleString = (style?: CellStyle): string => {
@@ -72,7 +79,16 @@ export const generateTableHTML = (tableData: TableData): string => {
       // Get cell-specific styles
       const cellStyle = tableData.cellStyles?.[cellKey];
       const customStyles = generateCellStyleString(cellStyle);
-      const headerStyle = rowIndex === 0 ? 'background-color: #f5f5f5; font-weight: bold;' : '';
+      
+      // Header styling - use custom header style or defaults
+      let headerStyle = '';
+      if (rowIndex === 0) {
+        const hs = tableData.headerStyle;
+        const bgColor = hs?.backgroundColor || '#f5f5f5';
+        const textColor = hs?.textColor || 'inherit';
+        const fontWeight = hs?.bold !== false ? 'bold' : 'normal';
+        headerStyle = `background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;
+      }
       const fullStyle = `${baseCellStyle} ${headerStyle} ${customStyles}`.trim();
       
       html += `<${tag} style="${fullStyle}"${mergeAttrs}>${cell}</${tag}>`;
