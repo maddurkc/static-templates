@@ -98,7 +98,8 @@
   border-collapse: collapse;
 
   &.bordered {
-    border: 1px solid hsl(var(--border));
+    border-width: 1px;
+    border-style: solid;
   }
 }
 
@@ -106,7 +107,8 @@
   padding: 0.25rem;
 
   &.bordered {
-    border: 1px solid hsl(var(--border));
+    border-width: 1px;
+    border-style: solid;
   }
 
   &.selected {
