@@ -350,14 +350,14 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                   <div>
                     <Label className="text-xs">Font Size</Label>
                     <Select
-                      value={selectedCellStyle.fontSize || ''}
-                      onValueChange={(value) => updateCellStyle(selectedCell.row, selectedCell.col, { fontSize: value })}
+                      value={selectedCellStyle.fontSize || 'default'}
+                      onValueChange={(value) => updateCellStyle(selectedCell.row, selectedCell.col, { fontSize: value === 'default' ? undefined : value })}
                     >
                       <SelectTrigger className="h-8 text-xs mt-1">
                         <SelectValue placeholder="Default" />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border shadow-lg z-50">
-                        <SelectItem value="">Default</SelectItem>
+                        <SelectItem value="default">Default</SelectItem>
                         <SelectItem value="10px">10px</SelectItem>
                         <SelectItem value="12px">12px</SelectItem>
                         <SelectItem value="14px">14px</SelectItem>
