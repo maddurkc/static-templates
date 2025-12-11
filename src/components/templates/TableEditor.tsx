@@ -20,13 +20,15 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
     try {
       const data = section.variables?.tableData as any;
       if (data && typeof data === 'object') {
+        const rows = data.rows || [['Header 1', 'Header 2'], ['Data 1', 'Data 2']];
         return {
-          rows: data.rows || [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
+          rows,
           showBorder: data.showBorder !== false,
           borderColor: data.borderColor || '#ddd',
           mergedCells: data.mergedCells || {},
           cellStyles: data.cellStyles || {},
-          headerStyle: data.headerStyle || { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true }
+          headerStyle: data.headerStyle || { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
+          columnWidths: data.columnWidths || new Array(rows[0]?.length || 2).fill('auto')
         };
       }
     } catch (e) {
@@ -38,7 +40,8 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
       borderColor: '#ddd',
       mergedCells: {},
       cellStyles: {},
-      headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true }
+      headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
+      columnWidths: ['auto', 'auto']
     };
   };
 
@@ -96,7 +99,8 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
     const newRows = tableData.rows.map(row => [...row, '']);
     updateTableData({
       ...tableData,
-      rows: newRows
+      rows: newRows,
+      columnWidths: [...(tableData.columnWidths || []), 'auto']
     });
   };
 
@@ -115,10 +119,26 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
         newCellStyles[`${r}-${c - 1}`] = tableData.cellStyles![key];
       }
     });
+    // Remove column width
+    const newColumnWidths = tableData.columnWidths?.filter((_, i) => i !== colIndex);
     updateTableData({
       ...tableData,
       rows: newRows,
-      cellStyles: newCellStyles
+      cellStyles: newCellStyles,
+      columnWidths: newColumnWidths
+    });
+  };
+
+  const updateColumnWidth = (colIndex: number, width: string) => {
+    const newWidths = [...(tableData.columnWidths || [])];
+    // Ensure array is long enough
+    while (newWidths.length <= colIndex) {
+      newWidths.push('auto');
+    }
+    newWidths[colIndex] = width;
+    updateTableData({
+      ...tableData,
+      columnWidths: newWidths
     });
   };
 
@@ -290,6 +310,44 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
               onCheckedChange={(checked) => updateHeaderStyle({ bold: checked })} 
             />
           </div>
+        </div>
+      </div>
+
+      {/* Column Widths */}
+      <div className={styles.columnWidthsSection}>
+        <Label className={styles.toggleLabel}>Column Widths</Label>
+        <div className={styles.columnWidthsControls}>
+          {tableData.rows[0]?.map((_, colIndex) => (
+            <div key={colIndex} className={styles.columnWidthItem}>
+              <Label className={styles.smallLabel}>Col {colIndex + 1}</Label>
+              <Select
+                value={tableData.columnWidths?.[colIndex] || 'auto'}
+                onValueChange={(value) => updateColumnWidth(colIndex, value)}
+              >
+                <SelectTrigger className="h-7 text-xs w-20">
+                  <SelectValue placeholder="auto" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border shadow-lg z-50">
+                  <SelectItem value="auto">Auto</SelectItem>
+                  <SelectItem value="50px">50px</SelectItem>
+                  <SelectItem value="75px">75px</SelectItem>
+                  <SelectItem value="100px">100px</SelectItem>
+                  <SelectItem value="125px">125px</SelectItem>
+                  <SelectItem value="150px">150px</SelectItem>
+                  <SelectItem value="200px">200px</SelectItem>
+                  <SelectItem value="250px">250px</SelectItem>
+                  <SelectItem value="300px">300px</SelectItem>
+                  <SelectItem value="10%">10%</SelectItem>
+                  <SelectItem value="15%">15%</SelectItem>
+                  <SelectItem value="20%">20%</SelectItem>
+                  <SelectItem value="25%">25%</SelectItem>
+                  <SelectItem value="30%">30%</SelectItem>
+                  <SelectItem value="40%">40%</SelectItem>
+                  <SelectItem value="50%">50%</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
         </div>
       </div>
 
