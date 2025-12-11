@@ -5,9 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Merge, Palette, Bold, Italic, Underline } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Trash2, Merge, Palette, Bold, Italic, Underline, Database, FileJson } from "lucide-react";
 import { Section } from "@/types/section";
-import { TableData, CellStyle, HeaderStyle } from "@/lib/tableUtils";
+import { TableData, CellStyle, HeaderStyle, CellPadding, mapJsonToTableData } from "@/lib/tableUtils";
+import { toast } from "sonner";
 import styles from "./TableEditor.module.scss";
 
 interface TableEditorProps {
@@ -16,6 +18,9 @@ interface TableEditorProps {
 }
 
 export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
+  const [jsonInput, setJsonInput] = useState('');
+  const [showJsonImport, setShowJsonImport] = useState(false);
+
   const parseTableData = (): TableData => {
     try {
       const data = section.variables?.tableData as any;
@@ -28,7 +33,10 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
           mergedCells: data.mergedCells || {},
           cellStyles: data.cellStyles || {},
           headerStyle: data.headerStyle || { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
-          columnWidths: data.columnWidths || new Array(rows[0]?.length || 2).fill('auto')
+          columnWidths: data.columnWidths || new Array(rows[0]?.length || 2).fill('auto'),
+          cellPadding: data.cellPadding || 'medium',
+          isStatic: data.isStatic !== false,
+          jsonMapping: data.jsonMapping || { enabled: false, columnMappings: [] }
         };
       }
     } catch (e) {
@@ -41,7 +49,10 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
       mergedCells: {},
       cellStyles: {},
       headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
-      columnWidths: ['auto', 'auto']
+      columnWidths: ['auto', 'auto'],
+      cellPadding: 'medium',
+      isStatic: true,
+      jsonMapping: { enabled: false, columnMappings: [] }
     };
   };
 
@@ -248,15 +259,105 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
     updateCellStyle(rowIndex, colIndex, { [property]: !currentStyle[property] });
   };
 
+  const updateCellPadding = (padding: CellPadding) => {
+    updateTableData({
+      ...tableData,
+      cellPadding: padding
+    });
+  };
+
+  const toggleStaticMode = (isStatic: boolean) => {
+    updateTableData({
+      ...tableData,
+      isStatic
+    });
+  };
+
+  const updateJsonMapping = (columnMappings: { header: string; jsonPath: string }[]) => {
+    updateTableData({
+      ...tableData,
+      jsonMapping: {
+        enabled: true,
+        columnMappings
+      }
+    });
+  };
+
+  const importJsonData = () => {
+    try {
+      const parsed = JSON.parse(jsonInput);
+      const dataArray = Array.isArray(parsed) ? parsed : [parsed];
+      
+      if (dataArray.length === 0) {
+        toast.error('JSON data is empty');
+        return;
+      }
+
+      // Auto-detect columns from first object
+      const firstItem = dataArray[0];
+      const keys = Object.keys(firstItem);
+      
+      if (keys.length === 0) {
+        toast.error('No properties found in JSON data');
+        return;
+      }
+
+      // Create column mappings from keys
+      const columnMappings = keys.map(key => ({
+        header: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
+        jsonPath: key
+      }));
+
+      // Generate rows from JSON data
+      const rows = mapJsonToTableData(dataArray, columnMappings);
+      
+      updateTableData({
+        ...tableData,
+        rows,
+        columnWidths: new Array(columnMappings.length).fill('auto'),
+        jsonMapping: { enabled: true, columnMappings },
+        isStatic: false
+      });
+
+      setJsonInput('');
+      setShowJsonImport(false);
+      toast.success(`Imported ${dataArray.length} rows with ${keys.length} columns`);
+    } catch (e) {
+      toast.error('Invalid JSON format. Please check your input.');
+    }
+  };
+
+  const addColumnMapping = () => {
+    const currentMappings = tableData.jsonMapping?.columnMappings || [];
+    updateJsonMapping([...currentMappings, { header: `Column ${currentMappings.length + 1}`, jsonPath: '' }]);
+  };
+
+  const updateColumnMapping = (index: number, field: 'header' | 'jsonPath', value: string) => {
+    const currentMappings = [...(tableData.jsonMapping?.columnMappings || [])];
+    currentMappings[index] = { ...currentMappings[index], [field]: value };
+    updateJsonMapping(currentMappings);
+  };
+
+  const removeColumnMapping = (index: number) => {
+    const currentMappings = tableData.jsonMapping?.columnMappings || [];
+    updateJsonMapping(currentMappings.filter((_, i) => i !== index));
+  };
+
   const selectedCellStyle = selectedCell ? getCellStyle(selectedCell.row, selectedCell.col) : {};
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h3 className={styles.title}>Table Editor</h3>
-        <div className={styles.toggleGroup}>
-          <Label className={styles.toggleLabel}>Show Border</Label>
-          <Switch checked={tableData.showBorder} onCheckedChange={toggleBorder} />
+        <div className={styles.headerActions}>
+          <div className={styles.toggleGroup}>
+            <Label className={styles.toggleLabel}>Static</Label>
+            <Switch checked={tableData.isStatic !== false} onCheckedChange={toggleStaticMode} />
+          </div>
+          <div className={styles.toggleGroup}>
+            <Label className={styles.toggleLabel}>Border</Label>
+            <Switch checked={tableData.showBorder} onCheckedChange={toggleBorder} />
+          </div>
         </div>
       </div>
 
@@ -350,6 +451,94 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
           ))}
         </div>
       </div>
+
+      {/* Cell Padding */}
+      <div className={styles.paddingSection}>
+        <Label className={styles.toggleLabel}>Cell Padding</Label>
+        <Select
+          value={tableData.cellPadding || 'medium'}
+          onValueChange={(value: CellPadding) => updateCellPadding(value)}
+        >
+          <SelectTrigger className="h-8 text-xs w-32">
+            <SelectValue placeholder="Medium" />
+          </SelectTrigger>
+          <SelectContent className="bg-popover border shadow-lg z-50">
+            <SelectItem value="small">Small (4px)</SelectItem>
+            <SelectItem value="medium">Medium (8px)</SelectItem>
+            <SelectItem value="large">Large (12px)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* JSON Import Section */}
+      {tableData.isStatic === false && (
+        <div className={styles.jsonSection}>
+          <div className={styles.jsonHeader}>
+            <Label className={styles.toggleLabel}>JSON Data Mapping</Label>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setShowJsonImport(!showJsonImport)}
+              className="h-7 px-2"
+            >
+              <FileJson className="h-3 w-3 mr-1" />
+              {showJsonImport ? 'Hide' : 'Import JSON'}
+            </Button>
+          </div>
+
+          {showJsonImport && (
+            <div className={styles.jsonImportArea}>
+              <Textarea
+                value={jsonInput}
+                onChange={(e) => setJsonInput(e.target.value)}
+                placeholder={'[\n  { "name": "John", "email": "john@example.com", "status": "Active" },\n  { "name": "Jane", "email": "jane@example.com", "status": "Pending" }\n]'}
+                className={styles.jsonTextarea}
+                rows={6}
+              />
+              <Button size="sm" onClick={importJsonData} className="h-8">
+                <Database className="h-3 w-3 mr-1" />
+                Import Data
+              </Button>
+            </div>
+          )}
+
+          {/* Column Mappings */}
+          {tableData.jsonMapping?.columnMappings && tableData.jsonMapping.columnMappings.length > 0 && (
+            <div className={styles.mappingsSection}>
+              <Label className={styles.smallLabel}>Column Mappings (JSON Path → Header)</Label>
+              {tableData.jsonMapping.columnMappings.map((mapping, index) => (
+                <div key={index} className={styles.mappingRow}>
+                  <Input
+                    value={mapping.jsonPath}
+                    onChange={(e) => updateColumnMapping(index, 'jsonPath', e.target.value)}
+                    placeholder="e.g., user.name or items[0].value"
+                    className="h-7 text-xs flex-1"
+                  />
+                  <span className={styles.mappingArrow}>→</span>
+                  <Input
+                    value={mapping.header}
+                    onChange={(e) => updateColumnMapping(index, 'header', e.target.value)}
+                    placeholder="Column Header"
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeColumnMapping(index)}
+                    className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              <Button size="sm" variant="outline" onClick={addColumnMapping} className="h-7 px-2">
+                <Plus className="h-3 w-3 mr-1" />
+                Add Mapping
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={styles.actions}>
         <Button size="sm" variant="outline" onClick={addRow} className="h-8 px-2">
