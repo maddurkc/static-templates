@@ -518,3 +518,24 @@
     }
   }
 }
+
+/* Section highlighting animation for scroll-to-view */
+:global(.highlight-section) {
+  animation: highlightPulse 2s ease-out;
+  border-radius: 4px;
+}
+
+@keyframes highlightPulse {
+  0% {
+    background-color: rgba(0, 120, 212, 0.2);
+    box-shadow: 0 0 0 4px rgba(0, 120, 212, 0.3);
+  }
+  50% {
+    background-color: rgba(0, 120, 212, 0.1);
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}

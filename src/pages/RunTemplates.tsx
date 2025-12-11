@@ -50,7 +50,19 @@ const RunTemplates = () => {
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [jsonImportOpen, setJsonImportOpen] = useState<string | null>(null); // Tracks which table is being imported to
   const [jsonImportValue, setJsonImportValue] = useState('');
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Scroll to section in preview when editing
+  const scrollToSection = (sectionId: string) => {
+    setActiveSectionId(sectionId);
+    const element = document.getElementById(`preview-section-${sectionId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('highlight-section');
+      setTimeout(() => element.classList.remove('highlight-section'), 2000);
+    }
+  };
 
   // Load template by ID from API if templateId is present in URL
   useEffect(() => {
@@ -1019,7 +1031,23 @@ const RunTemplates = () => {
       });
       
       return selectedTemplate.sections
-        .map((section) => renderSectionContent(section, allVars))
+        .map((section) => {
+          // For labeled-content sections, inject updated label from labelVariables
+          let sectionToRender = section;
+          if (section.type === 'labeled-content') {
+            const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
+            if (labelVariables[labelVarName]) {
+              sectionToRender = {
+                ...section,
+                variables: {
+                  ...section.variables,
+                  label: labelVariables[labelVarName]
+                }
+              };
+            }
+          }
+          return renderSectionContent(sectionToRender, allVars);
+        })
         .join('');
     }
     
@@ -1271,16 +1299,17 @@ const RunTemplates = () => {
                           <div key={`subject-var-${varName}`} className={styles.formField}>
                             <Popover>
                               <PopoverTrigger asChild>
-                                <Input
-                                  id={`subject-var-input-${varName}`}
-                                  placeholder={varName}
-                                  value={subjectVariables[varName] || ''}
-                                  onChange={(e) => setSubjectVariables(prev => ({
-                                    ...prev,
-                                    [varName]: e.target.value
-                                  }))}
-                                  className="cursor-text"
-                                />
+                                <div className="relative w-full cursor-help">
+                                  <Input
+                                    id={`subject-var-input-${varName}`}
+                                    placeholder={varName}
+                                    value={subjectVariables[varName] || ''}
+                                    onChange={(e) => setSubjectVariables(prev => ({
+                                      ...prev,
+                                      [varName]: e.target.value
+                                    }))}
+                                  />
+                                </div>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-2" side="top" align="start">
                                 <span className="text-xs text-muted-foreground">{varName}</span>
@@ -1336,7 +1365,10 @@ const RunTemplates = () => {
                           const listVarName = section.variables?.listVariableName as string || section.id;
                           
                           return (
-                            <div key={section.id} className="mb-4 pb-4 border-b border-border/50 last:border-b-0">
+                            <div 
+                              key={section.id} 
+                              className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}
+                            >
                               {/* Label - inline editable */}
                               <div className="mb-2">
                                 {editable ? (
@@ -1346,7 +1378,9 @@ const RunTemplates = () => {
                                       ...prev,
                                       [labelVarName]: e.target.value
                                     }))}
-                                    className="font-medium text-sm h-8 border-dashed"
+                                    onFocus={() => scrollToSection(section.id)}
+                                    className="font-medium text-sm h-9 border-primary/30 focus:border-primary bg-background"
+                                    placeholder="Enter label..."
                                   />
                                 ) : (
                                   <div className="px-3 py-1.5 bg-muted rounded text-sm font-medium text-muted-foreground">
@@ -1370,6 +1404,7 @@ const RunTemplates = () => {
                                         ...prev,
                                         [section.id]: e.target.value
                                       }))}
+                                      onFocus={() => scrollToSection(section.id)}
                                     />
                                     <Popover>
                                       <PopoverTrigger asChild>
@@ -1415,6 +1450,7 @@ const RunTemplates = () => {
                                               [listVarName]: newItems as string[] | ListItemStyle[]
                                             }));
                                           }}
+                                          onFocus={() => scrollToSection(section.id)}
                                         />
                                         <Button
                                           variant="ghost"
@@ -1444,6 +1480,7 @@ const RunTemplates = () => {
                                           ...prev,
                                           [listVarName]: [...currentItems, ''] as string[] | ListItemStyle[]
                                         }));
+                                        scrollToSection(section.id);
                                       }}
                                       className="h-7"
                                     >
@@ -1469,6 +1506,7 @@ const RunTemplates = () => {
                                                 headers: [...(tableData.headers || []), `Col ${(tableData.headers?.length || 0) + 1}`]
                                               }
                                             }));
+                                            scrollToSection(section.id);
                                           }}
                                           className="h-7 px-2"
                                         >
@@ -1487,6 +1525,7 @@ const RunTemplates = () => {
                                                 rows: [...(tableData.rows || []), newRow]
                                               }
                                             }));
+                                            scrollToSection(section.id);
                                           }}
                                           className="h-7 px-2"
                                         >
@@ -1511,6 +1550,7 @@ const RunTemplates = () => {
                                                           [section.id]: { ...tableData, headers: newHeaders }
                                                         }));
                                                       }}
+                                                      onFocus={() => scrollToSection(section.id)}
                                                       className="h-7 text-xs font-semibold"
                                                     />
                                                   </th>
@@ -1532,6 +1572,7 @@ const RunTemplates = () => {
                                                             [section.id]: { ...tableData, rows: newRows }
                                                           }));
                                                         }}
+                                                        onFocus={() => scrollToSection(section.id)}
                                                         className="h-7 text-xs"
                                                       />
                                                     </td>
@@ -2060,29 +2101,49 @@ const RunTemplates = () => {
             </div>
 
             {/* Right Panel - Preview (Email Body) */}
-            <div className={styles.previewPanel}>
+            <div className={styles.previewPanel} id="preview-panel">
               <div className={styles.previewPanelHeader}>
                 <h2>
                   <Eye className="h-4 w-4" />
                   Email Body Preview
                 </h2>
               </div>
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1" id="preview-scroll-area">
                 <div className={styles.previewBody}>
                   {selectedTemplate.sections && selectedTemplate.sections.length > 0 ? (
-                    <div
-                      dangerouslySetInnerHTML={{ 
-                        __html: selectedTemplate.sections.map(section => {
-                          const runtimeVars: Record<string, string | string[] | any> = {
-                            ...variables,
-                            ...listVariables,
-                            ...tableVariables
-                          };
-                          return renderSectionContent(section, runtimeVars);
-                        }).join('')
-                      }}
-                      className={styles.previewContent}
-                    />
+                    <div className={styles.previewContent}>
+                      {selectedTemplate.sections.map((section, sectionIndex) => {
+                        const runtimeVars: Record<string, string | string[] | any> = {
+                          ...variables,
+                          ...listVariables,
+                          ...tableVariables,
+                          ...labelVariables
+                        };
+                        
+                        // For labeled-content sections, inject updated label from labelVariables
+                        let sectionToRender = section;
+                        if (section.type === 'labeled-content') {
+                          const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
+                          if (labelVariables[labelVarName]) {
+                            sectionToRender = {
+                              ...section,
+                              variables: {
+                                ...section.variables,
+                                label: labelVariables[labelVarName]
+                              }
+                            };
+                          }
+                        }
+                        
+                        return (
+                          <div 
+                            key={section.id} 
+                            id={`preview-section-${section.id}`}
+                            dangerouslySetInnerHTML={{ __html: renderSectionContent(sectionToRender, runtimeVars) }}
+                          />
+                        );
+                      })}
+                    </div>
                   ) : (
                     <div
                       dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables, listVariables) }}
