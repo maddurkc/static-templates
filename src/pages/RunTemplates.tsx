@@ -123,7 +123,8 @@ const RunTemplates = () => {
       vars.forEach(v => {
         const defaultVal = getDefaultValue(v);
         if (isTableVariable(v)) {
-          initialTableVars[v] = defaultVal || { headers: [], rows: [] };
+          // Use getTableData for proper format conversion
+          initialTableVars[v] = getTableData(v);
         } else if (Array.isArray(defaultVal)) {
           initialListVars[v] = defaultVal.length > 0 ? defaultVal : [''];
         } else {
@@ -233,11 +234,65 @@ const RunTemplates = () => {
     if (!selectedTemplate?.sections) return false;
     
     return selectedTemplate.sections.some(section => {
+      // Check labeled-content sections with table contentType
       if (section.type === 'labeled-content' && section.id === varName) {
         return section.variables?.contentType === 'table';
       }
+      // Check direct table sections
+      if (section.type === 'table' && section.id === varName) {
+        return true;
+      }
       return false;
     });
+  };
+
+  // Get table data for a variable - handles both old (headers/rows) and new (rows with first row as header) formats
+  const getTableData = (varName: string): { headers: string[]; rows: string[][] } => {
+    if (!selectedTemplate?.sections) return { headers: ['Column 1'], rows: [['Data 1']] };
+    
+    for (const section of selectedTemplate.sections) {
+      // Handle labeled-content with table
+      if (section.type === 'labeled-content' && section.id === varName && section.variables?.contentType === 'table') {
+        const tableData = section.variables.tableData;
+        if (tableData) {
+          // New format: rows array where first row is headers
+          if (tableData.rows && Array.isArray(tableData.rows) && tableData.rows.length > 0) {
+            // Check if it's new format (no separate headers property or rows[0] is headers)
+            if (!tableData.headers) {
+              const headers = tableData.rows[0] || ['Column 1'];
+              const dataRows = tableData.rows.slice(1) || [];
+              return { headers, rows: dataRows };
+            }
+          }
+          // Old format: separate headers and rows
+          return {
+            headers: tableData.headers || ['Column 1'],
+            rows: tableData.rows || [['Data 1']]
+          };
+        }
+      }
+      
+      // Handle direct table sections
+      if (section.type === 'table' && section.id === varName) {
+        const tableData = section.variables?.tableData;
+        if (tableData) {
+          // New format: rows array where first row is headers
+          if (tableData.rows && Array.isArray(tableData.rows) && tableData.rows.length > 0) {
+            if (!tableData.headers) {
+              const headers = tableData.rows[0] || ['Column 1'];
+              const dataRows = tableData.rows.slice(1) || [];
+              return { headers, rows: dataRows };
+            }
+          }
+          // Old format
+          return {
+            headers: tableData.headers || (tableData.rows?.[0] || ['Column 1']),
+            rows: tableData.headers ? (tableData.rows || []) : (tableData.rows?.slice(1) || [])
+          };
+        }
+      }
+    }
+    return { headers: ['Column 1'], rows: [['Data 1']] };
   };
 
   // Check if a label is editable at runtime
@@ -310,6 +365,25 @@ const RunTemplates = () => {
         }
       }
       
+      // For direct table sections
+      if (section.type === 'table' && section.id === varName) {
+        const tableData = section.variables?.tableData;
+        if (tableData) {
+          // Handle new TableData format (rows where first row is headers)
+          if (tableData.rows && Array.isArray(tableData.rows) && !tableData.headers) {
+            const headers = tableData.rows[0] || ['Column 1'];
+            const dataRows = tableData.rows.slice(1) || [];
+            return { headers, rows: dataRows };
+          }
+          // Handle legacy format
+          return {
+            headers: tableData.headers || (tableData.rows?.[0] || ['Column 1']),
+            rows: tableData.headers ? (tableData.rows || []) : (tableData.rows?.slice(1) || [])
+          };
+        }
+        return { headers: ['Column 1'], rows: [['Data 1']] };
+      }
+      
       // For heading/text sections with inline placeholders
       const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
       if (inlinePlaceholderTypes.includes(section.type) && section.variables && section.variables[varName] !== undefined) {
@@ -356,8 +430,13 @@ const RunTemplates = () => {
         
         if (isMatch) {
           const displayLabel = getLabeledContentDisplayLabel(section);
+          const contentType = section.variables?.contentType || 'text';
+          let sectionTypeLabel = 'Labeled Content';
+          if (contentType === 'list') sectionTypeLabel = 'List Content';
+          else if (contentType === 'table') sectionTypeLabel = 'Table Content';
+          
           return {
-            sectionType: section.variables?.contentType === 'list' ? 'List Content' : 'Labeled Content',
+            sectionType: sectionTypeLabel,
             label: displayLabel,
             context: `Content for: ${displayLabel}`
           };
@@ -436,6 +515,14 @@ const RunTemplates = () => {
             context: `Editable list items`
           };
         }
+      }
+      
+      // Check direct table sections
+      if (section.type === 'table' && section.id === varName) {
+        return {
+          sectionType: 'Table',
+          context: 'Editable table content'
+        };
       }
       
       // Check regular sections
@@ -547,6 +634,11 @@ const RunTemplates = () => {
           // Use stored listVariableName if available, fallback to section ID for backward compatibility
           const listVarName = section.variables?.listVariableName as string;
           varsFromSections.add(listVarName || section.id);
+        }
+        
+        // For direct table sections
+        if (section.type === 'table') {
+          varsFromSections.add(section.id);
         }
         
         // For other sections, extract user-defined variables (not metadata)
