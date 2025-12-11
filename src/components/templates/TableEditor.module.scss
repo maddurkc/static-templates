@@ -155,3 +155,25 @@
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
+
+.columnWidthsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: hsl(var(--muted) / 0.5);
+  border-radius: 0.375rem;
+}
+
+.columnWidthsControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.columnWidthItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
