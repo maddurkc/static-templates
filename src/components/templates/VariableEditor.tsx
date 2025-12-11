@@ -323,7 +323,9 @@ const LabeledContentTableEditor = ({ section, onUpdate }: LabeledContentTableEdi
         showBorder: true,
         borderColor: '#ddd',
         mergedCells: {},
-        cellStyles: {}
+        cellStyles: {},
+        headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
+        columnWidths: ['auto', 'auto']
       }
     }
   };
@@ -649,8 +651,16 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                 newVariables.listVariableName = listVariableName;
                 newVariables.listHtml = generateThymeleafListHtml(listVariableName, listStyle);
               } else if (newContentType === 'table') {
-                // Carry over existing tableData if switching to table
-                newVariables.tableData = section.variables?.tableData || { headers: ['Column 1'], rows: [['Cell 1']] };
+                // Carry over existing tableData if switching to table with proper format
+                newVariables.tableData = section.variables?.tableData || {
+                  rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
+                  showBorder: true,
+                  borderColor: '#ddd',
+                  mergedCells: {},
+                  cellStyles: {},
+                  headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
+                  columnWidths: ['auto', 'auto']
+                };
               } else {
                 // Carry over existing content if switching to text
                 newVariables.content = section.variables?.content || '';
