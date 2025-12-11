@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline, Eye, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline, Eye, Loader2, FileJson } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent, wrapInEmailHtml } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
+import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -47,6 +48,8 @@ const RunTemplates = () => {
   const [subjectVariables, setSubjectVariables] = useState<Record<string, string>>({}); // Variables extracted from template subject
   const [emailTitle, setEmailTitle] = useState<string>("");
   const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [jsonImportOpen, setJsonImportOpen] = useState<string | null>(null); // Tracks which table is being imported to
+  const [jsonImportValue, setJsonImportValue] = useState('');
   const { toast } = useToast();
 
   // Load template by ID from API if templateId is present in URL
@@ -1421,6 +1424,19 @@ const RunTemplates = () => {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => {
+                                        setJsonImportOpen(varName);
+                                        setJsonImportValue('');
+                                      }}
+                                      className="h-7 px-2"
+                                      disabled={!editable}
+                                    >
+                                      <FileJson className="h-3 w-3 mr-1" />
+                                      JSON
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
                                         const tableData = tableVariables[varName] || { headers: [], rows: [] };
                                         setTableVariables(prev => ({
                                           ...prev,
@@ -1978,6 +1994,103 @@ const RunTemplates = () => {
             <Button onClick={() => { setShowEmailPreview(false); handleSendTemplate(); }}>
               <Send className="h-4 w-4 mr-2" />
               Send Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* JSON Import Dialog */}
+      <Dialog open={jsonImportOpen !== null} onOpenChange={(open) => !open && setJsonImportOpen(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import JSON Data to Table</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Paste JSON array data below. Each object's properties will become columns, and each object will become a row.
+            </p>
+            <Textarea
+              value={jsonImportValue}
+              onChange={(e) => setJsonImportValue(e.target.value)}
+              placeholder={'[\n  { "name": "John", "email": "john@example.com", "status": "Active" },\n  { "name": "Jane", "email": "jane@example.com", "status": "Pending" }\n]'}
+              className="font-mono text-xs min-h-[200px]"
+            />
+            <div className="text-xs text-muted-foreground">
+              <p className="font-medium mb-1">Supported formats:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>Array of objects: <code>[{"{"}"key": "value"{"}"}, ...]</code></li>
+                <li>Single object (creates one row): <code>{"{"}"key": "value"{"}"}</code></li>
+                <li>Nested paths supported: <code>user.name</code>, <code>items[0].value</code></li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setJsonImportOpen(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              if (!jsonImportOpen) return;
+              try {
+                const parsed = JSON.parse(jsonImportValue);
+                const dataArray = Array.isArray(parsed) ? parsed : [parsed];
+                
+                if (dataArray.length === 0) {
+                  toast({
+                    title: "Empty data",
+                    description: "JSON data is empty",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
+                // Auto-detect columns from first object
+                const firstItem = dataArray[0];
+                const keys = Object.keys(firstItem);
+                
+                if (keys.length === 0) {
+                  toast({
+                    title: "No properties",
+                    description: "No properties found in JSON data",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
+                // Create headers from keys
+                const headers = keys.map(key => 
+                  key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')
+                );
+                
+                // Create rows from data
+                const rows = dataArray.map(item => 
+                  keys.map(key => {
+                    const value = getValueByPath(item, key);
+                    return value !== undefined && value !== null ? String(value) : '';
+                  })
+                );
+
+                setTableVariables(prev => ({
+                  ...prev,
+                  [jsonImportOpen]: { headers, rows }
+                }));
+
+                toast({
+                  title: "Data imported",
+                  description: `Imported ${dataArray.length} rows with ${keys.length} columns`
+                });
+                
+                setJsonImportOpen(null);
+                setJsonImportValue('');
+              } catch (e) {
+                toast({
+                  title: "Invalid JSON",
+                  description: "Please check your JSON format and try again",
+                  variant: "destructive"
+                });
+              }
+            }}>
+              <FileJson className="h-4 w-4 mr-2" />
+              Import Data
             </Button>
           </DialogFooter>
         </DialogContent>

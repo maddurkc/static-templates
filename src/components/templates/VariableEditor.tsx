@@ -325,7 +325,10 @@ const LabeledContentTableEditor = ({ section, onUpdate }: LabeledContentTableEdi
         mergedCells: {},
         cellStyles: {},
         headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
-        columnWidths: ['auto', 'auto']
+        columnWidths: ['auto', 'auto'],
+        cellPadding: 'medium',
+        isStatic: true,
+        jsonMapping: { enabled: false, columnMappings: [] }
       }
     }
   };
@@ -659,7 +662,10 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
                   mergedCells: {},
                   cellStyles: {},
                   headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
-                  columnWidths: ['auto', 'auto']
+                  columnWidths: ['auto', 'auto'],
+                  cellPadding: 'medium',
+                  isStatic: true,
+                  jsonMapping: { enabled: false, columnMappings: [] }
                 };
               } else {
                 // Carry over existing content if switching to text

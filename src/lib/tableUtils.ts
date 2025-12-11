@@ -13,6 +13,8 @@ export interface HeaderStyle {
   bold?: boolean;
 }
 
+export type CellPadding = 'small' | 'medium' | 'large';
+
 export interface TableData {
   rows: string[][];
   showBorder: boolean;
@@ -21,7 +23,22 @@ export interface TableData {
   cellStyles?: Record<string, CellStyle>; // key format: "rowIndex-colIndex"
   headerStyle?: HeaderStyle;
   columnWidths?: string[]; // e.g., ['100px', '200px', 'auto']
+  cellPadding?: CellPadding; // small: 4px, medium: 8px, large: 12px
+  isStatic?: boolean; // If true, table is static (manual data). If false, can be populated from JSON/API
+  jsonMapping?: {
+    enabled: boolean;
+    columnMappings: { header: string; jsonPath: string }[];
+  };
 }
+
+const getPaddingValue = (padding?: CellPadding): string => {
+  switch (padding) {
+    case 'small': return '4px';
+    case 'large': return '12px';
+    case 'medium':
+    default: return '8px';
+  }
+};
 
 export const generateCellStyleString = (style?: CellStyle): string => {
   if (!style) return '';
@@ -37,12 +54,46 @@ export const generateCellStyleString = (style?: CellStyle): string => {
   return styles.join('; ');
 };
 
+// Parse JSON data and map to table rows based on column mappings
+export const mapJsonToTableData = (
+  jsonData: any[],
+  columnMappings: { header: string; jsonPath: string }[]
+): string[][] => {
+  const headers = columnMappings.map(m => m.header);
+  const rows: string[][] = [headers];
+  
+  jsonData.forEach(item => {
+    const row = columnMappings.map(mapping => {
+      const value = getValueByPath(item, mapping.jsonPath);
+      return value !== undefined && value !== null ? String(value) : '';
+    });
+    rows.push(row);
+  });
+  
+  return rows;
+};
+
+// Get nested value from object using dot notation path
+export const getValueByPath = (obj: any, path: string): any => {
+  if (!path) return obj;
+  return path.split('.').reduce((acc, key) => {
+    if (acc === undefined || acc === null) return undefined;
+    // Handle array index notation like items[0]
+    const match = key.match(/^(\w+)\[(\d+)\]$/);
+    if (match) {
+      return acc[match[1]]?.[parseInt(match[2])];
+    }
+    return acc[key];
+  }, obj);
+};
+
 export const generateTableHTML = (tableData: TableData): string => {
   const borderColor = tableData.borderColor || '#ddd';
+  const paddingValue = getPaddingValue(tableData.cellPadding);
   const borderStyle = tableData.showBorder ? ` border="1" style="border-collapse: collapse; border: 1px solid ${borderColor};"` : ' style="border-collapse: collapse;"';
   const baseCellStyle = tableData.showBorder 
-    ? `border: 1px solid ${borderColor}; padding: 8px;` 
-    : 'padding: 8px;';
+    ? `border: 1px solid ${borderColor}; padding: ${paddingValue};` 
+    : `padding: ${paddingValue};`;
   
   let html = `<table${borderStyle}>`;
   
