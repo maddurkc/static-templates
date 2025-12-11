@@ -1260,159 +1260,316 @@ const RunTemplates = () => {
               </div>
               <ScrollArea className="flex-1">
                 <div className={styles.variablesList}>
-                  {/* Subject Variables Section */}
+                  {/* Subject Data Section */}
                   {Object.keys(subjectVariables).length > 0 && (
                     <div className="mb-6">
                       <div className="flex items-center gap-2 mb-3 pb-2 border-b">
-                        <Badge variant="destructive" className="text-xs">Required</Badge>
-                        <span className="text-sm font-semibold text-foreground">Subject Variables</span>
+                        <span className="text-sm font-semibold text-foreground">Subject Data</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mb-3">
-                        Template: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{getDisplaySubject()}</code>
-                      </p>
                       <div className={styles.formGrid}>
                         {Object.keys(subjectVariables).map((varName) => (
                           <div key={`subject-var-${varName}`} className={styles.formField}>
-                            <Label htmlFor={`subject-var-input-${varName}`} className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className="text-xs font-mono bg-destructive/10 border-destructive/30">
-                                {`{{${varName}}}`}
-                              </Badge>
-                              <span className="font-medium">{varName}</span>
-                              <Badge variant="secondary" className="text-xs">Subject</Badge>
-                            </Label>
-                            <Input
-                              id={`subject-var-input-${varName}`}
-                              placeholder={`Enter value for ${varName}...`}
-                              value={subjectVariables[varName] || ''}
-                              onChange={(e) => setSubjectVariables(prev => ({
-                                ...prev,
-                                [varName]: e.target.value
-                              }))}
-                              className={!subjectVariables[varName]?.trim() ? 'border-destructive/50' : ''}
-                            />
-                            {!subjectVariables[varName]?.trim() && (
-                              <p className="text-xs text-destructive">This field is required</p>
-                            )}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Input
+                                  id={`subject-var-input-${varName}`}
+                                  placeholder={varName}
+                                  value={subjectVariables[varName] || ''}
+                                  onChange={(e) => setSubjectVariables(prev => ({
+                                    ...prev,
+                                    [varName]: e.target.value
+                                  }))}
+                                  className="cursor-text"
+                                />
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-2" side="top" align="start">
+                                <span className="text-xs text-muted-foreground">{varName}</span>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Label Variables Section */}
-                  {Object.keys(labelVariables).length > 0 && (
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-3 pb-2 border-b">
-                        <Badge variant="secondary" className="text-xs">Labels</Badge>
-                        <span className="text-sm font-semibold text-foreground">Section Labels</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-3">
-                        Edit labels for labeled-content sections
-                      </p>
-                      <div className={styles.formGrid}>
-                        {Object.entries(labelVariables).map(([labelVarName, labelValue]) => {
-                          const section = getLabelSection(labelVarName);
-                          const editable = isLabelEditable(labelVarName);
-                          const contentType = section?.variables?.contentType || 'text';
+                  {/* Body Content Section - Combined Labels and Variables */}
+                  {(() => {
+                    // Get labeled-content sections from template
+                    const labeledSections = selectedTemplate?.sections?.filter(
+                      section => section.type === 'labeled-content'
+                    ) || [];
+                    
+                    // Get other variables (non-labeled-content)
+                    const otherVariables = extractAllVariables(selectedTemplate).filter(varName => {
+                      // Exclude variables that belong to labeled-content sections
+                      const isLabeledContentVar = labeledSections.some(section => {
+                        const listVarName = section.variables?.listVariableName as string;
+                        return section.id === varName || listVarName === varName;
+                      });
+                      return !isLabeledContentVar;
+                    });
+                    
+                    const hasContent = labeledSections.length > 0 || otherVariables.length > 0;
+                    
+                    if (!hasContent && Object.keys(subjectVariables).length === 0) {
+                      return (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p className="text-sm">No variables in this template</p>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <>
+                        {hasContent && (
+                          <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                            <span className="text-sm font-semibold text-foreground">Body Content</span>
+                          </div>
+                        )}
+                        
+                        {/* Labeled Content Sections - Label with content below */}
+                        {labeledSections.map((section) => {
+                          const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
+                          const labelValue = labelVariables[labelVarName] || (section.variables?.label as string) || 'Label';
+                          const editable = section.isLabelEditable !== false;
+                          const contentType = section.variables?.contentType || 'text';
+                          const listVarName = section.variables?.listVariableName as string || section.id;
                           
                           return (
-                            <div key={labelVarName} className={styles.formField}>
-                              <Label htmlFor={`label-var-${labelVarName}`} className="flex items-center gap-2 flex-wrap">
+                            <div key={section.id} className="mb-4 pb-4 border-b border-border/50 last:border-b-0">
+                              {/* Label - inline editable */}
+                              <div className="mb-2">
                                 {editable ? (
-                                  <Badge variant="outline" className="text-xs font-mono">
-                                    {`{{${labelVarName}}}`}
-                                  </Badge>
+                                  <Input
+                                    value={labelValue}
+                                    onChange={(e) => setLabelVariables(prev => ({
+                                      ...prev,
+                                      [labelVarName]: e.target.value
+                                    }))}
+                                    className="font-medium text-sm h-8 border-dashed"
+                                  />
                                 ) : (
-                                  <Badge variant="outline" className="text-xs font-mono bg-muted">
-                                    {`{{${labelVarName}}}`}
-                                  </Badge>
+                                  <div className="px-3 py-1.5 bg-muted rounded text-sm font-medium text-muted-foreground">
+                                    {labelValue}
+                                  </div>
                                 )}
-                                <span className="font-medium">Label</span>
-                                <Badge variant="secondary" className="text-xs capitalize">
-                                  {contentType}
-                                </Badge>
-                                {!editable && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Locked
-                                  </Badge>
+                              </div>
+                              
+                              {/* Content - with left margin */}
+                              <div className="ml-4">
+                                {contentType === 'text' && (
+                                  <div className={styles.inputWrapper}>
+                                    <Input
+                                      id={`var-${section.id}`}
+                                      placeholder="Enter content..."
+                                      value={typeof variables[section.id] === 'object' 
+                                        ? (variables[section.id] as TextStyle).text 
+                                        : (variables[section.id] as string) || (section.variables?.content as string) || ''
+                                      }
+                                      onChange={(e) => setVariables(prev => ({
+                                        ...prev,
+                                        [section.id]: e.target.value
+                                      }))}
+                                    />
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                          <Palette className="h-4 w-4" />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className={styles.formatPopover}>
+                                        <div className="space-y-3">
+                                          <div className={styles.styleButtons}>
+                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                              <Bold className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                              <Italic className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                              <Underline className="h-3.5 w-3.5" />
+                                            </Button>
+                                          </div>
+                                          <Input type="color" className="h-8 w-16" />
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
                                 )}
-                              </Label>
-                              <Input
-                                id={`label-var-${labelVarName}`}
-                                placeholder="Enter label..."
-                                value={labelValue}
-                                onChange={(e) => setLabelVariables(prev => ({
-                                  ...prev,
-                                  [labelVarName]: e.target.value
-                                }))}
-                                disabled={!editable}
-                                className={!editable ? 'bg-muted' : ''}
-                              />
+                                
+                                {contentType === 'list' && (
+                                  <div className="space-y-2">
+                                    {((listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[]).map((item: string | ListItemStyle, itemIdx: number) => (
+                                      <div key={itemIdx} className={styles.listItemRow}>
+                                        <span className="text-xs text-muted-foreground w-4">{itemIdx + 1}.</span>
+                                        <Input
+                                          className={styles.listItemInput}
+                                          placeholder="List item..."
+                                          value={typeof item === 'object' ? item.text : item}
+                                          onChange={(e) => {
+                                            const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                            const newItems = [...currentItems] as (string | ListItemStyle)[];
+                                            newItems[itemIdx] = e.target.value;
+                                            setListVariables(prev => ({
+                                              ...prev,
+                                              [listVarName]: newItems as string[] | ListItemStyle[]
+                                            }));
+                                          }}
+                                        />
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => {
+                                            const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                            if (currentItems.length > 1) {
+                                              const newItems = currentItems.filter((_, i) => i !== itemIdx) as (string | ListItemStyle)[];
+                                              setListVariables(prev => ({
+                                                ...prev,
+                                                [listVarName]: newItems as string[] | ListItemStyle[]
+                                              }));
+                                            }
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                        setListVariables(prev => ({
+                                          ...prev,
+                                          [listVarName]: [...currentItems, ''] as string[] | ListItemStyle[]
+                                        }));
+                                      }}
+                                      className="h-7"
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add Item
+                                    </Button>
+                                  </div>
+                                )}
+                                
+                                {contentType === 'table' && (() => {
+                                  const tableData = tableVariables[section.id] || getTableData(section.id);
+                                  return (
+                                    <div className="space-y-2 border rounded-lg p-3 bg-background">
+                                      <div className="flex gap-2 mb-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setTableVariables(prev => ({
+                                              ...prev,
+                                              [section.id]: {
+                                                ...tableData,
+                                                headers: [...(tableData.headers || []), `Col ${(tableData.headers?.length || 0) + 1}`]
+                                              }
+                                            }));
+                                          }}
+                                          className="h-7 px-2"
+                                        >
+                                          <Plus className="h-3 w-3 mr-1" />
+                                          Column
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            const newRow = new Array(tableData.headers?.length || 1).fill('');
+                                            setTableVariables(prev => ({
+                                              ...prev,
+                                              [section.id]: {
+                                                ...tableData,
+                                                rows: [...(tableData.rows || []), newRow]
+                                              }
+                                            }));
+                                          }}
+                                          className="h-7 px-2"
+                                        >
+                                          <Plus className="h-3 w-3 mr-1" />
+                                          Row
+                                        </Button>
+                                      </div>
+                                      {tableData.headers && tableData.headers.length > 0 && (
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full border-collapse border text-sm">
+                                            <thead>
+                                              <tr>
+                                                {tableData.headers.map((header: string, colIdx: number) => (
+                                                  <th key={colIdx} className="border p-1 bg-muted">
+                                                    <Input
+                                                      value={header}
+                                                      onChange={(e) => {
+                                                        const newHeaders = [...tableData.headers];
+                                                        newHeaders[colIdx] = e.target.value;
+                                                        setTableVariables(prev => ({
+                                                          ...prev,
+                                                          [section.id]: { ...tableData, headers: newHeaders }
+                                                        }));
+                                                      }}
+                                                      className="h-7 text-xs font-semibold"
+                                                    />
+                                                  </th>
+                                                ))}
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {(tableData.rows || []).map((row: string[], rowIdx: number) => (
+                                                <tr key={rowIdx}>
+                                                  {row.map((cell: string, colIdx: number) => (
+                                                    <td key={colIdx} className="border p-1">
+                                                      <Input
+                                                        value={cell}
+                                                        onChange={(e) => {
+                                                          const newRows = [...tableData.rows];
+                                                          newRows[rowIdx][colIdx] = e.target.value;
+                                                          setTableVariables(prev => ({
+                                                            ...prev,
+                                                            [section.id]: { ...tableData, rows: newRows }
+                                                          }));
+                                                        }}
+                                                        className="h-7 text-xs"
+                                                      />
+                                                    </td>
+                                                  ))}
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
                           );
                         })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Body Variables Section */}
-                  {extractAllVariables(selectedTemplate).length === 0 && Object.keys(subjectVariables).length === 0 && Object.keys(labelVariables).length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p className="text-sm">No variables in this template</p>
-                    </div>
-                  ) : extractAllVariables(selectedTemplate).length > 0 && (
-                    <>
-                      {(Object.keys(subjectVariables).length > 0 || Object.keys(labelVariables).length > 0) && (
-                        <div className="flex items-center gap-2 mb-3 pb-2 border-b">
-                          <span className="text-sm font-semibold text-foreground">Body Variables</span>
-                        </div>
-                      )}
-                      <div className={styles.formGrid}>
-                        {extractAllVariables(selectedTemplate).map((varName) => {
-                        const isList = isListVariable(varName);
-                        const isTable = isTableVariable(varName);
-                        const editable = isLabelEditable(varName);
-                        const context = getVariableContext(varName);
                         
-                        return (
-                          <div key={varName} className={styles.formField}>
-                            <Label htmlFor={`var-${varName}`} className="flex items-center gap-2 flex-wrap">
-                              {editable ? (
-                                <Badge variant="outline" className="text-xs font-mono">
-                                  {`{{${varName}}}`}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-xs font-mono bg-muted">
-                                  {`{{${varName}}}`}
-                                </Badge>
-                              )}
-                              <span className="font-medium">{varName}</span>
-                              {context && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {context.sectionType}
-                                </Badge>
-                              )}
-                              {isList && (
-                                <Badge variant="secondary" className="text-xs">
-                                  List
-                                </Badge>
-                              )}
-                              {isTable && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Table
-                                </Badge>
-                              )}
-                              {!editable && (
-                                <Badge variant="outline" className="text-xs">
-                                  Locked
-                                </Badge>
-                              )}
-                            </Label>
-                            {context && context.context && (
-                              <p className="text-xs text-muted-foreground italic mt-1 mb-2">
-                                {context.context}
-                              </p>
-                            )}
+                        {/* Other Variables (non-labeled-content) */}
+                        {otherVariables.length > 0 && (
+                          <div className={styles.formGrid}>
+                            {otherVariables.map((varName) => {
+                              const isList = isListVariable(varName);
+                              const isTable = isTableVariable(varName);
+                              const editable = isLabelEditable(varName);
+                              
+                              return (
+                                <div key={varName} className={styles.formField}>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Label htmlFor={`var-${varName}`} className="text-sm font-medium cursor-help mb-1 inline-block">
+                                        {varName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                      </Label>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-2" side="top" align="start">
+                                      <span className="text-xs text-muted-foreground">{varName}</span>
+                                    </PopoverContent>
+                                  </Popover>
                             {isTable ? (
                               <div className="space-y-2 border rounded-lg p-4 bg-background">
                                 <div className="flex items-center justify-between mb-2">
@@ -1890,14 +2047,16 @@ const RunTemplates = () => {
                                 </Popover>
                               </div>
                             )}
-                          </div>
-                        );
-                      })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </ScrollArea>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </ScrollArea>
             </div>
 
             {/* Right Panel - Preview (Email Body) */}
