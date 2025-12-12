@@ -796,6 +796,26 @@ const RunTemplates = () => {
       }
     });
     
+    // Initialize mixed-content section variables with default values
+    if (template.sections) {
+      template.sections.forEach(section => {
+        if (section.type === 'mixed-content') {
+          const content = (section.variables?.content as string) || section.content || '';
+          const placeholderRegex = /\{\{(\w+)\}\}/g;
+          let match;
+          while ((match = placeholderRegex.exec(content)) !== null) {
+            const placeholder = match[1];
+            const compositeKey = `${section.id}_${placeholder}`;
+            // Get default value from section variables
+            const defaultValue = section.variables && typeof section.variables[placeholder] === 'string'
+              ? section.variables[placeholder] as string
+              : '';
+            initialVars[compositeKey] = defaultValue;
+          }
+        }
+      });
+    }
+    
     setVariables(initialVars);
     setListVariables(initialListVars);
     
@@ -951,7 +971,15 @@ const RunTemplates = () => {
       ...labelVariables
     };
     const renderedBodyHtml = selectedTemplate.sections
-      .map((section) => renderSectionContent(section, allVars))
+      .map((section) => {
+        // For mixed-content sections, map composite keys to simple placeholder names
+        let sectionVars = allVars;
+        if (section.type === 'mixed-content') {
+          const mixedVars = getMixedContentVarsForSection(section);
+          sectionVars = { ...allVars, ...mixedVars };
+        }
+        return renderSectionContent(section, sectionVars);
+      })
       .join('');
     const fullEmailHtml = wrapInEmailHtml(renderedBodyHtml);
 
@@ -989,6 +1017,29 @@ const RunTemplates = () => {
     setLabelVariables({});
     setSubjectVariables({});
     setEmailSubject("");
+  };
+
+  // Helper to extract mixed-content variables and map them correctly
+  const getMixedContentVarsForSection = (section: Section): Record<string, any> => {
+    if (section.type !== 'mixed-content') return {};
+    
+    const content = (section.variables?.content as string) || section.content || '';
+    const placeholderRegex = /\{\{(\w+)\}\}/g;
+    const result: Record<string, any> = {};
+    let match;
+    
+    while ((match = placeholderRegex.exec(content)) !== null) {
+      const placeholder = match[1];
+      const compositeKey = `${section.id}_${placeholder}`;
+      // Use composite key value if available, otherwise fallback to section default
+      if (variables[compositeKey] !== undefined) {
+        result[placeholder] = variables[compositeKey];
+      } else if (section.variables && typeof section.variables[placeholder] === 'string') {
+        result[placeholder] = section.variables[placeholder];
+      }
+    }
+    
+    return result;
   };
 
   const previewHtml = React.useMemo(() => {
@@ -1046,7 +1097,15 @@ const RunTemplates = () => {
               };
             }
           }
-          return renderSectionContent(sectionToRender, allVars);
+          
+          // For mixed-content sections, map composite keys to simple placeholder names
+          let sectionVars = allVars;
+          if (section.type === 'mixed-content') {
+            const mixedVars = getMixedContentVarsForSection(section);
+            sectionVars = { ...allVars, ...mixedVars };
+          }
+          
+          return renderSectionContent(sectionToRender, sectionVars);
         })
         .join('');
     }
@@ -1763,9 +1822,9 @@ const RunTemplates = () => {
                             );
                           }
                           
-                          // Handle heading, paragraph, text, mixed-content sections
-                          const textSectionTypes = ['heading', 'paragraph', 'text', 'mixed-content'];
-                          if (textSectionTypes.includes(section.type)) {
+                          // Handle heading, paragraph, text sections (non-mixed)
+                          const simpleSectionTypes = ['heading', 'paragraph', 'text'];
+                          if (simpleSectionTypes.includes(section.type)) {
                             const varName = section.id;
                             const editable = section.isLabelEditable !== false;
                             const contentValue = typeof variables[varName] === 'object' 
@@ -1822,6 +1881,95 @@ const RunTemplates = () => {
                             );
                           }
                           
+                          // Handle mixed-content sections - extract individual placeholders
+                          if (section.type === 'mixed-content') {
+                            const editable = section.isLabelEditable !== false;
+                            const content = (section.variables?.content as string) || section.content || '';
+                            
+                            // Extract all {{placeholder}} patterns
+                            const placeholderRegex = /\{\{(\w+)\}\}/g;
+                            const placeholders: string[] = [];
+                            let match;
+                            while ((match = placeholderRegex.exec(content)) !== null) {
+                              if (!placeholders.includes(match[1])) {
+                                placeholders.push(match[1]);
+                              }
+                            }
+                            
+                            // Get default values from section variables
+                            const getDefaultValue = (varName: string): string => {
+                              if (section.variables && typeof section.variables[varName] === 'string') {
+                                return section.variables[varName] as string;
+                              }
+                              return '';
+                            };
+                            
+                            return (
+                              <div 
+                                key={section.id} 
+                                className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-sm font-medium text-muted-foreground">
+                                    Mixed Content
+                                  </span>
+                                </div>
+                                <div className="space-y-3 ml-2">
+                                  {placeholders.map((placeholder) => {
+                                    const varKey = `${section.id}_${placeholder}`;
+                                    const currentValue = variables[varKey] !== undefined 
+                                      ? (typeof variables[varKey] === 'object' ? (variables[varKey] as TextStyle).text : variables[varKey] as string)
+                                      : getDefaultValue(placeholder);
+                                    
+                                    return (
+                                      <div key={placeholder} className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground font-medium">
+                                          {placeholder.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+                                        </Label>
+                                        <div className={styles.inputWrapper}>
+                                          <Input
+                                            id={`var-${varKey}`}
+                                            placeholder={`Enter ${placeholder}...`}
+                                            value={currentValue}
+                                            onChange={(e) => setVariables(prev => ({
+                                              ...prev,
+                                              [varKey]: e.target.value
+                                            }))}
+                                            onFocus={() => scrollToSection(section.id)}
+                                            disabled={!editable}
+                                          />
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!editable}>
+                                                <Palette className="h-4 w-4" />
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className={styles.formatPopover}>
+                                              <div className="space-y-3">
+                                                <div className={styles.styleButtons}>
+                                                  <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                                    <Bold className="h-3.5 w-3.5" />
+                                                  </Button>
+                                                  <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                                    <Italic className="h-3.5 w-3.5" />
+                                                  </Button>
+                                                  <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                                    <Underline className="h-3.5 w-3.5" />
+                                                  </Button>
+                                                </div>
+                                                <Input type="color" className="h-8 w-16" />
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          }
+                          
                           // Return null for other section types
                           return null;
                         })}
@@ -1845,7 +1993,7 @@ const RunTemplates = () => {
                   {selectedTemplate.sections && selectedTemplate.sections.length > 0 ? (
                     <div className={styles.previewContent}>
                       {selectedTemplate.sections.map((section, sectionIndex) => {
-                        const runtimeVars: Record<string, string | string[] | any> = {
+                        let runtimeVars: Record<string, string | string[] | any> = {
                           ...variables,
                           ...listVariables,
                           ...tableVariables,
@@ -1865,6 +2013,12 @@ const RunTemplates = () => {
                               }
                             };
                           }
+                        }
+                        
+                        // For mixed-content sections, map composite keys to simple placeholder names
+                        if (section.type === 'mixed-content') {
+                          const mixedVars = getMixedContentVarsForSection(section);
+                          runtimeVars = { ...runtimeVars, ...mixedVars };
                         }
                         
                         return (
