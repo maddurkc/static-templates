@@ -30,282 +30,423 @@ export const saveTemplate = (template: Omit<Template, 'id'>): Template => {
 export const getTemplates = (): Template[] => {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) {
-    // Return initial mock data
+    // Return initial mock data with ALL section types
     const mockTemplates: Template[] = [
       {
-        id: "demo-comprehensive-template",
-        name: "Comprehensive Demo Template",
-        subject: "{{priority}} - Incident #{{incidentNumber}} - {{status}}",
+        id: "all-sections-demo",
+        name: "All Sections Demo Template",
+        subject: "{{priority}} Alert: {{incidentTitle}} - Ref #{{referenceNumber}}",
         html: "",
         createdAt: new Date().toISOString(),
-        sectionCount: 10,
+        sectionCount: 25,
         archived: false,
         sections: [
-          // Heading 1 - Editable with placeholder
+          // 1. Heading 1
           {
-            id: "section-main-title",
+            id: "sec-h1",
             type: "heading1",
-            content: "<h1>{{reportType}} Report - {{incidentNumber}}</h1>",
+            content: "<h1>{{reportTitle}} - {{companyName}}</h1>",
             order: 0,
             isLabelEditable: true,
             variables: {
-              reportType: "Incident",
-              incidentNumber: "INC-2024-001"
+              reportTitle: "Incident Report",
+              companyName: "Acme Corporation"
             },
             styles: { fontSize: '32px', color: '#1a365d' }
           },
-          // Heading 2 - Non-editable static heading
+          // 2. Heading 2
           {
-            id: "section-summary-heading",
+            id: "sec-h2",
             type: "heading2",
-            content: "<h2>Executive Summary</h2>",
+            content: "<h2>{{sectionTitle}} Overview</h2>",
             order: 1,
-            isLabelEditable: false,
-            variables: {},
-            styles: { fontSize: '24px', color: '#2d3748' }
+            isLabelEditable: true,
+            variables: {
+              sectionTitle: "System Status"
+            },
+            styles: { fontSize: '28px', color: '#2d3748' }
           },
-          // Paragraph - Editable with placeholder
+          // 3. Heading 3
           {
-            id: "section-summary-text",
-            type: "paragraph",
-            content: "<p>This report covers the {{incidentType}} incident that occurred on {{incidentDate}}. The issue was reported by {{reportedBy}} and has been assigned to {{assignedTeam}} for resolution.</p>",
+            id: "sec-h3",
+            type: "heading3",
+            content: "<h3>{{subSectionTitle}}</h3>",
             order: 2,
             isLabelEditable: true,
             variables: {
-              incidentType: "System Outage",
-              incidentDate: "December 8, 2024",
-              reportedBy: "John Smith",
-              assignedTeam: "Infrastructure Team"
+              subSectionTitle: "Technical Details"
             },
-            styles: { fontSize: '16px', color: '#4a5568' }
+            styles: { fontSize: '24px', color: '#4a5568' }
           },
-          // Heading 3 - Editable without placeholders
+          // 4. Heading 4
           {
-            id: "section-details-heading",
-            type: "heading3",
-            content: "<h3>Incident Details</h3>",
+            id: "sec-h4",
+            type: "heading4",
+            content: "<h4>{{minorTitle}} - {{dateInfo}}</h4>",
             order: 3,
             isLabelEditable: true,
-            variables: {},
-            styles: { fontSize: '20px', color: '#2d3748' }
+            variables: {
+              minorTitle: "Timeline",
+              dateInfo: "December 2024"
+            },
+            styles: { fontSize: '20px', color: '#4a5568' }
           },
-          // Labeled Content - Text type
+          // 5. Heading 5
           {
-            id: "section-labeled-status",
-            type: "labeled-content",
-            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            id: "sec-h5",
+            type: "heading5",
+            content: "<h5>Contact: {{contactPerson}}</h5>",
             order: 4,
             isLabelEditable: true,
             variables: {
-              label: "Current Status",
-              contentType: "text",
-              content: "The incident is currently being investigated. Initial analysis indicates a database connection timeout issue affecting the production environment."
+              contactPerson: "John Smith"
             },
-            styles: {}
+            styles: { fontSize: '18px', color: '#718096' }
           },
-          // Labeled Content - List type with dynamic label
+          // 6. Heading 6
           {
-            id: "section-labeled-actions",
-            type: "labeled-content",
-            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            id: "sec-h6",
+            type: "heading6",
+            content: "<h6>Reference: {{refCode}}</h6>",
             order: 5,
             isLabelEditable: true,
             variables: {
-              label: "Action Items for <span th:utext=\"${teamName}\"/>",
+              refCode: "REF-2024-001"
+            },
+            styles: { fontSize: '16px', color: '#718096' }
+          },
+          // 7. Text
+          {
+            id: "sec-text",
+            type: "text",
+            content: "<span>Status: {{currentStatus}} | Priority: {{priorityLevel}}</span>",
+            order: 6,
+            isLabelEditable: true,
+            variables: {
+              currentStatus: "In Progress",
+              priorityLevel: "High"
+            },
+            styles: { fontSize: '14px', color: '#4a5568' }
+          },
+          // 8. Paragraph
+          {
+            id: "sec-paragraph",
+            type: "paragraph",
+            content: "<p>This incident was reported by {{reportedBy}} on {{reportDate}}. The affected system is {{affectedSystem}} which serves {{userCount}} users daily.</p>",
+            order: 7,
+            isLabelEditable: true,
+            variables: {
+              reportedBy: "Jane Doe",
+              reportDate: "December 8, 2024",
+              affectedSystem: "Payment Gateway",
+              userCount: "10,000"
+            },
+            styles: { fontSize: '16px', color: '#4a5568' }
+          },
+          // 9. Static Text
+          {
+            id: "sec-static",
+            type: "static-text",
+            content: "This is a static text section that cannot contain placeholders. It displays exactly as entered.",
+            order: 8,
+            isLabelEditable: false,
+            variables: {
+              content: "This is a static text section that cannot contain placeholders. It displays exactly as entered."
+            },
+            styles: { fontSize: '14px', color: '#718096', fontStyle: 'italic' }
+          },
+          // 10. Mixed Content
+          {
+            id: "sec-mixed",
+            type: "mixed-content",
+            content: "Incident {{incidentId}} was escalated to {{escalationTeam}}. View details: <a href=\"{{detailsLink}}\">{{linkLabel}}</a>",
+            order: 9,
+            isLabelEditable: true,
+            variables: {
+              content: "Incident {{incidentId}} was escalated to {{escalationTeam}}. View details: <a href=\"{{detailsLink}}\">{{linkLabel}}</a>",
+              incidentId: "INC-12345",
+              escalationTeam: "Level 3 Support",
+              detailsLink: "https://portal.example.com/incident/12345",
+              linkLabel: "Incident Portal"
+            },
+            styles: {}
+          },
+          // 11. Bullet List (Circle)
+          {
+            id: "sec-bullet-circle",
+            type: "bullet-list-circle",
+            content: "<ul style=\"list-style-type: circle;\"><span th:utext=\"${items}\"/></ul>",
+            order: 10,
+            isLabelEditable: true,
+            variables: {
+              items: [
+                { text: "{{affectedService1}}", children: [] },
+                { text: "{{affectedService2}}", children: [] },
+                { text: "{{affectedService3}}", children: [] }
+              ],
+              affectedService1: "User Authentication Service",
+              affectedService2: "Payment Processing Module",
+              affectedService3: "Email Notification System"
+            },
+            styles: {}
+          },
+          // 12. Bullet List (Disc)
+          {
+            id: "sec-bullet-disc",
+            type: "bullet-list-disc",
+            content: "<ul style=\"list-style-type: disc;\"><span th:utext=\"${items}\"/></ul>",
+            order: 11,
+            isLabelEditable: true,
+            variables: {
+              items: [
+                { text: "Primary impact: {{primaryImpact}}", children: [] },
+                { text: "Secondary impact: {{secondaryImpact}}", children: [] }
+              ],
+              primaryImpact: "Transaction failures",
+              secondaryImpact: "Delayed notifications"
+            },
+            styles: {}
+          },
+          // 13. Bullet List (Square)
+          {
+            id: "sec-bullet-square",
+            type: "bullet-list-square",
+            content: "<ul style=\"list-style-type: square;\"><span th:utext=\"${items}\"/></ul>",
+            order: 12,
+            isLabelEditable: true,
+            variables: {
+              items: [
+                { text: "Root cause: {{rootCause}}", children: [] },
+                { text: "Resolution: {{resolution}}", children: [] }
+              ],
+              rootCause: "Database connection timeout",
+              resolution: "Connection pool optimization"
+            },
+            styles: {}
+          },
+          // 14. Number List (1,2,3)
+          {
+            id: "sec-num-decimal",
+            type: "number-list-1",
+            content: "<ol style=\"list-style-type: decimal;\"><span th:utext=\"${items}\"/></ol>",
+            order: 13,
+            isLabelEditable: true,
+            variables: {
+              items: [
+                { text: "Step 1: {{step1}}", children: [] },
+                { text: "Step 2: {{step2}}", children: [] },
+                { text: "Step 3: {{step3}}", children: [] }
+              ],
+              step1: "Identify affected systems",
+              step2: "Isolate the problem",
+              step3: "Apply fix and verify"
+            },
+            styles: {}
+          },
+          // 15. Number List (i,ii,iii)
+          {
+            id: "sec-num-roman",
+            type: "number-list-i",
+            content: "<ol style=\"list-style-type: lower-roman;\"><span th:utext=\"${items}\"/></ol>",
+            order: 14,
+            isLabelEditable: true,
+            variables: {
+              items: [
+                { text: "{{phase1}}", children: [] },
+                { text: "{{phase2}}", children: [] },
+                { text: "{{phase3}}", children: [] }
+              ],
+              phase1: "Investigation Phase",
+              phase2: "Remediation Phase",
+              phase3: "Validation Phase"
+            },
+            styles: {}
+          },
+          // 16. Number List (a,b,c)
+          {
+            id: "sec-num-alpha",
+            type: "number-list-a",
+            content: "<ol style=\"list-style-type: lower-alpha;\"><span th:utext=\"${items}\"/></ol>",
+            order: 15,
+            isLabelEditable: true,
+            variables: {
+              items: [
+                { text: "{{option1}}", children: [] },
+                { text: "{{option2}}", children: [] }
+              ],
+              option1: "Immediate hotfix deployment",
+              option2: "Scheduled maintenance window"
+            },
+            styles: {}
+          },
+          // 17. Table
+          {
+            id: "sec-table",
+            type: "table",
+            content: "<table><tr><th>Header 1</th><th>Header 2</th></tr></table>",
+            order: 16,
+            isLabelEditable: true,
+            variables: {
+              tableData: {
+                headers: ["{{col1Header}}", "{{col2Header}}", "{{col3Header}}"],
+                rows: [
+                  ["{{row1col1}}", "{{row1col2}}", "{{row1col3}}"],
+                  ["{{row2col1}}", "{{row2col2}}", "{{row2col3}}"]
+                ],
+                showBorder: true
+              },
+              col1Header: "Metric",
+              col2Header: "Before",
+              col3Header: "After",
+              row1col1: "Response Time",
+              row1col2: "5000ms",
+              row1col3: "200ms",
+              row2col1: "Error Rate",
+              row2col2: "15%",
+              row2col3: "0.1%"
+            },
+            styles: {}
+          },
+          // 18. Image
+          {
+            id: "sec-image",
+            type: "image",
+            content: "<img src=\"{{imageUrl}}\" alt=\"{{imageAlt}}\" />",
+            order: 17,
+            isLabelEditable: true,
+            variables: {
+              imageUrl: "https://placehold.co/600x200",
+              imageAlt: "System Architecture Diagram"
+            },
+            styles: {}
+          },
+          // 19. Link
+          {
+            id: "sec-link",
+            type: "link",
+            content: "<a href=\"{{linkHref}}\">{{linkText}}</a>",
+            order: 18,
+            isLabelEditable: true,
+            variables: {
+              linkHref: "https://docs.example.com/runbook",
+              linkText: "View Complete Runbook Documentation"
+            },
+            styles: {}
+          },
+          // 20. Button
+          {
+            id: "sec-button",
+            type: "button",
+            content: "<button>{{buttonText}}</button>",
+            order: 19,
+            isLabelEditable: true,
+            variables: {
+              buttonText: "Acknowledge Incident"
+            },
+            styles: {}
+          },
+          // 21. Labeled Content - Text
+          {
+            id: "sec-labeled-text",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 20,
+            isLabelEditable: true,
+            variables: {
+              label: "Impact Summary for {{impactArea}}",
+              impactArea: "Production Environment",
+              contentType: "text",
+              content: "The {{systemName}} experienced {{issueType}} affecting {{affectedUsers}} users during {{downtime}}."
+            },
+            styles: {}
+          },
+          // 22. Labeled Content - List
+          {
+            id: "sec-labeled-list",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 21,
+            isLabelEditable: true,
+            variables: {
+              label: "Action Items - {{teamName}} Team",
               teamName: "Infrastructure",
               contentType: "list",
               listStyle: "disc",
               items: [
-                { text: "Review database connection pool settings", bold: true, children: [] },
-                { text: "Analyze server performance metrics", children: [
-                  { text: "CPU utilization", children: [] },
-                  { text: "Memory usage", children: [] }
+                { text: "Review {{metric1}} metrics", children: [] },
+                { text: "Update {{configItem}} configuration", children: [
+                  { text: "Verify {{subItem1}}", children: [] },
+                  { text: "Test {{subItem2}}", children: [] }
                 ]},
-                { text: "Implement connection retry logic", italic: true, children: [] },
-                { text: "Update monitoring alerts", children: [] }
-              ]
+                { text: "Document findings in {{documentName}}", children: [] }
+              ],
+              metric1: "CPU and Memory",
+              configItem: "database pool",
+              subItem1: "connection limits",
+              subItem2: "timeout values",
+              documentName: "Post-Incident Report"
             },
             styles: {}
           },
-          // Heading 4 - Non-editable with placeholder
+          // 23. Labeled Content - Table
           {
-            id: "section-timeline-heading",
-            type: "heading4",
-            content: "<h4>Timeline - {{timeZone}}</h4>",
-            order: 6,
-            isLabelEditable: false,
-            variables: {
-              timeZone: "EST"
-            },
-            styles: { fontSize: '18px', color: '#4a5568' }
-          },
-          // Labeled Content - Table type
-          {
-            id: "section-labeled-timeline",
+            id: "sec-labeled-table",
             type: "labeled-content",
             content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
-            order: 7,
-            isLabelEditable: false,
+            order: 22,
+            isLabelEditable: true,
             variables: {
-              label: "Event Timeline",
+              label: "Event Timeline - {{timezone}}",
+              timezone: "EST",
               contentType: "table",
               tableData: {
-                headers: ["Time", "Event", "Action Taken"],
+                headers: ["Time", "Event", "Owner"],
                 rows: [
-                  ["09:15 AM", "Issue detected", "Alert triggered"],
-                  ["09:20 AM", "Team notified", "Investigation started"],
-                  ["09:45 AM", "Root cause identified", "Fix in progress"],
-                  ["10:30 AM", "Fix deployed", "Monitoring"]
+                  ["{{time1}}", "{{event1}}", "{{owner1}}"],
+                  ["{{time2}}", "{{event2}}", "{{owner2}}"],
+                  ["{{time3}}", "{{event3}}", "{{owner3}}"]
                 ]
-              }
+              },
+              time1: "09:00 AM",
+              event1: "Issue Detected",
+              owner1: "Monitoring Team",
+              time2: "09:15 AM",
+              event2: "Investigation Started",
+              owner2: "On-Call Engineer",
+              time3: "10:00 AM",
+              event3: "Resolution Applied",
+              owner3: "DevOps Team"
             },
             styles: {}
           },
-          // Paragraph - Non-editable
+          // 24. Line Break
           {
-            id: "section-closing",
-            type: "paragraph",
-            content: "<p>For any questions regarding this report, please contact the on-call team or raise a ticket in the support portal.</p>",
-            order: 8,
+            id: "sec-linebreak",
+            type: "line-break",
+            content: "<br/>",
+            order: 23,
             isLabelEditable: false,
             variables: {},
-            styles: { fontSize: '14px', color: '#718096', fontStyle: 'italic' }
+            styles: {}
           },
-          // Heading 5 - Editable with multiple placeholders
+          // 25. HTML Content
           {
-            id: "section-contact-heading",
-            type: "heading5",
-            content: "<h5>Contact: {{contactName}} ({{contactRole}})</h5>",
-            order: 9,
+            id: "sec-html",
+            type: "html-content",
+            content: "<span th:utext=\"${htmlContent}\"/>",
+            order: 24,
             isLabelEditable: true,
             variables: {
-              contactName: "Jane Doe",
-              contactRole: "Incident Manager"
+              htmlContent: "<div style=\"padding: 16px; border: 2px solid {{borderColor}}; border-radius: 8px; background-color: {{bgColor}};\"><h4>{{alertTitle}}</h4><p>{{alertMessage}}</p></div>",
+              borderColor: "#e53e3e",
+              bgColor: "#fed7d7",
+              alertTitle: "Critical Alert",
+              alertMessage: "This incident requires immediate attention from all stakeholders."
             },
-            styles: { fontSize: '16px', color: '#2d3748' }
+            styles: {}
           }
         ]
-      },
-      {
-        id: "7",
-        name: "Product Announcement - Interactive Demo",
-        html: "",
-        createdAt: new Date().toISOString(),
-        sectionCount: 11,
-        archived: false,
-        sections: [
-          {
-            id: "section-intro",
-            type: "heading3",
-            content: "<h3><th:utext=\"${introTitle}\"></h3>",
-            order: 0,
-            variables: {
-              introTitle: "Introducing Our Latest Innovation"
-            }
-          },
-          {
-            id: "section-intro-text",
-            type: "paragraph",
-            content: "<p><th:utext=\"${introText}\"></p>",
-            order: 1,
-            variables: {
-              introText: "We're excited to announce a groundbreaking product that will revolutionize how you work. This innovative solution combines cutting-edge technology with user-friendly design to deliver exceptional results."
-            }
-          },
-          {
-            id: "section-features",
-            type: "heading3",
-            content: "<h3><th:utext=\"${featuresTitle}\"></h3>",
-            order: 2,
-            variables: {
-              featuresTitle: "Key Features"
-            }
-          },
-          {
-            id: "section-features-list",
-            type: "bullet-list-disc",
-            content: "<ul><th:utext=\"${featuresList}\"></ul>",
-            order: 3,
-            variables: {
-              featuresList: [
-                "Advanced AI-powered automation",
-                "Seamless integration with existing tools",
-                "Real-time collaboration features",
-                "Enterprise-grade security"
-              ]
-            }
-          },
-          {
-            id: "section-benefits",
-            type: "heading3",
-            content: "<h3><th:utext=\"${benefitsTitle}\"></h3>",
-            order: 4,
-            variables: {
-              benefitsTitle: "Why Choose Us"
-            }
-          },
-          {
-            id: "section-benefits-list",
-            type: "bullet-list-circle",
-            content: "<ul><th:utext=\"${benefitsList}\"></ul>",
-            order: 5,
-            variables: {
-              benefitsList: [
-                "Save up to 40% of your time",
-                "Increase productivity by 3x",
-                "Reduce operational costs significantly",
-                "24/7 dedicated customer support"
-              ]
-            }
-          },
-          {
-            id: "section-pricing",
-            type: "heading4",
-            content: "<h4><th:utext=\"${pricingTitle}\"></h4>",
-            order: 6,
-            variables: {
-              pricingTitle: "Special Launch Pricing"
-            }
-          },
-          {
-            id: "section-pricing-text",
-            type: "paragraph",
-            content: "<p><th:utext=\"${pricingText}\"></p>",
-            order: 7,
-            variables: {
-              pricingText: "For a limited time, get 50% off on all annual plans. Start your free 30-day trial today with no credit card required. Experience the difference and join thousands of satisfied customers."
-            }
-          },
-          {
-            id: "section-contact",
-            type: "heading5",
-            content: "<h5><th:utext=\"${contactTitle}\"></h5>",
-            order: 8,
-            variables: {
-              contactTitle: "Get Started Today"
-            }
-          },
-          {
-            id: "section-contact-text",
-            type: "paragraph",
-            content: "<p><th:utext=\"${contactText}\"></p>",
-            order: 9,
-            variables: {
-              contactText: "Ready to transform your business? Contact our sales team for a personalized demo and discover how our solution can help you achieve your goals."
-            }
-          },
-          {
-            id: "section-link",
-            type: "link",
-            content: "<a href=\"<th:utext=\"${ctaLink}\">\"><th:utext=\"${ctaText}\"></a>",
-            order: 10,
-            variables: {
-              ctaLink: "https://example.com/demo",
-              ctaText: "Schedule Your Free Demo Now →"
-            }
-          }
-        ]
-      },
+      }
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mockTemplates));
     return mockTemplates;
