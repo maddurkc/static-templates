@@ -88,6 +88,10 @@ export const getValueByPath = (obj: any, path: string): any => {
 };
 
 export const generateTableHTML = (tableData: TableData): string => {
+  if (!tableData || !tableData.rows) {
+    return '<table><tr><td>No data</td></tr></table>';
+  }
+  
   const borderColor = tableData.borderColor || '#ddd';
   const paddingValue = getPaddingValue(tableData.cellPadding);
   const borderStyle = tableData.showBorder ? ` border="1" style="border-collapse: collapse; border: 1px solid ${borderColor};"` : ' style="border-collapse: collapse;"';
@@ -109,8 +113,11 @@ export const generateTableHTML = (tableData: TableData): string => {
   // Track which cells should be skipped (already part of a merged cell)
   const skipCells = new Set<string>();
   
+  // Safely get mergedCells with fallback to empty object
+  const mergedCells = tableData.mergedCells || {};
+  
   // Build merged cells skip set
-  Object.entries(tableData.mergedCells).forEach(([key, merge]) => {
+  Object.entries(mergedCells).forEach(([key, merge]) => {
     const [startRow, startCol] = key.split('-').map(Number);
     for (let r = startRow; r < startRow + merge.rowSpan; r++) {
       for (let c = startCol; c < startCol + merge.colSpan; c++) {
@@ -131,7 +138,7 @@ export const generateTableHTML = (tableData: TableData): string => {
         return;
       }
       
-      const merge = tableData.mergedCells[cellKey];
+      const merge = mergedCells[cellKey];
       const tag = rowIndex === 0 ? 'th' : 'td';
       const mergeAttrs = merge 
         ? ` rowspan="${merge.rowSpan}" colspan="${merge.colSpan}"`
