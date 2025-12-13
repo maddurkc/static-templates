@@ -1083,19 +1083,48 @@ const RunTemplates = () => {
       
       return selectedTemplate.sections
         .map((section) => {
-          // For labeled-content sections, inject updated label from labelVariables
+          // For labeled-content sections, process label placeholders
           let sectionToRender = section;
           if (section.type === 'labeled-content') {
             const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
-            if (labelVariables[labelVarName]) {
-              sectionToRender = {
-                ...section,
-                variables: {
-                  ...section.variables,
-                  label: labelVariables[labelVarName]
-                }
-              };
-            }
+            let processedLabel = labelVariables[labelVarName] || (section.variables?.label as string) || 'Label';
+            
+            // Replace {{placeholder}} in label with entered values
+            processedLabel = processedLabel.replace(/\{\{(\w+)\}\}/g, (_, placeholder) => {
+              const varKey = `label_${section.id}_${placeholder}`;
+              const value = allVars[varKey];
+              if (value !== undefined) {
+                return typeof value === 'object' && 'text' in value ? (value as TextStyle).text : String(value);
+              }
+              // Fallback to section variable default
+              if (section.variables && section.variables[placeholder]) {
+                return String(section.variables[placeholder]);
+              }
+              return `{{${placeholder}}}`;
+            });
+            
+            // Also replace Thymeleaf syntax in label
+            processedLabel = processedLabel.replace(/<span\s+th:utext="\$\{(\w+)\}"\/?>|<th:utext="\$\{(\w+)\}">/g, (_, p1, p2) => {
+              const placeholder = p1 || p2;
+              const varKey = `label_${section.id}_${placeholder}`;
+              const value = allVars[varKey];
+              if (value !== undefined) {
+                return typeof value === 'object' && 'text' in value ? (value as TextStyle).text : String(value);
+              }
+              // Fallback to section variable default
+              if (section.variables && section.variables[placeholder]) {
+                return String(section.variables[placeholder]);
+              }
+              return `{{${placeholder}}}`;
+            });
+            
+            sectionToRender = {
+              ...section,
+              variables: {
+                ...section.variables,
+                label: processedLabel
+              }
+            };
           }
           
           // For mixed-content sections, map composite keys to simple placeholder names
@@ -1161,31 +1190,82 @@ const RunTemplates = () => {
     // Handle labeled-content sections
     if (section.type === 'labeled-content') {
       const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
-      const labelValue = labelVariables[labelVarName] || (section.variables?.label as string) || 'Label';
+      const rawLabel = (section.variables?.label as string) || 'Label';
+      const labelValue = labelVariables[labelVarName] || rawLabel;
       const contentType = section.variables?.contentType || 'text';
       const listVarName = section.variables?.listVariableName as string || section.id;
       
+      // Extract placeholders from label (both {{placeholder}} and Thymeleaf syntax)
+      const labelPlaceholderRegex = /\{\{(\w+)\}\}|<span\s+th:utext="\$\{(\w+)\}"\/?>|<th:utext="\$\{(\w+)\}">/g;
+      const labelPlaceholders: string[] = [];
+      let labelMatch;
+      while ((labelMatch = labelPlaceholderRegex.exec(rawLabel)) !== null) {
+        const placeholder = labelMatch[1] || labelMatch[2] || labelMatch[3];
+        if (placeholder && !labelPlaceholders.includes(placeholder)) {
+          labelPlaceholders.push(placeholder);
+        }
+      }
+      
+      // Get default values for label placeholders from section variables
+      const getLabelPlaceholderDefault = (placeholder: string): string => {
+        if (section.variables && typeof section.variables[placeholder] === 'string') {
+          return section.variables[placeholder] as string;
+        }
+        return '';
+      };
+      
       return (
         <div className={styles.variableInputGroup}>
-          {/* Label input */}
-          <div className={styles.variableInputRow}>
-            <Label className="text-xs text-muted-foreground font-medium mb-1">Label</Label>
-            {editable ? (
-              <Input
-                value={labelValue}
-                onChange={(e) => setLabelVariables(prev => ({
-                  ...prev,
-                  [labelVarName]: e.target.value
-                }))}
-                className="h-8 text-sm"
-                placeholder="Enter label..."
-              />
-            ) : (
-              <div className="px-3 py-1.5 bg-muted rounded text-sm text-muted-foreground">
-                {labelValue}
-              </div>
-            )}
-          </div>
+          {/* If label has placeholders, show individual inputs for each */}
+          {labelPlaceholders.length > 0 ? (
+            <>
+              <Label className="text-xs text-muted-foreground font-medium mb-1">Label Variables</Label>
+              {labelPlaceholders.map((placeholder) => {
+                const varKey = `label_${section.id}_${placeholder}`;
+                const currentValue = variables[varKey] !== undefined 
+                  ? (typeof variables[varKey] === 'object' ? (variables[varKey] as TextStyle).text : variables[varKey] as string)
+                  : getLabelPlaceholderDefault(placeholder);
+                
+                return (
+                  <div key={placeholder} className={styles.variableInputRow}>
+                    <Label className="text-xs text-muted-foreground font-medium mb-1">
+                      {placeholder.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+                    </Label>
+                    <Input
+                      placeholder={`Enter ${placeholder}...`}
+                      value={currentValue}
+                      onChange={(e) => setVariables(prev => ({
+                        ...prev,
+                        [varKey]: e.target.value
+                      }))}
+                      className="h-8 text-sm"
+                      disabled={!editable}
+                    />
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            /* Static label - show as editable input */
+            <div className={styles.variableInputRow}>
+              <Label className="text-xs text-muted-foreground font-medium mb-1">Label</Label>
+              {editable ? (
+                <Input
+                  value={labelValue}
+                  onChange={(e) => setLabelVariables(prev => ({
+                    ...prev,
+                    [labelVarName]: e.target.value
+                  }))}
+                  className="h-8 text-sm"
+                  placeholder="Enter label..."
+                />
+              ) : (
+                <div className="px-3 py-1.5 bg-muted rounded text-sm text-muted-foreground">
+                  {labelValue}
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Content input based on type */}
           {contentType === 'text' && (
@@ -1959,19 +2039,48 @@ const RunTemplates = () => {
                           ...labelVariables
                         };
                         
-                        // For labeled-content sections, inject updated label from labelVariables
+                        // For labeled-content sections, process label placeholders
                         let sectionToRender = section;
                         if (section.type === 'labeled-content') {
                           const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
-                          if (labelVariables[labelVarName]) {
-                            sectionToRender = {
-                              ...section,
-                              variables: {
-                                ...section.variables,
-                                label: labelVariables[labelVarName]
-                              }
-                            };
-                          }
+                          let processedLabel = labelVariables[labelVarName] || (section.variables?.label as string) || 'Label';
+                          
+                          // Replace {{placeholder}} in label with entered values
+                          processedLabel = processedLabel.replace(/\{\{(\w+)\}\}/g, (_, placeholder) => {
+                            const varKey = `label_${section.id}_${placeholder}`;
+                            const value = variables[varKey];
+                            if (value !== undefined) {
+                              return typeof value === 'object' ? (value as TextStyle).text : String(value);
+                            }
+                            // Fallback to section variable default
+                            if (section.variables && section.variables[placeholder]) {
+                              return String(section.variables[placeholder]);
+                            }
+                            return `{{${placeholder}}}`;
+                          });
+                          
+                          // Also replace Thymeleaf syntax in label
+                          processedLabel = processedLabel.replace(/<span\s+th:utext="\$\{(\w+)\}"\/?>|<th:utext="\$\{(\w+)\}">/g, (_, p1, p2) => {
+                            const placeholder = p1 || p2;
+                            const varKey = `label_${section.id}_${placeholder}`;
+                            const value = variables[varKey];
+                            if (value !== undefined) {
+                              return typeof value === 'object' ? (value as TextStyle).text : String(value);
+                            }
+                            // Fallback to section variable default
+                            if (section.variables && section.variables[placeholder]) {
+                              return String(section.variables[placeholder]);
+                            }
+                            return `{{${placeholder}}}`;
+                          });
+                          
+                          sectionToRender = {
+                            ...section,
+                            variables: {
+                              ...section.variables,
+                              label: processedLabel
+                            }
+                          };
                         }
                         
                         // For mixed-content sections, map composite keys to simple placeholder names
