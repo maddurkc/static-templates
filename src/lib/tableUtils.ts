@@ -88,6 +88,11 @@ export const getValueByPath = (obj: any, path: string): any => {
 };
 
 export const generateTableHTML = (tableData: TableData): string => {
+  // Guard against undefined/null tableData
+  if (!tableData || !tableData.rows) {
+    return '<table><tr><td>No data</td></tr></table>';
+  }
+  
   const borderColor = tableData.borderColor || '#ddd';
   const paddingValue = getPaddingValue(tableData.cellPadding);
   const borderStyle = tableData.showBorder ? ` border="1" style="border-collapse: collapse; border: 1px solid ${borderColor};"` : ' style="border-collapse: collapse;"';
@@ -110,17 +115,18 @@ export const generateTableHTML = (tableData: TableData): string => {
   const skipCells = new Set<string>();
   
   // Build merged cells skip set
-  Object.entries(tableData.mergedCells).forEach(([key, merge]) => {
-    const [startRow, startCol] = key.split('-').map(Number);
-    for (let r = startRow; r < startRow + merge.rowSpan; r++) {
-      for (let c = startCol; c < startCol + merge.colSpan; c++) {
-        if (r !== startRow || c !== startCol) {
-          skipCells.add(`${r}-${c}`);
+  if (tableData.mergedCells && typeof tableData.mergedCells === 'object') {
+    Object.entries(tableData.mergedCells).forEach(([key, merge]) => {
+      const [startRow, startCol] = key.split('-').map(Number);
+      for (let r = startRow; r < startRow + merge.rowSpan; r++) {
+        for (let c = startCol; c < startCol + merge.colSpan; c++) {
+          if (r !== startRow || c !== startCol) {
+            skipCells.add(`${r}-${c}`);
+          }
         }
       }
-    }
-  });
-  
+    });
+  }
   tableData.rows.forEach((row, rowIndex) => {
     html += '<tr>';
     row.forEach((cell, colIndex) => {
@@ -131,7 +137,7 @@ export const generateTableHTML = (tableData: TableData): string => {
         return;
       }
       
-      const merge = tableData.mergedCells[cellKey];
+      const merge = tableData.mergedCells?.[cellKey];
       const tag = rowIndex === 0 ? 'th' : 'td';
       const mergeAttrs = merge 
         ? ` rowspan="${merge.rowSpan}" colspan="${merge.colSpan}"`
