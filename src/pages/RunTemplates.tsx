@@ -600,7 +600,7 @@ const RunTemplates = () => {
           }
           
           // Extract any user-defined variables (not metadata)
-          if (section.variables) {
+          if (section.variables && typeof section.variables === 'object') {
             Object.entries(section.variables).forEach(([key, value]) => {
               // Skip metadata keys
               if (METADATA_KEYS.includes(key)) return;
@@ -657,7 +657,7 @@ const RunTemplates = () => {
         }
         
         // For other sections, extract user-defined variables (not metadata)
-        if (section.variables) {
+        if (section.variables && typeof section.variables === 'object') {
           Object.entries(section.variables).forEach(([key, value]) => {
             // Skip metadata keys
             if (METADATA_KEYS.includes(key)) return;
@@ -1040,7 +1040,7 @@ const RunTemplates = () => {
               sectionToRender = {
                 ...section,
                 variables: {
-                  ...section.variables,
+                  ...(section.variables || {}),
                   label: labelVariables[labelVarName]
                 }
               };
