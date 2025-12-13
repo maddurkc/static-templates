@@ -1860,14 +1860,91 @@ const RunTemplates = () => {
             </div>
           </div>
 
-          {/* Main Content: Unified Preview with Inline Variables */}
-          <div className={styles.mainContentSingle}>
-            {/* Single Panel - Preview with Inline Variable Inputs */}
+          {/* Main Content: Variables (left) | Preview (right) */}
+          <div className={styles.mainContent}>
+            {/* Left Panel - Template Variables grouped by section */}
+            <div className={styles.variablesPanel}>
+              <div className={styles.variablesPanelHeader}>
+                <h2>Template Variables</h2>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className={styles.variablesList}>
+                  {/* Subject Data Section */}
+                  {Object.keys(subjectVariables).length > 0 && (
+                    <div className={styles.sectionVariableGroup}>
+                      <div className={styles.sectionGroupHeader}>
+                        <span>Subject Variables</span>
+                      </div>
+                      <div className={styles.sectionGroupContent}>
+                        {Object.keys(subjectVariables).map((varName) => (
+                          <div key={`subject-var-${varName}`} className={styles.variableInputRow}>
+                            <Label className="text-xs text-muted-foreground font-medium mb-1">{varName}</Label>
+                            <Input
+                              placeholder={varName}
+                              value={subjectVariables[varName] || ''}
+                              onChange={(e) => setSubjectVariables(prev => ({
+                                ...prev,
+                                [varName]: e.target.value
+                              }))}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Body Sections - Variables grouped below each section */}
+                  {selectedTemplate.sections && selectedTemplate.sections.map((section) => {
+                    const hasVariables = getSectionVariables(section);
+                    if (!hasVariables) return null;
+                    
+                    // Get section display name
+                    const getSectionDisplayName = (s: Section): string => {
+                      if (s.type === 'labeled-content') {
+                        const label = (s.variables?.label as string) || 'Labeled Content';
+                        return label.replace(/<[^>]*>/g, '').substring(0, 30);
+                      }
+                      if (s.type === 'mixed-content') return 'Mixed Content';
+                      if (s.type.includes('heading')) return `Heading ${s.type.slice(-1)}`;
+                      if (s.type === 'paragraph' || s.type === 'text') return 'Text';
+                      if (s.type.includes('list')) return 'List';
+                      if (s.type === 'table') return 'Table';
+                      return s.type.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    };
+                    
+                    return (
+                      <div key={section.id} className={styles.sectionVariableGroup}>
+                        <div 
+                          className={styles.sectionGroupHeader}
+                          onClick={() => scrollToSection(section.id)}
+                        >
+                          <span>{getSectionDisplayName(section)}</span>
+                        </div>
+                        <div className={styles.sectionGroupContent}>
+                          {renderSectionVariableInputs(section)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  {/* Empty state */}
+                  {Object.keys(subjectVariables).length === 0 && 
+                   (!selectedTemplate.sections || selectedTemplate.sections.every(s => !getSectionVariables(s))) && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">No variables in this template</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Right Panel - Preview (Email Body) */}
             <div className={styles.previewPanel}>
               <div className={styles.previewPanelHeader}>
                 <h2>
                   <Eye className="h-4 w-4" />
-                  Email Body
+                  Email Body Preview
                 </h2>
               </div>
               <ScrollArea className="flex-1" id="preview-scroll-area">
@@ -1875,7 +1952,6 @@ const RunTemplates = () => {
                   {selectedTemplate.sections && selectedTemplate.sections.length > 0 ? (
                     <div className={styles.previewContent}>
                       {selectedTemplate.sections.map((section) => {
-                        // Build runtime variables for this section's preview
                         let runtimeVars: Record<string, string | string[] | any> = {
                           ...variables,
                           ...listVariables,
@@ -1904,25 +1980,13 @@ const RunTemplates = () => {
                           runtimeVars = { ...runtimeVars, ...mixedVars };
                         }
                         
-                        // Check if section has variables that need input
-                        const hasVariables = getSectionVariables(section);
-                        
                         return (
-                          <div key={section.id} className={styles.sectionWithVariables}>
-                            {/* Section Preview */}
-                            <div 
-                              id={`preview-section-${section.id}`}
-                              className={`${styles.sectionPreview} ${activeSectionId === section.id ? styles.activeSection : ''}`}
-                              dangerouslySetInnerHTML={{ __html: renderSectionContent(sectionToRender, runtimeVars) }}
-                            />
-                            
-                            {/* Inline Variable Inputs - shown below section if it has placeholders */}
-                            {hasVariables && (
-                              <div className={styles.inlineVariableInputs}>
-                                {renderSectionVariableInputs(section)}
-                              </div>
-                            )}
-                          </div>
+                          <div 
+                            key={section.id} 
+                            id={`preview-section-${section.id}`}
+                            className={`${styles.sectionPreview} ${activeSectionId === section.id ? styles.activeSection : ''}`}
+                            dangerouslySetInnerHTML={{ __html: renderSectionContent(sectionToRender, runtimeVars) }}
+                          />
                         );
                       })}
                     </div>
