@@ -133,7 +133,14 @@
   border-left: 1px solid #e9ecef;
 }
 
-/* Main Content Layout */
+/* Main Content Layout - Single Panel */
+.mainContentSingle {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 180px);
+}
+
+/* Legacy two-column layout (kept for backward compatibility) */
 .mainContent {
   display: grid;
   grid-template-columns: 1fr;
@@ -538,4 +545,48 @@
     background-color: transparent;
     box-shadow: none;
   }
+}
+
+/* Section with inline variables layout */
+.sectionWithVariables {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+.sectionPreview {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s ease;
+  
+  &.activeSection {
+    background-color: rgba(0, 120, 212, 0.05);
+  }
+}
+
+.inlineVariableInputs {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+
+.variableInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.variableInputRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
