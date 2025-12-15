@@ -2,10 +2,10 @@ import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Section } from "@/types/section";
-import { ApiConfig } from "@/types/api-config";
+import { GlobalApiConfig } from "@/types/global-api-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Plus, Trash2, Settings2, Plug } from "lucide-react";
+import { GripVertical, Plus, Trash2, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
 import { generateTableHTML, TableData } from "@/lib/tableUtils";
@@ -30,9 +30,7 @@ interface SortableSectionProps {
   onCopyStyles: (id: string) => void;
   onPasteStyles: (id: string) => void;
   renderChildren?: (section: Section) => React.ReactNode;
-  apiConfig: ApiConfig;
-  sections: Section[];
-  onApiConfigUpdate: (config: ApiConfig) => void;
+  globalApiConfig?: GlobalApiConfig;
 }
 
 const SortableSection = ({
@@ -51,9 +49,6 @@ const SortableSection = ({
   onCopyStyles,
   onPasteStyles,
   renderChildren,
-  apiConfig,
-  sections,
-  onApiConfigUpdate
 }: SortableSectionProps) => {
   const {
     attributes,
@@ -288,12 +283,6 @@ const SortableSection = ({
             Variables
           </Badge>
         )}
-        {apiConfig.enabled && apiConfig.mappings?.some(m => m.sectionId === section.id) && (
-          <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 border-green-300">
-            <Plug className="h-3 w-3 mr-1" />
-            API
-          </Badge>
-        )}
         {(section.type === 'labeled-content' || section.content.includes('{{') || section.content.includes('<th:utext=')) && (
           <Badge variant="outline" className="text-xs">
             {section.isLabelEditable !== false ? '✏️ Editable' : '🔒 Locked'}
@@ -325,9 +314,6 @@ const SortableSection = ({
           onMoveDown={onMoveDown}
           isFirst={isFirst}
           isLast={isLast}
-          apiConfig={apiConfig}
-          sections={sections}
-          onApiConfigUpdate={onApiConfigUpdate}
         />
       </div>
 
@@ -355,8 +341,7 @@ interface EditorViewProps {
   onDuplicateSection: (id: string) => void;
   onCopyStyles: (id: string) => void;
   onPasteStyles: (id: string) => void;
-  apiConfig: ApiConfig;
-  onApiConfigUpdate: (config: ApiConfig) => void;
+  globalApiConfig?: GlobalApiConfig;
 }
 
 export const EditorView = ({
@@ -374,8 +359,6 @@ export const EditorView = ({
   onDuplicateSection,
   onCopyStyles,
   onPasteStyles,
-  apiConfig,
-  onApiConfigUpdate
 }: EditorViewProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'editor-drop-zone',
