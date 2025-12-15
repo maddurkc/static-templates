@@ -1404,7 +1404,7 @@ const RunTemplates = () => {
                                 <div className="ml-4">
                                   {contentType === 'text' && (
                                     <div className={styles.inputWrapper}>
-                                      <Input
+                                      <Textarea
                                         id={`var-${section.id}`}
                                         placeholder="Enter content..."
                                         value={typeof variables[section.id] === 'object' 
@@ -1416,6 +1416,8 @@ const RunTemplates = () => {
                                           [section.id]: e.target.value
                                         }))}
                                         onFocus={() => scrollToSection(section.id)}
+                                        rows={4}
+                                        className="min-h-[80px] resize-y"
                                       />
                                       <Popover>
                                         <PopoverTrigger asChild>
