@@ -13,10 +13,13 @@
   line-height: 1.5;
   outline: none;
   overflow-y: auto;
+  max-height: calc(1.5em * 2 + 16px); // 2 lines + padding
+  transition: max-height 0.2s ease;
   
   &:focus {
     border-color: hsl(var(--ring));
     box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+    max-height: 200px; // Expand on focus to show more content
   }
   
   &:empty:before {
