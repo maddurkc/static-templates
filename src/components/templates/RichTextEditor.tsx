@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bold, Italic, Underline, Type, Link, Unlink } from "lucide-react";
+import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough } from "lucide-react";
 import styles from "./RichTextEditor.module.scss";
 
 interface RichTextEditorProps {
@@ -62,24 +62,31 @@ export const RichTextEditor = ({
     }
   }, []);
 
+  const findLinkAncestor = useCallback((node: Node | null): HTMLAnchorElement | null => {
+    while (node && node !== editorRef.current) {
+      if (node.nodeName === 'A') {
+        return node as HTMLAnchorElement;
+      }
+      node = node.parentNode;
+    }
+    return null;
+  }, []);
+
   const checkIfLink = useCallback(() => {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
-      let node = range.commonAncestorContainer;
-      while (node && node !== editorRef.current) {
-        if (node.nodeName === 'A') {
-          setIsLink(true);
-          setLinkUrl((node as HTMLAnchorElement).href || '');
-          return true;
-        }
-        node = node.parentNode as Node;
+      const linkEl = findLinkAncestor(range.commonAncestorContainer);
+      if (linkEl) {
+        setIsLink(true);
+        setLinkUrl(linkEl.href || '');
+        return true;
       }
     }
     setIsLink(false);
     setLinkUrl('');
     return false;
-  }, []);
+  }, [findLinkAncestor]);
 
   const handleSelectionChange = useCallback(() => {
     const selection = window.getSelection();
@@ -230,6 +237,38 @@ export const RichTextEditor = ({
     }
   };
 
+  const handleLinkClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const linkEl = findLinkAncestor(target);
+    if (linkEl) {
+      e.preventDefault();
+      // Select the entire link text
+      const range = document.createRange();
+      range.selectNodeContents(linkEl);
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      // Save selection and show link input with current URL
+      savedSelectionRef.current = range.cloneRange();
+      setIsLink(true);
+      setLinkUrl(linkEl.href || '');
+      setHasSelection(true);
+      setShowLinkInput(true);
+      // Position toolbar
+      const rect = linkEl.getBoundingClientRect();
+      const editorRect = editorRef.current?.getBoundingClientRect();
+      if (editorRect) {
+        setToolbarPosition({
+          top: rect.top - editorRect.top - 45,
+          left: rect.left - editorRect.left + rect.width / 2
+        });
+      }
+      setShowToolbar(true);
+    }
+  }, [findLinkAncestor]);
+
   const minHeight = singleLine ? 32 : rows * 24;
 
   return (
@@ -299,6 +338,15 @@ export const RichTextEditor = ({
                 title="Underline (Ctrl+U)"
               >
                 <Underline className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => applyStyle('strikeThrough')}
+                title="Strikethrough"
+              >
+                <Strikethrough className="h-3.5 w-3.5" />
               </Button>
               
               <div className={styles.separator} />
@@ -413,6 +461,7 @@ export const RichTextEditor = ({
         onFocus={onFocus}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
+        onClick={handleLinkClick}
         data-placeholder={placeholder}
         suppressContentEditableWarning
       />
