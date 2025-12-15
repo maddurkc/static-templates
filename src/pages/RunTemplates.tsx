@@ -1405,17 +1405,91 @@ const RunTemplates = () => {
                                         <PopoverContent className={styles.formatPopover}>
                                           <div className="space-y-3">
                                             <div className={styles.styleButtons}>
-                                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                              <Button 
+                                                size="sm" 
+                                                variant={typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).bold ? "default" : "outline"} 
+                                                className="h-8 w-8 p-0"
+                                                onClick={() => {
+                                                  const currentValue = variables[section.id];
+                                                  const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
+                                                  const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
+                                                  setVariables(prev => ({
+                                                    ...prev,
+                                                    [section.id]: { ...currentStyle, text: textValue, bold: !currentStyle.bold }
+                                                  }));
+                                                }}
+                                              >
                                                 <Bold className="h-3.5 w-3.5" />
                                               </Button>
-                                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                              <Button 
+                                                size="sm" 
+                                                variant={typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).italic ? "default" : "outline"} 
+                                                className="h-8 w-8 p-0"
+                                                onClick={() => {
+                                                  const currentValue = variables[section.id];
+                                                  const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
+                                                  const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
+                                                  setVariables(prev => ({
+                                                    ...prev,
+                                                    [section.id]: { ...currentStyle, text: textValue, italic: !currentStyle.italic }
+                                                  }));
+                                                }}
+                                              >
                                                 <Italic className="h-3.5 w-3.5" />
                                               </Button>
-                                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                              <Button 
+                                                size="sm" 
+                                                variant={typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).underline ? "default" : "outline"} 
+                                                className="h-8 w-8 p-0"
+                                                onClick={() => {
+                                                  const currentValue = variables[section.id];
+                                                  const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
+                                                  const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
+                                                  setVariables(prev => ({
+                                                    ...prev,
+                                                    [section.id]: { ...currentStyle, text: textValue, underline: !currentStyle.underline }
+                                                  }));
+                                                }}
+                                              >
                                                 <Underline className="h-3.5 w-3.5" />
                                               </Button>
                                             </div>
-                                            <Input type="color" className="h-8 w-16" />
+                                            <div className="flex gap-2">
+                                              <div className="flex flex-col gap-1">
+                                                <Label className="text-xs">Text</Label>
+                                                <Input 
+                                                  type="color" 
+                                                  className="h-8 w-12 p-0 cursor-pointer"
+                                                  value={typeof variables[section.id] === 'object' ? (variables[section.id] as TextStyle).color || '#000000' : '#000000'}
+                                                  onChange={(e) => {
+                                                    const currentValue = variables[section.id];
+                                                    const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
+                                                    const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
+                                                    setVariables(prev => ({
+                                                      ...prev,
+                                                      [section.id]: { ...currentStyle, text: textValue, color: e.target.value }
+                                                    }));
+                                                  }}
+                                                />
+                                              </div>
+                                              <div className="flex flex-col gap-1">
+                                                <Label className="text-xs">Background</Label>
+                                                <Input 
+                                                  type="color" 
+                                                  className="h-8 w-12 p-0 cursor-pointer"
+                                                  value={typeof variables[section.id] === 'object' ? (variables[section.id] as TextStyle).backgroundColor || '#ffffff' : '#ffffff'}
+                                                  onChange={(e) => {
+                                                    const currentValue = variables[section.id];
+                                                    const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
+                                                    const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
+                                                    setVariables(prev => ({
+                                                      ...prev,
+                                                      [section.id]: { ...currentStyle, text: textValue, backgroundColor: e.target.value }
+                                                    }));
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
                                           </div>
                                         </PopoverContent>
                                       </Popover>
