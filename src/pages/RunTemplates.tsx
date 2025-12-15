@@ -1323,22 +1323,68 @@ const RunTemplates = () => {
 
                   {/* Body Content Section - Combined Labels and Variables */}
                   {(() => {
-                    // Get labeled-content sections from template
-                    const labeledSections = selectedTemplate?.sections?.filter(
-                      section => section.type === 'labeled-content'
-                    ) || [];
+                    // Build ordered sections with their associated variables
+                    const allSections = selectedTemplate?.sections || [];
                     
-                    // Get other variables (non-labeled-content)
-                    const otherVariables = extractAllVariables(selectedTemplate).filter(varName => {
-                      // Exclude variables that belong to labeled-content sections
-                      const isLabeledContentVar = labeledSections.some(section => {
-                        const listVarName = section.variables?.listVariableName as string;
-                        return section.id === varName || listVarName === varName;
-                      });
-                      return !isLabeledContentVar;
+                    // Create a map of section variables for quick lookup
+                    const sectionVariableMap = new Map<string, { section: Section; varNames: string[] }>();
+                    
+                    allSections.forEach((section: Section) => {
+                      const varNames: string[] = [];
+                      
+                      if (section.type === 'labeled-content') {
+                        // labeled-content sections are handled separately in their own render
+                        sectionVariableMap.set(section.id, { section, varNames: [] });
+                      } else if (section.type === 'mixed-content' && section.variables?.content) {
+                        // Extract variables from mixed-content
+                        const mixedVars = extractVariables(section.variables.content as string);
+                        const placeholderMatches = (section.variables.content as string).match(/\{\{(\w+)\}\}/g) || [];
+                        placeholderMatches.forEach(match => {
+                          const varName = match.replace(/\{\{|\}\}/g, '');
+                          if (!varNames.includes(varName)) varNames.push(varName);
+                        });
+                        mixedVars.forEach(v => { if (!varNames.includes(v)) varNames.push(v); });
+                        sectionVariableMap.set(section.id, { section, varNames });
+                      } else if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type) && section.content) {
+                        // Extract placeholders from content
+                        const placeholderMatches = section.content.match(/\{\{(\w+)\}\}/g) || [];
+                        placeholderMatches.forEach(match => {
+                          const varName = match.replace(/\{\{|\}\}/g, '');
+                          if (!varNames.includes(varName)) varNames.push(varName);
+                        });
+                        const contentVars = extractVariables(section.content);
+                        contentVars.forEach(v => { if (!varNames.includes(v)) varNames.push(v); });
+                        sectionVariableMap.set(section.id, { section, varNames });
+                      } else if (['bullet-list-circle', 'bullet-list-disc', 'bullet-list-square', 'number-list-1', 'number-list-i', 'number-list-a'].includes(section.type)) {
+                        const listVarName = section.variables?.listVariableName as string || section.id;
+                        varNames.push(listVarName);
+                        sectionVariableMap.set(section.id, { section, varNames });
+                      } else if (section.type === 'table') {
+                        varNames.push(section.id);
+                        sectionVariableMap.set(section.id, { section, varNames });
+                      }
                     });
                     
-                    const hasContent = labeledSections.length > 0 || otherVariables.length > 0;
+                    // Get labeled-content sections in order
+                    const labeledSections = allSections.filter(
+                      (section: Section) => section.type === 'labeled-content'
+                    );
+                    
+                    // Get other variables in section order (excluding labeled-content which is handled separately)
+                    const orderedOtherVariables: { section: Section; varName: string }[] = [];
+                    allSections.forEach((section: Section) => {
+                      const entry = sectionVariableMap.get(section.id);
+                      if (entry && section.type !== 'labeled-content') {
+                        entry.varNames.forEach(varName => {
+                          // Avoid duplicates
+                          if (!orderedOtherVariables.some(ov => ov.varName === varName)) {
+                            orderedOtherVariables.push({ section, varName });
+                          }
+                        });
+                      }
+                    });
+                    
+                    const hasContent = labeledSections.length > 0 || orderedOtherVariables.length > 0;
                     
                     if (!hasContent && Object.keys(subjectVariables).length === 0) {
                       return (
@@ -1591,10 +1637,10 @@ const RunTemplates = () => {
                           );
                         })}
                         
-                        {/* Other Variables (non-labeled-content) */}
-                        {otherVariables.length > 0 && (
+                        {/* Other Variables (non-labeled-content) - in section order */}
+                        {orderedOtherVariables.length > 0 && (
                           <div className={styles.formGrid}>
-                            {otherVariables.map((varName) => {
+                            {orderedOtherVariables.map(({ section, varName }) => {
                               const isList = isListVariable(varName);
                               const isTable = isTableVariable(varName);
                               const editable = isLabelEditable(varName);
