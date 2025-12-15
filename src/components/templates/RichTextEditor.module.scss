@@ -28,6 +28,16 @@
     color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
+
+  &.singleLine {
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    resize: none;
+    padding: 0.375rem 0.75rem;
+    min-height: 32px !important;
+    max-height: 32px;
+  }
 }
 
 .floatingToolbar {

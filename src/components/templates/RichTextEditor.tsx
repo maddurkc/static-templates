@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bold, Italic, Underline } from "lucide-react";
+import { Bold, Italic, Underline, Type } from "lucide-react";
 import styles from "./RichTextEditor.module.scss";
 
 interface RichTextEditorProps {
@@ -12,10 +12,12 @@ interface RichTextEditorProps {
   onFocus?: () => void;
   rows?: number;
   className?: string;
+  singleLine?: boolean;
 }
 
 const TEXT_COLORS = ['#000000', '#FF0000', '#0066CC', '#008000', '#FF6600', '#800080', '#666666', '#003366'];
 const BG_COLORS = ['#FFFFFF', '#FFFF00', '#90EE90', '#ADD8E6', '#FFB6C1', '#E6E6FA', '#F5F5DC', '#F0F0F0'];
+const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px'];
 
 export const RichTextEditor = ({ 
   value, 
@@ -23,7 +25,8 @@ export const RichTextEditor = ({
   placeholder = "Enter content...",
   onFocus,
   rows = 4,
-  className = ""
+  className = "",
+  singleLine = false
 }: RichTextEditorProps) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [showToolbar, setShowToolbar] = useState(false);
@@ -103,6 +106,22 @@ export const RichTextEditor = ({
     editorRef.current?.focus();
   }, [onChange, restoreSelection]);
 
+  const applyFontSize = useCallback((size: string) => {
+    restoreSelection();
+    // Use a span with inline style for font size
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      const range = selection.getRangeAt(0);
+      const span = document.createElement('span');
+      span.style.fontSize = size;
+      range.surroundContents(span);
+      if (editorRef.current) {
+        onChange(editorRef.current.innerHTML);
+      }
+    }
+    editorRef.current?.focus();
+  }, [onChange, restoreSelection]);
+
   const applyColor = useCallback((color: string, isBackground: boolean) => {
     restoreSelection();
     if (isBackground) {
@@ -123,6 +142,11 @@ export const RichTextEditor = ({
   }, [onChange]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Prevent Enter key in single line mode
+    if (singleLine && e.key === 'Enter') {
+      e.preventDefault();
+      return;
+    }
     // Handle bold/italic/underline shortcuts
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'b') {
@@ -141,13 +165,15 @@ export const RichTextEditor = ({
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const text = e.clipboardData.getData('text/plain');
-    document.execCommand('insertText', false, text);
+    // For single line, remove newlines
+    const processedText = singleLine ? text.replace(/[\r\n]+/g, ' ') : text;
+    document.execCommand('insertText', false, processedText);
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
     }
   };
 
-  const minHeight = rows * 24;
+  const minHeight = singleLine ? 32 : rows * 24;
 
   return (
     <div className={`${styles.editorContainer} ${className}`}>
@@ -190,6 +216,30 @@ export const RichTextEditor = ({
           
           <div className={styles.separator} />
           
+          {/* Font Size */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
+                <Type className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+              <Label className="text-xs mb-1 block">Font Size</Label>
+              <div className="flex flex-wrap gap-1 max-w-[140px]">
+                {FONT_SIZES.map((size) => (
+                  <button
+                    key={size}
+                    className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
+                    onClick={() => applyFontSize(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          {/* Text Color */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
@@ -211,6 +261,7 @@ export const RichTextEditor = ({
             </PopoverContent>
           </Popover>
           
+          {/* Background Color */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
@@ -237,7 +288,7 @@ export const RichTextEditor = ({
       <div
         ref={editorRef}
         contentEditable
-        className={styles.editor}
+        className={`${styles.editor} ${singleLine ? styles.singleLine : ''}`}
         style={{ minHeight: `${minHeight}px` }}
         onInput={handleInput}
         onFocus={onFocus}
