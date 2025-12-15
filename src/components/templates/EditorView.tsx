@@ -475,9 +475,6 @@ export const EditorView = ({
               onCopyStyles={onCopyStyles}
               onPasteStyles={onPasteStyles}
               renderChildren={renderNestedChildren}
-              apiConfig={apiConfig}
-              sections={sections}
-              onApiConfigUpdate={onApiConfigUpdate}
             />
           ))
         )}
