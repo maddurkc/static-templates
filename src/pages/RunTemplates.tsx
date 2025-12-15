@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline, Eye, Loader2, FileJson, Pencil } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil } from "lucide-react";
+import { TextStylePopover } from "@/components/templates/TextStylePopover";
 import {
   Dialog,
   DialogContent,
@@ -1419,111 +1420,13 @@ const RunTemplates = () => {
                                         rows={4}
                                         className="min-h-[80px] resize-y"
                                       />
-                                      <Popover>
-                                        <PopoverTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <Palette className="h-4 w-4" />
-                                          </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className={styles.formatPopover}>
-                                          <div className="space-y-3">
-                                            <div className={styles.styleButtons}>
-                                              <Button 
-                                                size="sm" 
-                                                variant={typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).bold ? "default" : "outline"} 
-                                                className="h-8 w-8 p-0"
-                                                onClick={() => {
-                                                  const currentValue = variables[section.id];
-                                                  const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
-                                                  const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
-                                                  setVariables(prev => ({
-                                                    ...prev,
-                                                    [section.id]: { ...currentStyle, text: textValue, bold: !currentStyle.bold }
-                                                  }));
-                                                }}
-                                              >
-                                                <Bold className="h-3.5 w-3.5" />
-                                              </Button>
-                                              <Button 
-                                                size="sm" 
-                                                variant={typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).italic ? "default" : "outline"} 
-                                                className="h-8 w-8 p-0"
-                                                onClick={() => {
-                                                  const currentValue = variables[section.id];
-                                                  const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
-                                                  const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
-                                                  setVariables(prev => ({
-                                                    ...prev,
-                                                    [section.id]: { ...currentStyle, text: textValue, italic: !currentStyle.italic }
-                                                  }));
-                                                }}
-                                              >
-                                                <Italic className="h-3.5 w-3.5" />
-                                              </Button>
-                                              <Button 
-                                                size="sm" 
-                                                variant={typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).underline ? "default" : "outline"} 
-                                                className="h-8 w-8 p-0"
-                                                onClick={() => {
-                                                  const currentValue = variables[section.id];
-                                                  const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
-                                                  const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
-                                                  setVariables(prev => ({
-                                                    ...prev,
-                                                    [section.id]: { ...currentStyle, text: textValue, underline: !currentStyle.underline }
-                                                  }));
-                                                }}
-                                              >
-                                                <Underline className="h-3.5 w-3.5" />
-                                              </Button>
-                                            </div>
-                                            <div className="space-y-2">
-                                              <div>
-                                                <Label className="text-xs mb-1 block">Text Color</Label>
-                                                <div className="flex flex-wrap gap-1">
-                                                  {['#000000', '#FF0000', '#0066CC', '#008000', '#FF6600', '#800080', '#666666', '#003366'].map((color) => (
-                                                    <button
-                                                      key={color}
-                                                      className={`w-6 h-6 rounded border-2 ${typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).color === color ? 'border-primary ring-2 ring-primary/50' : 'border-border'}`}
-                                                      style={{ backgroundColor: color }}
-                                                      onClick={() => {
-                                                        const currentValue = variables[section.id];
-                                                        const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
-                                                        const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
-                                                        setVariables(prev => ({
-                                                          ...prev,
-                                                          [section.id]: { ...currentStyle, text: textValue, color }
-                                                        }));
-                                                      }}
-                                                    />
-                                                  ))}
-                                                </div>
-                                              </div>
-                                              <div>
-                                                <Label className="text-xs mb-1 block">Background</Label>
-                                                <div className="flex flex-wrap gap-1">
-                                                  {['#FFFFFF', '#FFFF00', '#90EE90', '#ADD8E6', '#FFB6C1', '#E6E6FA', '#F5F5DC', '#F0F0F0'].map((color) => (
-                                                    <button
-                                                      key={color}
-                                                      className={`w-6 h-6 rounded border-2 ${typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).backgroundColor === color ? 'border-primary ring-2 ring-primary/50' : 'border-border'}`}
-                                                      style={{ backgroundColor: color }}
-                                                      onClick={() => {
-                                                        const currentValue = variables[section.id];
-                                                        const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
-                                                        const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
-                                                        setVariables(prev => ({
-                                                          ...prev,
-                                                          [section.id]: { ...currentStyle, text: textValue, backgroundColor: color }
-                                                        }));
-                                                      }}
-                                                    />
-                                                  ))}
-                                                </div>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </PopoverContent>
-                                      </Popover>
+                                      <TextStylePopover
+                                        value={variables[section.id] || ''}
+                                        onChange={(newStyle) => setVariables(prev => ({
+                                          ...prev,
+                                          [section.id]: newStyle
+                                        }))}
+                                      />
                                     </div>
                                   )}
                                   
@@ -1539,13 +1442,30 @@ const RunTemplates = () => {
                                             onChange={(e) => {
                                               const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
                                               const newItems = [...currentItems] as (string | ListItemStyle)[];
-                                              newItems[itemIdx] = e.target.value;
+                                              const currentItem = currentItems[itemIdx];
+                                              if (typeof currentItem === 'object') {
+                                                newItems[itemIdx] = { ...currentItem, text: e.target.value };
+                                              } else {
+                                                newItems[itemIdx] = e.target.value;
+                                              }
                                               setListVariables(prev => ({
                                                 ...prev,
                                                 [listVarName]: newItems as string[] | ListItemStyle[]
                                               }));
                                             }}
                                             onFocus={() => scrollToSection(section.id)}
+                                          />
+                                          <TextStylePopover
+                                            value={typeof item === 'object' ? item : { text: item as string }}
+                                            onChange={(newStyle) => {
+                                              const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                              const newItems = [...currentItems] as ListItemStyle[];
+                                              newItems[itemIdx] = newStyle;
+                                              setListVariables(prev => ({
+                                                ...prev,
+                                                [listVarName]: newItems
+                                              }));
+                                            }}
                                           />
                                           <Button
                                             variant="ghost"
@@ -1722,11 +1642,28 @@ const RunTemplates = () => {
                                           ? (variables[varName] as TextStyle).text 
                                           : (variables[varName] as string) || ''
                                         }
-                                        onChange={(e) => setVariables(prev => ({
-                                          ...prev,
-                                          [varName]: e.target.value
-                                        }))}
+                                        onChange={(e) => {
+                                          const currentValue = variables[varName];
+                                          if (typeof currentValue === 'object') {
+                                            setVariables(prev => ({
+                                              ...prev,
+                                              [varName]: { ...(currentValue as TextStyle), text: e.target.value }
+                                            }));
+                                          } else {
+                                            setVariables(prev => ({
+                                              ...prev,
+                                              [varName]: e.target.value
+                                            }));
+                                          }
+                                        }}
                                         onFocus={() => scrollToSection(section.id)}
+                                      />
+                                      <TextStylePopover
+                                        value={variables[varName] || ''}
+                                        onChange={(newStyle) => setVariables(prev => ({
+                                          ...prev,
+                                          [varName]: newStyle
+                                        }))}
                                       />
                                     </div>
                                   </div>
@@ -1773,11 +1710,29 @@ const RunTemplates = () => {
                                             ? (variables[varName] as TextStyle).text 
                                             : (variables[varName] as string) || ''
                                           }
-                                          onChange={(e) => setVariables(prev => ({
-                                            ...prev,
-                                            [varName]: e.target.value
-                                          }))}
+                                          onChange={(e) => {
+                                            const currentValue = variables[varName];
+                                            if (typeof currentValue === 'object') {
+                                              setVariables(prev => ({
+                                                ...prev,
+                                                [varName]: { ...(currentValue as TextStyle), text: e.target.value }
+                                              }));
+                                            } else {
+                                              setVariables(prev => ({
+                                                ...prev,
+                                                [varName]: e.target.value
+                                              }));
+                                            }
+                                          }}
                                           onFocus={() => scrollToSection(section.id)}
+                                          disabled={!editable}
+                                        />
+                                        <TextStylePopover
+                                          value={variables[varName] || ''}
+                                          onChange={(newStyle) => setVariables(prev => ({
+                                            ...prev,
+                                            [varName]: newStyle
+                                          }))}
                                           disabled={!editable}
                                         />
                                       </div>
@@ -1846,6 +1801,17 @@ const RunTemplates = () => {
                                             }}
                                             onFocus={() => scrollToSection(section.id)}
                                             className="flex-1 h-8"
+                                            disabled={!editable}
+                                          />
+                                          <TextStylePopover
+                                            value={typeof item === 'object' ? item : { text: item as string }}
+                                            onChange={(newStyle) => {
+                                              setListVariables(prev => {
+                                                const newItems = [...(prev[listVarName] || [])] as ListItemStyle[];
+                                                newItems[index] = newStyle;
+                                                return { ...prev, [listVarName]: newItems };
+                                              });
+                                            }}
                                             disabled={!editable}
                                           />
                                           <Button
