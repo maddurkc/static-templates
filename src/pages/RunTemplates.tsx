@@ -1385,20 +1385,26 @@ const RunTemplates = () => {
                                       />
                                     ) : (
                                       <div 
-                                        className="group flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium cursor-pointer hover:bg-muted/50 transition-colors"
+                                        className="group flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => {
                                           setEditingLabelId(section.id);
                                           scrollToSection(section.id);
                                         }}
                                       >
-                                        <span className="flex-1">{labelValue || 'Click to edit...'}</span>
+                                        <span 
+                                          className="flex-1 font-semibold" 
+                                          style={{ fontSize: '1rem', color: '#212529' }}
+                                          dangerouslySetInnerHTML={{ __html: labelValue || 'Click to edit...' }}
+                                        />
                                         <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                                       </div>
                                     )
                                   ) : (
-                                    <div className="px-3 py-1.5 bg-muted rounded text-sm font-medium text-muted-foreground">
-                                      {labelValue}
-                                    </div>
+                                    <div 
+                                      className="px-3 py-1.5 bg-muted rounded"
+                                      style={{ fontSize: '1rem', color: '#212529', fontWeight: 600 }}
+                                      dangerouslySetInnerHTML={{ __html: labelValue }}
+                                    />
                                   )}
                                 </div>
                                 
