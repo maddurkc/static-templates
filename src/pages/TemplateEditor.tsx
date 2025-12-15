@@ -723,7 +723,6 @@ const TemplateEditor = () => {
           sections: allSections,
         });
       }
-      }
 
       toast({
         title: "Saved locally",
@@ -969,82 +968,7 @@ ${indent}</div>`;
     }
   };
 
-  const handleTestApiFetch = async () => {
-    if (!apiConfig.enabled || !apiConfig.templateId) {
-      toast({
-        title: "API not configured",
-        description: "Please select an API template first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate required parameters
-    const validation = validateApiConfig(apiConfig);
-    if (!validation.valid) {
-      toast({
-        title: "Missing parameters",
-        description: `Please provide: ${validation.missingParams.join(', ')}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Build API request from template
-    const request = buildApiRequest(apiConfig);
-    if (!request) {
-      toast({
-        title: "Invalid template",
-        description: "Could not build API request from template.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const options: RequestInit = {
-        method: request.method,
-        headers: request.headers,
-      };
-
-      if (request.body && (request.method === 'POST' || request.method === 'PUT')) {
-        options.body = request.body;
-        options.headers = { ...options.headers, 'Content-Type': 'application/json' };
-      }
-
-      const response = await fetch(request.url, options);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const data = await response.json();
-
-      // Apply mappings to sections
-      const updatedSections = [...sections];
-      apiConfig.mappings.forEach(mapping => {
-        const sectionIndex = updatedSections.findIndex(s => s.id === mapping.sectionId);
-        if (sectionIndex !== -1) {
-          updatedSections[sectionIndex] = applyApiDataToSection(
-            updatedSections[sectionIndex],
-            data,
-            mapping
-          );
-        }
-      });
-
-      setSections(updatedSections);
-
-      toast({
-        title: "API data fetched",
-        description: "Successfully fetched and mapped data to sections.",
-      });
-    } catch (error) {
-      console.error('API fetch error:', error);
-      toast({
-        title: "Fetch failed",
-        description: error instanceof Error ? error.message : "Failed to fetch API data.",
-        variant: "destructive",
-      });
-    }
-  };
+  // Old section-level API test removed - now handled by GlobalApiPanel
 
   return (
     <DndContext
@@ -1133,6 +1057,22 @@ ${indent}</div>`;
                 </SheetContent>
               </Sheet>
               
+              {/* Global API Panel Sheet */}
+              <Sheet open={showApiPanel} onOpenChange={setShowApiPanel}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Database className="h-4 w-4 mr-2" />
+                    API ({globalApiConfig.integrations.length})
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-[400px] p-0 overflow-hidden">
+                  <GlobalApiPanel 
+                    config={globalApiConfig}
+                    onUpdate={setGlobalApiConfig}
+                  />
+                </SheetContent>
+              </Sheet>
+              
               {/* Variables Panel Sheet */}
               <Sheet open={showVariablesPanel} onOpenChange={setShowVariablesPanel}>
                 <SheetTrigger asChild>
@@ -1209,17 +1149,6 @@ ${indent}</div>`;
                 </DialogContent>
               </Dialog>
               
-              {apiConfig.enabled && apiConfig.templateId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTestApiFetch}
-                  className="gap-2"
-                >
-                  <Play className="h-4 w-4" />
-                  Test & Fetch API Data
-                </Button>
-              )}
               
               {/* Validation indicator */}
               {validationErrors.length > 0 && (
@@ -1330,8 +1259,7 @@ ${indent}</div>`;
                     onDuplicateSection={handleDuplicateSection}
                     onCopyStyles={handleCopyStyles}
                     onPasteStyles={handlePasteStyles}
-                    apiConfig={apiConfig}
-                    onApiConfigUpdate={setApiConfig}
+                    globalApiConfig={globalApiConfig}
                   />
                 </SortableContext>
               </ResizablePanel>
@@ -1367,8 +1295,7 @@ ${indent}</div>`;
                       onDuplicateSection={handleDuplicateSection}
                       onCopyStyles={handleCopyStyles}
                       onPasteStyles={handlePasteStyles}
-                      apiConfig={apiConfig}
-                      onApiConfigUpdate={setApiConfig}
+                      globalApiConfig={globalApiConfig}
                     />
                   </SortableContext>
                 </div>

@@ -1,5 +1,5 @@
 import { Section } from "@/types/section";
-import { ApiConfig } from "@/types/api-config";
+import { GlobalApiConfig } from "@/types/global-api-config";
 
 export interface Template {
   id: string;
@@ -9,7 +9,7 @@ export interface Template {
   createdAt: string;
   sectionCount: number;
   archived?: boolean;
-  apiConfig?: ApiConfig;
+  globalApiConfig?: GlobalApiConfig;
   sections?: Section[];
 }
 

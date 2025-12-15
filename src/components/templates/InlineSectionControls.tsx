@@ -1,11 +1,9 @@
 import { Section } from "@/types/section";
-import { ApiConfig } from "@/types/api-config";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Settings2, Palette, Plug, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { Settings2, Palette, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { VariableEditor } from "./VariableEditor";
 import { StyleEditor } from "./StyleEditor";
-import { ApiConfigPopover } from "./ApiConfigPopover";
 import styles from "./InlineSectionControls.module.scss";
 
 interface InlineSectionControlsProps {
@@ -16,9 +14,6 @@ interface InlineSectionControlsProps {
   onMoveDown: () => void;
   isFirst: boolean;
   isLast: boolean;
-  apiConfig: ApiConfig;
-  sections: Section[];
-  onApiConfigUpdate: (config: ApiConfig) => void;
 }
 
 export const InlineSectionControls = ({
@@ -29,9 +24,6 @@ export const InlineSectionControls = ({
   onMoveDown,
   isFirst,
   isLast,
-  apiConfig,
-  sections,
-  onApiConfigUpdate
 }: InlineSectionControlsProps) => {
   return (
     <div className={styles.controls}>
@@ -76,33 +68,6 @@ export const InlineSectionControls = ({
           onClick={(e) => e.stopPropagation()}
         >
           <StyleEditor section={section} onUpdate={onUpdate} />
-        </PopoverContent>
-      </Popover>
-
-      {/* API Integration */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={styles.controlButton}
-            title="API Integration"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Plug className={styles.icon} />
-            {apiConfig.enabled && <span className={styles.statusDot} />}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent 
-          style={{ width: '500px' }} 
-          align="end"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ApiConfigPopover
-            apiConfig={apiConfig}
-            sections={sections}
-            onUpdate={onApiConfigUpdate}
-          />
         </PopoverContent>
       </Popover>
 

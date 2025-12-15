@@ -463,18 +463,6 @@ export const responseToTemplate = (response: TemplateResponse): Template => {
     createdAt: response.createdAt,
     sectionCount: response.sectionCount,
     archived: response.archived,
-    apiConfig: response.apiConfig ? {
-      enabled: response.apiConfig.enabled,
-      templateId: response.apiConfig.templateId,
-      paramValues: response.apiConfig.paramValues,
-      mappings: response.apiConfig.mappings.map(m => ({
-        id: m.id,
-        sectionId: m.sectionId,
-        apiPath: m.apiPath,
-        dataType: m.dataType as 'text' | 'list' | 'html',
-        variableName: m.variableName,
-      })),
-    } : undefined,
     sections,
   };
 };
