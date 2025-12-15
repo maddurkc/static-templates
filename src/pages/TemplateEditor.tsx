@@ -3,7 +3,7 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, P
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
 import { TemplateVariable } from "@/types/template-variable";
-import { ApiConfig, DEFAULT_API_CONFIG } from "@/types/api-config";
+import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-config";
 import { sectionTypes } from "@/data/sectionTypes";
 import { SectionLibrary } from "@/components/templates/SectionLibrary";
 import { EditorView } from "@/components/templates/EditorView";
@@ -11,6 +11,7 @@ import { PreviewView } from "@/components/templates/PreviewView";
 import { TextSelectionToolbar } from "@/components/templates/TextSelectionToolbar";
 import { ValidationErrorsPanel } from "@/components/templates/ValidationErrorsPanel";
 import { VariablesPanel } from "@/components/templates/VariablesPanel";
+import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -18,12 +19,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
-import { renderSectionContent, applyApiDataToSection } from "@/lib/templateUtils";
-import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
+import { renderSectionContent } from "@/lib/templateUtils";
 import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpdateRequest, fetchTemplateById } from "@/lib/templateApi";
 import { validateTemplate, validateTemplateName, validateSubject, ValidationError } from "@/lib/templateValidation";
 import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
@@ -78,7 +78,8 @@ const TemplateEditor = () => {
     }
   ]);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
-  const [apiConfig, setApiConfig] = useState<ApiConfig>(DEFAULT_API_CONFIG);
+  const [globalApiConfig, setGlobalApiConfig] = useState<GlobalApiConfig>(DEFAULT_GLOBAL_API_CONFIG);
+  const [showApiPanel, setShowApiPanel] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -156,9 +157,9 @@ const TemplateEditor = () => {
       setSections(userSections);
     }
     
-    // Load API config
-    if (template.apiConfig) {
-      setApiConfig(template.apiConfig);
+    // Load Global API config
+    if (template.globalApiConfig) {
+      setGlobalApiConfig(template.globalApiConfig);
     }
     
     toast({
@@ -626,44 +627,31 @@ const TemplateEditor = () => {
       console.log('Extracted template variables:', templateVariables);
       console.log('Subject with Thymeleaf:', subjectForStorage);
       
-      // Build API config request if enabled
-      const apiConfigRequest = apiConfig.enabled ? {
-        enabled: apiConfig.enabled,
-        templateId: apiConfig.templateId,
-        paramValues: apiConfig.paramValues,
-        mappings: apiConfig.mappings.map(m => ({
-          sectionId: m.sectionId,
-          apiPath: m.apiPath,
-          dataType: m.dataType,
-          variableName: m.variableName,
-        })),
-      } : undefined;
+      // Build global API config for storage
+      const globalApiConfigRequest = globalApiConfig.integrations.length > 0 ? globalApiConfig : undefined;
 
       if (isEditMode && editingTemplateId) {
         // UPDATE: Call backend API to update existing template
         const updateRequest: TemplateUpdateRequest = {
           name: templateName,
-          subject: subjectForStorage, // Store subject with Thymeleaf tags
+          subject: subjectForStorage,
           html,
           sectionCount: allSections.length,
           archived: false,
           sections: apiSections,
-          variables: variableRequests, // Include extracted variables
-          apiConfig: apiConfigRequest,
+          variables: variableRequests,
         };
 
-        // Call backend API
         const response = await templateApi.updateTemplate(editingTemplateId, updateRequest);
         console.log('Template updated via API:', response);
         
-        // Also update local storage as fallback
         updateTemplate(editingTemplateId, {
           name: templateName,
           subject: subjectForStorage,
           html,
           sectionCount: allSections.length,
           archived: false,
-          apiConfig: apiConfig.enabled ? apiConfig : undefined,
+          globalApiConfig: globalApiConfigRequest,
           sections: allSections,
         });
 
@@ -675,20 +663,17 @@ const TemplateEditor = () => {
         // CREATE: Call backend API to create new template
         const createRequest: TemplateCreateRequest = {
           name: templateName,
-          subject: subjectForStorage, // Store subject with Thymeleaf tags
+          subject: subjectForStorage,
           html,
           sectionCount: allSections.length,
           archived: false,
           sections: apiSections,
-          variables: variableRequests, // Include extracted variables
-          apiConfig: apiConfigRequest,
+          variables: variableRequests,
         };
 
-        // Call backend API
         const response = await templateApi.createTemplate(createRequest);
         console.log('Template created via API:', response);
         
-        // Also save to local storage as fallback
         saveTemplate({
           name: templateName,
           subject: subjectForStorage,
@@ -696,7 +681,7 @@ const TemplateEditor = () => {
           createdAt: new Date().toISOString(),
           sectionCount: allSections.length,
           archived: false,
-          apiConfig: apiConfig.enabled ? apiConfig : undefined,
+          globalApiConfig: globalApiConfigRequest,
           sections: allSections,
         });
 
@@ -706,12 +691,10 @@ const TemplateEditor = () => {
         });
       }
 
-      // Navigate back to templates list
       setTimeout(() => navigate('/templates'), 500);
     } catch (error: any) {
       console.error('Error saving template:', error);
       
-      // Fallback to local storage only if API fails
       const allSections = [headerSection, ...sections, footerSection];
       const html = generateHTMLWithPlaceholders();
       const subjectForStorage = templateSubject 
@@ -725,7 +708,7 @@ const TemplateEditor = () => {
           html,
           sectionCount: allSections.length,
           archived: false,
-          apiConfig: apiConfig.enabled ? apiConfig : undefined,
+          globalApiConfig: globalApiConfig.integrations.length > 0 ? globalApiConfig : undefined,
           sections: allSections,
         });
       } else {
@@ -736,9 +719,10 @@ const TemplateEditor = () => {
           createdAt: new Date().toISOString(),
           sectionCount: allSections.length,
           archived: false,
-          apiConfig: apiConfig.enabled ? apiConfig : undefined,
+          globalApiConfig: globalApiConfig.integrations.length > 0 ? globalApiConfig : undefined,
           sections: allSections,
         });
+      }
       }
 
       toast({
