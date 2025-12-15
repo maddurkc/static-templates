@@ -319,7 +319,9 @@ export const RichTextEditor = ({
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0"
-                  onClick={() => {
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     saveSelection();
                     setShowLinkInput(true);
                   }}
