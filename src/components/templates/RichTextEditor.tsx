@@ -290,85 +290,62 @@ export const RichTextEditor = ({
           }}
           onMouseDown={(e) => e.preventDefault()}
         >
-          {showLinkInput ? (
-            <div className={styles.linkInputContainer}>
-              <Input
-                type="url"
-                placeholder="Enter URL..."
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    applyLink();
-                  } else if (e.key === 'Escape') {
-                    setShowLinkInput(false);
-                    setLinkUrl('');
-                  }
-                }}
-                className="h-7 text-xs w-[180px]"
-                autoFocus
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={applyLink}
-              >
-                Apply
-              </Button>
-            </div>
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => applyStyle('bold')}
-                title="Bold (Ctrl+B)"
-              >
-                <Bold className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => applyStyle('italic')}
-                title="Italic (Ctrl+I)"
-              >
-                <Italic className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => applyStyle('underline')}
-                title="Underline (Ctrl+U)"
-              >
-                <Underline className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => applyStyle('strikeThrough')}
-                title="Strikethrough"
-              >
-                <Strikethrough className="h-3.5 w-3.5" />
-              </Button>
-              
-              <div className={styles.separator} />
-              
-              {/* Link */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => applyStyle('bold')}
+            title="Bold (Ctrl+B)"
+          >
+            <Bold className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => applyStyle('italic')}
+            title="Italic (Ctrl+I)"
+          >
+            <Italic className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => applyStyle('underline')}
+            title="Underline (Ctrl+U)"
+          >
+            <Underline className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => applyStyle('strikeThrough')}
+            title="Strikethrough"
+          >
+            <Strikethrough className="h-3.5 w-3.5" />
+          </Button>
+          
+          <div className={styles.separator} />
+          
+          {/* Link Popover */}
+          <Popover open={showLinkInput} onOpenChange={setShowLinkInput}>
+            <PopoverTrigger asChild>
               {isLink ? (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0 text-destructive"
-                  onClick={removeLink}
-                  title="Remove Link"
+                  className="h-7 w-7 p-0 text-primary"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    saveSelection();
+                    setShowLinkInput(true);
+                  }}
+                  title="Edit Link"
                 >
-                  <Unlink className="h-3.5 w-3.5" />
+                  <Link className="h-3.5 w-3.5" />
                 </Button>
               ) : (
                 <Button
@@ -386,77 +363,125 @@ export const RichTextEditor = ({
                   <Link className="h-3.5 w-3.5" />
                 </Button>
               )}
-              
-              <div className={styles.separator} />
-              
-              {/* Font Size */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
-                    <Type className="h-3.5 w-3.5" />
+            </PopoverTrigger>
+            <PopoverContent 
+              className="w-72 p-3" 
+              onMouseDown={(e) => e.preventDefault()}
+              side="top"
+              align="center"
+            >
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Enter URL</Label>
+                <Input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      applyLink();
+                    } else if (e.key === 'Escape') {
+                      setShowLinkInput(false);
+                      setLinkUrl('');
+                    }
+                  }}
+                  className="h-8"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={applyLink}
+                  >
+                    {isLink ? 'Update Link' : 'Add Link'}
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
-                  <Label className="text-xs mb-1 block">Font Size</Label>
-                  <div className="flex flex-wrap gap-1 max-w-[140px]">
-                    {FONT_SIZES.map((size) => (
-                      <button
-                        key={size}
-                        className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
-                        onClick={() => applyFontSize(size)}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              
-              {/* Text Color */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
-                    A
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
-                  <Label className="text-xs mb-1 block">Text Color</Label>
-                  <div className="flex flex-wrap gap-1 max-w-[160px]">
-                    {TEXT_COLORS.map((color) => (
-                      <button
-                        key={color}
-                        className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform"
-                        style={{ backgroundColor: color }}
-                        onClick={() => applyColor(color, false)}
-                      />
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              
-              {/* Background Color */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
-                    <span className="bg-yellow-200 px-1">A</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
-                  <Label className="text-xs mb-1 block">Background</Label>
-                  <div className="flex flex-wrap gap-1 max-w-[160px]">
-                    {BG_COLORS.map((color) => (
-                      <button
-                        key={color}
-                        className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform"
-                        style={{ backgroundColor: color }}
-                        onClick={() => applyColor(color, true)}
-                      />
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </>
-          )}
+                  {isLink && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        removeLink();
+                        setShowLinkInput(false);
+                      }}
+                    >
+                      <Unlink className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          <div className={styles.separator} />
+          
+          {/* Font Size */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
+                <Type className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+              <Label className="text-xs mb-1 block">Font Size</Label>
+              <div className="flex flex-wrap gap-1 max-w-[140px]">
+                {FONT_SIZES.map((size) => (
+                  <button
+                    key={size}
+                    className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
+                    onClick={() => applyFontSize(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          {/* Text Color */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
+                A
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+              <Label className="text-xs mb-1 block">Text Color</Label>
+              <div className="flex flex-wrap gap-1 max-w-[160px]">
+                {TEXT_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform"
+                    style={{ backgroundColor: color }}
+                    onClick={() => applyColor(color, false)}
+                  />
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          {/* Background Color */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
+                <span className="bg-yellow-200 px-1">A</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+              <Label className="text-xs mb-1 block">Background</Label>
+              <div className="flex flex-wrap gap-1 max-w-[160px]">
+                {BG_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform"
+                    style={{ backgroundColor: color }}
+                    onClick={() => applyColor(color, true)}
+                  />
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       )}
       
