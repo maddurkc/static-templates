@@ -1454,40 +1454,48 @@ const RunTemplates = () => {
                                                 <Underline className="h-3.5 w-3.5" />
                                               </Button>
                                             </div>
-                                            <div className="flex gap-2">
-                                              <div className="flex flex-col gap-1">
-                                                <Label className="text-xs">Text</Label>
-                                                <Input 
-                                                  type="color" 
-                                                  className="h-8 w-12 p-0 cursor-pointer"
-                                                  value={typeof variables[section.id] === 'object' ? (variables[section.id] as TextStyle).color || '#000000' : '#000000'}
-                                                  onChange={(e) => {
-                                                    const currentValue = variables[section.id];
-                                                    const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
-                                                    const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
-                                                    setVariables(prev => ({
-                                                      ...prev,
-                                                      [section.id]: { ...currentStyle, text: textValue, color: e.target.value }
-                                                    }));
-                                                  }}
-                                                />
+                                            <div className="space-y-2">
+                                              <div>
+                                                <Label className="text-xs mb-1 block">Text Color</Label>
+                                                <div className="flex flex-wrap gap-1">
+                                                  {['#000000', '#FF0000', '#0066CC', '#008000', '#FF6600', '#800080', '#666666', '#003366'].map((color) => (
+                                                    <button
+                                                      key={color}
+                                                      className={`w-6 h-6 rounded border-2 ${typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).color === color ? 'border-primary ring-2 ring-primary/50' : 'border-border'}`}
+                                                      style={{ backgroundColor: color }}
+                                                      onClick={() => {
+                                                        const currentValue = variables[section.id];
+                                                        const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
+                                                        const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
+                                                        setVariables(prev => ({
+                                                          ...prev,
+                                                          [section.id]: { ...currentStyle, text: textValue, color }
+                                                        }));
+                                                      }}
+                                                    />
+                                                  ))}
+                                                </div>
                                               </div>
-                                              <div className="flex flex-col gap-1">
-                                                <Label className="text-xs">Background</Label>
-                                                <Input 
-                                                  type="color" 
-                                                  className="h-8 w-12 p-0 cursor-pointer"
-                                                  value={typeof variables[section.id] === 'object' ? (variables[section.id] as TextStyle).backgroundColor || '#ffffff' : '#ffffff'}
-                                                  onChange={(e) => {
-                                                    const currentValue = variables[section.id];
-                                                    const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
-                                                    const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
-                                                    setVariables(prev => ({
-                                                      ...prev,
-                                                      [section.id]: { ...currentStyle, text: textValue, backgroundColor: e.target.value }
-                                                    }));
-                                                  }}
-                                                />
+                                              <div>
+                                                <Label className="text-xs mb-1 block">Background</Label>
+                                                <div className="flex flex-wrap gap-1">
+                                                  {['#FFFFFF', '#FFFF00', '#90EE90', '#ADD8E6', '#FFB6C1', '#E6E6FA', '#F5F5DC', '#F0F0F0'].map((color) => (
+                                                    <button
+                                                      key={color}
+                                                      className={`w-6 h-6 rounded border-2 ${typeof variables[section.id] === 'object' && (variables[section.id] as TextStyle).backgroundColor === color ? 'border-primary ring-2 ring-primary/50' : 'border-border'}`}
+                                                      style={{ backgroundColor: color }}
+                                                      onClick={() => {
+                                                        const currentValue = variables[section.id];
+                                                        const textValue = typeof currentValue === 'object' ? (currentValue as TextStyle).text : (currentValue as string) || '';
+                                                        const currentStyle = typeof currentValue === 'object' ? currentValue as TextStyle : { text: textValue };
+                                                        setVariables(prev => ({
+                                                          ...prev,
+                                                          [section.id]: { ...currentStyle, text: textValue, backgroundColor: color }
+                                                        }));
+                                                      }}
+                                                    />
+                                                  ))}
+                                                </div>
                                               </div>
                                             </div>
                                           </div>
