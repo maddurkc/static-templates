@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline, Eye, Loader2, FileJson } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Palette, Bold, Italic, Underline, Eye, Loader2, FileJson, Pencil } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +51,7 @@ const RunTemplates = () => {
   const [jsonImportOpen, setJsonImportOpen] = useState<string | null>(null); // Tracks which table is being imported to
   const [jsonImportValue, setJsonImportValue] = useState('');
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Scroll to section in preview when editing
@@ -1359,19 +1360,39 @@ const RunTemplates = () => {
                                 key={section.id} 
                                 className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}
                               >
-                                {/* Label - inline editable */}
+                                {/* Label - Jira-style editable */}
                                 <div className="mb-2">
                                   {editable ? (
-                                    <Input
-                                      value={labelValue}
-                                      onChange={(e) => setLabelVariables(prev => ({
-                                        ...prev,
-                                        [labelVarName]: e.target.value
-                                      }))}
-                                      onFocus={() => scrollToSection(section.id)}
-                                      className="font-medium text-sm h-9 border-primary/30 focus:border-primary bg-background"
-                                      placeholder="Enter label..."
-                                    />
+                                    editingLabelId === section.id ? (
+                                      <Input
+                                        autoFocus
+                                        value={labelValue}
+                                        onChange={(e) => setLabelVariables(prev => ({
+                                          ...prev,
+                                          [labelVarName]: e.target.value
+                                        }))}
+                                        onFocus={() => scrollToSection(section.id)}
+                                        onBlur={() => setEditingLabelId(null)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' || e.key === 'Escape') {
+                                            setEditingLabelId(null);
+                                          }
+                                        }}
+                                        className="font-medium text-sm h-9 border-primary/30 focus:border-primary bg-background"
+                                        placeholder="Enter label..."
+                                      />
+                                    ) : (
+                                      <div 
+                                        className="group flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium cursor-pointer hover:bg-muted/50 transition-colors"
+                                        onClick={() => {
+                                          setEditingLabelId(section.id);
+                                          scrollToSection(section.id);
+                                        }}
+                                      >
+                                        <span className="flex-1">{labelValue || 'Click to edit...'}</span>
+                                        <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </div>
+                                    )
                                   ) : (
                                     <div className="px-3 py-1.5 bg-muted rounded text-sm font-medium text-muted-foreground">
                                       {labelValue}
