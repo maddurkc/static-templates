@@ -1427,37 +1427,21 @@ const RunTemplates = () => {
                                       {((listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[]).map((item: string | ListItemStyle, itemIdx: number) => (
                                         <div key={itemIdx} className={styles.listItemRow}>
                                           <span className="text-xs text-muted-foreground w-4">{itemIdx + 1}.</span>
-                                          <Input
-                                            className={styles.listItemInput}
-                                            placeholder="List item..."
+                                          <RichTextEditor
                                             value={typeof item === 'object' ? item.text : item}
-                                            onChange={(e) => {
+                                            onChange={(html) => {
                                               const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
                                               const newItems = [...currentItems] as (string | ListItemStyle)[];
-                                              const currentItem = currentItems[itemIdx];
-                                              if (typeof currentItem === 'object') {
-                                                newItems[itemIdx] = { ...currentItem, text: e.target.value };
-                                              } else {
-                                                newItems[itemIdx] = e.target.value;
-                                              }
+                                              newItems[itemIdx] = html;
                                               setListVariables(prev => ({
                                                 ...prev,
                                                 [listVarName]: newItems as string[] | ListItemStyle[]
                                               }));
                                             }}
                                             onFocus={() => scrollToSection(section.id)}
-                                          />
-                                          <TextStylePopover
-                                            value={typeof item === 'object' ? item : { text: item as string }}
-                                            onChange={(newStyle) => {
-                                              const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
-                                              const newItems = [...currentItems] as ListItemStyle[];
-                                              newItems[itemIdx] = newStyle;
-                                              setListVariables(prev => ({
-                                                ...prev,
-                                                [listVarName]: newItems
-                                              }));
-                                            }}
+                                            placeholder="List item..."
+                                            singleLine
+                                            className="flex-1"
                                           />
                                           <Button
                                             variant="ghost"
@@ -1777,34 +1761,19 @@ const RunTemplates = () => {
                                       return (
                                         <div key={index} className={styles.listItemRow}>
                                           <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
-                                          <Input
+                                          <RichTextEditor
                                             value={itemValue}
-                                            placeholder={`Item ${index + 1}`}
-                                            onChange={(e) => {
+                                            onChange={(html) => {
                                               setListVariables(prev => {
                                                 const newItems = [...(prev[listVarName] || [])] as (string | ListItemStyle)[];
-                                                if (typeof newItems[index] === 'object' && 'text' in newItems[index]) {
-                                                  newItems[index] = { ...(newItems[index] as ListItemStyle), text: e.target.value };
-                                                } else {
-                                                  newItems[index] = e.target.value;
-                                                }
+                                                newItems[index] = html;
                                                 return { ...prev, [listVarName]: newItems as string[] | ListItemStyle[] };
                                               });
                                             }}
                                             onFocus={() => scrollToSection(section.id)}
-                                            className="flex-1 h-8"
-                                            disabled={!editable}
-                                          />
-                                          <TextStylePopover
-                                            value={typeof item === 'object' ? item : { text: item as string }}
-                                            onChange={(newStyle) => {
-                                              setListVariables(prev => {
-                                                const newItems = [...(prev[listVarName] || [])] as ListItemStyle[];
-                                                newItems[index] = newStyle;
-                                                return { ...prev, [listVarName]: newItems };
-                                              });
-                                            }}
-                                            disabled={!editable}
+                                            placeholder={`Item ${index + 1}`}
+                                            singleLine
+                                            className="flex-1"
                                           />
                                           <Button
                                             variant="ghost"
