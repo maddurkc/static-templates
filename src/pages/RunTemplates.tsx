@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil } from "lucide-react";
 import { TextStylePopover } from "@/components/templates/TextStylePopover";
+import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import {
   Dialog,
   DialogContent,
@@ -1405,27 +1406,18 @@ const RunTemplates = () => {
                                 <div className="ml-4">
                                   {contentType === 'text' && (
                                     <div className={styles.inputWrapper}>
-                                      <Textarea
-                                        id={`var-${section.id}`}
-                                        placeholder="Enter content..."
+                                      <RichTextEditor
                                         value={typeof variables[section.id] === 'object' 
                                           ? (variables[section.id] as TextStyle).text 
                                           : (variables[section.id] as string) || (section.variables?.content as string) || ''
                                         }
-                                        onChange={(e) => setVariables(prev => ({
+                                        onChange={(html) => setVariables(prev => ({
                                           ...prev,
-                                          [section.id]: e.target.value
+                                          [section.id]: html
                                         }))}
                                         onFocus={() => scrollToSection(section.id)}
                                         rows={4}
-                                        className="min-h-[80px] resize-y"
-                                      />
-                                      <TextStylePopover
-                                        value={variables[section.id] || ''}
-                                        onChange={(newStyle) => setVariables(prev => ({
-                                          ...prev,
-                                          [section.id]: newStyle
-                                        }))}
+                                        placeholder="Enter content... (select text to apply styles)"
                                       />
                                     </div>
                                   )}
