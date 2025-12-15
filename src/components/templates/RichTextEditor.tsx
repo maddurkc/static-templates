@@ -242,21 +242,9 @@ export const RichTextEditor = ({
     const linkEl = findLinkAncestor(target);
     if (linkEl) {
       e.preventDefault();
-      // Select the entire link text
-      const range = document.createRange();
-      range.selectNodeContents(linkEl);
-      const selection = window.getSelection();
-      if (selection) {
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
-      // Save selection and show link input with current URL
-      savedSelectionRef.current = range.cloneRange();
-      setIsLink(true);
-      setLinkUrl(linkEl.href || '');
-      setHasSelection(true);
-      setShowLinkInput(true);
-      // Position toolbar
+      e.stopPropagation();
+      
+      // Position toolbar first
       const rect = linkEl.getBoundingClientRect();
       const editorRect = editorRef.current?.getBoundingClientRect();
       if (editorRect) {
@@ -265,7 +253,27 @@ export const RichTextEditor = ({
           left: rect.left - editorRect.left + rect.width / 2
         });
       }
-      setShowToolbar(true);
+      
+      // Select the entire link text
+      const range = document.createRange();
+      range.selectNodeContents(linkEl);
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      
+      // Save selection and set all states together
+      savedSelectionRef.current = range.cloneRange();
+      
+      // Use setTimeout to ensure DOM selection is complete before showing toolbar
+      setTimeout(() => {
+        setIsLink(true);
+        setLinkUrl(linkEl.href || '');
+        setHasSelection(true);
+        setShowLinkInput(true);
+        setShowToolbar(true);
+      }, 0);
     }
   }, [findLinkAncestor]);
 
