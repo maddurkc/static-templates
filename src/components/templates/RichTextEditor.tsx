@@ -1,8 +1,9 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bold, Italic, Underline, Type } from "lucide-react";
+import { Bold, Italic, Underline, Type, Link, Unlink } from "lucide-react";
 import styles from "./RichTextEditor.module.scss";
 
 interface RichTextEditorProps {
@@ -33,6 +34,9 @@ export const RichTextEditor = ({
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const [hasSelection, setHasSelection] = useState(false);
   const savedSelectionRef = useRef<Range | null>(null);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [isLink, setIsLink] = useState(false);
 
   // Initialize content
   useEffect(() => {
@@ -58,11 +62,31 @@ export const RichTextEditor = ({
     }
   }, []);
 
+  const checkIfLink = useCallback(() => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      let node = range.commonAncestorContainer;
+      while (node && node !== editorRef.current) {
+        if (node.nodeName === 'A') {
+          setIsLink(true);
+          setLinkUrl((node as HTMLAnchorElement).href || '');
+          return true;
+        }
+        node = node.parentNode as Node;
+      }
+    }
+    setIsLink(false);
+    setLinkUrl('');
+    return false;
+  }, []);
+
   const handleSelectionChange = useCallback(() => {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || selection.toString().trim() === "") {
       setShowToolbar(false);
       setHasSelection(false);
+      setShowLinkInput(false);
       return;
     }
 
@@ -71,12 +95,14 @@ export const RichTextEditor = ({
     if (!editorRef.current?.contains(range.commonAncestorContainer)) {
       setShowToolbar(false);
       setHasSelection(false);
+      setShowLinkInput(false);
       return;
     }
 
     // Save selection for later restoration
     saveSelection();
     setHasSelection(true);
+    checkIfLink();
 
     // Position toolbar above selection
     const rect = range.getBoundingClientRect();
@@ -87,7 +113,7 @@ export const RichTextEditor = ({
       left: rect.left - editorRect.left + rect.width / 2
     });
     setShowToolbar(true);
-  }, [saveSelection]);
+  }, [saveSelection, checkIfLink]);
 
   useEffect(() => {
     document.addEventListener("selectionchange", handleSelectionChange);
@@ -135,6 +161,33 @@ export const RichTextEditor = ({
     editorRef.current?.focus();
   }, [onChange, restoreSelection]);
 
+  const applyLink = useCallback(() => {
+    if (!linkUrl.trim()) return;
+    
+    restoreSelection();
+    const url = linkUrl.startsWith('http://') || linkUrl.startsWith('https://') 
+      ? linkUrl 
+      : `https://${linkUrl}`;
+    document.execCommand('createLink', false, url);
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+    setLinkUrl('');
+    setShowLinkInput(false);
+    editorRef.current?.focus();
+  }, [linkUrl, onChange, restoreSelection]);
+
+  const removeLink = useCallback(() => {
+    restoreSelection();
+    document.execCommand('unlink', false);
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+    setIsLink(false);
+    setLinkUrl('');
+    editorRef.current?.focus();
+  }, [onChange, restoreSelection]);
+
   const handleInput = useCallback(() => {
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
@@ -158,6 +211,10 @@ export const RichTextEditor = ({
       } else if (e.key === 'u') {
         e.preventDefault();
         applyStyle('underline');
+      } else if (e.key === 'k') {
+        e.preventDefault();
+        saveSelection();
+        setShowLinkInput(true);
       }
     }
   };
@@ -186,102 +243,162 @@ export const RichTextEditor = ({
           }}
           onMouseDown={(e) => e.preventDefault()}
         >
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={() => applyStyle('bold')}
-            title="Bold (Ctrl+B)"
-          >
-            <Bold className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={() => applyStyle('italic')}
-            title="Italic (Ctrl+I)"
-          >
-            <Italic className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={() => applyStyle('underline')}
-            title="Underline (Ctrl+U)"
-          >
-            <Underline className="h-3.5 w-3.5" />
-          </Button>
-          
-          <div className={styles.separator} />
-          
-          {/* Font Size */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
-                <Type className="h-3.5 w-3.5" />
+          {showLinkInput ? (
+            <div className={styles.linkInputContainer}>
+              <Input
+                type="url"
+                placeholder="Enter URL..."
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyLink();
+                  } else if (e.key === 'Escape') {
+                    setShowLinkInput(false);
+                    setLinkUrl('');
+                  }
+                }}
+                className="h-7 text-xs w-[180px]"
+                autoFocus
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={applyLink}
+              >
+                Apply
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
-              <Label className="text-xs mb-1 block">Font Size</Label>
-              <div className="flex flex-wrap gap-1 max-w-[140px]">
-                {FONT_SIZES.map((size) => (
-                  <button
-                    key={size}
-                    className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
-                    onClick={() => applyFontSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-          
-          {/* Text Color */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
-                A
+            </div>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => applyStyle('bold')}
+                title="Bold (Ctrl+B)"
+              >
+                <Bold className="h-3.5 w-3.5" />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
-              <Label className="text-xs mb-1 block">Text Color</Label>
-              <div className="flex flex-wrap gap-1 max-w-[160px]">
-                {TEXT_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform"
-                    style={{ backgroundColor: color }}
-                    onClick={() => applyColor(color, false)}
-                  />
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-          
-          {/* Background Color */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
-                <span className="bg-yellow-200 px-1">A</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => applyStyle('italic')}
+                title="Italic (Ctrl+I)"
+              >
+                <Italic className="h-3.5 w-3.5" />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
-              <Label className="text-xs mb-1 block">Background</Label>
-              <div className="flex flex-wrap gap-1 max-w-[160px]">
-                {BG_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform"
-                    style={{ backgroundColor: color }}
-                    onClick={() => applyColor(color, true)}
-                  />
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => applyStyle('underline')}
+                title="Underline (Ctrl+U)"
+              >
+                <Underline className="h-3.5 w-3.5" />
+              </Button>
+              
+              <div className={styles.separator} />
+              
+              {/* Link */}
+              {isLink ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-destructive"
+                  onClick={removeLink}
+                  title="Remove Link"
+                >
+                  <Unlink className="h-3.5 w-3.5" />
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => {
+                    saveSelection();
+                    setShowLinkInput(true);
+                  }}
+                  title="Add Link (Ctrl+K)"
+                >
+                  <Link className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              
+              <div className={styles.separator} />
+              
+              {/* Font Size */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
+                    <Type className="h-3.5 w-3.5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+                  <Label className="text-xs mb-1 block">Font Size</Label>
+                  <div className="flex flex-wrap gap-1 max-w-[140px]">
+                    {FONT_SIZES.map((size) => (
+                      <button
+                        key={size}
+                        className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
+                        onClick={() => applyFontSize(size)}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              {/* Text Color */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
+                    A
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+                  <Label className="text-xs mb-1 block">Text Color</Label>
+                  <div className="flex flex-wrap gap-1 max-w-[160px]">
+                    {TEXT_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform"
+                        style={{ backgroundColor: color }}
+                        onClick={() => applyColor(color, false)}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              {/* Background Color */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
+                    <span className="bg-yellow-200 px-1">A</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+                  <Label className="text-xs mb-1 block">Background</Label>
+                  <div className="flex flex-wrap gap-1 max-w-[160px]">
+                    {BG_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform"
+                        style={{ backgroundColor: color }}
+                        onClick={() => applyColor(color, true)}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
         </div>
       )}
       
