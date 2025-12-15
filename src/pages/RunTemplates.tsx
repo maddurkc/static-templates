@@ -1321,70 +1321,12 @@ const RunTemplates = () => {
                     </div>
                   )}
 
-                  {/* Body Content Section - Combined Labels and Variables */}
+                  {/* Body Content Section - All sections in template order */}
                   {(() => {
-                    // Build ordered sections with their associated variables
+                    // Build ordered sections - ALL sections in template order
                     const allSections = selectedTemplate?.sections || [];
                     
-                    // Create a map of section variables for quick lookup
-                    const sectionVariableMap = new Map<string, { section: Section; varNames: string[] }>();
-                    
-                    allSections.forEach((section: Section) => {
-                      const varNames: string[] = [];
-                      
-                      if (section.type === 'labeled-content') {
-                        // labeled-content sections are handled separately in their own render
-                        sectionVariableMap.set(section.id, { section, varNames: [] });
-                      } else if (section.type === 'mixed-content' && section.variables?.content) {
-                        // Extract variables from mixed-content
-                        const mixedVars = extractVariables(section.variables.content as string);
-                        const placeholderMatches = (section.variables.content as string).match(/\{\{(\w+)\}\}/g) || [];
-                        placeholderMatches.forEach(match => {
-                          const varName = match.replace(/\{\{|\}\}/g, '');
-                          if (!varNames.includes(varName)) varNames.push(varName);
-                        });
-                        mixedVars.forEach(v => { if (!varNames.includes(v)) varNames.push(v); });
-                        sectionVariableMap.set(section.id, { section, varNames });
-                      } else if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type) && section.content) {
-                        // Extract placeholders from content
-                        const placeholderMatches = section.content.match(/\{\{(\w+)\}\}/g) || [];
-                        placeholderMatches.forEach(match => {
-                          const varName = match.replace(/\{\{|\}\}/g, '');
-                          if (!varNames.includes(varName)) varNames.push(varName);
-                        });
-                        const contentVars = extractVariables(section.content);
-                        contentVars.forEach(v => { if (!varNames.includes(v)) varNames.push(v); });
-                        sectionVariableMap.set(section.id, { section, varNames });
-                      } else if (['bullet-list-circle', 'bullet-list-disc', 'bullet-list-square', 'number-list-1', 'number-list-i', 'number-list-a'].includes(section.type)) {
-                        const listVarName = section.variables?.listVariableName as string || section.id;
-                        varNames.push(listVarName);
-                        sectionVariableMap.set(section.id, { section, varNames });
-                      } else if (section.type === 'table') {
-                        varNames.push(section.id);
-                        sectionVariableMap.set(section.id, { section, varNames });
-                      }
-                    });
-                    
-                    // Get labeled-content sections in order
-                    const labeledSections = allSections.filter(
-                      (section: Section) => section.type === 'labeled-content'
-                    );
-                    
-                    // Get other variables in section order (excluding labeled-content which is handled separately)
-                    const orderedOtherVariables: { section: Section; varName: string }[] = [];
-                    allSections.forEach((section: Section) => {
-                      const entry = sectionVariableMap.get(section.id);
-                      if (entry && section.type !== 'labeled-content') {
-                        entry.varNames.forEach(varName => {
-                          // Avoid duplicates
-                          if (!orderedOtherVariables.some(ov => ov.varName === varName)) {
-                            orderedOtherVariables.push({ section, varName });
-                          }
-                        });
-                      }
-                    });
-                    
-                    const hasContent = labeledSections.length > 0 || orderedOtherVariables.length > 0;
+                    const hasContent = allSections.length > 0;
                     
                     if (!hasContent && Object.keys(subjectVariables).length === 0) {
                       return (
@@ -1402,330 +1344,496 @@ const RunTemplates = () => {
                           </div>
                         )}
                         
-                        {/* Labeled Content Sections - Label with content below */}
-                        {labeledSections.map((section) => {
-                          const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
-                          const labelValue = labelVariables[labelVarName] || (section.variables?.label as string) || 'Label';
-                          const editable = section.isLabelEditable !== false;
-                          const contentType = section.variables?.contentType || 'text';
-                          const listVarName = section.variables?.listVariableName as string || section.id;
-                          
-                          return (
-                            <div 
-                              key={section.id} 
-                              className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}
-                            >
-                              {/* Label - inline editable */}
-                              <div className="mb-2">
-                                {editable ? (
-                                  <Input
-                                    value={labelValue}
-                                    onChange={(e) => setLabelVariables(prev => ({
-                                      ...prev,
-                                      [labelVarName]: e.target.value
-                                    }))}
-                                    onFocus={() => scrollToSection(section.id)}
-                                    className="font-medium text-sm h-9 border-primary/30 focus:border-primary bg-background"
-                                    placeholder="Enter label..."
-                                  />
-                                ) : (
-                                  <div className="px-3 py-1.5 bg-muted rounded text-sm font-medium text-muted-foreground">
-                                    {labelValue}
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {/* Content - with left margin */}
-                              <div className="ml-4">
-                                {contentType === 'text' && (
-                                  <div className={styles.inputWrapper}>
+                        {/* All sections in template order */}
+                        {allSections.map((section: Section) => {
+                          // Handle labeled-content sections
+                          if (section.type === 'labeled-content') {
+                            const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
+                            const labelValue = labelVariables[labelVarName] || (section.variables?.label as string) || 'Label';
+                            const editable = section.isLabelEditable !== false;
+                            const contentType = section.variables?.contentType || 'text';
+                            const listVarName = section.variables?.listVariableName as string || section.id;
+                            
+                            return (
+                              <div 
+                                key={section.id} 
+                                className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}
+                              >
+                                {/* Label - inline editable */}
+                                <div className="mb-2">
+                                  {editable ? (
                                     <Input
-                                      id={`var-${section.id}`}
-                                      placeholder="Enter content..."
-                                      value={typeof variables[section.id] === 'object' 
-                                        ? (variables[section.id] as TextStyle).text 
-                                        : (variables[section.id] as string) || (section.variables?.content as string) || ''
-                                      }
-                                      onChange={(e) => setVariables(prev => ({
+                                      value={labelValue}
+                                      onChange={(e) => setLabelVariables(prev => ({
                                         ...prev,
-                                        [section.id]: e.target.value
+                                        [labelVarName]: e.target.value
                                       }))}
                                       onFocus={() => scrollToSection(section.id)}
+                                      className="font-medium text-sm h-9 border-primary/30 focus:border-primary bg-background"
+                                      placeholder="Enter label..."
                                     />
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                          <Palette className="h-4 w-4" />
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className={styles.formatPopover}>
-                                        <div className="space-y-3">
-                                          <div className={styles.styleButtons}>
-                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                              <Bold className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                              <Italic className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                              <Underline className="h-3.5 w-3.5" />
-                                            </Button>
-                                          </div>
-                                          <Input type="color" className="h-8 w-16" />
-                                        </div>
-                                      </PopoverContent>
-                                    </Popover>
-                                  </div>
-                                )}
+                                  ) : (
+                                    <div className="px-3 py-1.5 bg-muted rounded text-sm font-medium text-muted-foreground">
+                                      {labelValue}
+                                    </div>
+                                  )}
+                                </div>
                                 
-                                {contentType === 'list' && (
-                                  <div className="space-y-2">
-                                    {((listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[]).map((item: string | ListItemStyle, itemIdx: number) => (
-                                      <div key={itemIdx} className={styles.listItemRow}>
-                                        <span className="text-xs text-muted-foreground w-4">{itemIdx + 1}.</span>
-                                        <Input
-                                          className={styles.listItemInput}
-                                          placeholder="List item..."
-                                          value={typeof item === 'object' ? item.text : item}
-                                          onChange={(e) => {
-                                            const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
-                                            const newItems = [...currentItems] as (string | ListItemStyle)[];
-                                            newItems[itemIdx] = e.target.value;
-                                            setListVariables(prev => ({
-                                              ...prev,
-                                              [listVarName]: newItems as string[] | ListItemStyle[]
-                                            }));
-                                          }}
-                                          onFocus={() => scrollToSection(section.id)}
-                                        />
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={() => {
-                                            const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
-                                            if (currentItems.length > 1) {
-                                              const newItems = currentItems.filter((_, i) => i !== itemIdx) as (string | ListItemStyle)[];
+                                {/* Content - with left margin */}
+                                <div className="ml-4">
+                                  {contentType === 'text' && (
+                                    <div className={styles.inputWrapper}>
+                                      <Input
+                                        id={`var-${section.id}`}
+                                        placeholder="Enter content..."
+                                        value={typeof variables[section.id] === 'object' 
+                                          ? (variables[section.id] as TextStyle).text 
+                                          : (variables[section.id] as string) || (section.variables?.content as string) || ''
+                                        }
+                                        onChange={(e) => setVariables(prev => ({
+                                          ...prev,
+                                          [section.id]: e.target.value
+                                        }))}
+                                        onFocus={() => scrollToSection(section.id)}
+                                      />
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <Palette className="h-4 w-4" />
+                                          </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className={styles.formatPopover}>
+                                          <div className="space-y-3">
+                                            <div className={styles.styleButtons}>
+                                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                                <Bold className="h-3.5 w-3.5" />
+                                              </Button>
+                                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                                <Italic className="h-3.5 w-3.5" />
+                                              </Button>
+                                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                                <Underline className="h-3.5 w-3.5" />
+                                              </Button>
+                                            </div>
+                                            <Input type="color" className="h-8 w-16" />
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
+                                    </div>
+                                  )}
+                                  
+                                  {contentType === 'list' && (
+                                    <div className="space-y-2">
+                                      {((listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[]).map((item: string | ListItemStyle, itemIdx: number) => (
+                                        <div key={itemIdx} className={styles.listItemRow}>
+                                          <span className="text-xs text-muted-foreground w-4">{itemIdx + 1}.</span>
+                                          <Input
+                                            className={styles.listItemInput}
+                                            placeholder="List item..."
+                                            value={typeof item === 'object' ? item.text : item}
+                                            onChange={(e) => {
+                                              const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                              const newItems = [...currentItems] as (string | ListItemStyle)[];
+                                              newItems[itemIdx] = e.target.value;
                                               setListVariables(prev => ({
                                                 ...prev,
                                                 [listVarName]: newItems as string[] | ListItemStyle[]
                                               }));
-                                            }
-                                          }}
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
+                                            }}
+                                            onFocus={() => scrollToSection(section.id)}
+                                          />
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => {
+                                              const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                              if (currentItems.length > 1) {
+                                                const newItems = currentItems.filter((_, i) => i !== itemIdx) as (string | ListItemStyle)[];
+                                                setListVariables(prev => ({
+                                                  ...prev,
+                                                  [listVarName]: newItems as string[] | ListItemStyle[]
+                                                }));
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                          setListVariables(prev => ({
+                                            ...prev,
+                                            [listVarName]: [...currentItems, ''] as string[] | ListItemStyle[]
+                                          }));
+                                          scrollToSection(section.id);
+                                        }}
+                                        className="h-7"
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Add Item
+                                      </Button>
+                                    </div>
+                                  )}
+                                  
+                                  {contentType === 'table' && (() => {
+                                    const tableData = tableVariables[section.id] || getTableData(section.id);
+                                    return (
+                                      <div className="space-y-2 border rounded-lg p-3 bg-background">
+                                        <div className="flex gap-2 mb-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              setTableVariables(prev => ({
+                                                ...prev,
+                                                [section.id]: {
+                                                  ...tableData,
+                                                  headers: [...(tableData.headers || []), `Col ${(tableData.headers?.length || 0) + 1}`]
+                                                }
+                                              }));
+                                              scrollToSection(section.id);
+                                            }}
+                                            className="h-7 px-2"
+                                          >
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Column
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              const newRow = new Array(tableData.headers?.length || 1).fill('');
+                                              setTableVariables(prev => ({
+                                                ...prev,
+                                                [section.id]: {
+                                                  ...tableData,
+                                                  rows: [...(tableData.rows || []), newRow]
+                                                }
+                                              }));
+                                              scrollToSection(section.id);
+                                            }}
+                                            className="h-7 px-2"
+                                          >
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Row
+                                          </Button>
+                                        </div>
+                                        {tableData.headers && tableData.headers.length > 0 && (
+                                          <div className="overflow-x-auto">
+                                            <table className="w-full border-collapse border text-sm">
+                                              <thead>
+                                                <tr>
+                                                  {tableData.headers.map((header: string, colIdx: number) => (
+                                                    <th key={colIdx} className="border p-1 bg-muted">
+                                                      <Input
+                                                        value={header}
+                                                        onChange={(e) => {
+                                                          const newHeaders = [...tableData.headers];
+                                                          newHeaders[colIdx] = e.target.value;
+                                                          setTableVariables(prev => ({
+                                                            ...prev,
+                                                            [section.id]: { ...tableData, headers: newHeaders }
+                                                          }));
+                                                        }}
+                                                        onFocus={() => scrollToSection(section.id)}
+                                                        className="h-7 text-xs font-semibold"
+                                                      />
+                                                    </th>
+                                                  ))}
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {(tableData.rows || []).map((row: string[], rowIdx: number) => (
+                                                  <tr key={rowIdx}>
+                                                    {row.map((cell: string, colIdx: number) => (
+                                                      <td key={colIdx} className="border p-1">
+                                                        <Input
+                                                          value={cell}
+                                                          onChange={(e) => {
+                                                            const newRows = [...tableData.rows];
+                                                            newRows[rowIdx][colIdx] = e.target.value;
+                                                            setTableVariables(prev => ({
+                                                              ...prev,
+                                                              [section.id]: { ...tableData, rows: newRows }
+                                                            }));
+                                                          }}
+                                                          onFocus={() => scrollToSection(section.id)}
+                                                          className="h-7 text-xs"
+                                                        />
+                                                      </td>
+                                                    ))}
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        )}
                                       </div>
-                                    ))}
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          // Handle mixed-content sections
+                          if (section.type === 'mixed-content' && section.variables?.content) {
+                            const mixedVars: string[] = [];
+                            const placeholderMatches = (section.variables.content as string).match(/\{\{(\w+)\}\}/g) || [];
+                            placeholderMatches.forEach(match => {
+                              const varName = match.replace(/\{\{|\}\}/g, '');
+                              if (!mixedVars.includes(varName)) mixedVars.push(varName);
+                            });
+                            const contentVars = extractVariables(section.variables.content as string);
+                            contentVars.forEach(v => { if (!mixedVars.includes(v)) mixedVars.push(v); });
+                            
+                            if (mixedVars.length === 0) return null;
+                            
+                            return (
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                <div className="text-xs text-muted-foreground mb-2">Mixed Content</div>
+                                {mixedVars.map(varName => (
+                                  <div key={varName} className={styles.formField}>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Label htmlFor={`var-${varName}`} className="text-sm font-medium cursor-help mb-1 inline-block">
+                                          {varName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                        </Label>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-2" side="top" align="start">
+                                        <span className="text-xs text-muted-foreground">{varName}</span>
+                                      </PopoverContent>
+                                    </Popover>
+                                    <div className={styles.inputWrapper}>
+                                      <Input
+                                        id={`var-${varName}`}
+                                        placeholder={varName}
+                                        value={typeof variables[varName] === 'object' 
+                                          ? (variables[varName] as TextStyle).text 
+                                          : (variables[varName] as string) || ''
+                                        }
+                                        onChange={(e) => setVariables(prev => ({
+                                          ...prev,
+                                          [varName]: e.target.value
+                                        }))}
+                                        onFocus={() => scrollToSection(section.id)}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                          
+                          // Handle heading/text/paragraph sections
+                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type) && section.content) {
+                            const varNames: string[] = [];
+                            const placeholderMatches = section.content.match(/\{\{(\w+)\}\}/g) || [];
+                            placeholderMatches.forEach(match => {
+                              const varName = match.replace(/\{\{|\}\}/g, '');
+                              if (!varNames.includes(varName)) varNames.push(varName);
+                            });
+                            const contentVars = extractVariables(section.content);
+                            contentVars.forEach(v => { if (!varNames.includes(v)) varNames.push(v); });
+                            
+                            if (varNames.length === 0) return null;
+                            
+                            return (
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                <div className="text-xs text-muted-foreground mb-2">{section.type.charAt(0).toUpperCase() + section.type.slice(1)}</div>
+                                {varNames.map(varName => {
+                                  const editable = isLabelEditable(varName);
+                                  return (
+                                    <div key={varName} className={styles.formField}>
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <Label htmlFor={`var-${varName}`} className="text-sm font-medium cursor-help mb-1 inline-block">
+                                            {varName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                          </Label>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-2" side="top" align="start">
+                                          <span className="text-xs text-muted-foreground">{varName}</span>
+                                        </PopoverContent>
+                                      </Popover>
+                                      <div className={styles.inputWrapper}>
+                                        <Input
+                                          id={`var-${varName}`}
+                                          placeholder={varName}
+                                          value={typeof variables[varName] === 'object' 
+                                            ? (variables[varName] as TextStyle).text 
+                                            : (variables[varName] as string) || ''
+                                          }
+                                          onChange={(e) => setVariables(prev => ({
+                                            ...prev,
+                                            [varName]: e.target.value
+                                          }))}
+                                          onFocus={() => scrollToSection(section.id)}
+                                          disabled={!editable}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          }
+                          
+                          // Handle standalone list sections
+                          if (['bullet-list-circle', 'bullet-list-disc', 'bullet-list-square', 'number-list-1', 'number-list-i', 'number-list-a'].includes(section.type)) {
+                            const listVarName = section.variables?.listVariableName as string || section.id;
+                            const editable = isLabelEditable(listVarName);
+                            
+                            return (
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Label className="text-sm font-medium cursor-help mb-2 inline-block">
+                                      {listVarName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                    </Label>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-2" side="top" align="start">
+                                    <span className="text-xs text-muted-foreground">{listVarName}</span>
+                                  </PopoverContent>
+                                </Popover>
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
                                     <Button
-                                      variant="outline"
                                       size="sm"
+                                      variant="outline"
                                       onClick={() => {
-                                        const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
                                         setListVariables(prev => ({
                                           ...prev,
-                                          [listVarName]: [...currentItems, ''] as string[] | ListItemStyle[]
+                                          [listVarName]: [...(prev[listVarName] || []), ''] as string[] | ListItemStyle[]
                                         }));
-                                        scrollToSection(section.id);
                                       }}
-                                      className="h-7"
+                                      className="h-7 px-2"
+                                      disabled={!editable}
                                     >
                                       <Plus className="h-3 w-3 mr-1" />
                                       Add Item
                                     </Button>
                                   </div>
-                                )}
-                                
-                                {contentType === 'table' && (() => {
-                                  const tableData = tableVariables[section.id] || getTableData(section.id);
-                                  return (
-                                    <div className="space-y-2 border rounded-lg p-3 bg-background">
-                                      <div className="flex gap-2 mb-2">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => {
-                                            setTableVariables(prev => ({
-                                              ...prev,
-                                              [section.id]: {
-                                                ...tableData,
-                                                headers: [...(tableData.headers || []), `Col ${(tableData.headers?.length || 0) + 1}`]
-                                              }
-                                            }));
-                                            scrollToSection(section.id);
-                                          }}
-                                          className="h-7 px-2"
-                                        >
-                                          <Plus className="h-3 w-3 mr-1" />
-                                          Column
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => {
-                                            const newRow = new Array(tableData.headers?.length || 1).fill('');
-                                            setTableVariables(prev => ({
-                                              ...prev,
-                                              [section.id]: {
-                                                ...tableData,
-                                                rows: [...(tableData.rows || []), newRow]
-                                              }
-                                            }));
-                                            scrollToSection(section.id);
-                                          }}
-                                          className="h-7 px-2"
-                                        >
-                                          <Plus className="h-3 w-3 mr-1" />
-                                          Row
-                                        </Button>
-                                      </div>
-                                      {tableData.headers && tableData.headers.length > 0 && (
-                                        <div className="overflow-x-auto">
-                                          <table className="w-full border-collapse border text-sm">
-                                            <thead>
-                                              <tr>
-                                                {tableData.headers.map((header: string, colIdx: number) => (
-                                                  <th key={colIdx} className="border p-1 bg-muted">
-                                                    <Input
-                                                      value={header}
-                                                      onChange={(e) => {
-                                                        const newHeaders = [...tableData.headers];
-                                                        newHeaders[colIdx] = e.target.value;
-                                                        setTableVariables(prev => ({
-                                                          ...prev,
-                                                          [section.id]: { ...tableData, headers: newHeaders }
-                                                        }));
-                                                      }}
-                                                      onFocus={() => scrollToSection(section.id)}
-                                                      className="h-7 text-xs font-semibold"
-                                                    />
-                                                  </th>
-                                                ))}
-                                              </tr>
-                                            </thead>
-                                            <tbody>
-                                              {(tableData.rows || []).map((row: string[], rowIdx: number) => (
-                                                <tr key={rowIdx}>
-                                                  {row.map((cell: string, colIdx: number) => (
-                                                    <td key={colIdx} className="border p-1">
-                                                      <Input
-                                                        value={cell}
-                                                        onChange={(e) => {
-                                                          const newRows = [...tableData.rows];
-                                                          newRows[rowIdx][colIdx] = e.target.value;
-                                                          setTableVariables(prev => ({
-                                                            ...prev,
-                                                            [section.id]: { ...tableData, rows: newRows }
-                                                          }));
-                                                        }}
-                                                        onFocus={() => scrollToSection(section.id)}
-                                                        className="h-7 text-xs"
-                                                      />
-                                                    </td>
-                                                  ))}
-                                                </tr>
-                                              ))}
-                                            </tbody>
-                                          </table>
+                                  <div className="space-y-2">
+                                    {((listVariables[listVarName] || ['']) as (string | ListItemStyle)[]).map((item, index) => {
+                                      const itemValue = typeof item === 'object' && 'text' in item ? item.text : item as string;
+                                      
+                                      return (
+                                        <div key={index} className={styles.listItemRow}>
+                                          <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
+                                          <Input
+                                            value={itemValue}
+                                            placeholder={`Item ${index + 1}`}
+                                            onChange={(e) => {
+                                              setListVariables(prev => {
+                                                const newItems = [...(prev[listVarName] || [])] as (string | ListItemStyle)[];
+                                                if (typeof newItems[index] === 'object' && 'text' in newItems[index]) {
+                                                  newItems[index] = { ...(newItems[index] as ListItemStyle), text: e.target.value };
+                                                } else {
+                                                  newItems[index] = e.target.value;
+                                                }
+                                                return { ...prev, [listVarName]: newItems as string[] | ListItemStyle[] };
+                                              });
+                                            }}
+                                            onFocus={() => scrollToSection(section.id)}
+                                            className="flex-1 h-8"
+                                            disabled={!editable}
+                                          />
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => {
+                                              setListVariables(prev => {
+                                                const items = prev[listVarName] || [];
+                                                if (items.length > 1) {
+                                                  return { ...prev, [listVarName]: items.filter((_, i) => i !== index) as string[] | ListItemStyle[] };
+                                                }
+                                                return prev;
+                                              });
+                                            }}
+                                            disabled={!editable}
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
                                         </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        
-                        {/* Other Variables (non-labeled-content) - in section order */}
-                        {orderedOtherVariables.length > 0 && (
-                          <div className={styles.formGrid}>
-                            {orderedOtherVariables.map(({ section, varName }) => {
-                              const isList = isListVariable(varName);
-                              const isTable = isTableVariable(varName);
-                              const editable = isLabelEditable(varName);
-                              
-                              return (
-                                <div key={varName} className={styles.formField}>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Label htmlFor={`var-${varName}`} className="text-sm font-medium cursor-help mb-1 inline-block">
-                                        {varName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                                      </Label>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-2" side="top" align="start">
-                                      <span className="text-xs text-muted-foreground">{varName}</span>
-                                    </PopoverContent>
-                                  </Popover>
-                            {isTable ? (
-                              <div className="space-y-2 border rounded-lg p-4 bg-background">
-                                <div className="flex items-center justify-between mb-2">
-                                  <p className="text-xs text-muted-foreground">
-                                    Edit table content
-                                  </p>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setJsonImportOpen(varName);
-                                        setJsonImportValue('');
-                                      }}
-                                      className="h-7 px-2"
-                                      disabled={!editable}
-                                    >
-                                      <FileJson className="h-3 w-3 mr-1" />
-                                      JSON
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        const tableData = tableVariables[varName] || { headers: [], rows: [] };
-                                        setTableVariables(prev => ({
-                                          ...prev,
-                                          [varName]: {
-                                            ...tableData,
-                                            headers: [...(tableData.headers || []), `Column ${(tableData.headers?.length || 0) + 1}`]
-                                          }
-                                        }));
-                                      }}
-                                      className="h-7 px-2"
-                                      disabled={!editable}
-                                    >
-                                      <Plus className="h-3 w-3 mr-1" />
-                                      Column
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        const tableData = tableVariables[varName] || { headers: [], rows: [] };
-                                        const newRow = new Array(tableData.headers?.length || 1).fill('');
-                                        setTableVariables(prev => ({
-                                          ...prev,
-                                          [varName]: {
-                                            ...tableData,
-                                            rows: [...(tableData.rows || []), newRow]
-                                          }
-                                        }));
-                                      }}
-                                      className="h-7 px-2"
-                                      disabled={!editable}
-                                    >
-                                      <Plus className="h-3 w-3 mr-1" />
-                                      Row
-                                    </Button>
+                                      );
+                                    })}
                                   </div>
                                 </div>
-                                
-                                {(() => {
-                                  const tableData = tableVariables[varName] || { headers: [], rows: [] };
-                                  if (!tableData.headers || tableData.headers.length === 0) {
-                                    return <p className="text-xs text-muted-foreground text-center py-4">Click "Column" to start</p>;
-                                  }
+                              </div>
+                            );
+                          }
+                          
+                          // Handle standalone table sections
+                          if (section.type === 'table') {
+                            const editable = isLabelEditable(section.id);
+                            const tableData = tableVariables[section.id] || getTableData(section.id);
+                            
+                            return (
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                <div className="space-y-2 border rounded-lg p-4 bg-background">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs text-muted-foreground">Table</p>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setJsonImportOpen(section.id);
+                                          setJsonImportValue('');
+                                        }}
+                                        className="h-7 px-2"
+                                        disabled={!editable}
+                                      >
+                                        <FileJson className="h-3 w-3 mr-1" />
+                                        JSON
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setTableVariables(prev => ({
+                                            ...prev,
+                                            [section.id]: {
+                                              ...tableData,
+                                              headers: [...(tableData.headers || []), `Column ${(tableData.headers?.length || 0) + 1}`]
+                                            }
+                                          }));
+                                        }}
+                                        className="h-7 px-2"
+                                        disabled={!editable}
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Column
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          const newRow = new Array(tableData.headers?.length || 1).fill('');
+                                          setTableVariables(prev => ({
+                                            ...prev,
+                                            [section.id]: {
+                                              ...tableData,
+                                              rows: [...(tableData.rows || []), newRow]
+                                            }
+                                          }));
+                                        }}
+                                        className="h-7 px-2"
+                                        disabled={!editable}
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Row
+                                      </Button>
+                                    </div>
+                                  </div>
                                   
-                                  return (
+                                  {tableData.headers && tableData.headers.length > 0 ? (
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse border text-sm">
                                         <thead>
@@ -1740,7 +1848,7 @@ const RunTemplates = () => {
                                                       newHeaders[colIdx] = e.target.value;
                                                       setTableVariables(prev => ({
                                                         ...prev,
-                                                        [varName]: { ...tableData, headers: newHeaders }
+                                                        [section.id]: { ...tableData, headers: newHeaders }
                                                       }));
                                                     }}
                                                     className="h-7 text-xs font-semibold"
@@ -1757,7 +1865,7 @@ const RunTemplates = () => {
                                                       );
                                                       setTableVariables(prev => ({
                                                         ...prev,
-                                                        [varName]: { headers: newHeaders, rows: newRows }
+                                                        [section.id]: { headers: newHeaders, rows: newRows }
                                                       }));
                                                     }}
                                                     className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
@@ -1783,7 +1891,7 @@ const RunTemplates = () => {
                                                         newRows[rowIdx][colIdx] = e.target.value;
                                                         setTableVariables(prev => ({
                                                           ...prev,
-                                                          [varName]: { ...tableData, rows: newRows }
+                                                          [section.id]: { ...tableData, rows: newRows }
                                                         }));
                                                       }}
                                                       className="h-7 text-xs"
@@ -1801,7 +1909,7 @@ const RunTemplates = () => {
                                                     const newRows = tableData.rows.filter((_: any, i: number) => i !== rowIdx);
                                                     setTableVariables(prev => ({
                                                       ...prev,
-                                                      [varName]: { ...tableData, rows: newRows }
+                                                      [section.id]: { ...tableData, rows: newRows }
                                                     }));
                                                   }}
                                                   className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
@@ -1815,333 +1923,19 @@ const RunTemplates = () => {
                                         </tbody>
                                       </table>
                                     </div>
-                                  );
-                                })()}
-                              </div>
-                            ) : isList ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setListVariables(prev => ({
-                                        ...prev,
-                                        [varName]: [...(prev[varName] || []), ''] as string[] | ListItemStyle[]
-                                      }));
-                                    }}
-                                    className="h-7 px-2"
-                                    disabled={!editable}
-                                  >
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Add Item
-                                  </Button>
-                                </div>
-                                <div className="space-y-2">
-                                  {((listVariables[varName] || ['']) as (string | ListItemStyle)[]).map((item, index) => {
-                                    const itemValue = typeof item === 'object' && 'text' in item ? item.text : item as string;
-                                    const itemStyle = typeof item === 'object' && 'text' in item ? item as ListItemStyle : { text: item as string };
-                                    
-                                    return (
-                                      <div key={index} className={styles.listItemRow}>
-                                        <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
-                                        <Input
-                                          value={itemValue}
-                                          placeholder={`Item ${index + 1}`}
-                                          onChange={(e) => {
-                                            setListVariables(prev => {
-                                              const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                              if (typeof newItems[index] === 'object' && 'text' in newItems[index]) {
-                                                newItems[index] = { ...(newItems[index] as ListItemStyle), text: e.target.value };
-                                              } else {
-                                                newItems[index] = e.target.value;
-                                              }
-                                              return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                            });
-                                          }}
-                                          className="flex-1 h-8"
-                                          disabled={!editable}
-                                          style={{
-                                            color: itemStyle.color,
-                                            fontWeight: itemStyle.bold ? 'bold' : 'normal',
-                                            fontStyle: itemStyle.italic ? 'italic' : 'normal',
-                                            textDecoration: itemStyle.underline ? 'underline' : 'none',
-                                            backgroundColor: itemStyle.backgroundColor,
-                                            fontSize: itemStyle.fontSize
-                                          }}
-                                        />
-                                        
-                                        {/* Formatting Popover */}
-                                        <Popover>
-                                          <PopoverTrigger asChild>
-                                            <Button
-                                              size="icon"
-                                              variant="ghost"
-                                              className="h-8 w-8 hover:bg-primary/10"
-                                              disabled={!editable}
-                                            >
-                                              <Palette className="h-3.5 w-3.5" />
-                                            </Button>
-                                          </PopoverTrigger>
-                                          <PopoverContent className="w-72" align="start">
-                                            <div className="space-y-4">
-                                              <h4 className="font-medium text-sm">Item Formatting</h4>
-                                              
-                                              {/* Text Style Toggles */}
-                                              <div className="space-y-2">
-                                                <Label className="text-xs">Text Style</Label>
-                                                <div className="flex gap-2">
-                                                  <Button
-                                                    size="sm"
-                                                    variant={itemStyle.bold ? "default" : "outline"}
-                                                    onClick={() => {
-                                                      setListVariables(prev => {
-                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                          ? (newItems[index] as ListItemStyle)
-                                                          : { text: newItems[index] as string };
-                                                        newItems[index] = { ...current, bold: !current.bold } as ListItemStyle;
-                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                      });
-                                                    }}
-                                                    className="h-8 w-8 p-0"
-                                                  >
-                                                    <Bold className="h-3.5 w-3.5" />
-                                                  </Button>
-                                                  <Button
-                                                    size="sm"
-                                                    variant={itemStyle.italic ? "default" : "outline"}
-                                                    onClick={() => {
-                                                      setListVariables(prev => {
-                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                          ? (newItems[index] as ListItemStyle)
-                                                          : { text: newItems[index] as string };
-                                                        newItems[index] = { ...current, italic: !current.italic } as ListItemStyle;
-                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                      });
-                                                    }}
-                                                    className="h-8 w-8 p-0"
-                                                  >
-                                                    <Italic className="h-3.5 w-3.5" />
-                                                  </Button>
-                                                  <Button
-                                                    size="sm"
-                                                    variant={itemStyle.underline ? "default" : "outline"}
-                                                    onClick={() => {
-                                                      setListVariables(prev => {
-                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                          ? (newItems[index] as ListItemStyle)
-                                                          : { text: newItems[index] as string };
-                                                        newItems[index] = { ...current, underline: !current.underline } as ListItemStyle;
-                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                      });
-                                                    }}
-                                                    className="h-8 w-8 p-0"
-                                                  >
-                                                    <Underline className="h-3.5 w-3.5" />
-                                                  </Button>
-                                                </div>
-                                              </div>
-                                              
-                                              {/* Text Color */}
-                                              <div className="space-y-2">
-                                                <Label className="text-xs">Text Color</Label>
-                                                <div className="flex gap-2">
-                                                  <Input
-                                                    type="color"
-                                                    value={itemStyle.color || '#000000'}
-                                                    onChange={(e) => {
-                                                      setListVariables(prev => {
-                                                        const newItems = [...(prev[varName] || [])] as (string | ListItemStyle)[];
-                                                        const current = typeof newItems[index] === 'object' && 'text' in newItems[index]
-                                                          ? (newItems[index] as ListItemStyle)
-                                                          : { text: newItems[index] as string };
-                                                        newItems[index] = { ...current, color: e.target.value } as ListItemStyle;
-                                                        return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                                      });
-                                                    }}
-                                                    className="h-8 w-16"
-                                                  />
-                                                </div>
-                                              </div>
-                                            </div>
-                                          </PopoverContent>
-                                        </Popover>
-                                        
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          onClick={() => {
-                                            setListVariables(prev => {
-                                              const newItems = ((prev[varName] || []) as (string | ListItemStyle)[]).filter((_, i) => i !== index);
-                                              return { ...prev, [varName]: newItems as string[] | ListItemStyle[] };
-                                            });
-                                          }}
-                                          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                                          disabled={!editable || (listVariables[varName] || ['']).length <= 1}
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    );
-                                  })}
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground text-center py-4">Click "Column" to start</p>
+                                  )}
                                 </div>
                               </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  id={`var-${varName}`}
-                                  placeholder={`Enter ${varName}`}
-                                  value={typeof variables[varName] === 'object' && variables[varName] !== null && 'text' in variables[varName] 
-                                    ? (variables[varName] as TextStyle).text 
-                                    : (variables[varName] as string || "")}
-                                  onChange={(e) => {
-                                    const currentVar = variables[varName];
-                                    if (typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar) {
-                                      setVariables({ ...variables, [varName]: { ...currentVar, text: e.target.value } });
-                                    } else {
-                                      setVariables({ ...variables, [varName]: e.target.value });
-                                    }
-                                  }}
-                                  className="flex-1"
-                                  disabled={!editable}
-                                  style={typeof variables[varName] === 'object' && variables[varName] !== null && 'text' in variables[varName]
-                                    ? {
-                                        color: (variables[varName] as TextStyle).color,
-                                        fontWeight: (variables[varName] as TextStyle).bold ? 'bold' : 'normal',
-                                        fontStyle: (variables[varName] as TextStyle).italic ? 'italic' : 'normal',
-                                        textDecoration: (variables[varName] as TextStyle).underline ? 'underline' : 'none',
-                                        backgroundColor: (variables[varName] as TextStyle).backgroundColor,
-                                        fontSize: (variables[varName] as TextStyle).fontSize
-                                      }
-                                    : undefined
-                                  }
-                                />
-                                
-                                {/* Text Formatting Popover */}
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-8 w-8 hover:bg-primary/10"
-                                      disabled={!editable}
-                                    >
-                                      <Palette className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-72" align="start">
-                                    <div className="space-y-4">
-                                      <h4 className="font-medium text-sm">Text Formatting</h4>
-                                      
-                                      {/* Font Size */}
-                                      <div className="space-y-2">
-                                        <Label className="text-xs">Font Size</Label>
-                                        <select
-                                          value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'fontSize' in variables[varName] 
-                                            ? (variables[varName] as TextStyle).fontSize 
-                                            : undefined) || '14px'}
-                                          onChange={(e) => {
-                                            const currentVar = variables[varName];
-                                            const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                              ? currentVar as TextStyle
-                                              : { text: currentVar as string || '' };
-                                            setVariables({ ...variables, [varName]: { ...current, fontSize: e.target.value } });
-                                          }}
-                                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                                        >
-                                          <option value="10px">10px</option>
-                                          <option value="12px">12px</option>
-                                          <option value="14px">14px</option>
-                                          <option value="16px">16px</option>
-                                          <option value="18px">18px</option>
-                                          <option value="20px">20px</option>
-                                          <option value="24px">24px</option>
-                                        </select>
-                                      </div>
-                                      
-                                      {/* Text Style Toggles */}
-                                      <div className="space-y-2">
-                                        <Label className="text-xs">Text Style</Label>
-                                        <div className="flex gap-2">
-                                          <Button
-                                            size="sm"
-                                            variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'bold' in variables[varName] && (variables[varName] as TextStyle).bold) ? "default" : "outline"}
-                                            onClick={() => {
-                                              const currentVar = variables[varName];
-                                              const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                                ? currentVar as TextStyle
-                                                : { text: currentVar as string || '' };
-                                              setVariables({ ...variables, [varName]: { ...current, bold: !current.bold } });
-                                            }}
-                                            className="h-8 w-8 p-0"
-                                          >
-                                            <Bold className="h-3.5 w-3.5" />
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'italic' in variables[varName] && (variables[varName] as TextStyle).italic) ? "default" : "outline"}
-                                            onClick={() => {
-                                              const currentVar = variables[varName];
-                                              const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                                ? currentVar as TextStyle
-                                                : { text: currentVar as string || '' };
-                                              setVariables({ ...variables, [varName]: { ...current, italic: !current.italic } });
-                                            }}
-                                            className="h-8 w-8 p-0"
-                                          >
-                                            <Italic className="h-3.5 w-3.5" />
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant={(typeof variables[varName] === 'object' && variables[varName] !== null && 'underline' in variables[varName] && (variables[varName] as TextStyle).underline) ? "default" : "outline"}
-                                            onClick={() => {
-                                              const currentVar = variables[varName];
-                                              const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                                ? currentVar as TextStyle
-                                                : { text: currentVar as string || '' };
-                                              setVariables({ ...variables, [varName]: { ...current, underline: !current.underline } });
-                                            }}
-                                            className="h-8 w-8 p-0"
-                                          >
-                                            <Underline className="h-3.5 w-3.5" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                      
-                                      {/* Text Color */}
-                                      <div className="space-y-2">
-                                        <Label className="text-xs">Text Color</Label>
-                                        <Input
-                                          type="color"
-                                          value={(typeof variables[varName] === 'object' && variables[varName] !== null && 'color' in variables[varName] 
-                                            ? (variables[varName] as TextStyle).color 
-                                            : undefined) || '#000000'}
-                                          onChange={(e) => {
-                                            const currentVar = variables[varName];
-                                            const current = typeof currentVar === 'object' && currentVar !== null && 'text' in currentVar
-                                              ? currentVar as TextStyle
-                                              : { text: currentVar as string || '' };
-                                            setVariables({ ...variables, [varName]: { ...current, color: e.target.value } });
-                                          }}
-                                          className="h-8 w-16"
-                                        />
-                                      </div>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              </div>
-                            )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
+                            );
+                          }
+                          
+                          return null;
+                        })}
+                      </>
+                    );
+                  })()}
                   </div>
                 </ScrollArea>
             </div>
