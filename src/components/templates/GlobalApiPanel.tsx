@@ -7,6 +7,7 @@ import {
   sanitizeVariableName,
   detectSchema 
 } from "@/types/global-api-config";
+import { Section } from "@/types/section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,23 +24,139 @@ import {
   Loader2, 
   Database,
   Zap,
-  AlertCircle
+  AlertCircle,
+  PlusCircle,
+  Table,
+  List
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { API_TEMPLATES, getAllCategories, getTemplateById } from "@/data/apiTemplates";
 import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
+import { generateListVariableName, generateThymeleafListHtml } from "@/lib/listThymeleafUtils";
 import styles from "./GlobalApiPanel.module.scss";
 
 interface GlobalApiPanelProps {
   config: GlobalApiConfig;
   onUpdate: (config: GlobalApiConfig) => void;
+  onCreateSection?: (section: Section) => void;
 }
 
-export const GlobalApiPanel = ({ config, onUpdate }: GlobalApiPanelProps) => {
+export const GlobalApiPanel = ({ config, onUpdate, onCreateSection }: GlobalApiPanelProps) => {
   const { toast } = useToast();
   const categories = getAllCategories();
   const [expandedIntegrations, setExpandedIntegrations] = useState<Set<string>>(new Set());
   const [testingIntegration, setTestingIntegration] = useState<string | null>(null);
+
+  // Create section from API variable
+  const createSectionFromVariable = (variable: GlobalApiVariable) => {
+    if (!onCreateSection) return;
+
+    const sectionId = `section-${Date.now()}-${Math.random()}`;
+
+    if (variable.dataType === 'stringList') {
+      // Create bullet list section from string array
+      const listVariableName = generateListVariableName(sectionId);
+      const items = Array.isArray(variable.data) 
+        ? variable.data.map((item: string) => ({ text: String(item), children: [] }))
+        : [{ text: 'Item 1', children: [] }];
+
+      const newSection: Section = {
+        id: sectionId,
+        type: 'bullet-list-disc',
+        content: '',
+        variables: {
+          items,
+          listVariableName,
+          listHtml: generateThymeleafListHtml(listVariableName, 'disc'),
+          apiVariable: variable.name, // Track which API variable this came from
+        },
+        styles: { fontSize: '16px', color: '#000000' },
+        isLabelEditable: true
+      };
+      onCreateSection(newSection);
+      toast({
+        title: "Bullet list created",
+        description: `Created from ${variable.name} with ${items.length} items`,
+      });
+    } else if (variable.dataType === 'list') {
+      // Create table section from object array
+      const sample = Array.isArray(variable.data) && variable.data.length > 0 ? variable.data[0] : {};
+      const columns = Object.keys(sample);
+      const headers = columns.map(col => col.charAt(0).toUpperCase() + col.slice(1));
+      
+      const rows = Array.isArray(variable.data) 
+        ? variable.data.slice(0, 10).map((item: any) => 
+            columns.map(col => String(item[col] ?? ''))
+          )
+        : [columns.map(() => '')];
+
+      const newSection: Section = {
+        id: sectionId,
+        type: 'table',
+        content: '',
+        variables: {
+          tableData: {
+            rows: [headers, ...rows],
+            showBorder: true,
+            borderColor: '#ddd',
+            mergedCells: {},
+            cellStyles: {},
+            headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
+            columnWidths: columns.map(() => 'auto'),
+            cellPadding: 'medium',
+            isStatic: true,
+            jsonMapping: { enabled: false, columnMappings: [] }
+          },
+          apiVariable: variable.name,
+        },
+        styles: { fontSize: '14px' },
+        isLabelEditable: true
+      };
+      onCreateSection(newSection);
+      toast({
+        title: "Table created",
+        description: `Created from ${variable.name} with ${columns.length} columns and ${rows.length} rows`,
+      });
+    } else if (variable.dataType === 'object') {
+      // Create table with key-value pairs
+      const entries = Object.entries(variable.data || {});
+      const rows = [
+        ['Field', 'Value'],
+        ...entries.slice(0, 20).map(([key, value]) => [
+          key.charAt(0).toUpperCase() + key.slice(1),
+          typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')
+        ])
+      ];
+
+      const newSection: Section = {
+        id: sectionId,
+        type: 'table',
+        content: '',
+        variables: {
+          tableData: {
+            rows,
+            showBorder: true,
+            borderColor: '#ddd',
+            mergedCells: {},
+            cellStyles: {},
+            headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
+            columnWidths: ['auto', 'auto'],
+            cellPadding: 'medium',
+            isStatic: true,
+            jsonMapping: { enabled: false, columnMappings: [] }
+          },
+          apiVariable: variable.name,
+        },
+        styles: { fontSize: '14px' },
+        isLabelEditable: true
+      };
+      onCreateSection(newSection);
+      toast({
+        title: "Key-value table created",
+        description: `Created from ${variable.name} with ${entries.length} fields`,
+      });
+    }
+  };
 
   const toggleExpanded = (id: string) => {
     const next = new Set(expandedIntegrations);
@@ -470,18 +587,42 @@ export const GlobalApiPanel = ({ config, onUpdate }: GlobalApiPanelProps) => {
                         </span>
                       )}
                     </div>
-                    {/* Mapping suggestion */}
+                    {/* Mapping suggestion with create button */}
                     <div className={styles.mappingSuggestion}>
-                      <span className={styles.suggestionLabel}>Suggested mapping:</span>
-                      {variable.dataType === 'stringList' && (
-                        <span className={styles.suggestionValue}>→ Bullet List</span>
-                      )}
-                      {variable.dataType === 'list' && (
-                        <span className={styles.suggestionValue}>→ Table Section</span>
-                      )}
-                      {variable.dataType === 'object' && (
-                        <span className={styles.suggestionValue}>→ Table or Key-Value List</span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <div>
+                          <span className={styles.suggestionLabel}>Maps to:</span>
+                          {variable.dataType === 'stringList' && (
+                            <span className={styles.suggestionValue}>
+                              <List className={styles.iconTiny} style={{ marginRight: '0.25rem' }} />
+                              Bullet List
+                            </span>
+                          )}
+                          {variable.dataType === 'list' && (
+                            <span className={styles.suggestionValue}>
+                              <Table className={styles.iconTiny} style={{ marginRight: '0.25rem' }} />
+                              Table
+                            </span>
+                          )}
+                          {variable.dataType === 'object' && (
+                            <span className={styles.suggestionValue}>
+                              <Table className={styles.iconTiny} style={{ marginRight: '0.25rem' }} />
+                              Key-Value Table
+                            </span>
+                          )}
+                        </div>
+                        {onCreateSection && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => createSectionFromVariable(variable)}
+                            className={styles.createSectionBtn}
+                          >
+                            <PlusCircle className={styles.iconTiny} style={{ marginRight: '0.25rem' }} />
+                            Create Section
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     {/* Preview data sample */}
                     <div className={styles.dataSample}>

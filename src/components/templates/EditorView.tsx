@@ -49,6 +49,7 @@ const SortableSection = ({
   onCopyStyles,
   onPasteStyles,
   renderChildren,
+  globalApiConfig,
 }: SortableSectionProps) => {
   const {
     attributes,
@@ -314,6 +315,7 @@ const SortableSection = ({
           onMoveDown={onMoveDown}
           isFirst={isFirst}
           isLast={isLast}
+          globalApiConfig={globalApiConfig}
         />
       </div>
 
@@ -359,6 +361,7 @@ export const EditorView = ({
   onDuplicateSection,
   onCopyStyles,
   onPasteStyles,
+  globalApiConfig,
 }: EditorViewProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'editor-drop-zone',
@@ -475,6 +478,7 @@ export const EditorView = ({
               onCopyStyles={onCopyStyles}
               onPasteStyles={onPasteStyles}
               renderChildren={renderNestedChildren}
+              globalApiConfig={globalApiConfig}
             />
           ))
         )}

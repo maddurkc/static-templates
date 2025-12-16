@@ -198,3 +198,15 @@
 .variableInput {
   font-size: 0.875rem;
 }
+
+.apiBindingHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.apiIcon {
+  width: 1rem;
+  height: 1rem;
+  color: hsl(var(--primary));
+}

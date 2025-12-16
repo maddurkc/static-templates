@@ -309,6 +309,13 @@
   height: 0.875rem;
 }
 
+.iconTiny {
+  width: 0.75rem;
+  height: 0.75rem;
+  display: inline-block;
+  vertical-align: middle;
+}
+
 .statusBadge {
   display: inline-flex;
   align-items: center;
@@ -332,4 +339,10 @@
 .testButton {
   width: 100%;
   margin-top: 0.5rem;
+}
+
+.createSectionBtn {
+  font-size: 0.6875rem;
+  height: 1.5rem;
+  padding: 0 0.5rem;
 }

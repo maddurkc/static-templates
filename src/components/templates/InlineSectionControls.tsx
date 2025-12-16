@@ -1,4 +1,5 @@
 import { Section } from "@/types/section";
+import { GlobalApiConfig } from "@/types/global-api-config";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Settings2, Palette, Trash2, ChevronUp, ChevronDown } from "lucide-react";
@@ -14,6 +15,7 @@ interface InlineSectionControlsProps {
   onMoveDown: () => void;
   isFirst: boolean;
   isLast: boolean;
+  globalApiConfig?: GlobalApiConfig;
 }
 
 export const InlineSectionControls = ({
@@ -24,6 +26,7 @@ export const InlineSectionControls = ({
   onMoveDown,
   isFirst,
   isLast,
+  globalApiConfig,
 }: InlineSectionControlsProps) => {
   return (
     <div className={styles.controls}>
@@ -45,7 +48,7 @@ export const InlineSectionControls = ({
           align="end"
           onClick={(e) => e.stopPropagation()}
         >
-          <VariableEditor section={section} onUpdate={onUpdate} />
+          <VariableEditor section={section} onUpdate={onUpdate} globalApiConfig={globalApiConfig} />
         </PopoverContent>
       </Popover>
 

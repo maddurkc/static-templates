@@ -1,0 +1,81 @@
+.emptyState {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.emptyIcon {
+  width: 1rem;
+  height: 1rem;
+  opacity: 0.5;
+}
+
+.trigger {
+  width: 100%;
+}
+
+.content {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.groupLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.3);
+}
+
+.typeTag {
+  font-size: 0.625rem;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted));
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  margin-left: auto;
+}
+
+.optionIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: hsl(var(--primary));
+}
+
+.option {
+  padding-left: 1.5rem;
+}
+
+.fieldOption {
+  padding-left: 2.5rem;
+  font-size: 0.8125rem;
+}
+
+.optionContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.optionCode {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: hsl(var(--primary));
+}
+
+.optionHint {
+  font-size: 0.625rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.fieldType {
+  font-size: 0.625rem;
+  color: hsl(var(--muted-foreground));
+}
