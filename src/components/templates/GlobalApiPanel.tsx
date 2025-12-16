@@ -30,7 +30,8 @@ import {
   PlusCircle,
   Table,
   List,
-  Settings2
+  Settings2,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { API_TEMPLATES, getAllCategories, getTemplateById } from "@/data/apiTemplates";
@@ -43,9 +44,10 @@ interface GlobalApiPanelProps {
   config: GlobalApiConfig;
   onUpdate: (config: GlobalApiConfig) => void;
   onCreateSection?: (section: Section) => void;
+  onClose?: () => void;
 }
 
-export const GlobalApiPanel = ({ config, onUpdate, onCreateSection }: GlobalApiPanelProps) => {
+export const GlobalApiPanel = ({ config, onUpdate, onCreateSection, onClose }: GlobalApiPanelProps) => {
   const { toast } = useToast();
   const categories = getAllCategories();
   const [expandedIntegrations, setExpandedIntegrations] = useState<Set<string>>(new Set());
@@ -370,10 +372,17 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection }: GlobalApiP
       <div className={styles.header}>
         <div className={styles.headerTitle}>
           <h3 className={styles.title}>API Integrations</h3>
-          <Button size="sm" onClick={addIntegration} className={styles.buttonSmall}>
-            <Plus className={styles.iconSmall} />
-            Add
-          </Button>
+          <div className={styles.headerActions}>
+            <Button size="sm" onClick={addIntegration} className={styles.buttonSmall}>
+              <Plus className={styles.iconSmall} />
+              Add
+            </Button>
+            {onClose && (
+              <Button size="icon" variant="ghost" onClick={onClose} className={styles.buttonIcon}>
+                <X className={styles.iconSmall} />
+              </Button>
+            )}
+          </div>
         </div>
         <p className={styles.subtitle}>
           Configure APIs and store responses as global variables
