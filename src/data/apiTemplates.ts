@@ -300,41 +300,109 @@ export const API_TEMPLATES: ApiTemplate[] = [
         location: "path"
       }
     ],
-    sampleMappings: [
-      {
-        id: "mapping-1",
-        sectionId: "",
-        apiPath: "name",
-        dataType: "text",
-        variableName: "userName"
+    sampleMappings: [],
+    mockData: {
+      id: 1,
+      name: "Leanne Graham",
+      username: "Bret",
+      email: "leanne@example.com",
+      phone: "1-770-736-8031",
+      website: "hildegard.org",
+      company: {
+        name: "Romaguera-Crona",
+        catchPhrase: "Multi-layered client-server neural-net"
+      },
+      address: {
+        street: "Kulas Light",
+        city: "Gwenborough",
+        zipcode: "92998-3874"
+      }
+    }
+  },
+  {
+    id: "mock-string-list",
+    name: "Mock Tags List (Demo)",
+    description: "Returns a list of string tags - Maps to bullet list",
+    category: "Demo",
+    url: "mock://string-list",
+    method: "GET",
+    headers: {},
+    requiredParams: [],
+    sampleMappings: [],
+    mockData: [
+      "Critical Bug Fix",
+      "Performance Improvement",
+      "Security Patch",
+      "New Feature",
+      "Documentation Update"
+    ]
+  },
+  {
+    id: "mock-object-list",
+    name: "Mock Issues List (Demo)",
+    description: "Returns a list of objects - Maps to table",
+    category: "Demo",
+    url: "mock://object-list",
+    method: "GET",
+    headers: {},
+    requiredParams: [],
+    sampleMappings: [],
+    mockData: [
+      { id: "JIRA-101", title: "Fix login timeout", status: "Done", priority: "High", assignee: "John Doe" },
+      { id: "JIRA-102", title: "Add dark mode support", status: "In Progress", priority: "Medium", assignee: "Jane Smith" },
+      { id: "JIRA-103", title: "Optimize database queries", status: "Open", priority: "High", assignee: "Bob Wilson" },
+      { id: "JIRA-104", title: "Update API documentation", status: "Done", priority: "Low", assignee: "Alice Brown" }
+    ]
+  },
+  {
+    id: "mock-single-object",
+    name: "Mock Release Info (Demo)",
+    description: "Returns a single object - Maps to table or labeled list",
+    category: "Demo",
+    url: "mock://single-object",
+    method: "GET",
+    headers: {},
+    requiredParams: [],
+    sampleMappings: [],
+    mockData: {
+      version: "2.5.0",
+      releaseName: "Aurora",
+      releaseDate: "2024-01-15",
+      status: "Released",
+      totalIssues: 45,
+      fixedBugs: 28,
+      newFeatures: 12,
+      improvements: 5,
+      breakingChanges: false
+    }
+  },
+  {
+    id: "mock-nested-object-list",
+    name: "Mock Team Members (Demo)",
+    description: "Returns nested objects with arrays - Complex data structure",
+    category: "Demo",
+    url: "mock://nested-list",
+    method: "GET",
+    headers: {},
+    requiredParams: [],
+    sampleMappings: [],
+    mockData: [
+      { 
+        name: "Engineering Team",
+        lead: "Sarah Connor",
+        members: ["John", "Jane", "Bob"],
+        projects: [
+          { name: "Project Alpha", status: "Active" },
+          { name: "Project Beta", status: "Planning" }
+        ]
       },
       {
-        id: "mapping-2",
-        sectionId: "",
-        apiPath: "email",
-        dataType: "text",
-        variableName: "userEmail"
-      },
-      {
-        id: "mapping-3",
-        sectionId: "",
-        apiPath: "phone",
-        dataType: "text",
-        variableName: "userPhone"
-      },
-      {
-        id: "mapping-4",
-        sectionId: "",
-        apiPath: "website",
-        dataType: "text",
-        variableName: "userWebsite"
-      },
-      {
-        id: "mapping-5",
-        sectionId: "",
-        apiPath: "company.name",
-        dataType: "text",
-        variableName: "userCompanyName"
+        name: "Design Team", 
+        lead: "Mike Chen",
+        members: ["Alice", "Tom"],
+        projects: [
+          { name: "UI Redesign", status: "Active" }
+        ]
       }
     ]
   }

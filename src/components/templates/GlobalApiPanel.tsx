@@ -94,7 +94,7 @@ export const GlobalApiPanel = ({ config, onUpdate }: GlobalApiPanelProps) => {
     });
   };
 
-  const testAndFetchApi = async (integration: GlobalApiIntegration) => {
+  const testAndFetchApi = async (integration: GlobalApiIntegration, useMock: boolean = false) => {
     const template = getTemplateById(integration.templateId);
     if (!template) {
       toast({
@@ -105,56 +105,67 @@ export const GlobalApiPanel = ({ config, onUpdate }: GlobalApiPanelProps) => {
       return;
     }
 
-    // Build a temporary ApiConfig to use existing utilities
-    const tempApiConfig = {
-      enabled: true,
-      templateId: integration.templateId,
-      paramValues: integration.paramValues,
-      mappings: []
-    };
-
-    const validation = validateApiConfig(tempApiConfig);
-    if (!validation.valid) {
-      toast({
-        title: "Missing parameters",
-        description: `Please fill in: ${validation.missingParams.join(', ')}`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const request = buildApiRequest(tempApiConfig);
-    if (!request) {
-      toast({
-        title: "Invalid configuration",
-        description: "Could not build API request.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setTestingIntegration(integration.id);
 
     try {
-      const response = await fetch(request.url, {
-        method: request.method,
-        headers: request.headers,
-        body: request.body
-      });
+      let data: any;
 
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}: ${response.statusText}`);
+      if (useMock && template.mockData) {
+        // Use mock data directly
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+        data = template.mockData;
+      } else {
+        // Build a temporary ApiConfig to use existing utilities
+        const tempApiConfig = {
+          enabled: true,
+          templateId: integration.templateId,
+          paramValues: integration.paramValues,
+          mappings: []
+        };
+
+        const validation = validateApiConfig(tempApiConfig);
+        if (!validation.valid) {
+          toast({
+            title: "Missing parameters",
+            description: `Please fill in: ${validation.missingParams.join(', ')}`,
+            variant: "destructive"
+          });
+          setTestingIntegration(null);
+          return;
+        }
+
+        const request = buildApiRequest(tempApiConfig);
+        if (!request) {
+          toast({
+            title: "Invalid configuration",
+            description: "Could not build API request.",
+            variant: "destructive"
+          });
+          setTestingIntegration(null);
+          return;
+        }
+
+        const response = await fetch(request.url, {
+          method: request.method,
+          headers: request.headers,
+          body: request.body
+        });
+
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}: ${response.statusText}`);
+        }
+
+        data = await response.json();
       }
 
-      const data = await response.json();
-      const isArray = Array.isArray(data);
+      const dataType = detectDataType(data);
       const schema = detectSchema(data);
 
       // Store the response as a global variable
       const globalVariable: GlobalApiVariable = {
         name: integration.variableName,
         data,
-        dataType: isArray ? 'list' : 'object',
+        dataType,
         lastFetched: new Date().toISOString(),
         schema
       };
@@ -168,8 +179,8 @@ export const GlobalApiPanel = ({ config, onUpdate }: GlobalApiPanelProps) => {
       });
 
       toast({
-        title: "API fetch successful",
-        description: `Data stored in variable: ${integration.variableName}`,
+        title: useMock ? "Mock data loaded" : "API fetch successful",
+        description: `Data stored in variable: ${integration.variableName} (${dataType})`,
       });
     } catch (error) {
       console.error('API fetch error:', error);
@@ -181,6 +192,18 @@ export const GlobalApiPanel = ({ config, onUpdate }: GlobalApiPanelProps) => {
     } finally {
       setTestingIntegration(null);
     }
+  };
+
+  // Detect data type more accurately
+  const detectDataType = (data: any): 'object' | 'list' | 'stringList' => {
+    if (Array.isArray(data)) {
+      if (data.length === 0) return 'list';
+      if (typeof data[0] === 'string' || typeof data[0] === 'number') {
+        return 'stringList';
+      }
+      return 'list';
+    }
+    return 'object';
   };
 
   const getVariableFieldsList = (variable: GlobalApiVariable): string => {
@@ -365,26 +388,51 @@ export const GlobalApiPanel = ({ config, onUpdate }: GlobalApiPanelProps) => {
                               </div>
                             ))}
 
-                            {/* Test & Fetch Button */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => testAndFetchApi(integration)}
-                              disabled={isTesting || !integration.enabled}
-                              className={styles.testButton}
-                            >
-                              {isTesting ? (
-                                <>
-                                  <Loader2 className={styles.iconSmall} style={{ marginRight: '0.5rem', animation: 'spin 1s linear infinite' }} />
-                                  Fetching...
-                                </>
-                              ) : (
-                                <>
-                                  <Play className={styles.iconSmall} style={{ marginRight: '0.5rem' }} />
-                                  Test & Fetch Data
-                                </>
+                            {/* Test & Fetch Buttons */}
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                              {template.mockData && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => testAndFetchApi(integration, true)}
+                                  disabled={isTesting || !integration.enabled}
+                                  style={{ flex: 1 }}
+                                >
+                                  {isTesting ? (
+                                    <>
+                                      <Loader2 className={styles.iconSmall} style={{ marginRight: '0.5rem', animation: 'spin 1s linear infinite' }} />
+                                      Loading...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Database className={styles.iconSmall} style={{ marginRight: '0.5rem' }} />
+                                      Use Mock Data
+                                    </>
+                                  )}
+                                </Button>
                               )}
-                            </Button>
+                              {template.requiredParams.length > 0 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => testAndFetchApi(integration, false)}
+                                  disabled={isTesting || !integration.enabled}
+                                  style={{ flex: 1 }}
+                                >
+                                  {isTesting ? (
+                                    <>
+                                      <Loader2 className={styles.iconSmall} style={{ marginRight: '0.5rem', animation: 'spin 1s linear infinite' }} />
+                                      Fetching...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Play className={styles.iconSmall} style={{ marginRight: '0.5rem' }} />
+                                      Fetch Live Data
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
                           </>
                         )}
                       </div>
@@ -405,11 +453,16 @@ export const GlobalApiPanel = ({ config, onUpdate }: GlobalApiPanelProps) => {
                   <div key={name} className={styles.variableCard}>
                     <div>
                       <span className={styles.variableName}>{name}</span>
-                      <span className={styles.variableType}>({variable.dataType})</span>
+                      <span className={styles.variableType}>
+                        ({variable.dataType === 'stringList' ? 'string[]' : variable.dataType === 'list' ? 'object[]' : 'object'})
+                      </span>
                     </div>
                     <div className={styles.variableMeta}>
                       <span className={styles.variableFields}>
-                        Fields: {getVariableFieldsList(variable)}
+                        {variable.dataType === 'stringList' 
+                          ? `${Array.isArray(variable.data) ? variable.data.length : 0} items`
+                          : `Fields: ${getVariableFieldsList(variable)}`
+                        }
                       </span>
                       {variable.lastFetched && (
                         <span className={styles.variableTimestamp}>
@@ -417,21 +470,45 @@ export const GlobalApiPanel = ({ config, onUpdate }: GlobalApiPanelProps) => {
                         </span>
                       )}
                     </div>
+                    {/* Mapping suggestion */}
+                    <div className={styles.mappingSuggestion}>
+                      <span className={styles.suggestionLabel}>Suggested mapping:</span>
+                      {variable.dataType === 'stringList' && (
+                        <span className={styles.suggestionValue}>→ Bullet List</span>
+                      )}
+                      {variable.dataType === 'list' && (
+                        <span className={styles.suggestionValue}>→ Table Section</span>
+                      )}
+                      {variable.dataType === 'object' && (
+                        <span className={styles.suggestionValue}>→ Table or Key-Value List</span>
+                      )}
+                    </div>
+                    {/* Preview data sample */}
+                    <div className={styles.dataSample}>
+                      <code className={styles.sampleCode}>
+                        {JSON.stringify(
+                          Array.isArray(variable.data) 
+                            ? variable.data.slice(0, 2) 
+                            : variable.data, 
+                          null, 
+                          1
+                        ).substring(0, 150)}
+                        {JSON.stringify(variable.data).length > 150 ? '...' : ''}
+                      </code>
+                    </div>
                   </div>
                 ))}
 
                 <div className={styles.usageHint}>
-                  <div className={styles.usageTitle}>How to use in sections:</div>
-                  <div>
-                    <strong>Dropdown:</strong> Select from variable picker in section editor
+                  <div className={styles.usageTitle}>Data Type Mapping:</div>
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <strong>String List</strong> → Add a bullet list section
                   </div>
                   <div style={{ marginTop: '0.25rem' }}>
-                    <strong>Placeholder:</strong>{' '}
-                    <code className={styles.usageCode}>{'{{api.variableName.field}}'}</code>
+                    <strong>Object List</strong> → Add a table section
                   </div>
                   <div style={{ marginTop: '0.25rem' }}>
-                    <strong>List iteration:</strong>{' '}
-                    <code className={styles.usageCode}>{'{{#each api.variableName}}'}</code>
+                    <strong>Single Object</strong> → Add table (rows as fields) or labeled list
                   </div>
                 </div>
               </div>
