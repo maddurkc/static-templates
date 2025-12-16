@@ -1065,7 +1065,7 @@ ${indent}</div>`;
                     API ({globalApiConfig.integrations.length})
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-[400px] p-0 overflow-hidden">
+                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-[400px] p-0 overflow-hidden [&>button]:hidden">
                   <GlobalApiPanel 
                     config={globalApiConfig}
                     onUpdate={setGlobalApiConfig}
@@ -1073,6 +1073,7 @@ ${indent}</div>`;
                       setSections(prev => [...prev, newSection]);
                       setSelectedSection(newSection);
                     }}
+                    onClose={() => setShowApiPanel(false)}
                   />
                 </SheetContent>
               </Sheet>

@@ -23,6 +23,12 @@
   margin-bottom: 0.25rem;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .title {
   font-size: 1rem;
   font-weight: 600;
