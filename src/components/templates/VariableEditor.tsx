@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Section, ListItemStyle } from "@/types/section";
+import { GlobalApiConfig } from "@/types/global-api-config";
 import { sectionTypes } from "@/data/sectionTypes";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ChevronRight, ChevronDown, Palette, Bold, Italic, Underline, Info } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronDown, Palette, Bold, Italic, Underline, Info, Database } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { TableEditor } from "./TableEditor";
 import { ThymeleafEditor } from "./ThymeleafEditor";
+import { ApiVariablePicker } from "./ApiVariablePicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { generateListVariableName, generateThymeleafListHtml, getListTag, getListStyleType, isValidListVariableName, sanitizeVariableName } from "@/lib/listThymeleafUtils";
 import styles from "./VariableEditor.module.scss";
@@ -16,6 +18,7 @@ import styles from "./VariableEditor.module.scss";
 interface VariableEditorProps {
   section: Section;
   onUpdate: (section: Section) => void;
+  globalApiConfig?: GlobalApiConfig;
 }
 
 // Helper function to normalize items to ListItemStyle format
@@ -347,8 +350,9 @@ const LabeledContentTableEditor = ({ section, onUpdate }: LabeledContentTableEdi
   return <TableEditor section={virtualSection} onUpdate={handleUpdate} />;
 };
 
-export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
+export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableEditorProps) => {
   const sectionDef = sectionTypes.find(s => s.type === section.type);
+  const hasApiVariables = globalApiConfig && Object.keys(globalApiConfig.globalVariables).length > 0;
   
   // Extract placeholders from content for heading/text sections
   const extractPlaceholders = (content: string): string[] => {
@@ -705,6 +709,35 @@ export const VariableEditor = ({ section, onUpdate }: VariableEditorProps) => {
             When unchecked, users won't be able to modify the label value when running the template.
           </p>
         </div>
+
+        {/* API Variable Binding */}
+        {hasApiVariables && (
+          <>
+            <Separator />
+            <div className={styles.section}>
+              <div className={styles.apiBindingHeader}>
+                <Database className={styles.apiIcon} />
+                <Label className={styles.label}>Bind API Variable</Label>
+              </div>
+              <ApiVariablePicker
+                globalApiConfig={globalApiConfig}
+                value={section.variables?.apiVariable as string}
+                onChange={(varName) => {
+                  onUpdate({
+                    ...section,
+                    variables: { ...section.variables, apiVariable: varName }
+                  });
+                }}
+                placeholder="Select an API variable to bind..."
+                showFields={contentType === 'text'}
+                dataTypeFilter={contentType === 'list' ? 'stringList' : contentType === 'table' ? 'list' : 'all'}
+              />
+              <p className={styles.description}>
+                Optionally bind data from an API variable to populate this section.
+              </p>
+            </div>
+          </>
+        )}
         
 
         <Separator />

@@ -1069,6 +1069,10 @@ ${indent}</div>`;
                   <GlobalApiPanel 
                     config={globalApiConfig}
                     onUpdate={setGlobalApiConfig}
+                    onCreateSection={(newSection) => {
+                      setSections(prev => [...prev, newSection]);
+                      setSelectedSection(newSection);
+                    }}
                   />
                 </SheetContent>
               </Sheet>
