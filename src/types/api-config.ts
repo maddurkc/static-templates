@@ -9,6 +9,7 @@ export interface ApiTemplate {
   bodyTemplate?: string; // Template for POST body with placeholders
   requiredParams: ApiParam[]; // Parameters user needs to provide
   sampleMappings?: ApiMapping[]; // Suggested mappings for this template
+  mockData?: any; // Mock response data for testing
 }
 
 export interface ApiParam {

@@ -19,7 +19,7 @@ export interface GlobalApiConfig {
 export interface GlobalApiVariable {
   name: string;
   data: any; // The actual API response data (object or array)
-  dataType: 'object' | 'list'; // Whether the response is a single object or list of objects
+  dataType: 'object' | 'list' | 'stringList'; // Whether the response is a single object, list of objects, or list of strings
   lastFetched?: string; // ISO timestamp of last fetch
   schema?: Record<string, string>; // Detected schema: field name -> type (for dropdown hints)
 }
