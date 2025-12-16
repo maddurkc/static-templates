@@ -5,7 +5,9 @@ import {
   GlobalApiVariable,
   generateIntegrationId, 
   sanitizeVariableName,
-  detectSchema 
+  detectSchema,
+  DEFAULT_TRANSFORMATION,
+  applyTransformations
 } from "@/types/global-api-config";
 import { Section } from "@/types/section";
 import { Button } from "@/components/ui/button";
@@ -27,12 +29,14 @@ import {
   AlertCircle,
   PlusCircle,
   Table,
-  List
+  List,
+  Settings2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { API_TEMPLATES, getAllCategories, getTemplateById } from "@/data/apiTemplates";
 import { buildApiRequest, validateApiConfig } from "@/lib/apiTemplateUtils";
 import { generateListVariableName, generateThymeleafListHtml } from "@/lib/listThymeleafUtils";
+import { DataTransformationEditor } from "./DataTransformationEditor";
 import styles from "./GlobalApiPanel.module.scss";
 
 interface GlobalApiPanelProps {
@@ -225,12 +229,12 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection }: GlobalApiP
     setTestingIntegration(integration.id);
 
     try {
-      let data: any;
+      let rawData: any;
 
       if (useMock && template.mockData) {
         // Use mock data directly
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-        data = template.mockData;
+        rawData = template.mockData;
       } else {
         // Build a temporary ApiConfig to use existing utilities
         const tempApiConfig = {
@@ -272,19 +276,25 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection }: GlobalApiP
           throw new Error(`API returned ${response.status}: ${response.statusText}`);
         }
 
-        data = await response.json();
+        rawData = await response.json();
       }
 
-      const dataType = detectDataType(data);
-      const schema = detectSchema(data);
+      // Apply transformations if configured
+      const transformedData = applyTransformations(rawData, integration.transformation);
+      
+      const dataType = detectDataType(transformedData);
+      const schema = detectSchema(transformedData);
 
       // Store the response as a global variable
       const globalVariable: GlobalApiVariable = {
         name: integration.variableName,
-        data,
+        data: transformedData,
         dataType,
         lastFetched: new Date().toISOString(),
-        schema
+        schema,
+        rawData: integration.transformation?.filters.length || integration.transformation?.fieldMappings.length 
+          ? rawData 
+          : undefined
       };
 
       onUpdate({
@@ -295,9 +305,13 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection }: GlobalApiP
         }
       });
 
+      const transformationApplied = integration.transformation?.filters.length || 
+        integration.transformation?.limit || 
+        integration.transformation?.fieldMappings.length;
+
       toast({
         title: useMock ? "Mock data loaded" : "API fetch successful",
-        description: `Data stored in variable: ${integration.variableName} (${dataType})`,
+        description: `Data stored in variable: ${integration.variableName} (${dataType})${transformationApplied ? ' - transformations applied' : ''}`,
       });
     } catch (error) {
       console.error('API fetch error:', error);
@@ -328,6 +342,27 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection }: GlobalApiP
     const fields = Object.keys(variable.schema).slice(0, 5);
     const suffix = Object.keys(variable.schema).length > 5 ? '...' : '';
     return fields.join(', ') + suffix;
+  };
+
+  // Get available fields from mock data for transformation editor
+  const getAvailableFieldsForTemplate = (template: any): string[] => {
+    if (!template.mockData) return [];
+    const sample = Array.isArray(template.mockData) ? template.mockData[0] : template.mockData;
+    if (!sample || typeof sample !== 'object') return [];
+    
+    const fields: string[] = [];
+    const extractFields = (obj: any, prefix: string = '') => {
+      for (const key of Object.keys(obj)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        const value = obj[key];
+        fields.push(path);
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          extractFields(value, path);
+        }
+      }
+    };
+    extractFields(sample);
+    return fields;
   };
 
   return (
@@ -504,6 +539,31 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection }: GlobalApiP
                                 )}
                               </div>
                             ))}
+
+                            {/* Data Transformation Editor */}
+                            {template.mockData && (
+                              <div className={styles.transformSection}>
+                                <Collapsible>
+                                  <CollapsibleTrigger className={styles.transformTrigger}>
+                                    <Settings2 className={styles.iconSmall} />
+                                    <span>Data Transformations</span>
+                                    {(integration.transformation?.filters.length || 
+                                      integration.transformation?.fieldMappings.length ||
+                                      integration.transformation?.limit) && (
+                                      <span className={styles.transformBadge}>Active</span>
+                                    )}
+                                    <ChevronDown className={styles.iconSmall} style={{ marginLeft: 'auto' }} />
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <DataTransformationEditor
+                                      transformation={integration.transformation || DEFAULT_TRANSFORMATION}
+                                      onChange={(transformation) => updateIntegration(integration.id, { transformation })}
+                                      availableFields={getAvailableFieldsForTemplate(template)}
+                                    />
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              </div>
+                            )}
 
                             {/* Test & Fetch Buttons */}
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
