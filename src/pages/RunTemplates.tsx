@@ -1655,16 +1655,30 @@ const RunTemplates = () => {
                           }
                           
                           // Handle heading/text/paragraph sections
-                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type) && section.content) {
+                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type)) {
                             const varNames: string[] = [];
-                            const placeholderMatches = section.content.match(/\{\{(\w+)\}\}/g) || [];
-                            placeholderMatches.forEach(match => {
-                              const varName = match.replace(/\{\{|\}\}/g, '');
-                              if (!varNames.includes(varName)) varNames.push(varName);
-                            });
-                            const contentVars = extractVariables(section.content);
-                            contentVars.forEach(v => { if (!varNames.includes(v)) varNames.push(v); });
                             
+                            // Check for placeholders in section.content
+                            if (section.content) {
+                              const placeholderMatches = section.content.match(/\{\{(\w+)\}\}/g) || [];
+                              placeholderMatches.forEach(match => {
+                                const varName = match.replace(/\{\{|\}\}/g, '');
+                                if (!varNames.includes(varName)) varNames.push(varName);
+                              });
+                              const contentVars = extractVariables(section.content);
+                              contentVars.forEach(v => { if (!varNames.includes(v)) varNames.push(v); });
+                            }
+                            
+                            // Also check section.variables for any user-defined variables (not metadata)
+                            if (section.variables && typeof section.variables === 'object') {
+                              Object.entries(section.variables).forEach(([key, value]) => {
+                                if (!METADATA_KEYS.includes(key) && value !== undefined && value !== null) {
+                                  if (!varNames.includes(key)) varNames.push(key);
+                                }
+                              });
+                            }
+                            
+                            // If no variables to show, skip this section
                             if (varNames.length === 0) return null;
                             
                             return (
