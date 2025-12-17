@@ -549,37 +549,46 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     // Get content from section.content or from section.variables
     let processedContent = section.content || '';
     
-    // If content is empty or contains only Thymeleaf tags without resolved values, try to get from variables
+    // Metadata keys to skip when looking for user content
+    const metadataKeys = ['label', 'content', 'contentType', 'listStyle', 'items', 'tableData', 'listVariableName', 'listHtml', 'labelColor'];
+    
+    // If content is empty, try to get from variables
     if (!processedContent && section.variables) {
-      // Check for common variable names based on section type
+      // First check common variable names
       if (section.variables.content) {
         processedContent = String(section.variables.content);
       } else if (section.variables.text) {
         processedContent = String(section.variables.text);
       } else if (section.variables.title) {
-        // For heading sections that use 'title' variable
         processedContent = String(section.variables.title);
+      } else {
+        // Check for any user-defined variable with a string value
+        for (const [key, value] of Object.entries(section.variables)) {
+          if (!metadataKeys.includes(key) && typeof value === 'string' && value.trim()) {
+            // Build content with the variable placeholder
+            processedContent = `{{${key}}}`;
+            break;
+          }
+        }
       }
     }
     
-    // If content still contains unresolved Thymeleaf and we have the variable values, build content
+    // If content contains Thymeleaf tags, replace them with variable values
     if (processedContent.includes('th:utext') && section.variables) {
-      const hasThymeleafOnly = processedContent.replace(/<[^>]*th:utext[^>]*>/g, '').trim() === '' ||
-        processedContent.replace(/<[^>]*>/g, '').trim() === '';
-      if (hasThymeleafOnly) {
-        // Try to extract the variable name and use its value as content
-        const match = processedContent.match(/th:utext="\$\{(\w+)\}"/);
-        if (match && section.variables[match[1]]) {
-          const varValue = section.variables[match[1]];
-          processedContent = processedContent.replace(
-            /<span\s+th:utext="\$\{[^}]+\}"\/>/g,
-            sanitizeInput(String(varValue))
-          ).replace(
-            /<th:utext="\$\{[^}]+\}">/g,
-            sanitizeInput(String(varValue))
-          );
+      // Replace all Thymeleaf patterns with their values from variables
+      processedContent = processedContent.replace(
+        /<span\s+th:utext="\$\{(\w+)\}"\/>/g,
+        (match, varName) => {
+          const value = section.variables?.[varName] ?? variables?.[varName];
+          return value !== undefined ? sanitizeInput(String(value)) : match;
         }
-      }
+      ).replace(
+        /<th:utext="\$\{(\w+)\}">/g,
+        (match, varName) => {
+          const value = section.variables?.[varName] ?? variables?.[varName];
+          return value !== undefined ? sanitizeInput(String(value)) : match;
+        }
+      );
     }
     
     // Replace {{variable}} placeholders with values
