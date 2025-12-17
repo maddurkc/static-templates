@@ -549,13 +549,36 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     // Get content from section.content or from section.variables
     let processedContent = section.content || '';
     
-    // If content is empty, try to get from variables
+    // If content is empty or contains only Thymeleaf tags without resolved values, try to get from variables
     if (!processedContent && section.variables) {
-      // Check for common variable names
+      // Check for common variable names based on section type
       if (section.variables.content) {
         processedContent = String(section.variables.content);
       } else if (section.variables.text) {
         processedContent = String(section.variables.text);
+      } else if (section.variables.title) {
+        // For heading sections that use 'title' variable
+        processedContent = String(section.variables.title);
+      }
+    }
+    
+    // If content still contains unresolved Thymeleaf and we have the variable values, build content
+    if (processedContent.includes('th:utext') && section.variables) {
+      const hasThymeleafOnly = processedContent.replace(/<[^>]*th:utext[^>]*>/g, '').trim() === '' ||
+        processedContent.replace(/<[^>]*>/g, '').trim() === '';
+      if (hasThymeleafOnly) {
+        // Try to extract the variable name and use its value as content
+        const match = processedContent.match(/th:utext="\$\{(\w+)\}"/);
+        if (match && section.variables[match[1]]) {
+          const varValue = section.variables[match[1]];
+          processedContent = processedContent.replace(
+            /<span\s+th:utext="\$\{[^}]+\}"\/>/g,
+            sanitizeInput(String(varValue))
+          ).replace(
+            /<th:utext="\$\{[^}]+\}">/g,
+            sanitizeInput(String(varValue))
+          );
+        }
       }
     }
     
