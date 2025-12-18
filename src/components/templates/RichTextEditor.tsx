@@ -339,32 +339,31 @@ export const RichTextEditor = ({
           
           <div className={styles.separator} />
           
-          {/* Link Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`h-7 w-7 p-0 ${isLink ? 'text-primary' : ''}`}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              saveSelection();
-              setShowLinkInput(true);
-            }}
-            title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
-          >
-            <Link className="h-3.5 w-3.5" />
-          </Button>
-          
           {/* Link Popover */}
-          <Popover open={showLinkInput} onOpenChange={setShowLinkInput}>
+          <Popover open={showLinkInput} onOpenChange={(open) => {
+            if (open) saveSelection();
+            setShowLinkInput(open);
+          }}>
             <PopoverTrigger asChild>
-              <span className="hidden" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-7 w-7 p-0 ${isLink ? 'text-primary' : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  saveSelection();
+                }}
+                title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
+              >
+                <Link className="h-3.5 w-3.5" />
+              </Button>
             </PopoverTrigger>
             <PopoverContent 
-              className="w-72 p-3" 
+              className="w-72 p-3 z-[9999]" 
               onMouseDown={(e) => e.preventDefault()}
               side="top"
               align="center"
+              sideOffset={8}
             >
               <div className="space-y-3">
                 <Label className="text-sm font-medium">Enter URL</Label>
