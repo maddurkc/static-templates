@@ -111,14 +111,24 @@ export const RichTextEditor = ({
     setHasSelection(true);
     checkIfLink();
 
-    // Position toolbar above selection
+    // Position toolbar above selection using fixed positioning
     const rect = range.getBoundingClientRect();
-    const editorRect = editorRef.current.getBoundingClientRect();
+    const toolbarWidth = 380; // Approximate toolbar width
+    const toolbarHeight = 45;
     
-    setToolbarPosition({
-      top: rect.top - editorRect.top - 45,
-      left: rect.left - editorRect.left + rect.width / 2
-    });
+    // Calculate left position, keeping toolbar on screen
+    let left = rect.left + rect.width / 2 - toolbarWidth / 2;
+    const minLeft = 10;
+    const maxLeft = window.innerWidth - toolbarWidth - 10;
+    left = Math.max(minLeft, Math.min(left, maxLeft));
+    
+    // Calculate top position
+    let top = rect.top - toolbarHeight - 8;
+    if (top < 10) {
+      top = rect.bottom + 8; // Show below if not enough space above
+    }
+    
+    setToolbarPosition({ top, left });
     setShowToolbar(true);
   }, [saveSelection, checkIfLink]);
 
@@ -285,8 +295,8 @@ export const RichTextEditor = ({
         <div 
           className={styles.floatingToolbar}
           style={{
-            top: `${toolbarPosition.top}px`,
-            left: `${toolbarPosition.left}px`,
+            top: toolbarPosition.top,
+            left: toolbarPosition.left,
           }}
           onMouseDown={(e) => e.preventDefault()}
         >

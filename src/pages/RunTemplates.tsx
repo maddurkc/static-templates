@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil } from "lucide-react";
-import { TextStylePopover } from "@/components/templates/TextStylePopover";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import {
   Dialog,
@@ -1537,18 +1536,20 @@ const RunTemplates = () => {
                                                 <tr>
                                                   {tableData.headers.map((header: string, colIdx: number) => (
                                                     <th key={colIdx} className="border p-1 bg-muted">
-                                                      <Input
+                                                      <RichTextEditor
                                                         value={header}
-                                                        onChange={(e) => {
+                                                        onChange={(html) => {
                                                           const newHeaders = [...tableData.headers];
-                                                          newHeaders[colIdx] = e.target.value;
+                                                          newHeaders[colIdx] = html;
                                                           setTableVariables(prev => ({
                                                             ...prev,
                                                             [section.id]: { ...tableData, headers: newHeaders }
                                                           }));
                                                         }}
                                                         onFocus={() => scrollToSection(section.id)}
-                                                        className="h-7 text-xs font-semibold"
+                                                        placeholder={`Header ${colIdx + 1}`}
+                                                        singleLine
+                                                        className="font-semibold"
                                                       />
                                                     </th>
                                                   ))}
@@ -1559,18 +1560,19 @@ const RunTemplates = () => {
                                                   <tr key={rowIdx}>
                                                     {row.map((cell: string, colIdx: number) => (
                                                       <td key={colIdx} className="border p-1">
-                                                        <Input
+                                                        <RichTextEditor
                                                           value={cell}
-                                                          onChange={(e) => {
+                                                          onChange={(html) => {
                                                             const newRows = [...tableData.rows];
-                                                            newRows[rowIdx][colIdx] = e.target.value;
+                                                            newRows[rowIdx][colIdx] = html;
                                                             setTableVariables(prev => ({
                                                               ...prev,
                                                               [section.id]: { ...tableData, rows: newRows }
                                                             }));
                                                           }}
                                                           onFocus={() => scrollToSection(section.id)}
-                                                          className="h-7 text-xs"
+                                                          placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
+                                                          singleLine
                                                         />
                                                       </td>
                                                     ))}
@@ -1617,35 +1619,20 @@ const RunTemplates = () => {
                                       </PopoverContent>
                                     </Popover>
                                     <div className={styles.inputWrapper}>
-                                      <Input
-                                        id={`var-${varName}`}
-                                        placeholder={varName}
+                                      <RichTextEditor
                                         value={typeof variables[varName] === 'object' 
                                           ? (variables[varName] as TextStyle).text 
                                           : (variables[varName] as string) || ''
                                         }
-                                        onChange={(e) => {
-                                          const currentValue = variables[varName];
-                                          if (typeof currentValue === 'object') {
-                                            setVariables(prev => ({
-                                              ...prev,
-                                              [varName]: { ...(currentValue as TextStyle), text: e.target.value }
-                                            }));
-                                          } else {
-                                            setVariables(prev => ({
-                                              ...prev,
-                                              [varName]: e.target.value
-                                            }));
-                                          }
+                                        onChange={(html) => {
+                                          setVariables(prev => ({
+                                            ...prev,
+                                            [varName]: html
+                                          }));
                                         }}
                                         onFocus={() => scrollToSection(section.id)}
-                                      />
-                                      <TextStylePopover
-                                        value={variables[varName] || ''}
-                                        onChange={(newStyle) => setVariables(prev => ({
-                                          ...prev,
-                                          [varName]: newStyle
-                                        }))}
+                                        placeholder={varName}
+                                        singleLine
                                       />
                                     </div>
                                   </div>
@@ -1874,19 +1861,19 @@ const RunTemplates = () => {
                                             {tableData.headers.map((header: string, colIdx: number) => (
                                               <th key={colIdx} className="border p-1 bg-muted">
                                                 <div className="flex items-center gap-1">
-                                                  <Input
+                                                  <RichTextEditor
                                                     value={header}
-                                                    onChange={(e) => {
+                                                    onChange={(html) => {
                                                       const newHeaders = [...tableData.headers];
-                                                      newHeaders[colIdx] = e.target.value;
+                                                      newHeaders[colIdx] = html;
                                                       setTableVariables(prev => ({
                                                         ...prev,
                                                         [section.id]: { ...tableData, headers: newHeaders }
                                                       }));
                                                     }}
-                                                    className="h-7 text-xs font-semibold"
                                                     placeholder={`Header ${colIdx + 1}`}
-                                                    disabled={!editable}
+                                                    singleLine
+                                                    className="flex-1 font-semibold"
                                                   />
                                                   <Button
                                                     size="icon"
@@ -1916,22 +1903,19 @@ const RunTemplates = () => {
                                             <tr key={rowIdx}>
                                               {row.map((cell: string, colIdx: number) => (
                                                 <td key={colIdx} className="border p-1">
-                                                  <div className="flex items-center gap-1">
-                                                    <Input
-                                                      value={cell}
-                                                      onChange={(e) => {
-                                                        const newRows = [...tableData.rows];
-                                                        newRows[rowIdx][colIdx] = e.target.value;
-                                                        setTableVariables(prev => ({
-                                                          ...prev,
-                                                          [section.id]: { ...tableData, rows: newRows }
-                                                        }));
-                                                      }}
-                                                      className="h-7 text-xs"
-                                                      placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
-                                                      disabled={!editable}
-                                                    />
-                                                  </div>
+                                                  <RichTextEditor
+                                                    value={cell}
+                                                    onChange={(html) => {
+                                                      const newRows = [...tableData.rows];
+                                                      newRows[rowIdx][colIdx] = html;
+                                                      setTableVariables(prev => ({
+                                                        ...prev,
+                                                        [section.id]: { ...tableData, rows: newRows }
+                                                      }));
+                                                    }}
+                                                    placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
+                                                    singleLine
+                                                  />
                                                 </td>
                                               ))}
                                               <td className="border p-1 w-8">
