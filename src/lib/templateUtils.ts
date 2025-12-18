@@ -695,10 +695,22 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
     }
     
-    const headingTextHtml = `<${tag}${styleStr}>${processedContent}</${tag}>`;
+    // Check if processedContent already has the wrapper tag to avoid double-wrapping
+    const tagRegex = new RegExp(`^\\s*<${tag}[^>]*>`, 'i');
+    let headingTextHtml: string;
+    if (tagRegex.test(processedContent)) {
+      // Content already has the tag, just use it directly (but inject styles if needed)
+      if (styleStr && !processedContent.includes('style=')) {
+        headingTextHtml = processedContent.replace(new RegExp(`<${tag}`, 'i'), `<${tag}${styleStr}`);
+      } else {
+        headingTextHtml = processedContent;
+      }
+    } else {
+      // Wrap content in the appropriate tag
+      headingTextHtml = `<${tag}${styleStr}>${processedContent}</${tag}>`;
+    }
     return wrapInOutlookTable(headingTextHtml);
   }
-  
   // Handle standalone list sections (bullet-list-*, number-list-*)
   const listSectionTypes = [
     'bullet-list-circle', 'bullet-list-disc', 'bullet-list-square',
