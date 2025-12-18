@@ -339,10 +339,9 @@ export const RichTextEditor = ({
                   className="h-7 w-7 p-0 text-primary"
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    e.stopPropagation();
                     saveSelection();
-                    setShowLinkInput(true);
                   }}
+                  onClick={() => setShowLinkInput(true)}
                   title="Edit Link"
                 >
                   <Link className="h-3.5 w-3.5" />
@@ -354,10 +353,9 @@ export const RichTextEditor = ({
                   className="h-7 w-7 p-0"
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    e.stopPropagation();
                     saveSelection();
-                    setShowLinkInput(true);
                   }}
+                  onClick={() => setShowLinkInput(true)}
                   title="Add Link (Ctrl+K)"
                 >
                   <Link className="h-3.5 w-3.5" />
