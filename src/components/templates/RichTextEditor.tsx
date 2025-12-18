@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough } from "lucide-react";
+import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 import styles from "./RichTextEditor.module.scss";
 
 interface RichTextEditorProps {
@@ -178,6 +178,16 @@ export const RichTextEditor = ({
     editorRef.current?.focus();
   }, [onChange, restoreSelection]);
 
+  const applyAlignment = useCallback((alignment: 'left' | 'center' | 'right') => {
+    restoreSelection();
+    const command = alignment === 'left' ? 'justifyLeft' : alignment === 'center' ? 'justifyCenter' : 'justifyRight';
+    document.execCommand(command, false);
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+    editorRef.current?.focus();
+  }, [onChange, restoreSelection]);
+
   const applyLink = useCallback(() => {
     if (!linkUrl.trim()) return;
     
@@ -336,6 +346,30 @@ export const RichTextEditor = ({
           >
             <Strikethrough className="h-3.5 w-3.5" />
           </Button>
+          
+          <div className={styles.separator} />
+          
+          {/* Alignment */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} title="Alignment">
+                <AlignLeft className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => applyAlignment('left')} title="Align Left">
+                  <AlignLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => applyAlignment('center')} title="Align Center">
+                  <AlignCenter className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => applyAlignment('right')} title="Align Right">
+                  <AlignRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
           
           <div className={styles.separator} />
           
