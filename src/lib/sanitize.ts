@@ -10,9 +10,9 @@ export const sanitizeHTML = (html: string): string => {
     ALLOWED_TAGS: [
       'div', 'span', 'p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
       'ul', 'ol', 'li', 'a', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
-      'strong', 'em', 'u', 'b', 'i', 'blockquote', 'pre', 'code'
+      'strong', 'em', 'u', 'b', 'i', 'blockquote', 'pre', 'code', 'font', 's', 'strike'
     ],
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target'],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target', 'color', 'bgcolor', 'face', 'size'],
     ALLOW_DATA_ATTR: false,
     FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed'],
     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
