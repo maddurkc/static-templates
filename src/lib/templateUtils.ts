@@ -546,30 +546,39 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   // Handle heading and text sections (with or without placeholders)
   const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
   if (inlinePlaceholderTypes.includes(section.type)) {
-    // Get content from section.content or from section.variables
-    let processedContent = section.content || '';
-    
     // Metadata keys to skip when looking for user content
     const metadataKeys = ['label', 'content', 'contentType', 'listStyle', 'items', 'tableData', 'listVariableName', 'listHtml', 'labelColor'];
     
-    // If content is empty, try to get from variables
-    if (!processedContent && section.variables) {
-      // First check common variable names
+    // Find the variable name for this section
+    let varName: string | null = null;
+    if (section.variables) {
+      for (const [key, value] of Object.entries(section.variables)) {
+        if (!metadataKeys.includes(key) && typeof value === 'string') {
+          varName = key;
+          break;
+        }
+      }
+    }
+    
+    // PRIORITY: Check runtime variables first (from RichTextEditor)
+    // This ensures user edits from RichTextEditor are reflected in preview
+    let processedContent = '';
+    if (varName && variables && variables[varName] !== undefined) {
+      // Use the runtime variable value directly (already contains HTML from RichTextEditor)
+      processedContent = sanitizeHTML(String(variables[varName]));
+    } else if (section.content) {
+      // Fall back to section.content
+      processedContent = section.content;
+    } else if (section.variables) {
+      // Fall back to section.variables
       if (section.variables.content) {
         processedContent = String(section.variables.content);
       } else if (section.variables.text) {
         processedContent = String(section.variables.text);
       } else if (section.variables.title) {
         processedContent = String(section.variables.title);
-      } else {
-        // Check for any user-defined variable with a string value
-        for (const [key, value] of Object.entries(section.variables)) {
-          if (!metadataKeys.includes(key) && typeof value === 'string' && value.trim()) {
-            // Build content with the variable placeholder
-            processedContent = `{{${key}}}`;
-            break;
-          }
-        }
+      } else if (varName && section.variables[varName]) {
+        processedContent = String(section.variables[varName]);
       }
     }
     
