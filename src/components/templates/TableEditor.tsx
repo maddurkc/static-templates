@@ -728,7 +728,10 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
         onInsertColumnRight={() => selectedCell && addColumn(selectedCell.col + 1)}
         onDeleteRow={() => selectedCell && removeRow(selectedCell.row)}
         onDeleteColumn={() => selectedCell && removeColumn(selectedCell.col)}
-        onMergeCells={mergeCells}
+        showBorder={tableData.showBorder}
+        borderColor={tableData.borderColor}
+        onTableBorderChange={(show) => toggleBorder()}
+        onTableBorderColorChange={(color) => updateBorderColor(color)}
         open={tablePopoverOpen}
         onOpenChange={setTablePopoverOpen}
       >
