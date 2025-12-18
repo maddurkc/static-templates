@@ -339,38 +339,26 @@ export const RichTextEditor = ({
           
           <div className={styles.separator} />
           
+          {/* Link Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-7 w-7 p-0 ${isLink ? 'text-primary' : ''}`}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              saveSelection();
+              setShowLinkInput(true);
+            }}
+            title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
+          >
+            <Link className="h-3.5 w-3.5" />
+          </Button>
+          
           {/* Link Popover */}
           <Popover open={showLinkInput} onOpenChange={setShowLinkInput}>
             <PopoverTrigger asChild>
-              {isLink ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-primary"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    saveSelection();
-                  }}
-                  onClick={() => setShowLinkInput(true)}
-                  title="Edit Link"
-                >
-                  <Link className="h-3.5 w-3.5" />
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    saveSelection();
-                  }}
-                  onClick={() => setShowLinkInput(true)}
-                  title="Add Link (Ctrl+K)"
-                >
-                  <Link className="h-3.5 w-3.5" />
-                </Button>
-              )}
+              <span className="hidden" />
             </PopoverTrigger>
             <PopoverContent 
               className="w-72 p-3" 
