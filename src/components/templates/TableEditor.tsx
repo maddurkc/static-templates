@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +60,10 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
   const [tableData, setTableData] = useState<TableData>(parseTableData());
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
   const [tablePopoverOpen, setTablePopoverOpen] = useState(false);
+  
+  // Column resize state
+  const [resizing, setResizing] = useState<{ colIndex: number; startX: number; startWidth: number } | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   // Re-parse table data when section changes
   useEffect(() => {
@@ -166,6 +170,51 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
       columnWidths: newWidths
     });
   };
+
+  // Column resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent, colIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const th = (e.target as HTMLElement).closest('th');
+    const currentWidth = th?.offsetWidth || 100;
+    
+    setResizing({
+      colIndex,
+      startX: e.clientX,
+      startWidth: currentWidth
+    });
+  }, []);
+
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (!resizing) return;
+    
+    const diff = e.clientX - resizing.startX;
+    const newWidth = Math.max(50, resizing.startWidth + diff);
+    
+    updateColumnWidth(resizing.colIndex, `${newWidth}px`);
+  }, [resizing]);
+
+  const handleResizeEnd = useCallback(() => {
+    setResizing(null);
+  }, []);
+
+  // Attach global mouse events for resizing
+  useEffect(() => {
+    if (resizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [resizing, handleResizeMove, handleResizeEnd]);
 
   const updateCell = (rowIndex: number, colIndex: number, value: string) => {
     const newRows = tableData.rows.map((row, rIdx) => 
@@ -685,10 +734,16 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
       >
         <div className={styles.tableWrapper}>
           <table 
-            className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''}`}
-            style={{ borderColor: tableData.borderColor || '#ddd' }}
+            ref={tableRef}
+            className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''} ${resizing ? styles.resizing : ''}`}
+            style={{ borderColor: tableData.borderColor || '#ddd', tableLayout: 'fixed' }}
             onClick={() => setTablePopoverOpen(true)}
           >
+            <colgroup>
+              {tableData.rows[0]?.map((_, colIndex) => (
+                <col key={colIndex} style={{ width: tableData.columnWidths?.[colIndex] || 'auto' }} />
+              ))}
+            </colgroup>
             <tbody>
               {tableData.rows.map((row, rowIndex) => (
                 <tr key={rowIndex}>
@@ -716,7 +771,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                         rowSpan={merge?.rowSpan}
                         colSpan={merge?.colSpan}
                         className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
-                        style={{ borderColor: tableData.borderColor || '#ddd' }}
+                        style={{ borderColor: tableData.borderColor || '#ddd', position: 'relative' }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedCell({ row: rowIndex, col: colIndex });
@@ -729,6 +784,12 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                           className={styles.cellInput}
                           style={inputStyle}
                           placeholder={rowIndex === 0 ? `Header ${colIndex + 1}` : `Cell ${rowIndex},${colIndex + 1}`}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        {/* Resize handle on right edge */}
+                        <div
+                          className={styles.resizeHandle}
+                          onMouseDown={(e) => handleResizeStart(e, colIndex)}
                           onClick={(e) => e.stopPropagation()}
                         />
                       </td>
