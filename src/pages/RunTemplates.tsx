@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import * as React from "react";
 import styles from "./RunTemplates.module.scss";
@@ -56,7 +56,62 @@ const RunTemplates = () => {
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [selectedTableCell, setSelectedTableCell] = useState<Record<string, { row: number; col: number } | null>>({});
   const [tablePopoverOpen, setTablePopoverOpen] = useState<Record<string, boolean>>({});
+  const [tableColumnWidths, setTableColumnWidths] = useState<Record<string, string[]>>({});
+  const [resizing, setResizing] = useState<{ sectionKey: string; colIndex: number; startX: number; startWidth: number } | null>(null);
   const { toast } = useToast();
+  
+  // Column resize handlers
+  const handleTableResizeStart = useCallback((e: React.MouseEvent, sectionKey: string, colIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const cell = (e.target as HTMLElement).closest('th, td') as HTMLElement | null;
+    const currentWidth = cell?.offsetWidth || 100;
+    
+    setResizing({
+      sectionKey,
+      colIndex,
+      startX: e.clientX,
+      startWidth: currentWidth
+    });
+  }, []);
+
+  const handleTableResizeMove = useCallback((e: MouseEvent) => {
+    if (!resizing) return;
+    
+    const diff = e.clientX - resizing.startX;
+    const newWidth = Math.max(50, resizing.startWidth + diff);
+    
+    setTableColumnWidths(prev => {
+      const currentWidths = [...(prev[resizing.sectionKey] || [])];
+      while (currentWidths.length <= resizing.colIndex) {
+        currentWidths.push('auto');
+      }
+      currentWidths[resizing.colIndex] = `${newWidth}px`;
+      return { ...prev, [resizing.sectionKey]: currentWidths };
+    });
+  }, [resizing]);
+
+  const handleTableResizeEnd = useCallback(() => {
+    setResizing(null);
+  }, []);
+
+  // Attach global mouse events for resizing
+  useEffect(() => {
+    if (resizing) {
+      document.addEventListener('mousemove', handleTableResizeMove);
+      document.addEventListener('mouseup', handleTableResizeEnd);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleTableResizeMove);
+      document.removeEventListener('mouseup', handleTableResizeEnd);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [resizing, handleTableResizeMove, handleTableResizeEnd]);
 
   // Scroll to section in preview when editing
   const scrollToSection = (sectionId: string) => {
@@ -1543,14 +1598,19 @@ const RunTemplates = () => {
                                             open={tablePopoverOpen[sectionKey] || false}
                                             onOpenChange={(open) => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: open }))}
                                           >
-                                            <div className="overflow-x-auto cursor-pointer" onClick={() => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }))}>
-                                              <table className="w-full border-collapse border text-sm">
+                                            <div className={`overflow-x-auto cursor-pointer ${resizing?.sectionKey === sectionKey ? 'select-none' : ''}`} onClick={() => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }))}>
+                                              <table className="w-full border-collapse border text-sm" style={{ tableLayout: 'fixed' }}>
+                                                <colgroup>
+                                                  {tableData.headers.map((_: string, colIdx: number) => (
+                                                    <col key={colIdx} style={{ width: tableColumnWidths[sectionKey]?.[colIdx] || 'auto' }} />
+                                                  ))}
+                                                </colgroup>
                                                 <thead>
                                                   <tr>
                                                     {tableData.headers.map((header: string, colIdx: number) => (
                                                       <th 
                                                         key={colIdx} 
-                                                        className={`border p-1 bg-muted ${selectedCell?.row === -1 && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
+                                                        className={`border p-1 bg-muted relative ${selectedCell?.row === -1 && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
                                                         onClick={(e) => {
                                                           e.stopPropagation();
                                                           setSelectedTableCell(prev => ({ ...prev, [sectionKey]: { row: -1, col: colIdx } }));
@@ -1572,6 +1632,11 @@ const RunTemplates = () => {
                                                           singleLine
                                                           className="font-semibold"
                                                         />
+                                                        <div 
+                                                          className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize opacity-0 hover:opacity-100 hover:bg-primary/50 z-10 transition-opacity"
+                                                          onMouseDown={(e) => handleTableResizeStart(e, sectionKey, colIdx)}
+                                                          onClick={(e) => e.stopPropagation()}
+                                                        />
                                                       </th>
                                                     ))}
                                                   </tr>
@@ -1582,7 +1647,7 @@ const RunTemplates = () => {
                                                       {row.map((cell: string, colIdx: number) => (
                                                         <td 
                                                           key={colIdx} 
-                                                          className={`border p-1 ${selectedCell?.row === rowIdx && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
+                                                          className={`border p-1 relative ${selectedCell?.row === rowIdx && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
                                                           onClick={(e) => {
                                                             e.stopPropagation();
                                                             setSelectedTableCell(prev => ({ ...prev, [sectionKey]: { row: rowIdx, col: colIdx } }));
@@ -1602,6 +1667,11 @@ const RunTemplates = () => {
                                                             onFocus={() => scrollToSection(section.id)}
                                                             placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
                                                             singleLine
+                                                          />
+                                                          <div 
+                                                            className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize opacity-0 hover:opacity-100 hover:bg-primary/50 z-10 transition-opacity"
+                                                            onMouseDown={(e) => handleTableResizeStart(e, sectionKey, colIdx)}
+                                                            onClick={(e) => e.stopPropagation()}
                                                           />
                                                         </td>
                                                       ))}
@@ -1895,14 +1965,19 @@ const RunTemplates = () => {
                                       open={tablePopoverOpen[sectionKey] || false}
                                       onOpenChange={(open) => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: open }))}
                                     >
-                                      <div className="overflow-x-auto cursor-pointer" onClick={() => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }))}>
-                                        <table className="w-full border-collapse border text-sm">
+                                      <div className={`overflow-x-auto cursor-pointer ${resizing?.sectionKey === sectionKey ? 'select-none' : ''}`} onClick={() => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }))}>
+                                        <table className="w-full border-collapse border text-sm" style={{ tableLayout: 'fixed' }}>
+                                          <colgroup>
+                                            {tableData.headers.map((_: string, colIdx: number) => (
+                                              <col key={colIdx} style={{ width: tableColumnWidths[sectionKey]?.[colIdx] || 'auto' }} />
+                                            ))}
+                                          </colgroup>
                                           <thead>
                                             <tr>
                                               {tableData.headers.map((header: string, colIdx: number) => (
                                                 <th 
                                                   key={colIdx} 
-                                                  className={`border p-1 bg-muted ${selectedCell?.row === -1 && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
+                                                  className={`border p-1 bg-muted relative ${selectedCell?.row === -1 && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
                                                   onClick={(e) => {
                                                     e.stopPropagation();
                                                     setSelectedTableCell(prev => ({ ...prev, [sectionKey]: { row: -1, col: colIdx } }));
@@ -1923,6 +1998,11 @@ const RunTemplates = () => {
                                                     singleLine
                                                     className="font-semibold"
                                                   />
+                                                  <div 
+                                                    className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize opacity-0 hover:opacity-100 hover:bg-primary/50 z-10 transition-opacity"
+                                                    onMouseDown={(e) => handleTableResizeStart(e, sectionKey, colIdx)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  />
                                                 </th>
                                               ))}
                                             </tr>
@@ -1933,7 +2013,7 @@ const RunTemplates = () => {
                                                 {row.map((cell: string, colIdx: number) => (
                                                   <td 
                                                     key={colIdx} 
-                                                    className={`border p-1 ${selectedCell?.row === rowIdx && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
+                                                    className={`border p-1 relative ${selectedCell?.row === rowIdx && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
                                                       setSelectedTableCell(prev => ({ ...prev, [sectionKey]: { row: rowIdx, col: colIdx } }));
@@ -1952,6 +2032,11 @@ const RunTemplates = () => {
                                                       }}
                                                       placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
                                                       singleLine
+                                                    />
+                                                    <div 
+                                                      className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize opacity-0 hover:opacity-100 hover:bg-primary/50 z-10 transition-opacity"
+                                                      onMouseDown={(e) => handleTableResizeStart(e, sectionKey, colIdx)}
+                                                      onClick={(e) => e.stopPropagation()}
                                                     />
                                                   </td>
                                                 ))}
