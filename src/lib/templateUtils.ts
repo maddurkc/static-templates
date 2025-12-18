@@ -576,33 +576,42 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
     }
     
+    // Helper to check if value is empty
+    const isEmptyValue = (value: any): boolean => {
+      if (value === null || value === undefined) return true;
+      if (typeof value === 'string' && value.trim() === '') return true;
+      return false;
+    };
+    
     // If content contains Thymeleaf tags, replace them with variable values
-    // Priority: runtime variables > section.variables
+    // Priority: runtime variables > section.variables > {{placeholder}}
     if (processedContent.includes('th:utext')) {
       // Replace all Thymeleaf patterns with their values from runtime or section variables
       processedContent = processedContent.replace(
         /<span\s+th:utext="\$\{(\w+)\}"\/>/g,
         (match, varName) => {
           // Runtime variables take priority
-          if (variables && variables[varName] !== undefined) {
+          if (variables && !isEmptyValue(variables[varName])) {
             return sanitizeHTML(String(variables[varName]));
           }
           // Fall back to section variables
-          if (section.variables?.[varName] !== undefined) {
+          if (section.variables && !isEmptyValue(section.variables[varName])) {
             return sanitizeHTML(String(section.variables[varName]));
           }
-          return match;
+          // Show {{placeholder}} when no value
+          return `{{${varName}}}`;
         }
       ).replace(
         /<th:utext="\$\{(\w+)\}">/g,
         (match, varName) => {
-          if (variables && variables[varName] !== undefined) {
+          if (variables && !isEmptyValue(variables[varName])) {
             return sanitizeHTML(String(variables[varName]));
           }
-          if (section.variables?.[varName] !== undefined) {
+          if (section.variables && !isEmptyValue(section.variables[varName])) {
             return sanitizeHTML(String(section.variables[varName]));
           }
-          return match;
+          // Show {{placeholder}} when no value
+          return `{{${varName}}}`;
         }
       );
     }
@@ -613,8 +622,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       const varName = match.replace(/\{\{|\}\}/g, '');
       let value = '';
       
-      // Check runtime variables first, then section variables
-      if (variables && variables[varName] !== undefined) {
+      // Check runtime variables first, then section variables - use isEmptyValue check
+      if (variables && !isEmptyValue(variables[varName])) {
         const varValue = variables[varName];
         // Handle TextStyle objects with styling properties
         if (typeof varValue === 'object' && varValue !== null && 'text' in varValue) {
@@ -632,10 +641,10 @@ export const renderSectionContent = (section: Section, variables?: Record<string
           // Use sanitizeHTML to allow rich text formatting from RichTextEditor
           value = sanitizeHTML(String(varValue));
         }
-      } else if (section.variables && section.variables[varName] !== undefined) {
+      } else if (section.variables && !isEmptyValue(section.variables[varName])) {
         value = sanitizeHTML(String(section.variables[varName]));
       } else {
-        value = match; // Keep placeholder if no value
+        value = match; // Keep {{placeholder}} if no value or empty value
       }
       
       processedContent = processedContent.replace(new RegExp(match.replace(/[{}]/g, '\\$&'), 'g'), value);
@@ -661,22 +670,22 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     
     // Replace Thymeleaf-style placeholders - new format: <span th:utext="${variable}"/>
     processedContent = processedContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
-      if (variables && variables[varName] !== undefined) {
+      if (variables && !isEmptyValue(variables[varName])) {
         return valueToStyledHtml(variables[varName]);
-      } else if (section.variables && section.variables[varName] !== undefined) {
+      } else if (section.variables && !isEmptyValue(section.variables[varName])) {
         return sanitizeHTML(String(section.variables[varName]));
       }
-      return match;
+      return `{{${varName}}}`;
     });
     
     // Also handle legacy format: <th:utext="${variable}">
     processedContent = processedContent.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
-      if (variables && variables[varName] !== undefined) {
+      if (variables && !isEmptyValue(variables[varName])) {
         return valueToStyledHtml(variables[varName]);
-      } else if (section.variables && section.variables[varName] !== undefined) {
+      } else if (section.variables && !isEmptyValue(section.variables[varName])) {
         return sanitizeHTML(String(section.variables[varName]));
       }
-      return match;
+      return `{{${varName}}}`;
     });
     
     // Wrap content in appropriate HTML tags

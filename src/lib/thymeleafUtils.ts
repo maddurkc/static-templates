@@ -116,11 +116,23 @@ export const getDisplayContent = (content: string, variables?: Record<string, an
 };
 
 /**
+ * Check if a value is empty (null, undefined, empty string, or only whitespace)
+ */
+const isEmptyValue = (value: any): boolean => {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string' && value.trim() === '') return true;
+  if (Array.isArray(value) && value.length === 0) return true;
+  return false;
+};
+
+/**
  * Replaces Thymeleaf placeholders with actual default values from section variables
+ * If no value is provided, shows {{placeholderName}} instead
  */
 export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }> | Record<string, any>): string => {
   if (!variables) {
-    return content;
+    // No variables provided, convert Thymeleaf to {{placeholder}} format
+    return thymeleafToPlaceholder(content);
   }
 
   let result = content;
@@ -136,7 +148,12 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
       // Old format
       const oldPlaceholder = `<th:utext="\${${variable.name}}">`;
       
-      if (Array.isArray(variable.defaultValue)) {
+      // If value is empty, show {{placeholderName}}
+      if (isEmptyValue(variable.defaultValue)) {
+        const placeholder = `{{${variable.name}}}`;
+        result = result.replace(new RegExp(escapeRegex(spanPlaceholder), 'g'), placeholder);
+        result = result.replace(new RegExp(escapeRegex(oldPlaceholder), 'g'), placeholder);
+      } else if (Array.isArray(variable.defaultValue)) {
         // For list variables, create actual <li> elements
         const listItems = variable.defaultValue.map(item => `<li>${item}</li>`).join('');
         result = result.replace(spanPlaceholder, listItems);
@@ -153,7 +170,12 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
       const spanPlaceholder = `<span th:utext="\${${key}}"/>`;
       const oldPlaceholder = `<th:utext="\${${key}}">`;
       
-      if (Array.isArray(value)) {
+      // If value is empty, show {{placeholderName}}
+      if (isEmptyValue(value)) {
+        const placeholder = `{{${key}}}`;
+        result = result.replace(new RegExp(escapeRegex(spanPlaceholder), 'g'), placeholder);
+        result = result.replace(new RegExp(escapeRegex(oldPlaceholder), 'g'), placeholder);
+      } else if (Array.isArray(value)) {
         const listItems = value.map(item => `<li>${item}</li>`).join('');
         result = result.replace(spanPlaceholder, listItems);
         result = result.replace(oldPlaceholder, listItems);
@@ -163,6 +185,9 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
       }
     });
   }
+
+  // Convert any remaining Thymeleaf tags to {{placeholder}} format
+  result = thymeleafToPlaceholder(result);
 
   return result;
 };
