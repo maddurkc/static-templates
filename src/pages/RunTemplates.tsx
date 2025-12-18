@@ -1698,40 +1698,21 @@ const RunTemplates = () => {
                                           <span className="text-xs text-muted-foreground">{varName}</span>
                                         </PopoverContent>
                                       </Popover>
-                                      <div className={styles.inputWrapper}>
-                                        <Input
-                                          id={`var-${varName}`}
-                                          placeholder={varName}
-                                          value={typeof variables[varName] === 'object' 
-                                            ? (variables[varName] as TextStyle).text 
-                                            : (variables[varName] as string) || ''
-                                          }
-                                          onChange={(e) => {
-                                            const currentValue = variables[varName];
-                                            if (typeof currentValue === 'object') {
-                                              setVariables(prev => ({
-                                                ...prev,
-                                                [varName]: { ...(currentValue as TextStyle), text: e.target.value }
-                                              }));
-                                            } else {
-                                              setVariables(prev => ({
-                                                ...prev,
-                                                [varName]: e.target.value
-                                              }));
-                                            }
-                                          }}
-                                          onFocus={() => scrollToSection(section.id)}
-                                          disabled={!editable}
-                                        />
-                                        <TextStylePopover
-                                          value={variables[varName] || ''}
-                                          onChange={(newStyle) => setVariables(prev => ({
+                                      <RichTextEditor
+                                        value={typeof variables[varName] === 'object' 
+                                          ? (variables[varName] as TextStyle).text 
+                                          : (variables[varName] as string) || ''
+                                        }
+                                        onChange={(html) => {
+                                          setVariables(prev => ({
                                             ...prev,
-                                            [varName]: newStyle
-                                          }))}
-                                          disabled={!editable}
-                                        />
-                                      </div>
+                                            [varName]: html
+                                          }));
+                                        }}
+                                        onFocus={() => scrollToSection(section.id)}
+                                        placeholder={varName}
+                                        singleLine={section.type.startsWith('heading')}
+                                      />
                                     </div>
                                   );
                                 })}
