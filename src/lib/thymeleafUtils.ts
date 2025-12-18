@@ -128,6 +128,9 @@ const isEmptyValue = (value: any): boolean => {
 /**
  * Replaces Thymeleaf placeholders with actual default values from section variables
  * If no value is provided, shows {{placeholderName}} instead
+ * 
+ * This function extracts variable names FROM the content first, then looks them up
+ * in the variables object to ensure proper matching.
  */
 export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }> | Record<string, any>): string => {
   if (!variables) {
@@ -137,57 +140,52 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
 
   let result = content;
 
-  // Helper to escape regex special characters
-  const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Helper to get value from variables (handles both array and object formats)
+  const getVariableValue = (varName: string): any => {
+    if (Array.isArray(variables)) {
+      const found = variables.find(v => v.name === varName);
+      return found?.defaultValue;
+    } else {
+      return variables[varName];
+    }
+  };
 
-  // Handle both array format and object format for variables
-  if (Array.isArray(variables)) {
-    variables.forEach(variable => {
-      // New span format
-      const spanPlaceholder = `<span th:utext="\${${variable.name}}"/>`;
-      // Old format
-      const oldPlaceholder = `<th:utext="\${${variable.name}}">`;
-      
-      // If value is empty, show {{placeholderName}}
-      if (isEmptyValue(variable.defaultValue)) {
-        const placeholder = `{{${variable.name}}}`;
-        result = result.replace(new RegExp(escapeRegex(spanPlaceholder), 'g'), placeholder);
-        result = result.replace(new RegExp(escapeRegex(oldPlaceholder), 'g'), placeholder);
-      } else if (Array.isArray(variable.defaultValue)) {
-        // For list variables, create actual <li> elements
-        const listItems = variable.defaultValue.map(item => `<li>${item}</li>`).join('');
-        result = result.replace(spanPlaceholder, listItems);
-        result = result.replace(oldPlaceholder, listItems);
-      } else {
-        // For text variables, just replace with the default value
-        result = result.replace(new RegExp(escapeRegex(spanPlaceholder), 'g'), String(variable.defaultValue));
-        result = result.replace(new RegExp(escapeRegex(oldPlaceholder), 'g'), String(variable.defaultValue));
-      }
-    });
-  } else {
-    // Handle object format (Record<string, any>)
-    Object.entries(variables).forEach(([key, value]) => {
-      const spanPlaceholder = `<span th:utext="\${${key}}"/>`;
-      const oldPlaceholder = `<th:utext="\${${key}}">`;
-      
-      // If value is empty, show {{placeholderName}}
-      if (isEmptyValue(value)) {
-        const placeholder = `{{${key}}}`;
-        result = result.replace(new RegExp(escapeRegex(spanPlaceholder), 'g'), placeholder);
-        result = result.replace(new RegExp(escapeRegex(oldPlaceholder), 'g'), placeholder);
-      } else if (Array.isArray(value)) {
-        const listItems = value.map(item => `<li>${item}</li>`).join('');
-        result = result.replace(spanPlaceholder, listItems);
-        result = result.replace(oldPlaceholder, listItems);
-      } else {
-        result = result.replace(new RegExp(escapeRegex(spanPlaceholder), 'g'), String(value));
-        result = result.replace(new RegExp(escapeRegex(oldPlaceholder), 'g'), String(value));
-      }
-    });
-  }
+  // Extract all Thymeleaf variable names from content and replace them
+  // Pattern 1: <span th:utext="${varName}"/>
+  result = result.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+    const value = getVariableValue(varName);
+    if (isEmptyValue(value)) {
+      return `{{${varName}}}`;
+    }
+    if (Array.isArray(value)) {
+      return value.map(item => `<li>${item}</li>`).join('');
+    }
+    return String(value);
+  });
 
-  // Convert any remaining Thymeleaf tags to {{placeholder}} format
-  result = thymeleafToPlaceholder(result);
+  // Pattern 2: <th:utext="${varName}">
+  result = result.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+    const value = getVariableValue(varName);
+    if (isEmptyValue(value)) {
+      return `{{${varName}}}`;
+    }
+    if (Array.isArray(value)) {
+      return value.map(item => `<li>${item}</li>`).join('');
+    }
+    return String(value);
+  });
+
+  // Pattern 3: {{varName}} placeholders
+  result = result.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+    const value = getVariableValue(varName);
+    if (isEmptyValue(value)) {
+      return match; // Keep {{placeholder}} as-is
+    }
+    if (Array.isArray(value)) {
+      return value.map(item => `<li>${item}</li>`).join('');
+    }
+    return String(value);
+  });
 
   return result;
 };
