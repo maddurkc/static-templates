@@ -1,0 +1,59 @@
+.popoverContent {
+  width: auto;
+  padding: 6px;
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  z-index: 100;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.separator {
+  width: 1px;
+  height: 20px;
+  background: hsl(var(--border));
+  margin: 0 4px;
+}
+
+.iconButton {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  
+  &:hover:not(:disabled) {
+    background: hsl(var(--accent));
+  }
+  
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.deleteButton {
+  &:hover:not(:disabled) {
+    background: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+  }
+}
+
+.rowDeleteIcon,
+.colDeleteIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
