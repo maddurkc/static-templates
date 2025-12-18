@@ -33,12 +33,24 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
     if (section.type === 'labeled-content') {
       let label = (section.variables?.label as string) || 'Label';
       
-      // Replace Thymeleaf in label with default values
-      label = label.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
-        if (section.variables && section.variables[varName] !== undefined) {
+      // Helper to check if value is empty
+      const isEmptyValue = (value: any): boolean => {
+        if (value === null || value === undefined) return true;
+        if (typeof value === 'string' && value.trim() === '') return true;
+        return false;
+      };
+      
+      // Replace Thymeleaf in label with default values or {{placeholder}}
+      label = label.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+        if (section.variables && !isEmptyValue(section.variables[varName])) {
           return String(section.variables[varName]);
         }
-        return `\${${varName}}`;
+        return `{{${varName}}}`;
+      }).replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+        if (section.variables && !isEmptyValue(section.variables[varName])) {
+          return String(section.variables[varName]);
+        }
+        return `{{${varName}}}`;
       });
       
       const contentType = (section.variables?.contentType as string) || 'text';
@@ -46,12 +58,12 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       
       if (contentType === 'text') {
         let textContent = (section.variables?.content as string) || '';
-        // Support {{variable}} placeholders in text content
+        // Support {{variable}} placeholders in text content - show {{placeholder}} if no value
         textContent = textContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-          if (section.variables && section.variables[varName] !== undefined) {
+          if (section.variables && !isEmptyValue(section.variables[varName])) {
             return String(section.variables[varName]);
           }
-          return match;
+          return match; // Keep {{placeholder}} as-is when no value
         });
         contentHtml = `<div style="white-space: pre-wrap;">${textContent}</div>`;
       } else if (contentType === 'list') {
@@ -142,14 +154,21 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
     if (section.type === 'mixed-content' && section.variables?.content) {
       let mixedContent = thymeleafToPlaceholder(section.variables.content as string);
       
-      // First, replace placeholders with default values if available
+      // Helper to check if value is empty
+      const isEmptyValue = (value: any): boolean => {
+        if (value === null || value === undefined) return true;
+        if (typeof value === 'string' && value.trim() === '') return true;
+        return false;
+      };
+      
+      // Replace placeholders with default values if available, else keep {{placeholder}}
       mixedContent = mixedContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-        // Check if we have a default value for this placeholder
-        if (section.variables && section.variables[varName] !== undefined) {
+        // Check if we have a non-empty default value for this placeholder
+        if (section.variables && !isEmptyValue(section.variables[varName])) {
           return String(section.variables[varName]);
         }
-        // If no default value, show as visual badge
-        return `<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / 0.2);">{{${varName}}}</span>`;
+        // If no default value, keep as {{placeholder}}
+        return match;
       });
       
       // Handle special control structures (if/each)
@@ -173,15 +192,14 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
     const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
     const isInlinePlaceholder = inlinePlaceholderTypes.includes(section.type);
     
-    // Display logic: show default values from variables, actual content still has Thymeleaf tags
+    // Display logic: show default values from variables or {{placeholder}} if empty
     let displayContent = section.content;
     if (isInlinePlaceholder && section.variables && Object.keys(section.variables).length > 0) {
-      // Replace Thymeleaf tags with actual default values for display only
+      // Replace Thymeleaf tags with actual default values for display, or {{placeholder}} if empty
       displayContent = replaceWithDefaults(section.content, section.variables);
     } else {
-      // For other sections, show Thymeleaf placeholders as visual badges
-      displayContent = thymeleafToPlaceholder(section.content)
-        .replace(/\{\{(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / 0.2);">${$1}</span>');
+      // For other sections, convert Thymeleaf to {{placeholder}} format
+      displayContent = thymeleafToPlaceholder(section.content);
     }
     
     return (
