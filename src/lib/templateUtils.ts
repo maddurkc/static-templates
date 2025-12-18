@@ -580,13 +580,13 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         /<span\s+th:utext="\$\{(\w+)\}"\/>/g,
         (match, varName) => {
           const value = section.variables?.[varName] ?? variables?.[varName];
-          return value !== undefined ? sanitizeInput(String(value)) : match;
+          return value !== undefined ? sanitizeHTML(String(value)) : match;
         }
       ).replace(
         /<th:utext="\$\{(\w+)\}">/g,
         (match, varName) => {
           const value = section.variables?.[varName] ?? variables?.[varName];
-          return value !== undefined ? sanitizeInput(String(value)) : match;
+          return value !== undefined ? sanitizeHTML(String(value)) : match;
         }
       );
     }
@@ -611,12 +611,13 @@ export const renderSectionContent = (section: Section, variables?: Record<string
           if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
           if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
           const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-          value = `<span${styleAttr}>${sanitizeInput(textStyle.text)}</span>`;
+          value = `<span${styleAttr}>${sanitizeHTML(textStyle.text)}</span>`;
         } else {
-          value = sanitizeInput(String(varValue));
+          // Use sanitizeHTML to allow rich text formatting from RichTextEditor
+          value = sanitizeHTML(String(varValue));
         }
       } else if (section.variables && section.variables[varName] !== undefined) {
-        value = sanitizeInput(String(section.variables[varName]));
+        value = sanitizeHTML(String(section.variables[varName]));
       } else {
         value = match; // Keep placeholder if no value
       }
@@ -636,9 +637,10 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
         if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
         const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-        return `<span${styleAttr}>${sanitizeInput(textStyle.text)}</span>`;
+        return `<span${styleAttr}>${sanitizeHTML(textStyle.text)}</span>`;
       }
-      return sanitizeInput(String(value));
+      // Use sanitizeHTML to preserve rich text formatting
+      return sanitizeHTML(String(value));
     };
     
     // Replace Thymeleaf-style placeholders - new format: <span th:utext="${variable}"/>
@@ -646,7 +648,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       if (variables && variables[varName] !== undefined) {
         return valueToStyledHtml(variables[varName]);
       } else if (section.variables && section.variables[varName] !== undefined) {
-        return sanitizeInput(String(section.variables[varName]));
+        return sanitizeHTML(String(section.variables[varName]));
       }
       return match;
     });
@@ -656,7 +658,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       if (variables && variables[varName] !== undefined) {
         return valueToStyledHtml(variables[varName]);
       } else if (section.variables && section.variables[varName] !== undefined) {
-        return sanitizeInput(String(section.variables[varName]));
+        return sanitizeHTML(String(section.variables[varName]));
       }
       return match;
     });
