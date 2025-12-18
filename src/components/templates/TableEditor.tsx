@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,12 +6,11 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Palette, Bold, Italic, Underline, Database, FileJson } from "lucide-react";
+import { Plus, Trash2, Merge, Palette, Bold, Italic, Underline, Database, FileJson } from "lucide-react";
 import { Section } from "@/types/section";
 import { TableData, CellStyle, HeaderStyle, CellPadding, mapJsonToTableData } from "@/lib/tableUtils";
 import { toast } from "sonner";
 import styles from "./TableEditor.module.scss";
-import { TableContextPopover } from "./TableContextPopover";
 
 interface TableEditorProps {
   section: Section;
@@ -59,11 +58,6 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
 
   const [tableData, setTableData] = useState<TableData>(parseTableData());
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
-  const [tablePopoverOpen, setTablePopoverOpen] = useState(false);
-  
-  // Column resize state
-  const [resizing, setResizing] = useState<{ colIndex: number; startX: number; startWidth: number } | null>(null);
-  const tableRef = useRef<HTMLTableElement>(null);
 
   // Re-parse table data when section changes
   useEffect(() => {
@@ -81,13 +75,11 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
     });
   };
 
-  const addRow = (atIndex?: number) => {
+  const addRow = () => {
     const newRow = new Array(tableData.rows[0]?.length || 2).fill('');
-    const insertAt = atIndex !== undefined ? atIndex : tableData.rows.length;
-    const newRows = [...tableData.rows.slice(0, insertAt), newRow, ...tableData.rows.slice(insertAt)];
     updateTableData({
       ...tableData,
-      rows: newRows
+      rows: [...tableData.rows, newRow]
     });
   };
 
@@ -114,22 +106,12 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
     });
   };
 
-  const addColumn = (atIndex?: number) => {
-    const insertAt = atIndex !== undefined ? atIndex : (tableData.rows[0]?.length || 0);
-    const newRows = tableData.rows.map(row => [
-      ...row.slice(0, insertAt),
-      '',
-      ...row.slice(insertAt)
-    ]);
-    const newWidths = [
-      ...(tableData.columnWidths?.slice(0, insertAt) || []),
-      'auto',
-      ...(tableData.columnWidths?.slice(insertAt) || [])
-    ];
+  const addColumn = () => {
+    const newRows = tableData.rows.map(row => [...row, '']);
     updateTableData({
       ...tableData,
       rows: newRows,
-      columnWidths: newWidths
+      columnWidths: [...(tableData.columnWidths || []), 'auto']
     });
   };
 
@@ -170,51 +152,6 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
       columnWidths: newWidths
     });
   };
-
-  // Column resize handlers
-  const handleResizeStart = useCallback((e: React.MouseEvent, colIndex: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const th = (e.target as HTMLElement).closest('th');
-    const currentWidth = th?.offsetWidth || 100;
-    
-    setResizing({
-      colIndex,
-      startX: e.clientX,
-      startWidth: currentWidth
-    });
-  }, []);
-
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    if (!resizing) return;
-    
-    const diff = e.clientX - resizing.startX;
-    const newWidth = Math.max(50, resizing.startWidth + diff);
-    
-    updateColumnWidth(resizing.colIndex, `${newWidth}px`);
-  }, [resizing]);
-
-  const handleResizeEnd = useCallback(() => {
-    setResizing(null);
-  }, []);
-
-  // Attach global mouse events for resizing
-  useEffect(() => {
-    if (resizing) {
-      document.addEventListener('mousemove', handleResizeMove);
-      document.addEventListener('mouseup', handleResizeEnd);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    }
-    
-    return () => {
-      document.removeEventListener('mousemove', handleResizeMove);
-      document.removeEventListener('mouseup', handleResizeEnd);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [resizing, handleResizeMove, handleResizeEnd]);
 
   const updateCell = (rowIndex: number, colIndex: number, value: string) => {
     const newRows = tableData.rows.map((row, rIdx) => 
@@ -603,14 +540,26 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
         </div>
       )}
 
-      {/* Table context popover hint */}
-      {selectedCell && (
-        <p className={styles.selectedInfo}>
-          Selected: Row {selectedCell.row + 1}, Column {selectedCell.col + 1}
-          {getCellMerge(selectedCell.row, selectedCell.col) && ' (Merged)'}
-          <span className="ml-2 text-muted-foreground">— Click table for row/column options</span>
-        </p>
-      )}
+      <div className={styles.actions}>
+        <Button size="sm" variant="outline" onClick={addRow} className="h-8 px-2">
+          <Plus className="h-3 w-3 mr-1" />
+          Add Row
+        </Button>
+        <Button size="sm" variant="outline" onClick={addColumn} className="h-8 px-2">
+          <Plus className="h-3 w-3 mr-1" />
+          Add Column
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={mergeCells}
+          disabled={!selectedCell}
+          className="h-8 px-2"
+        >
+          <Merge className="h-3 w-3 mr-1" />
+          Toggle Merge
+        </Button>
+      </div>
 
       {/* Cell Styling Controls */}
       {selectedCell && (
@@ -717,94 +666,87 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
         </div>
       )}
 
-      <TableContextPopover
-        selectedRow={selectedCell?.row ?? null}
-        selectedCol={selectedCell?.col ?? null}
-        totalRows={tableData.rows.length}
-        totalCols={tableData.rows[0]?.length || 0}
-        onInsertRowAbove={() => selectedCell && addRow(selectedCell.row)}
-        onInsertRowBelow={() => selectedCell && addRow(selectedCell.row + 1)}
-        onInsertColumnLeft={() => selectedCell && addColumn(selectedCell.col)}
-        onInsertColumnRight={() => selectedCell && addColumn(selectedCell.col + 1)}
-        onDeleteRow={() => selectedCell && removeRow(selectedCell.row)}
-        onDeleteColumn={() => selectedCell && removeColumn(selectedCell.col)}
-        showBorder={tableData.showBorder}
-        borderColor={tableData.borderColor}
-        onTableBorderChange={(show) => toggleBorder()}
-        onTableBorderColorChange={(color) => updateBorderColor(color)}
-        open={tablePopoverOpen}
-        onOpenChange={setTablePopoverOpen}
-      >
-        <div className={styles.tableWrapper}>
-          <table 
-            ref={tableRef}
-            className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''} ${resizing ? styles.resizing : ''}`}
-            style={{ borderColor: tableData.borderColor || '#ddd', tableLayout: 'fixed' }}
-            onClick={() => setTablePopoverOpen(true)}
-          >
-            <colgroup>
+      <div className={styles.tableWrapper}>
+        <table className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''}`}
+               style={{ borderColor: tableData.borderColor || '#ddd' }}>
+          <tbody>
+            {tableData.rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, colIndex) => {
+                  if (isCellMerged(rowIndex, colIndex)) {
+                    return null;
+                  }
+
+                  const merge = getCellMerge(rowIndex, colIndex);
+                  const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
+                  const cellStyle = getCellStyle(rowIndex, colIndex);
+                  
+                  const inputStyle: React.CSSProperties = {
+                    color: cellStyle.color,
+                    fontWeight: cellStyle.bold ? 'bold' : undefined,
+                    fontStyle: cellStyle.italic ? 'italic' : undefined,
+                    textDecoration: cellStyle.underline ? 'underline' : undefined,
+                    backgroundColor: cellStyle.backgroundColor,
+                    fontSize: cellStyle.fontSize,
+                  };
+
+                  return (
+                    <td
+                      key={colIndex}
+                      rowSpan={merge?.rowSpan}
+                      colSpan={merge?.colSpan}
+                      className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
+                      style={{ borderColor: tableData.borderColor || '#ddd' }}
+                      onClick={() => setSelectedCell({ row: rowIndex, col: colIndex })}
+                    >
+                      <Input
+                        value={cell}
+                        onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
+                        className={styles.cellInput}
+                        style={inputStyle}
+                        placeholder={rowIndex === 0 ? `Header ${colIndex + 1}` : `Cell ${rowIndex},${colIndex + 1}`}
+                      />
+                    </td>
+                  );
+                })}
+                <td className="p-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeRow(rowIndex)}
+                    disabled={tableData.rows.length <= 1}
+                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            <tr>
               {tableData.rows[0]?.map((_, colIndex) => (
-                <col key={colIndex} style={{ width: tableData.columnWidths?.[colIndex] || 'auto' }} />
+                <td key={colIndex} className="p-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeColumn(colIndex)}
+                    disabled={tableData.rows[0]?.length <= 1}
+                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </td>
               ))}
-            </colgroup>
-            <tbody>
-              {tableData.rows.map((row, rowIndex) => (
-                <tr key={rowIndex}>
-                  {row.map((cell, colIndex) => {
-                    if (isCellMerged(rowIndex, colIndex)) {
-                      return null;
-                    }
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-                    const merge = getCellMerge(rowIndex, colIndex);
-                    const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
-                    const cellStyle = getCellStyle(rowIndex, colIndex);
-                    
-                    const inputStyle: React.CSSProperties = {
-                      color: cellStyle.color,
-                      fontWeight: cellStyle.bold ? 'bold' : undefined,
-                      fontStyle: cellStyle.italic ? 'italic' : undefined,
-                      textDecoration: cellStyle.underline ? 'underline' : undefined,
-                      backgroundColor: cellStyle.backgroundColor,
-                      fontSize: cellStyle.fontSize,
-                    };
-
-                    return (
-                      <td
-                        key={colIndex}
-                        rowSpan={merge?.rowSpan}
-                        colSpan={merge?.colSpan}
-                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
-                        style={{ borderColor: tableData.borderColor || '#ddd', position: 'relative' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCell({ row: rowIndex, col: colIndex });
-                          setTablePopoverOpen(true);
-                        }}
-                      >
-                        <Input
-                          value={cell}
-                          onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
-                          className={styles.cellInput}
-                          style={inputStyle}
-                          placeholder={rowIndex === 0 ? `Header ${colIndex + 1}` : `Cell ${rowIndex},${colIndex + 1}`}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        {/* Resize handle on right edge */}
-                        <div
-                          className={styles.resizeHandle}
-                          onMouseDown={(e) => handleResizeStart(e, colIndex)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </TableContextPopover>
-
+      {selectedCell && (
+        <p className={styles.selectedInfo}>
+          Selected: Row {selectedCell.row + 1}, Column {selectedCell.col + 1}
+          {getCellMerge(selectedCell.row, selectedCell.col) && ' (Merged)'}
+        </p>
+      )}
     </div>
   );
 };

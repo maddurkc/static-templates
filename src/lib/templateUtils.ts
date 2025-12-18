@@ -235,10 +235,9 @@ export const renderSectionContent = (section: Section, variables?: Record<string
             const headerStyle = section.variables?.tableData?.headerStyle || { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true };
             const showBorder = section.variables?.tableData?.showBorder !== false;
             const borderColor = section.variables?.tableData?.borderColor || '#ddd';
-            // Use runtime columnWidths if available, fallback to stored tableData columnWidths
-            const columnWidths = runtimeValue.columnWidths || section.variables?.tableData?.columnWidths || [];
+            const columnWidths = section.variables?.tableData?.columnWidths || [];
             
-            let tableHtml = `<table style="border-collapse: collapse; width: 100%; table-layout: fixed;${showBorder ? ` border: 1px solid ${borderColor};` : ''}">`;
+            let tableHtml = `<table style="border-collapse: collapse; width: 100%;${showBorder ? ` border: 1px solid ${borderColor};` : ''}">`;
             
             // Add colgroup for column widths
             if (columnWidths.length > 0) {
@@ -365,10 +364,9 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         const headerStyle = tableData.headerStyle || { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true };
         const showBorder = tableData.showBorder !== false;
         const borderColor = tableData.borderColor || '#ddd';
-        // Use runtime columnWidths if available, fallback to stored tableData columnWidths
-        const columnWidths = runtimeValue.columnWidths || tableData.columnWidths || [];
+        const columnWidths = tableData.columnWidths || [];
         
-        let tableHtml = `<table style="border-collapse: collapse; width: 100%; table-layout: fixed;${showBorder ? ` border: 1px solid ${borderColor};` : ''}">`;
+        let tableHtml = `<table style="border-collapse: collapse; width: 100%;${showBorder ? ` border: 1px solid ${borderColor};` : ''}">`;
         
         // Add colgroup for column widths
         if (columnWidths.length > 0) {

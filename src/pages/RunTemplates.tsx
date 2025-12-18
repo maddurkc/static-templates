@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import * as React from "react";
 import styles from "./RunTemplates.module.scss";
@@ -12,7 +12,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
-import { TableContextPopover } from "@/components/templates/TableContextPopover";
 import {
   Dialog,
   DialogContent,
@@ -54,64 +53,7 @@ const RunTemplates = () => {
   const [jsonImportValue, setJsonImportValue] = useState('');
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
-  const [selectedTableCell, setSelectedTableCell] = useState<Record<string, { row: number; col: number } | null>>({});
-  const [tablePopoverOpen, setTablePopoverOpen] = useState<Record<string, boolean>>({});
-  const [tableColumnWidths, setTableColumnWidths] = useState<Record<string, string[]>>({});
-  const [resizing, setResizing] = useState<{ sectionKey: string; colIndex: number; startX: number; startWidth: number } | null>(null);
   const { toast } = useToast();
-  
-  // Column resize handlers
-  const handleTableResizeStart = useCallback((e: React.MouseEvent, sectionKey: string, colIndex: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const cell = (e.target as HTMLElement).closest('th, td') as HTMLElement | null;
-    const currentWidth = cell?.offsetWidth || 100;
-    
-    setResizing({
-      sectionKey,
-      colIndex,
-      startX: e.clientX,
-      startWidth: currentWidth
-    });
-  }, []);
-
-  const handleTableResizeMove = useCallback((e: MouseEvent) => {
-    if (!resizing) return;
-    
-    const diff = e.clientX - resizing.startX;
-    const newWidth = Math.max(50, resizing.startWidth + diff);
-    
-    setTableColumnWidths(prev => {
-      const currentWidths = [...(prev[resizing.sectionKey] || [])];
-      while (currentWidths.length <= resizing.colIndex) {
-        currentWidths.push('auto');
-      }
-      currentWidths[resizing.colIndex] = `${newWidth}px`;
-      return { ...prev, [resizing.sectionKey]: currentWidths };
-    });
-  }, [resizing]);
-
-  const handleTableResizeEnd = useCallback(() => {
-    setResizing(null);
-  }, []);
-
-  // Attach global mouse events for resizing
-  useEffect(() => {
-    if (resizing) {
-      document.addEventListener('mousemove', handleTableResizeMove);
-      document.addEventListener('mouseup', handleTableResizeEnd);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    }
-    
-    return () => {
-      document.removeEventListener('mousemove', handleTableResizeMove);
-      document.removeEventListener('mouseup', handleTableResizeEnd);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [resizing, handleTableResizeMove, handleTableResizeEnd]);
 
   // Scroll to section in preview when editing
   const scrollToSection = (sectionId: string) => {
@@ -1546,143 +1488,99 @@ const RunTemplates = () => {
                                   
                                   {contentType === 'table' && (() => {
                                     const tableData = tableVariables[section.id] || getTableData(section.id);
-                                    const sectionKey = `labeled-${section.id}`;
-                                    const selectedCell = selectedTableCell[sectionKey] ?? null;
-                                    
-                                    const insertRowAt = (idx: number) => {
-                                      const newRow = new Array(tableData.headers?.length || 1).fill('');
-                                      const newRows = [...(tableData.rows || []).slice(0, idx), newRow, ...(tableData.rows || []).slice(idx)];
-                                      setTableVariables(prev => ({ ...prev, [section.id]: { ...tableData, rows: newRows } }));
-                                      scrollToSection(section.id);
-                                    };
-                                    
-                                    const insertColAt = (idx: number) => {
-                                      const newHeaders = [...(tableData.headers || []).slice(0, idx), `Col ${(tableData.headers?.length || 0) + 1}`, ...(tableData.headers || []).slice(idx)];
-                                      const newRows = (tableData.rows || []).map((row: string[]) => [...row.slice(0, idx), '', ...row.slice(idx)]);
-                                      setTableVariables(prev => ({ ...prev, [section.id]: { ...tableData, headers: newHeaders, rows: newRows } }));
-                                      scrollToSection(section.id);
-                                    };
-                                    
-                                    const deleteRow = (idx: number) => {
-                                      if ((tableData.rows || []).length <= 1) return;
-                                      const newRows = (tableData.rows || []).filter((_: any, i: number) => i !== idx);
-                                      setTableVariables(prev => ({ ...prev, [section.id]: { ...tableData, rows: newRows } }));
-                                    };
-                                    
-                                    const deleteCol = (idx: number) => {
-                                      if ((tableData.headers || []).length <= 1) return;
-                                      const newHeaders = (tableData.headers || []).filter((_: any, i: number) => i !== idx);
-                                      const newRows = (tableData.rows || []).map((row: string[]) => row.filter((_: any, i: number) => i !== idx));
-                                      setTableVariables(prev => ({ ...prev, [section.id]: { ...tableData, headers: newHeaders, rows: newRows } }));
-                                    };
-                                    
                                     return (
                                       <div className="space-y-2 border rounded-lg p-3 bg-background">
-                                        {selectedCell && (
-                                          <p className="text-xs text-muted-foreground">
-                                            Selected: Row {selectedCell.row + 1}, Col {selectedCell.col + 1} — Click table for options
-                                          </p>
-                                        )}
-                                        {tableData.headers && tableData.headers.length > 0 ? (
-                                          <TableContextPopover
-                                            selectedRow={selectedCell?.row ?? null}
-                                            selectedCol={selectedCell?.col ?? null}
-                                            totalRows={(tableData.rows || []).length}
-                                            totalCols={(tableData.headers || []).length}
-                                            onInsertRowAbove={() => selectedCell && insertRowAt(selectedCell.row)}
-                                            onInsertRowBelow={() => selectedCell && insertRowAt(selectedCell.row + 1)}
-                                            onInsertColumnLeft={() => selectedCell && insertColAt(selectedCell.col)}
-                                            onInsertColumnRight={() => selectedCell && insertColAt(selectedCell.col + 1)}
-                                            onDeleteRow={() => selectedCell && deleteRow(selectedCell.row)}
-                                            onDeleteColumn={() => selectedCell && deleteCol(selectedCell.col)}
-                                            open={tablePopoverOpen[sectionKey] || false}
-                                            onOpenChange={(open) => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: open }))}
+                                        <div className="flex gap-2 mb-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              setTableVariables(prev => ({
+                                                ...prev,
+                                                [section.id]: {
+                                                  ...tableData,
+                                                  headers: [...(tableData.headers || []), `Col ${(tableData.headers?.length || 0) + 1}`]
+                                                }
+                                              }));
+                                              scrollToSection(section.id);
+                                            }}
+                                            className="h-7 px-2"
                                           >
-                                            <div className={`overflow-x-auto cursor-pointer ${resizing?.sectionKey === sectionKey ? 'select-none' : ''}`} onClick={() => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }))}>
-                                              <table className="w-full border-collapse border text-sm" style={{ tableLayout: 'fixed' }}>
-                                                <colgroup>
-                                                  {tableData.headers.map((_: string, colIdx: number) => (
-                                                    <col key={colIdx} style={{ width: tableColumnWidths[sectionKey]?.[colIdx] || 'auto' }} />
-                                                  ))}
-                                                </colgroup>
-                                                <thead>
-                                                  <tr>
-                                                    {tableData.headers.map((header: string, colIdx: number) => (
-                                                      <th 
-                                                        key={colIdx} 
-                                                        className={`border p-1 bg-muted relative ${selectedCell?.row === -1 && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          setSelectedTableCell(prev => ({ ...prev, [sectionKey]: { row: -1, col: colIdx } }));
-                                                          setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }));
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Column
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              const newRow = new Array(tableData.headers?.length || 1).fill('');
+                                              setTableVariables(prev => ({
+                                                ...prev,
+                                                [section.id]: {
+                                                  ...tableData,
+                                                  rows: [...(tableData.rows || []), newRow]
+                                                }
+                                              }));
+                                              scrollToSection(section.id);
+                                            }}
+                                            className="h-7 px-2"
+                                          >
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Row
+                                          </Button>
+                                        </div>
+                                        {tableData.headers && tableData.headers.length > 0 && (
+                                          <div className="overflow-x-auto">
+                                            <table className="w-full border-collapse border text-sm">
+                                              <thead>
+                                                <tr>
+                                                  {tableData.headers.map((header: string, colIdx: number) => (
+                                                    <th key={colIdx} className="border p-1 bg-muted">
+                                                      <RichTextEditor
+                                                        value={header}
+                                                        onChange={(html) => {
+                                                          const newHeaders = [...tableData.headers];
+                                                          newHeaders[colIdx] = html;
+                                                          setTableVariables(prev => ({
+                                                            ...prev,
+                                                            [section.id]: { ...tableData, headers: newHeaders }
+                                                          }));
                                                         }}
-                                                      >
+                                                        onFocus={() => scrollToSection(section.id)}
+                                                        placeholder={`Header ${colIdx + 1}`}
+                                                        singleLine
+                                                        className="font-semibold"
+                                                      />
+                                                    </th>
+                                                  ))}
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {(tableData.rows || []).map((row: string[], rowIdx: number) => (
+                                                  <tr key={rowIdx}>
+                                                    {row.map((cell: string, colIdx: number) => (
+                                                      <td key={colIdx} className="border p-1">
                                                         <RichTextEditor
-                                                          value={header}
+                                                          value={cell}
                                                           onChange={(html) => {
-                                                            const newHeaders = [...tableData.headers];
-                                                            newHeaders[colIdx] = html;
+                                                            const newRows = [...tableData.rows];
+                                                            newRows[rowIdx][colIdx] = html;
                                                             setTableVariables(prev => ({
                                                               ...prev,
-                                                              [section.id]: { ...tableData, headers: newHeaders }
+                                                              [section.id]: { ...tableData, rows: newRows }
                                                             }));
                                                           }}
                                                           onFocus={() => scrollToSection(section.id)}
-                                                          placeholder={`Header ${colIdx + 1}`}
+                                                          placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
                                                           singleLine
-                                                          className="font-semibold"
                                                         />
-                                                        <div 
-                                                          className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize opacity-0 hover:opacity-100 hover:bg-primary/50 z-10 transition-opacity"
-                                                          onMouseDown={(e) => handleTableResizeStart(e, sectionKey, colIdx)}
-                                                          onClick={(e) => e.stopPropagation()}
-                                                        />
-                                                      </th>
+                                                      </td>
                                                     ))}
                                                   </tr>
-                                                </thead>
-                                                <tbody>
-                                                  {(tableData.rows || []).map((row: string[], rowIdx: number) => (
-                                                    <tr key={rowIdx}>
-                                                      {row.map((cell: string, colIdx: number) => (
-                                                        <td 
-                                                          key={colIdx} 
-                                                          className={`border p-1 relative ${selectedCell?.row === rowIdx && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
-                                                          onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedTableCell(prev => ({ ...prev, [sectionKey]: { row: rowIdx, col: colIdx } }));
-                                                            setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }));
-                                                          }}
-                                                        >
-                                                          <RichTextEditor
-                                                            value={cell}
-                                                            onChange={(html) => {
-                                                              const newRows = [...tableData.rows];
-                                                              newRows[rowIdx][colIdx] = html;
-                                                              setTableVariables(prev => ({
-                                                                ...prev,
-                                                                [section.id]: { ...tableData, rows: newRows }
-                                                              }));
-                                                            }}
-                                                            onFocus={() => scrollToSection(section.id)}
-                                                            placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
-                                                            singleLine
-                                                          />
-                                                          <div 
-                                                            className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize opacity-0 hover:opacity-100 hover:bg-primary/50 z-10 transition-opacity"
-                                                            onMouseDown={(e) => handleTableResizeStart(e, sectionKey, colIdx)}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                          />
-                                                        </td>
-                                                      ))}
-                                                    </tr>
-                                                  ))}
-                                                </tbody>
-                                              </table>
-                                            </div>
-                                          </TableContextPopover>
-                                        ) : (
-                                          <p className="text-xs text-muted-foreground text-center py-4">No table data</p>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
                                         )}
                                       </div>
                                     );
@@ -1895,95 +1793,74 @@ const RunTemplates = () => {
                           if (section.type === 'table') {
                             const editable = isLabelEditable(section.id);
                             const tableData = tableVariables[section.id] || getTableData(section.id);
-                            const sectionKey = `table-${section.id}`;
-                            const selectedCell = selectedTableCell[sectionKey] ?? null;
-                            
-                            const insertRowAt = (idx: number) => {
-                              const newRow = new Array(tableData.headers?.length || 1).fill('');
-                              const newRows = [...(tableData.rows || []).slice(0, idx), newRow, ...(tableData.rows || []).slice(idx)];
-                              setTableVariables(prev => ({ ...prev, [section.id]: { ...tableData, rows: newRows } }));
-                            };
-                            
-                            const insertColAt = (idx: number) => {
-                              const newHeaders = [...(tableData.headers || []).slice(0, idx), `Column ${(tableData.headers?.length || 0) + 1}`, ...(tableData.headers || []).slice(idx)];
-                              const newRows = (tableData.rows || []).map((row: string[]) => [...row.slice(0, idx), '', ...row.slice(idx)]);
-                              setTableVariables(prev => ({ ...prev, [section.id]: { ...tableData, headers: newHeaders, rows: newRows } }));
-                            };
-                            
-                            const deleteRow = (idx: number) => {
-                              if ((tableData.rows || []).length <= 1) return;
-                              const newRows = (tableData.rows || []).filter((_: any, i: number) => i !== idx);
-                              setTableVariables(prev => ({ ...prev, [section.id]: { ...tableData, rows: newRows } }));
-                            };
-                            
-                            const deleteCol = (idx: number) => {
-                              if ((tableData.headers || []).length <= 1) return;
-                              const newHeaders = (tableData.headers || []).filter((_: any, i: number) => i !== idx);
-                              const newRows = (tableData.rows || []).map((row: string[]) => row.filter((_: any, i: number) => i !== idx));
-                              setTableVariables(prev => ({ ...prev, [section.id]: { ...tableData, headers: newHeaders, rows: newRows } }));
-                            };
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
                                 <div className="space-y-2 border rounded-lg p-4 bg-background">
                                   <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs text-muted-foreground">Table</p>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setJsonImportOpen(section.id);
-                                        setJsonImportValue('');
-                                      }}
-                                      className="h-7 px-2"
-                                      disabled={!editable}
-                                    >
-                                      <FileJson className="h-3 w-3 mr-1" />
-                                      JSON
-                                    </Button>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setJsonImportOpen(section.id);
+                                          setJsonImportValue('');
+                                        }}
+                                        className="h-7 px-2"
+                                        disabled={!editable}
+                                      >
+                                        <FileJson className="h-3 w-3 mr-1" />
+                                        JSON
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setTableVariables(prev => ({
+                                            ...prev,
+                                            [section.id]: {
+                                              ...tableData,
+                                              headers: [...(tableData.headers || []), `Column ${(tableData.headers?.length || 0) + 1}`]
+                                            }
+                                          }));
+                                        }}
+                                        className="h-7 px-2"
+                                        disabled={!editable}
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Column
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          const newRow = new Array(tableData.headers?.length || 1).fill('');
+                                          setTableVariables(prev => ({
+                                            ...prev,
+                                            [section.id]: {
+                                              ...tableData,
+                                              rows: [...(tableData.rows || []), newRow]
+                                            }
+                                          }));
+                                        }}
+                                        className="h-7 px-2"
+                                        disabled={!editable}
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Row
+                                      </Button>
+                                    </div>
                                   </div>
                                   
-                                  {selectedCell && (
-                                    <p className="text-xs text-muted-foreground">
-                                      Selected: Row {selectedCell.row + 1}, Col {selectedCell.col + 1} — Click table for options
-                                    </p>
-                                  )}
-                                  
                                   {tableData.headers && tableData.headers.length > 0 ? (
-                                    <TableContextPopover
-                                      selectedRow={selectedCell?.row ?? null}
-                                      selectedCol={selectedCell?.col ?? null}
-                                      totalRows={(tableData.rows || []).length}
-                                      totalCols={(tableData.headers || []).length}
-                                      onInsertRowAbove={() => selectedCell && insertRowAt(selectedCell.row)}
-                                      onInsertRowBelow={() => selectedCell && insertRowAt(selectedCell.row + 1)}
-                                      onInsertColumnLeft={() => selectedCell && insertColAt(selectedCell.col)}
-                                      onInsertColumnRight={() => selectedCell && insertColAt(selectedCell.col + 1)}
-                                      onDeleteRow={() => selectedCell && deleteRow(selectedCell.row)}
-                                      onDeleteColumn={() => selectedCell && deleteCol(selectedCell.col)}
-                                      disabled={!editable}
-                                      open={tablePopoverOpen[sectionKey] || false}
-                                      onOpenChange={(open) => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: open }))}
-                                    >
-                                      <div className={`overflow-x-auto cursor-pointer ${resizing?.sectionKey === sectionKey ? 'select-none' : ''}`} onClick={() => setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }))}>
-                                        <table className="w-full border-collapse border text-sm" style={{ tableLayout: 'fixed' }}>
-                                          <colgroup>
-                                            {tableData.headers.map((_: string, colIdx: number) => (
-                                              <col key={colIdx} style={{ width: tableColumnWidths[sectionKey]?.[colIdx] || 'auto' }} />
-                                            ))}
-                                          </colgroup>
-                                          <thead>
-                                            <tr>
-                                              {tableData.headers.map((header: string, colIdx: number) => (
-                                                <th 
-                                                  key={colIdx} 
-                                                  className={`border p-1 bg-muted relative ${selectedCell?.row === -1 && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedTableCell(prev => ({ ...prev, [sectionKey]: { row: -1, col: colIdx } }));
-                                                    setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }));
-                                                  }}
-                                                >
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse border text-sm">
+                                        <thead>
+                                          <tr>
+                                            {tableData.headers.map((header: string, colIdx: number) => (
+                                              <th key={colIdx} className="border p-1 bg-muted">
+                                                <div className="flex items-center gap-1">
                                                   <RichTextEditor
                                                     value={header}
                                                     onChange={(html) => {
@@ -1996,58 +1873,75 @@ const RunTemplates = () => {
                                                     }}
                                                     placeholder={`Header ${colIdx + 1}`}
                                                     singleLine
-                                                    className="font-semibold"
+                                                    className="flex-1 font-semibold"
                                                   />
-                                                  <div 
-                                                    className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize opacity-0 hover:opacity-100 hover:bg-primary/50 z-10 transition-opacity"
-                                                    onMouseDown={(e) => handleTableResizeStart(e, sectionKey, colIdx)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                  />
-                                                </th>
-                                              ))}
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {(tableData.rows || []).map((row: string[], rowIdx: number) => (
-                                              <tr key={rowIdx}>
-                                                {row.map((cell: string, colIdx: number) => (
-                                                  <td 
-                                                    key={colIdx} 
-                                                    className={`border p-1 relative ${selectedCell?.row === rowIdx && selectedCell?.col === colIdx ? 'ring-2 ring-primary' : ''}`}
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      setSelectedTableCell(prev => ({ ...prev, [sectionKey]: { row: rowIdx, col: colIdx } }));
-                                                      setTablePopoverOpen(prev => ({ ...prev, [sectionKey]: true }));
+                                                  <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={() => {
+                                                      const newHeaders = tableData.headers.filter((_: any, i: number) => i !== colIdx);
+                                                      const newRows = tableData.rows.map((row: string[]) => 
+                                                        row.filter((_: any, i: number) => i !== colIdx)
+                                                      );
+                                                      setTableVariables(prev => ({
+                                                        ...prev,
+                                                        [section.id]: { headers: newHeaders, rows: newRows }
+                                                      }));
                                                     }}
+                                                    className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+                                                    disabled={!editable || tableData.headers.length <= 1}
                                                   >
-                                                    <RichTextEditor
-                                                      value={cell}
-                                                      onChange={(html) => {
-                                                        const newRows = [...tableData.rows];
-                                                        newRows[rowIdx][colIdx] = html;
-                                                        setTableVariables(prev => ({
-                                                          ...prev,
-                                                          [section.id]: { ...tableData, rows: newRows }
-                                                        }));
-                                                      }}
-                                                      placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
-                                                      singleLine
-                                                    />
-                                                    <div 
-                                                      className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize opacity-0 hover:opacity-100 hover:bg-primary/50 z-10 transition-opacity"
-                                                      onMouseDown={(e) => handleTableResizeStart(e, sectionKey, colIdx)}
-                                                      onClick={(e) => e.stopPropagation()}
-                                                    />
-                                                  </td>
-                                                ))}
-                                              </tr>
+                                                    <Trash2 className="h-3 w-3" />
+                                                  </Button>
+                                                </div>
+                                              </th>
                                             ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </TableContextPopover>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {(tableData.rows || []).map((row: string[], rowIdx: number) => (
+                                            <tr key={rowIdx}>
+                                              {row.map((cell: string, colIdx: number) => (
+                                                <td key={colIdx} className="border p-1">
+                                                  <RichTextEditor
+                                                    value={cell}
+                                                    onChange={(html) => {
+                                                      const newRows = [...tableData.rows];
+                                                      newRows[rowIdx][colIdx] = html;
+                                                      setTableVariables(prev => ({
+                                                        ...prev,
+                                                        [section.id]: { ...tableData, rows: newRows }
+                                                      }));
+                                                    }}
+                                                    placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
+                                                    singleLine
+                                                  />
+                                                </td>
+                                              ))}
+                                              <td className="border p-1 w-8">
+                                                <Button
+                                                  size="icon"
+                                                  variant="ghost"
+                                                  onClick={() => {
+                                                    const newRows = tableData.rows.filter((_: any, i: number) => i !== rowIdx);
+                                                    setTableVariables(prev => ({
+                                                      ...prev,
+                                                      [section.id]: { ...tableData, rows: newRows }
+                                                    }));
+                                                  }}
+                                                  className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
+                                                  disabled={!editable}
+                                                >
+                                                  <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
                                   ) : (
-                                    <p className="text-xs text-muted-foreground text-center py-4">No table data — click a cell to add rows/columns</p>
+                                    <p className="text-xs text-muted-foreground text-center py-4">Click "Column" to start</p>
                                   )}
                                 </div>
                               </div>
@@ -2076,31 +1970,10 @@ const RunTemplates = () => {
                   {selectedTemplate.sections && selectedTemplate.sections.length > 0 ? (
                     <div className={styles.previewContent}>
                       {selectedTemplate.sections.map((section, sectionIndex) => {
-                        // Merge runtime column widths into table variables for preview
-                        const mergedTableVars = { ...tableVariables };
-                        
-                        // Apply runtime column widths to labeled-content tables
-                        const labeledKey = `labeled-${section.id}`;
-                        if (tableColumnWidths[labeledKey] && mergedTableVars[section.id]) {
-                          mergedTableVars[section.id] = {
-                            ...mergedTableVars[section.id],
-                            columnWidths: tableColumnWidths[labeledKey]
-                          };
-                        }
-                        
-                        // Apply runtime column widths to standalone tables
-                        const tableKey = `table-${section.id}`;
-                        if (tableColumnWidths[tableKey] && mergedTableVars[section.id]) {
-                          mergedTableVars[section.id] = {
-                            ...mergedTableVars[section.id],
-                            columnWidths: tableColumnWidths[tableKey]
-                          };
-                        }
-                        
                         const runtimeVars: Record<string, string | string[] | any> = {
                           ...variables,
                           ...listVariables,
-                          ...mergedTableVars,
+                          ...tableVariables,
                           ...labelVariables
                         };
                         
