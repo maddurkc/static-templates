@@ -549,25 +549,19 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     // Metadata keys to skip when looking for user content
     const metadataKeys = ['label', 'content', 'contentType', 'listStyle', 'items', 'tableData', 'listVariableName', 'listHtml', 'labelColor'];
     
-    // Find the variable name for this section
-    let varName: string | null = null;
+    // Collect all variable names for this section (not just the first)
+    const varNames: string[] = [];
     if (section.variables) {
       for (const [key, value] of Object.entries(section.variables)) {
         if (!metadataKeys.includes(key) && typeof value === 'string') {
-          varName = key;
-          break;
+          varNames.push(key);
         }
       }
     }
     
-    // PRIORITY: Check runtime variables first (from RichTextEditor)
-    // This ensures user edits from RichTextEditor are reflected in preview
+    // Start with section.content which contains the template with placeholders
     let processedContent = '';
-    if (varName && variables && variables[varName] !== undefined) {
-      // Use the runtime variable value directly (already contains HTML from RichTextEditor)
-      processedContent = sanitizeHTML(String(variables[varName]));
-    } else if (section.content) {
-      // Fall back to section.content
+    if (section.content) {
       processedContent = section.content;
     } else if (section.variables) {
       // Fall back to section.variables
@@ -577,25 +571,38 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         processedContent = String(section.variables.text);
       } else if (section.variables.title) {
         processedContent = String(section.variables.title);
-      } else if (varName && section.variables[varName]) {
-        processedContent = String(section.variables[varName]);
+      } else if (varNames.length > 0 && section.variables[varNames[0]]) {
+        processedContent = String(section.variables[varNames[0]]);
       }
     }
     
     // If content contains Thymeleaf tags, replace them with variable values
-    if (processedContent.includes('th:utext') && section.variables) {
-      // Replace all Thymeleaf patterns with their values from variables
+    // Priority: runtime variables > section.variables
+    if (processedContent.includes('th:utext')) {
+      // Replace all Thymeleaf patterns with their values from runtime or section variables
       processedContent = processedContent.replace(
         /<span\s+th:utext="\$\{(\w+)\}"\/>/g,
         (match, varName) => {
-          const value = section.variables?.[varName] ?? variables?.[varName];
-          return value !== undefined ? sanitizeHTML(String(value)) : match;
+          // Runtime variables take priority
+          if (variables && variables[varName] !== undefined) {
+            return sanitizeHTML(String(variables[varName]));
+          }
+          // Fall back to section variables
+          if (section.variables?.[varName] !== undefined) {
+            return sanitizeHTML(String(section.variables[varName]));
+          }
+          return match;
         }
       ).replace(
         /<th:utext="\$\{(\w+)\}">/g,
         (match, varName) => {
-          const value = section.variables?.[varName] ?? variables?.[varName];
-          return value !== undefined ? sanitizeHTML(String(value)) : match;
+          if (variables && variables[varName] !== undefined) {
+            return sanitizeHTML(String(variables[varName]));
+          }
+          if (section.variables?.[varName] !== undefined) {
+            return sanitizeHTML(String(section.variables[varName]));
+          }
+          return match;
         }
       );
     }
