@@ -2076,10 +2076,31 @@ const RunTemplates = () => {
                   {selectedTemplate.sections && selectedTemplate.sections.length > 0 ? (
                     <div className={styles.previewContent}>
                       {selectedTemplate.sections.map((section, sectionIndex) => {
+                        // Merge runtime column widths into table variables for preview
+                        const mergedTableVars = { ...tableVariables };
+                        
+                        // Apply runtime column widths to labeled-content tables
+                        const labeledKey = `labeled-${section.id}`;
+                        if (tableColumnWidths[labeledKey] && mergedTableVars[section.id]) {
+                          mergedTableVars[section.id] = {
+                            ...mergedTableVars[section.id],
+                            columnWidths: tableColumnWidths[labeledKey]
+                          };
+                        }
+                        
+                        // Apply runtime column widths to standalone tables
+                        const tableKey = `table-${section.id}`;
+                        if (tableColumnWidths[tableKey] && mergedTableVars[section.id]) {
+                          mergedTableVars[section.id] = {
+                            ...mergedTableVars[section.id],
+                            columnWidths: tableColumnWidths[tableKey]
+                          };
+                        }
+                        
                         const runtimeVars: Record<string, string | string[] | any> = {
                           ...variables,
                           ...listVariables,
-                          ...tableVariables,
+                          ...mergedTableVars,
                           ...labelVariables
                         };
                         
