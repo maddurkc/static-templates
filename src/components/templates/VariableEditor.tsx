@@ -954,35 +954,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
 
   // Handle heading and text sections with inline placeholders
   if (isInlinePlaceholderSection) {
-    // Get user-friendly content (without HTML tags, with placeholders)
-    const getUserFriendlyContent = (): string => {
-      let content = section.content;
-      // Convert Thymeleaf tags back to {{placeholder}} format for editing
-      // Handle new span format: <span th:utext="${varName}"/>
-      content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g, '{{$1}}');
-      // Handle legacy format: <th:utext="${varName}">
-      content = content.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
-      // Remove HTML tags for clean editing
-      return content.replace(/<[^>]*>/g, '');
-    };
-    
-    // Get preview with default values
-    const getPreviewContent = (): string => {
-      let displayContent = getUserFriendlyContent();
-      if (section.variables && Object.keys(section.variables).length > 0) {
-        Object.entries(section.variables).forEach(([key, value]) => {
-          const placeholderPattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-          displayContent = displayContent.replace(placeholderPattern, String(value) || `{{${key}}}`);
-        });
-      }
-      return displayContent;
-    };
-    
-    const userContent = getUserFriendlyContent();
-    const previewContent = getPreviewContent();
-    const detectedPlaceholders = extractPlaceholders(userContent);
-    
-    // Get the default content value from section definition
+    // Get default content based on section type
     const getDefaultContentValue = (): string => {
       // Check section definition for default value
       const defaultVarName = section.type === 'paragraph' ? 'content' : section.type === 'text' ? 'text' : 'title';
@@ -1004,7 +976,42 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
       }
     };
     
-    // Get current content value - if empty or only has placeholder, show editable content
+    // Get user-friendly content (without HTML tags, with placeholders)
+    const getUserFriendlyContent = (): string => {
+      let content = section.content;
+      // Convert Thymeleaf tags back to {{placeholder}} format for editing
+      // Handle new span format: <span th:utext="${varName}"/>
+      content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g, '{{$1}}');
+      // Handle legacy format: <th:utext="${varName}">
+      content = content.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
+      // Remove HTML tags for clean editing
+      const cleanContent = content.replace(/<[^>]*>/g, '').trim();
+      
+      // If content is just a placeholder like {{title}}, return the default value instead
+      if (/^\{\{\w+\}\}$/.test(cleanContent)) {
+        return getDefaultContentValue();
+      }
+      
+      return cleanContent;
+    };
+    
+    // Get preview with default values
+    const getPreviewContent = (): string => {
+      let displayContent = getUserFriendlyContent();
+      if (section.variables && Object.keys(section.variables).length > 0) {
+        Object.entries(section.variables).forEach(([key, value]) => {
+          const placeholderPattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+          displayContent = displayContent.replace(placeholderPattern, String(value) || `{{${key}}}`);
+        });
+      }
+      return displayContent;
+    };
+    
+    const userContent = getUserFriendlyContent();
+    const previewContent = getPreviewContent();
+    const detectedPlaceholders = extractPlaceholders(userContent);
+    
+    // Get current content value - if empty, show default
     const currentContentValue = userContent || getDefaultContentValue();
     
     return (
