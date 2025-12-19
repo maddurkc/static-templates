@@ -1327,8 +1327,21 @@ const RunTemplates = () => {
 
                   {/* Body Content Section - All sections in template order */}
                   {(() => {
-                    // Build ordered sections - ALL sections in template order
-                    const allSections = selectedTemplate?.sections || [];
+                    // Helper function to flatten sections including children
+                    const flattenSections = (sections: Section[]): Section[] => {
+                      const result: Section[] = [];
+                      sections.forEach(section => {
+                        result.push(section);
+                        if (section.children && section.children.length > 0) {
+                          result.push(...flattenSections(section.children));
+                        }
+                      });
+                      return result;
+                    };
+                    
+                    // Build ordered sections - ALL sections in template order including nested children
+                    const rawSections = selectedTemplate?.sections || [];
+                    const allSections = flattenSections(rawSections);
                     
                     const hasContent = allSections.length > 0;
                     
