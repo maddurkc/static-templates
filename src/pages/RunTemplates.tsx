@@ -175,9 +175,27 @@ const RunTemplates = () => {
   }, [selectedTemplate]);
 
   const extractVariables = (html: string): string[] => {
-    const regex = /<th:utext="\$\{(\w+)\}">/g;
-    const matches = html.matchAll(regex);
-    return Array.from(new Set(Array.from(matches, m => m[1])));
+    const vars: string[] = [];
+    
+    // Match <th:utext="${varName}"> format
+    const regex1 = /<th:utext="\$\{(\w+)\}">/g;
+    for (const match of html.matchAll(regex1)) {
+      if (!vars.includes(match[1])) vars.push(match[1]);
+    }
+    
+    // Match <span th:utext="${varName}"/> format
+    const regex2 = /<span\s+th:utext="\$\{(\w+)\}"\/>/g;
+    for (const match of html.matchAll(regex2)) {
+      if (!vars.includes(match[1])) vars.push(match[1]);
+    }
+    
+    // Match ${varName} inside th:utext or th:text attributes
+    const regex3 = /th:(?:u)?text="\$\{(\w+)\}"/g;
+    for (const match of html.matchAll(regex3)) {
+      if (!vars.includes(match[1])) vars.push(match[1]);
+    }
+    
+    return vars;
   };
 
   // Check if a variable is a labeled-content section by its section ID
@@ -1662,23 +1680,28 @@ const RunTemplates = () => {
                             const isEditable = section.isLabelEditable !== false;
                             
                             // Use editedSectionContent if user has edited this section, otherwise use original
-                            const currentContent = editedSectionContent[section.id] !== undefined 
+                            const rawContent = editedSectionContent[section.id] !== undefined 
                               ? editedSectionContent[section.id] 
                               : (section.content || '');
                             
-                            // Strip HTML tags to get plain text for label display
-                            const plainTextContent = currentContent.replace(/<[^>]*>/g, '').trim();
+                            // Convert Thymeleaf tags to {{placeholder}} format BEFORE stripping HTML
+                            const contentWithPlaceholders = rawContent
+                              .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
+                              .replace(/<th:utext="\$\{(\w+)\}">[^<]*<\/th:utext>/g, '{{$1}}')
+                              .replace(/<th:block\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
+                              .replace(/th:utext="\$\{(\w+)\}"/g, '{{$1}}');
                             
-                            // Dynamically extract placeholders from current content
+                            // Strip remaining HTML tags to get plain text for label display
+                            const plainTextContent = contentWithPlaceholders.replace(/<[^>]*>/g, '').trim();
+                            
+                            // Dynamically extract placeholders from content
                             const varNames: string[] = [];
-                            if (currentContent) {
-                              const placeholderMatches = currentContent.match(/\{\{(\w+)\}\}/g) || [];
+                            if (plainTextContent) {
+                              const placeholderMatches = plainTextContent.match(/\{\{(\w+)\}\}/g) || [];
                               placeholderMatches.forEach(match => {
                                 const varName = match.replace(/\{\{|\}\}/g, '');
                                 if (!varNames.includes(varName)) varNames.push(varName);
                               });
-                              const contentVars = extractVariables(currentContent);
-                              contentVars.forEach(v => { if (!varNames.includes(v)) varNames.push(v); });
                             }
                             
                             // Skip sections with no content
@@ -1693,7 +1716,7 @@ const RunTemplates = () => {
                                 {isEditingThisSection && isEditable ? (
                                   <div className="mb-3">
                                     <Textarea
-                                      value={currentContent.replace(/<[^>]*>/g, '')}
+                                      value={plainTextContent}
                                       onChange={(e) => {
                                         setEditedSectionContent(prev => ({
                                           ...prev,
