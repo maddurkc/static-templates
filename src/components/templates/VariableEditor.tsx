@@ -982,6 +982,31 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     const previewContent = getPreviewContent();
     const detectedPlaceholders = extractPlaceholders(userContent);
     
+    // Get the default content value from section definition
+    const getDefaultContentValue = (): string => {
+      // Check section definition for default value
+      const defaultVarName = section.type === 'paragraph' ? 'content' : section.type === 'text' ? 'text' : 'title';
+      const sectionDefValue = sectionDef?.variables?.find(v => v.name === defaultVarName)?.defaultValue;
+      if (sectionDefValue && typeof sectionDefValue === 'string') {
+        return sectionDefValue;
+      }
+      // Fallback based on section type
+      switch (section.type) {
+        case 'heading1': return 'Main Title';
+        case 'heading2': return 'Section Title';
+        case 'heading3': return 'Subsection Title';
+        case 'heading4': return 'Minor Title';
+        case 'heading5': return 'Small Title';
+        case 'heading6': return 'Tiny Title';
+        case 'text': return 'Your text here';
+        case 'paragraph': return 'This is a paragraph with multiple lines of text.';
+        default: return 'Enter content here';
+      }
+    };
+    
+    // Get current content value - if empty or only has placeholder, show editable content
+    const currentContentValue = userContent || getDefaultContentValue();
+    
     return (
       <div className={styles.container}>
         <div className={styles.header}>
@@ -992,7 +1017,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         <div className={styles.section}>
           <Label className={styles.label}>Content (use {`{{`}variable{`}}`} for dynamic data)</Label>
           <Textarea
-            value={userContent}
+            value={currentContentValue}
             onChange={(e) => {
               const newContent = e.target.value;
               const newPlaceholders = extractPlaceholders(newContent);

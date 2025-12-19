@@ -1665,24 +1665,47 @@ const RunTemplates = () => {
                               });
                             }
                             
-                            // If no variables to show, skip this section
+                            // Get the full text content with placeholders replaced for display as label
+                            const getDisplayContent = (): string => {
+                              let content = section.content || '';
+                              // Convert Thymeleaf to {{placeholder}} format
+                              content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g, '{{$1}}');
+                              content = content.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
+                              // Remove HTML tags
+                              content = content.replace(/<[^>]*>/g, '');
+                              return content;
+                            };
+                            
+                            const displayContent = getDisplayContent();
+                            
+                            // If no variables to show, skip this section (but still show if has static content)
                             if (varNames.length === 0) return null;
+                            
+                            const editable = section.isLabelEditable !== false;
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
                                 <div className="text-xs text-muted-foreground mb-2">{section.type.charAt(0).toUpperCase() + section.type.slice(1)}</div>
+                                
+                                {/* Show full text content as label */}
+                                <div className="mb-3 px-3 py-2 bg-muted/40 rounded-md border border-border/30">
+                                  <p className="text-sm font-medium text-foreground">
+                                    {displayContent || 'No content'}
+                                  </p>
+                                </div>
+                                
+                                {/* Show RichTextEditor inputs for each placeholder */}
                                 {varNames.map(varName => {
-                                  const editable = isLabelEditable(varName);
                                   return (
-                                    <div key={varName} className={styles.formField}>
+                                    <div key={varName} className="mt-3 pl-3 border-l-2 border-primary/30">
                                       <Popover>
                                         <PopoverTrigger asChild>
-                                          <Label htmlFor={`var-${varName}`} className="text-sm font-medium cursor-help mb-1 inline-block">
-                                            {varName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                          <Label htmlFor={`var-${varName}`} className="text-sm font-medium cursor-help mb-1 inline-block text-primary">
+                                            {`{{${varName}}}`}
                                           </Label>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto p-2" side="top" align="start">
-                                          <span className="text-xs text-muted-foreground">{varName}</span>
+                                          <span className="text-xs text-muted-foreground">Enter value for: {varName}</span>
                                         </PopoverContent>
                                       </Popover>
                                       <RichTextEditor
@@ -1697,7 +1720,7 @@ const RunTemplates = () => {
                                           }));
                                         }}
                                         onFocus={() => scrollToSection(section.id)}
-                                        placeholder={varName}
+                                        placeholder={`Enter value for ${varName}...`}
                                         singleLine={section.type.startsWith('heading')}
                                       />
                                     </div>
