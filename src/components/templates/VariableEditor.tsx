@@ -954,26 +954,17 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
 
   // Handle heading and text sections with inline placeholders
   if (isInlinePlaceholderSection) {
-    // Get default content based on section type
+    // Get default content value from sectionTypes definition
     const getDefaultContentValue = (): string => {
-      // Check section definition for default value
+      // Determine the primary variable name based on section type
       const defaultVarName = section.type === 'paragraph' ? 'content' : section.type === 'text' ? 'text' : 'title';
+      // Get the default value from sectionTypes definition
       const sectionDefValue = sectionDef?.variables?.find(v => v.name === defaultVarName)?.defaultValue;
       if (sectionDefValue && typeof sectionDefValue === 'string') {
         return sectionDefValue;
       }
-      // Fallback based on section type
-      switch (section.type) {
-        case 'heading1': return 'Main Title';
-        case 'heading2': return 'Section Title';
-        case 'heading3': return 'Subsection Title';
-        case 'heading4': return 'Minor Title';
-        case 'heading5': return 'Small Title';
-        case 'heading6': return 'Tiny Title';
-        case 'text': return 'Your text here';
-        case 'paragraph': return 'This is a paragraph with multiple lines of text.';
-        default: return 'Enter content here';
-      }
+      // Fallback to generic text if no definition found
+      return 'Enter content here';
     };
     
     // Get user-friendly content (without HTML tags, with placeholders)
