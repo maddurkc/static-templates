@@ -954,19 +954,6 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
 
   // Handle heading and text sections with inline placeholders
   if (isInlinePlaceholderSection) {
-    // Get default content value from sectionTypes definition
-    const getDefaultContentValue = (): string => {
-      // Determine the primary variable name based on section type
-      const defaultVarName = section.type === 'paragraph' ? 'content' : section.type === 'text' ? 'text' : 'title';
-      // Get the default value from sectionTypes definition
-      const sectionDefValue = sectionDef?.variables?.find(v => v.name === defaultVarName)?.defaultValue;
-      if (sectionDefValue && typeof sectionDefValue === 'string') {
-        return sectionDefValue;
-      }
-      // Fallback to generic text if no definition found
-      return 'Enter content here';
-    };
-    
     // Get user-friendly content (without HTML tags, with placeholders)
     const getUserFriendlyContent = (): string => {
       let content = section.content;
@@ -976,14 +963,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
       // Handle legacy format: <th:utext="${varName}">
       content = content.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
       // Remove HTML tags for clean editing
-      const cleanContent = content.replace(/<[^>]*>/g, '').trim();
-      
-      // If content is just a placeholder like {{title}}, return the default value instead
-      if (/^\{\{\w+\}\}$/.test(cleanContent)) {
-        return getDefaultContentValue();
-      }
-      
-      return cleanContent;
+      return content.replace(/<[^>]*>/g, '');
     };
     
     // Get preview with default values
@@ -1002,9 +982,6 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     const previewContent = getPreviewContent();
     const detectedPlaceholders = extractPlaceholders(userContent);
     
-    // Get current content value - if empty, show default
-    const currentContentValue = userContent || getDefaultContentValue();
-    
     return (
       <div className={styles.container}>
         <div className={styles.header}>
@@ -1015,7 +992,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         <div className={styles.section}>
           <Label className={styles.label}>Content (use {`{{`}variable{`}}`} for dynamic data)</Label>
           <Textarea
-            value={currentContentValue}
+            value={userContent}
             onChange={(e) => {
               const newContent = e.target.value;
               const newPlaceholders = extractPlaceholders(newContent);
