@@ -1672,20 +1672,11 @@ const RunTemplates = () => {
                             if (!plainTextContent) return null;
                             
                             const isEditingThisSection = editingSectionId === section.id;
+                            const hasPlaceholders = varNames.length > 0;
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
-                                {/* Section type badge with editable indicator */}
-                                <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-                                  <span>{section.type.charAt(0).toUpperCase() + section.type.slice(1)}</span>
-                                  {isEditable ? (
-                                    <span className="text-xs text-primary/70">✏️ Editable</span>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground/70">🔒 Locked</span>
-                                  )}
-                                </div>
-                                
-                                {/* Content label with edit functionality */}
+                                {/* Content label - show with placeholders highlighted or as static text */}
                                 {isEditingThisSection && isEditable ? (
                                   <div className="mb-3">
                                     <Textarea
@@ -1726,47 +1717,41 @@ const RunTemplates = () => {
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="flex items-start gap-2 mb-3">
+                                  <div className="flex items-start gap-2">
                                     <div 
-                                      className={`flex-1 text-sm font-medium px-3 py-2 bg-muted/50 rounded border border-border/50 ${isEditable ? 'cursor-text' : 'cursor-default'}`}
-                                      style={{ lineHeight: 1.5 }}
+                                      className={`flex-1 text-sm font-medium ${hasPlaceholders ? 'text-foreground' : 'text-muted-foreground'}`}
+                                      style={{ lineHeight: 1.6 }}
                                       dangerouslySetInnerHTML={{ 
-                                        __html: plainTextContent.replace(
-                                          /\{\{(\w+)\}\}/g, 
-                                          '<span style="background-color: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.8em;">{{$1}}</span>'
-                                        )
+                                        __html: hasPlaceholders 
+                                          ? plainTextContent.replace(
+                                              /\{\{(\w+)\}\}/g, 
+                                              '<span style="background-color: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em; font-weight: 600;">{{$1}}</span>'
+                                            )
+                                          : plainTextContent
                                       }}
                                     />
                                     {isEditable && (
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-8 w-8 p-0 shrink-0"
+                                        className="h-6 w-6 p-0 shrink-0 opacity-50 hover:opacity-100"
                                         onClick={() => setEditingSectionId(section.id)}
                                         title="Edit content"
                                       >
-                                        <Pencil className="h-4 w-4" />
+                                        <Pencil className="h-3 w-3" />
                                       </Button>
                                     )}
                                   </div>
                                 )}
                                 
-                                {/* Show RichTextEditor for each placeholder variable */}
-                                {varNames.length > 0 && (
-                                  <div className="ml-4 space-y-3">
+                                {/* Show input boxes for each placeholder - indented to show association */}
+                                {hasPlaceholders && (
+                                  <div className="mt-3 ml-4 pl-3 border-l-2 border-primary/20 space-y-3">
                                     {varNames.map(varName => (
                                       <div key={varName} className={styles.formField}>
-                                        <Popover>
-                                          <PopoverTrigger asChild>
-                                            <Label htmlFor={`var-${varName}`} className="text-xs font-medium cursor-help mb-1 inline-flex items-center gap-1.5 text-muted-foreground">
-                                              <span className="font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs">{`{{${varName}}}`}</span>
-                                              <span>Enter value:</span>
-                                            </Label>
-                                          </PopoverTrigger>
-                                          <PopoverContent className="w-auto p-2" side="top" align="start">
-                                            <span className="text-xs text-muted-foreground">Variable: {varName}</span>
-                                          </PopoverContent>
-                                        </Popover>
+                                        <Label htmlFor={`var-${varName}`} className="text-xs font-medium mb-1.5 inline-flex items-center gap-1.5 text-muted-foreground">
+                                          <span className="font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-semibold">{`{{${varName}}}`}</span>
+                                        </Label>
                                         <RichTextEditor
                                           value={typeof variables[varName] === 'object' 
                                             ? (variables[varName] as TextStyle).text 
