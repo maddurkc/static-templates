@@ -2058,20 +2058,46 @@ const RunTemplates = () => {
                           ...labelVariables
                         };
                         
-                        // For labeled-content sections, inject updated label from labelVariables
-                        let sectionToRender = section;
-                        if (section.type === 'labeled-content') {
-                          const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
-                          if (labelVariables[labelVarName]) {
-                            sectionToRender = {
-                              ...section,
-                              variables: {
-                                ...section.variables,
-                                label: labelVariables[labelVarName]
-                              }
+                        // Helper to apply editedSectionContent to section and its children
+                        const applyEditedContent = (s: Section): Section => {
+                          let updated = s;
+                          
+                          // For labeled-content sections, inject updated label from labelVariables
+                          if (s.type === 'labeled-content') {
+                            const labelVarName = (s.variables?.labelVariableName as string) || `label_${s.id}`;
+                            if (labelVariables[labelVarName]) {
+                              updated = {
+                                ...updated,
+                                variables: {
+                                  ...updated.variables,
+                                  label: labelVariables[labelVarName]
+                                }
+                              };
+                            }
+                          }
+                          
+                          // For heading/text/paragraph sections, inject edited content
+                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(s.type)) {
+                            if (editedSectionContent[s.id] !== undefined) {
+                              updated = {
+                                ...updated,
+                                content: editedSectionContent[s.id]
+                              };
+                            }
+                          }
+                          
+                          // Recursively apply to children
+                          if (updated.children && updated.children.length > 0) {
+                            updated = {
+                              ...updated,
+                              children: updated.children.map(applyEditedContent)
                             };
                           }
-                        }
+                          
+                          return updated;
+                        };
+                        
+                        const sectionToRender = applyEditedContent(section);
                         
                         return (
                           <div 
