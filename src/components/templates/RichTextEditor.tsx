@@ -373,75 +373,68 @@ export const RichTextEditor = ({
           
           <div className={styles.separator} />
           
-          {/* Link Popover */}
-          <Popover open={showLinkInput} onOpenChange={(open) => {
-            if (open) saveSelection();
-            setShowLinkInput(open);
-          }}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-7 w-7 p-0 ${isLink ? 'text-primary' : ''}`}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  saveSelection();
-                }}
-                title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
-              >
-                <Link className="h-3.5 w-3.5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent 
-              className="w-72 p-3 z-[9999]" 
+          {/* Link Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-7 w-7 p-0 ${isLink ? 'text-primary' : ''}`}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              saveSelection();
+            }}
+            onClick={() => {
+              setShowLinkInput(!showLinkInput);
+            }}
+            title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
+          >
+            <Link className="h-3.5 w-3.5" />
+          </Button>
+          
+          {/* Link Input Panel - inline in toolbar */}
+          {showLinkInput && (
+            <div 
+              className="flex items-center gap-2 ml-1 pl-2 border-l border-border"
               onMouseDown={(e) => e.preventDefault()}
-              side="top"
-              align="center"
-              sideOffset={8}
             >
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Enter URL</Label>
-                <Input
-                  type="url"
-                  placeholder="https://example.com"
-                  value={linkUrl}
-                  onChange={(e) => setLinkUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      applyLink();
-                    } else if (e.key === 'Escape') {
-                      setShowLinkInput(false);
-                      setLinkUrl('');
-                    }
+              <Input
+                type="url"
+                placeholder="https://example.com"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyLink();
+                  } else if (e.key === 'Escape') {
+                    setShowLinkInput(false);
+                    setLinkUrl('');
+                  }
+                }}
+                className="h-6 w-40 text-xs"
+                autoFocus
+              />
+              <Button
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={applyLink}
+              >
+                {isLink ? 'Update' : 'Add'}
+              </Button>
+              {isLink && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => {
+                    removeLink();
+                    setShowLinkInput(false);
                   }}
-                  className="h-8"
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={applyLink}
-                  >
-                    {isLink ? 'Update Link' : 'Add Link'}
-                  </Button>
-                  {isLink && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        removeLink();
-                        setShowLinkInput(false);
-                      }}
-                    >
-                      <Unlink className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+                >
+                  <Unlink className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          )}
           
           <div className={styles.separator} />
           
