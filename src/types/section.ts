@@ -70,6 +70,8 @@ export interface Section {
     fontWeight?: string;
     fontStyle?: string;
     textDecoration?: string;
+    fontFamily?: string;
+    lineHeight?: string;
   };
   children?: Section[];
   order?: number;

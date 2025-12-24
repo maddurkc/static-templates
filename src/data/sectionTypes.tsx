@@ -21,13 +21,23 @@ import {
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
+// Default heading styles for each heading level
+export const headingDefaultStyles: Record<string, { fontSize: string; color: string; fontFamily: string; fontWeight: string; lineHeight: string }> = {
+  heading1: { fontSize: '34px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Regular, serif', fontWeight: '400', lineHeight: '44px' },
+  heading2: { fontSize: '24px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Regular, serif', fontWeight: '600', lineHeight: '30px' },
+  heading3: { fontSize: '20px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Regular, serif', fontWeight: '400', lineHeight: '25px' },
+  heading4: { fontSize: '16px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Regular, serif', fontWeight: '400', lineHeight: '20px' },
+  heading5: { fontSize: '15px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Semibold, serif', fontWeight: '600', lineHeight: '19px' },
+  heading6: { fontSize: '14px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Semibold, serif', fontWeight: '600', lineHeight: '18px' },
+};
+
 export const sectionTypes: SectionDefinition[] = [
   {
     type: 'heading1',
     label: 'Heading 1',
     icon: Heading1,
     description: 'Large heading - use {{variable}} for dynamic values',
-    defaultContent: '<h1>Main Title</h1>',
+    defaultContent: '<h1 style="font-size: 34px; color: #3B3331; font-family: WellsfargoSerif-Regular, serif; font-weight: 400; line-height: 44px;">Main Title</h1>',
     category: 'text',
     variables: []
   },
@@ -36,7 +46,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 2',
     icon: Heading2,
     description: 'Section heading - use {{variable}} for dynamic values',
-    defaultContent: '<h2>Section Title</h2>',
+    defaultContent: '<h2 style="font-size: 24px; color: #3B3331; font-family: WellsfargoSerif-Regular, serif; font-weight: 600; line-height: 30px;">Section Title</h2>',
     category: 'text',
     variables: []
   },
@@ -45,7 +55,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 3',
     icon: Heading3,
     description: 'Subsection heading - use {{variable}} for dynamic values',
-    defaultContent: '<h3>Subsection Title</h3>',
+    defaultContent: '<h3 style="font-size: 20px; color: #3B3331; font-family: WellsfargoSerif-Regular, serif; font-weight: 400; line-height: 25px;">Subsection Title</h3>',
     category: 'text',
     variables: []
   },
@@ -54,7 +64,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 4',
     icon: Heading4,
     description: 'Minor heading - use {{variable}} for dynamic values',
-    defaultContent: '<h4>Minor Title</h4>',
+    defaultContent: '<h4 style="font-size: 16px; color: #3B3331; font-family: WellsfargoSerif-Regular, serif; font-weight: 400; line-height: 20px;">Minor Title</h4>',
     category: 'text',
     variables: []
   },
@@ -63,7 +73,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 5',
     icon: Heading5,
     description: 'Small heading - use {{variable}} for dynamic values',
-    defaultContent: '<h5>Small Title</h5>',
+    defaultContent: '<h5 style="font-size: 15px; color: #3B3331; font-family: WellsfargoSerif-Semibold, serif; font-weight: 600; line-height: 19px;">Small Title</h5>',
     category: 'text',
     variables: []
   },
@@ -72,7 +82,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 6',
     icon: Heading6,
     description: 'Smallest heading - use {{variable}} for dynamic values',
-    defaultContent: '<h6>Tiny Title</h6>',
+    defaultContent: '<h6 style="font-size: 14px; color: #3B3331; font-family: WellsfargoSerif-Semibold, serif; font-weight: 600; line-height: 18px;">Tiny Title</h6>',
     category: 'text',
     variables: []
   },
