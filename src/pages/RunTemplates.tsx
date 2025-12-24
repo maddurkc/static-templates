@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import * as React from "react";
 import styles from "./RunTemplates.module.scss";
@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
+import { IframePreview } from "@/components/templates/IframePreview";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,6 @@ import { renderSectionContent, wrapInEmailHtml } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
-
 const RunTemplates = () => {
   const navigate = useNavigate();
   const { id: templateId } = useParams<{ id: string }>();
@@ -2071,9 +2071,10 @@ const RunTemplates = () => {
               </div>
               <ScrollArea className="flex-1" id="preview-scroll-area">
                 <div className={styles.previewBody}>
-                  {selectedTemplate.sections && selectedTemplate.sections.length > 0 ? (
-                    <div className={styles.previewContent}>
-                      {selectedTemplate.sections.map((section, sectionIndex) => {
+                  {(() => {
+                    // Generate preview HTML for iframe
+                    const generatePreviewHtml = (): string => {
+                      if (selectedTemplate.sections && selectedTemplate.sections.length > 0) {
                         const runtimeVars: Record<string, string | string[] | any> = {
                           ...variables,
                           ...listVariables,
@@ -2120,23 +2121,19 @@ const RunTemplates = () => {
                           return updated;
                         };
                         
-                        const sectionToRender = applyEditedContent(section);
-                        
-                        return (
-                          <div 
-                            key={section.id} 
-                            id={`preview-section-${section.id}`}
-                            dangerouslySetInnerHTML={{ __html: renderSectionContent(sectionToRender, runtimeVars) }}
-                          />
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div
-                      dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables, listVariables) }}
-                      className={styles.previewContent}
-                    />
-                  )}
+                        return selectedTemplate.sections
+                          .map(section => {
+                            const sectionToRender = applyEditedContent(section);
+                            return `<div id="preview-section-${section.id}">${renderSectionContent(sectionToRender, runtimeVars)}</div>`;
+                          })
+                          .join('');
+                      } else {
+                        return replaceVariables(selectedTemplate.html, variables, listVariables);
+                      }
+                    };
+                    
+                    return <IframePreview html={generatePreviewHtml()} title="Email Body Preview" />;
+                  })()}
                 </div>
               </ScrollArea>
             </div>
@@ -2185,12 +2182,9 @@ const RunTemplates = () => {
             {/* Email Body Preview */}
             <div className="border rounded-lg p-4 bg-white">
               <Label className="text-sm font-medium text-muted-foreground mb-2 block">Email Body</Label>
-              <ScrollArea className="h-[400px]">
-                <div
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
-                  className={styles.previewContent}
-                />
-              </ScrollArea>
+              <div className="h-[400px] overflow-auto">
+                <IframePreview html={previewHtml} title="Email Preview" />
+              </div>
             </div>
           </div>
 
