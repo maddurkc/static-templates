@@ -4,7 +4,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-ki
 import { Section } from "@/types/section";
 import { TemplateVariable } from "@/types/template-variable";
 import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-config";
-import { sectionTypes } from "@/data/sectionTypes";
+import { sectionTypes, headingDefaultStyles } from "@/data/sectionTypes";
 import { SectionLibrary } from "@/components/templates/SectionLibrary";
 import { EditorView } from "@/components/templates/EditorView";
 import { PreviewView } from "@/components/templates/PreviewView";
@@ -329,15 +329,18 @@ const TemplateEditor = () => {
         }
       }
 
+      // Get default styles for heading sections
+      const isHeadingSection = sectionDef.type.startsWith('heading');
+      const defaultStyles = isHeadingSection && headingDefaultStyles[sectionDef.type] 
+        ? headingDefaultStyles[sectionDef.type]
+        : { fontSize: '16px', color: '#000000' };
+
       const newSection: Section = {
         id: newSectionId,
         type: sectionDef.type,
         content: sectionDef.defaultContent,
         variables,
-        styles: {
-          fontSize: '16px',
-          color: '#000000',
-        },
+        styles: defaultStyles,
         isLabelEditable: true // Default to editable at runtime
       };
       
