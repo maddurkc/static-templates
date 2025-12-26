@@ -17,7 +17,8 @@ import {
   Code,
   Minus,
   FileText,
-  Box
+  Box,
+  LayoutGrid
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
@@ -344,6 +345,15 @@ export const sectionTypes: SectionDefinition[] = [
     icon: Box,
     description: 'Container to group nested sections together',
     defaultContent: '<div>Container for nested sections</div>',
+    category: 'layout',
+    variables: []
+  },
+  {
+    type: 'layout-table',
+    label: 'Layout Table',
+    icon: LayoutGrid,
+    description: 'Table layout with cells that can contain sections - drag and drop content into cells',
+    defaultContent: '<table><tr><td>Cell 1</td><td>Cell 2</td></tr></table>',
     category: 'layout',
     variables: []
   }

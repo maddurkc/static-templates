@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Section } from "@/types/section";
+import { Section, LayoutTableData } from "@/types/section";
 import { GlobalApiConfig } from "@/types/global-api-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtil
 import { generateTableHTML, TableData } from "@/lib/tableUtils";
 import { InlineSectionControls } from "./InlineSectionControls";
 import { SectionContextMenu } from "./SectionContextMenu";
+import { LayoutTableEditor } from "./LayoutTableEditor";
 import styles from "./EditorView.module.scss";
 
 
@@ -66,6 +67,7 @@ const SortableSection = ({
   };
 
   const isContainer = section.type === 'container';
+  const isLayoutTable = section.type === 'layout-table';
   
   const { setNodeRef: setDropRef, isOver: isDropOver } = useDroppable({
     id: section.id,
@@ -205,7 +207,7 @@ const SortableSection = ({
               </div>
             )}
           </div>
-        ) : !isContainer && section.type === 'table' && section.variables?.tableData ? (
+        ) : !isContainer && !isLayoutTable && section.type === 'table' && section.variables?.tableData ? (
           // Handle standalone table sections
           <div
             className={styles.tablePreview}
@@ -213,7 +215,13 @@ const SortableSection = ({
               __html: generateTableHTML(section.variables.tableData as TableData)
             }}
           />
-        ) : !isContainer && (
+        ) : isLayoutTable && section.layoutTableData ? (
+          // Handle layout table sections
+          <LayoutTableEditor
+            section={section}
+            onUpdate={onUpdate}
+          />
+        ) : !isContainer && !isLayoutTable && (
           <>
             <div
               className="prose max-w-none"
