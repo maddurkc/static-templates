@@ -25,8 +25,7 @@ export type SectionType =
   | 'static-text'
   | 'mixed-content'
   | 'labeled-content'
-  | 'container'
-  | 'layout-table';
+  | 'container';
 
 export interface SectionVariable {
   name: string;
@@ -56,28 +55,6 @@ export interface TextStyle {
   fontSize?: string;
 }
 
-// Layout table cell structure - each cell can contain nested sections
-export interface LayoutTableCell {
-  id: string;
-  sections: Section[];
-  width?: string; // e.g., '50%', '200px'
-}
-
-// Layout table row structure
-export interface LayoutTableRow {
-  id: string;
-  cells: LayoutTableCell[];
-}
-
-// Layout table data structure
-export interface LayoutTableData {
-  rows: LayoutTableRow[];
-  cellPadding?: string;
-  cellSpacing?: string;
-  borderColor?: string;
-  showBorders?: boolean;
-}
-
 export interface Section {
   id: string;
   type: SectionType;
@@ -99,7 +76,6 @@ export interface Section {
   children?: Section[];
   order?: number;
   isLabelEditable?: boolean; // Whether the label can be edited at runtime
-  layoutTableData?: LayoutTableData; // Data for layout-table sections
 }
 
 export interface SectionDefinition {
