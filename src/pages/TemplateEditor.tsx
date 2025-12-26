@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Section } from "@/types/section";
+import { Section, LayoutTableData } from "@/types/section";
 import { TemplateVariable } from "@/types/template-variable";
 import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-config";
 import { sectionTypes, headingDefaultStyles } from "@/data/sectionTypes";
@@ -29,6 +29,7 @@ import { validateTemplate, validateTemplateName, validateSubject, ValidationErro
 import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
 import { subjectPlaceholderToThymeleaf, subjectThymeleafToPlaceholder } from "@/lib/thymeleafUtils";
 import { generateListVariableName, generateThymeleafListHtml } from "@/lib/listThymeleafUtils";
+import { getDefaultLayoutTableData } from "@/components/templates/LayoutTableEditor";
 import styles from "./TemplateEditor.module.scss";
 
 const TemplateEditor = () => {
@@ -273,6 +274,9 @@ const TemplateEditor = () => {
       
       if (!sectionDef) return;
       
+      // Check if dropping into a layout table cell
+      const isLayoutCellDrop = dropTargetId.startsWith('layout-cell-');
+      
       // Check if dropping into a container
       const targetContainer = sections.find(s => s.id === dropTargetId && s.type === 'container');
       
@@ -341,8 +345,41 @@ const TemplateEditor = () => {
         content: sectionDef.defaultContent,
         variables,
         styles: defaultStyles,
-        isLabelEditable: true // Default to editable at runtime
+        isLabelEditable: true, // Default to editable at runtime
+        // Initialize layoutTableData for layout-table sections
+        ...(sectionDef.type === 'layout-table' && { layoutTableData: getDefaultLayoutTableData() }),
       };
+      
+      // Handle drop into layout table cell
+      if (isLayoutCellDrop) {
+        const cellId = dropTargetId.replace('layout-cell-', '');
+        
+        // Find the layout table section and update the cell
+        const updatedSections = sections.map(s => {
+          if (s.type === 'layout-table' && s.layoutTableData) {
+            const newLayoutData: LayoutTableData = {
+              ...s.layoutTableData,
+              rows: s.layoutTableData.rows.map(row => ({
+                ...row,
+                cells: row.cells.map(cell => 
+                  cell.id === cellId
+                    ? { ...cell, sections: [...cell.sections, newSection] }
+                    : cell
+                ),
+              })),
+            };
+            return { ...s, layoutTableData: newLayoutData };
+          }
+          return s;
+        });
+        
+        setSections(updatedSections);
+        toast({
+          title: "Section added to cell",
+          description: `${sectionDef.label} added to layout table cell.`,
+        });
+        return;
+      }
       
       if (targetContainer) {
         // Add to container's children
