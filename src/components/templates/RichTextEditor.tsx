@@ -30,6 +30,7 @@ export const RichTextEditor = ({
   singleLine = false
 }: RichTextEditorProps) => {
   const editorRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const [hasSelection, setHasSelection] = useState(false);
@@ -37,6 +38,7 @@ export const RichTextEditor = ({
   const [linkUrl, setLinkUrl] = useState("");
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [isLink, setIsLink] = useState(false);
+  const isToolbarInteractionRef = useRef(false);
 
   // Initialize content
   useEffect(() => {
@@ -89,6 +91,11 @@ export const RichTextEditor = ({
   }, [findLinkAncestor]);
 
   const handleSelectionChange = useCallback(() => {
+    // Skip if we're interacting with toolbar
+    if (isToolbarInteractionRef.current) {
+      return;
+    }
+    
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || selection.toString().trim() === "") {
       setShowToolbar(false);
@@ -97,9 +104,13 @@ export const RichTextEditor = ({
       return;
     }
 
-    // Check if selection is within our editor
+    // Check if selection is within our editor or toolbar
     const range = selection.getRangeAt(0);
     if (!editorRef.current?.contains(range.commonAncestorContainer)) {
+      // Don't hide if interacting with toolbar
+      if (toolbarRef.current?.contains(document.activeElement)) {
+        return;
+      }
       setShowToolbar(false);
       setHasSelection(false);
       setShowLinkInput(false);
@@ -303,12 +314,23 @@ export const RichTextEditor = ({
     <div className={`${styles.editorContainer} ${className}`}>
       {showToolbar && hasSelection && (
         <div 
+          ref={toolbarRef}
           className={styles.floatingToolbar}
           style={{
             top: toolbarPosition.top,
             left: toolbarPosition.left,
           }}
-          onMouseDown={(e) => e.preventDefault()}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            isToolbarInteractionRef.current = true;
+          }}
+          onMouseUp={() => {
+            // Reset after a short delay to allow click handlers to execute
+            setTimeout(() => {
+              isToolbarInteractionRef.current = false;
+            }, 100);
+          }}
         >
           <Button
             variant="ghost"
@@ -378,11 +400,15 @@ export const RichTextEditor = ({
             variant="ghost"
             size="sm"
             className={`h-7 w-7 p-0 ${isLink ? 'text-primary' : ''}`}
-            onMouseDown={(e) => {
+            onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              console.log('Link button clicked, showLinkInput:', showLinkInput);
               saveSelection();
-              setShowLinkInput(prev => !prev);
+              setShowLinkInput(prev => {
+                console.log('Setting showLinkInput to:', !prev);
+                return !prev;
+              });
             }}
             title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
           >
