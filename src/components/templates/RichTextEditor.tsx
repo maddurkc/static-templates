@@ -380,10 +380,9 @@ export const RichTextEditor = ({
             className={`h-7 w-7 p-0 ${isLink ? 'text-primary' : ''}`}
             onMouseDown={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               saveSelection();
-            }}
-            onClick={() => {
-              setShowLinkInput(!showLinkInput);
+              setShowLinkInput(prev => !prev);
             }}
             title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
           >
