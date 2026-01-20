@@ -690,13 +690,19 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                     fontSize: cellStyle.fontSize,
                   };
 
+                  // Cell style for td element (includes background color)
+                  const tdStyle: React.CSSProperties = {
+                    borderColor: tableData.borderColor || '#ddd',
+                    backgroundColor: cellStyle.backgroundColor,
+                  };
+
                   return (
                     <td
                       key={colIndex}
                       rowSpan={merge?.rowSpan}
                       colSpan={merge?.colSpan}
                       className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
-                      style={{ borderColor: tableData.borderColor || '#ddd' }}
+                      style={tdStyle}
                       onClick={() => setSelectedCell({ row: rowIndex, col: colIndex })}
                     >
                       <Input
