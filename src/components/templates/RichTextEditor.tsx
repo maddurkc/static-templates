@@ -168,7 +168,21 @@ export const RichTextEditor = ({
       const range = selection.getRangeAt(0);
       const span = document.createElement('span');
       span.style.fontSize = size;
-      range.surroundContents(span);
+      
+      // Extract contents and append to span to avoid issues with surroundContents
+      const contents = range.extractContents();
+      span.appendChild(contents);
+      range.insertNode(span);
+      
+      // Re-select the content inside the span
+      const newRange = document.createRange();
+      newRange.selectNodeContents(span);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+      
+      // Save the new selection
+      savedSelectionRef.current = newRange.cloneRange();
+      
       if (editorRef.current) {
         onChange(editorRef.current.innerHTML);
       }
