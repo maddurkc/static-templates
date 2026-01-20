@@ -681,13 +681,20 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                   const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
                   const cellStyle = getCellStyle(rowIndex, colIndex);
                   
+                  // Apply styles to Input for text formatting
                   const inputStyle: React.CSSProperties = {
                     color: cellStyle.color,
                     fontWeight: cellStyle.bold ? 'bold' : undefined,
                     fontStyle: cellStyle.italic ? 'italic' : undefined,
                     textDecoration: cellStyle.underline ? 'underline' : undefined,
-                    backgroundColor: cellStyle.backgroundColor,
                     fontSize: cellStyle.fontSize,
+                    backgroundColor: 'transparent', // Let td handle background
+                  };
+
+                  // Apply styles to td for background and border
+                  const tdStyle: React.CSSProperties = {
+                    borderColor: tableData.borderColor || '#ddd',
+                    backgroundColor: cellStyle.backgroundColor,
                   };
 
                   return (
@@ -696,7 +703,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                       rowSpan={merge?.rowSpan}
                       colSpan={merge?.colSpan}
                       className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
-                      style={{ borderColor: tableData.borderColor || '#ddd' }}
+                      style={tdStyle}
                       onClick={() => setSelectedCell({ row: rowIndex, col: colIndex })}
                     >
                       <Input
