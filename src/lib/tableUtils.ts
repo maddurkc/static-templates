@@ -145,34 +145,23 @@ export const generateTableHTML = (tableData: TableData): string => {
       
       // Get cell-specific styles
       const cellStyle = tableData.cellStyles?.[cellKey];
+      const customStyles = generateCellStyleString(cellStyle);
       
-      // Header styling - use custom header style or defaults, but allow cell styles to override
-      let headerStyleParts: string[] = [];
+      // Header styling - use custom header style or defaults
+      let headerStyle = '';
       if (rowIndex === 0) {
         const hs = tableData.headerStyle;
-        // Only apply header background if cell doesn't have custom background
-        if (!cellStyle?.backgroundColor) {
-          headerStyleParts.push(`background-color: ${hs?.backgroundColor || '#f5f5f5'}`);
-        }
-        // Only apply header text color if cell doesn't have custom color
-        if (!cellStyle?.color) {
-          headerStyleParts.push(`color: ${hs?.textColor || 'inherit'}`);
-        }
-        // Only apply header bold if cell doesn't have explicit bold setting
-        if (cellStyle?.bold === undefined) {
-          headerStyleParts.push(`font-weight: ${hs?.bold !== false ? 'bold' : 'normal'}`);
-        }
+        const bgColor = hs?.backgroundColor || '#f5f5f5';
+        const textColor = hs?.textColor || 'inherit';
+        const fontWeight = hs?.bold !== false ? 'bold' : 'normal';
+        headerStyle = `background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;
       }
-      const headerStyle = headerStyleParts.join('; ');
-      
-      // Cell-specific custom styles (will override header styles)
-      const customStyles = generateCellStyleString(cellStyle);
       
       // Add column width to cell style if defined
       const columnWidth = tableData.columnWidths?.[colIndex];
       const widthStyle = columnWidth ? `width: ${columnWidth};` : '';
       
-      const fullStyle = [baseCellStyle, headerStyle, customStyles, widthStyle].filter(Boolean).join(' ').trim();
+      const fullStyle = `${baseCellStyle} ${headerStyle} ${customStyles} ${widthStyle}`.trim();
       
       html += `<${tag} style="${fullStyle}"${mergeAttrs}>${cell}</${tag}>`;
     });
