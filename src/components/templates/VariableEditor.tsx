@@ -689,25 +689,24 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
           </select>
         </div>
 
-        <div className={styles.section}>
-          <div className={styles.checkboxGroup}>
-            <input
-              type="checkbox"
-              id="label-editable"
-              checked={section.isLabelEditable !== false}
-              onChange={(e) => onUpdate({
-                ...section,
-                isLabelEditable: e.target.checked
-              })}
-              className="h-4 w-4"
-            />
-            <Label htmlFor="label-editable" className={styles.checkboxLabel}>
-              Label editable at runtime
-            </Label>
+        <div className={styles.editableToggle}>
+          <div className={styles.editableToggleRow}>
+            <span className={styles.editableLabel}>Content</span>
+            <label className={styles.toggleSwitch}>
+              <input
+                type="checkbox"
+                checked={section.isLabelEditable !== false}
+                onChange={(e) => onUpdate({
+                  ...section,
+                  isLabelEditable: e.target.checked
+                })}
+              />
+              <span className={styles.toggleSlider}></span>
+            </label>
+            <span className={`${styles.editableStatus} ${section.isLabelEditable !== false ? styles.editable : styles.locked}`}>
+              {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
+            </span>
           </div>
-          <p className={styles.description}>
-            When unchecked, users won't be able to modify the label value when running the template.
-          </p>
         </div>
 
         {/* API Variable Binding */}
@@ -1085,25 +1084,24 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         )}
 
         <Separator />
-        <div className={styles.section}>
-          <div className={styles.checkboxGroup}>
-            <input
-              type="checkbox"
-              id="content-editable"
-              checked={section.isLabelEditable !== false}
-              onChange={(e) => onUpdate({
-                ...section,
-                isLabelEditable: e.target.checked
-              })}
-              className="h-4 w-4"
-            />
-            <Label htmlFor="content-editable" className={styles.checkboxLabel}>
-              Content editable at runtime
-            </Label>
+        <div className={styles.editableToggle}>
+          <div className={styles.editableToggleRow}>
+            <span className={styles.editableLabel}>Content</span>
+            <label className={styles.toggleSwitch}>
+              <input
+                type="checkbox"
+                checked={section.isLabelEditable !== false}
+                onChange={(e) => onUpdate({
+                  ...section,
+                  isLabelEditable: e.target.checked
+                })}
+              />
+              <span className={styles.toggleSlider}></span>
+            </label>
+            <span className={`${styles.editableStatus} ${section.isLabelEditable !== false ? styles.editable : styles.locked}`}>
+              {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
+            </span>
           </div>
-          <p className={styles.description}>
-            When unchecked, users won't be able to modify the content when running the template.
-          </p>
         </div>
       </div>
     );

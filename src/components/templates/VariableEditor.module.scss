@@ -210,3 +210,93 @@
   height: 1rem;
   color: hsl(var(--primary));
 }
+
+// Editable toggle - combined content + editable display
+.editableToggle {
+  padding: 0.75rem;
+  background-color: hsl(var(--muted) / 0.3);
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+}
+
+.editableToggleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.editableLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  min-width: 60px;
+}
+
+.editableStatus {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+
+  &.editable {
+    background-color: hsl(142 76% 36% / 0.15);
+    color: hsl(142 76% 36%);
+  }
+
+  &.locked {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+// Toggle switch styling
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+
+    &:checked + .toggleSlider {
+      background-color: hsl(var(--primary));
+    }
+
+    &:checked + .toggleSlider::before {
+      transform: translateX(16px);
+    }
+
+    &:focus + .toggleSlider {
+      box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+    }
+  }
+}
+
+.toggleSlider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 20px;
+  transition: all 0.2s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+}
