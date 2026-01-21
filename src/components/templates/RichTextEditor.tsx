@@ -10,6 +10,7 @@ interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  label?: string;
   onFocus?: () => void;
   rows?: number;
   className?: string;
@@ -24,6 +25,7 @@ export const RichTextEditor = ({
   value, 
   onChange, 
   placeholder = "Enter content...",
+  label,
   onFocus,
   rows = 4,
   className = "",
@@ -39,6 +41,10 @@ export const RichTextEditor = ({
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [isLink, setIsLink] = useState(false);
   const isToolbarInteractionRef = useRef(false);
+  const [isFocused, setIsFocused] = useState(false);
+  
+  // Check if editor has content (for floating label)
+  const hasContent = value && value.trim() !== '' && value !== '<br>';
 
   // Initialize content
   useEffect(() => {
@@ -324,8 +330,24 @@ export const RichTextEditor = ({
 
   const minHeight = singleLine ? 32 : rows * 24;
 
+  const handleEditorFocus = useCallback(() => {
+    setIsFocused(true);
+    onFocus?.();
+  }, [onFocus]);
+
+  const handleEditorBlur = useCallback(() => {
+    setIsFocused(false);
+  }, []);
+
   return (
-    <div className={`${styles.editorContainer} ${className}`}>
+    <div className={`${styles.editorContainer} ${isFocused ? styles.focused : ''} ${className}`}>
+      {label && (
+        <label 
+          className={`${styles.floatingLabel} ${(isFocused || hasContent) ? styles.floatingLabelActive : ''}`}
+        >
+          {label}
+        </label>
+      )}
       {showToolbar && hasSelection && (
         <div 
           ref={toolbarRef}
@@ -549,14 +571,15 @@ export const RichTextEditor = ({
       <div
         ref={editorRef}
         contentEditable
-        className={`${styles.editor} ${singleLine ? styles.singleLine : ''}`}
+        className={`${styles.editor} ${singleLine ? styles.singleLine : ''} ${label ? styles.hasLabel : ''}`}
         style={{ minHeight: `${minHeight}px` }}
         onInput={handleInput}
-        onFocus={onFocus}
+        onFocus={handleEditorFocus}
+        onBlur={handleEditorBlur}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         onClick={handleLinkClick}
-        data-placeholder={placeholder}
+        data-placeholder={!label || isFocused || hasContent ? placeholder : ''}
         suppressContentEditableWarning
       />
     </div>
