@@ -689,26 +689,6 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
           </select>
         </div>
 
-        <div className={styles.editableToggle}>
-          <div className={styles.editableToggleRow}>
-            <span className={styles.editableLabel}>Content</span>
-            <label className={styles.toggleSwitch}>
-              <input
-                type="checkbox"
-                checked={section.isLabelEditable !== false}
-                onChange={(e) => onUpdate({
-                  ...section,
-                  isLabelEditable: e.target.checked
-                })}
-              />
-              <span className={styles.toggleSlider}></span>
-            </label>
-            <span className={`${styles.editableStatus} ${section.isLabelEditable !== false ? styles.editable : styles.locked}`}>
-              {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
-            </span>
-          </div>
-        </div>
-
         {/* API Variable Binding */}
         {hasApiVariables && (
           <>
@@ -737,32 +717,51 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
             </div>
           </>
         )}
-        
 
         <Separator />
 
         {contentType === 'text' ? (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Text Content (use {`{{`}variable{`}}`} for dynamic data)
-            </Label>
-            <Textarea
-              value={contentText}
-              onChange={(e) => {
-                onUpdate({
-                  ...section,
-                  variables: { ...section.variables, content: e.target.value }
-                });
-              }}
-              className="min-h-[100px] text-sm"
-              placeholder="Example: Status is {{status}}&#10;Issue count: {{count}}"
-            />
-            <p className="text-xs text-muted-foreground">
-              Type your content and use {`{{`}variableName{`}}`} for placeholders. Supports multiple lines.
-            </p>
+          <>
+            <div className={styles.contentWithToggle}>
+              <div className={styles.contentToggleHeader}>
+                <span className={styles.contentToggleLabel}>Content</span>
+                <div className={styles.contentToggleRight}>
+                  <label className={styles.toggleSwitch}>
+                    <input
+                      type="checkbox"
+                      checked={section.isLabelEditable !== false}
+                      onChange={(e) => onUpdate({
+                        ...section,
+                        isLabelEditable: e.target.checked
+                      })}
+                    />
+                    <span className={styles.toggleSlider}></span>
+                  </label>
+                  <span className={`${styles.editableStatus} ${section.isLabelEditable !== false ? styles.editable : styles.locked}`}>
+                    {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
+                  </span>
+                </div>
+              </div>
+              <div className={styles.contentBody}>
+                <Textarea
+                  value={contentText}
+                  onChange={(e) => {
+                    onUpdate({
+                      ...section,
+                      variables: { ...section.variables, content: e.target.value }
+                    });
+                  }}
+                  className="min-h-[100px] text-sm border-0 focus-visible:ring-0"
+                  placeholder="Example: Status is {{status}}&#10;Issue count: {{count}}"
+                />
+              </div>
+              <div className={styles.contentHint}>
+                Use {`{{`}variableName{`}}`} for dynamic placeholders. {section.isLabelEditable !== false ? 'Users can edit this at runtime.' : 'Content is locked at runtime.'}
+              </div>
+            </div>
             
             {contentPlaceholders.length > 0 && (
-              <div className="space-y-2 mt-4 pt-4 border-t">
+              <div className="space-y-2 mt-3">
                 <Label className="text-sm font-medium">Content Variables - Default Values</Label>
                 <p className="text-xs text-muted-foreground">
                   Set default values for placeholders in your content:
@@ -787,164 +786,204 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 ))}
               </div>
             )}
-          </div>
+          </>
         ) : contentType === 'table' ? (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Table Data <span className="text-muted-foreground">(under "{section.variables?.label || "Label"}")</span>
-            </Label>
-            <LabeledContentTableEditor section={section} onUpdate={onUpdate} />
-            <p className="text-xs text-muted-foreground">
-              Define the table structure that will appear under this label.
-            </p>
+          <div className={styles.contentWithToggle}>
+            <div className={styles.contentToggleHeader}>
+              <span className={styles.contentToggleLabel}>Table Data</span>
+              <div className={styles.contentToggleRight}>
+                <label className={styles.toggleSwitch}>
+                  <input
+                    type="checkbox"
+                    checked={section.isLabelEditable !== false}
+                    onChange={(e) => onUpdate({
+                      ...section,
+                      isLabelEditable: e.target.checked
+                    })}
+                  />
+                  <span className={styles.toggleSlider}></span>
+                </label>
+                <span className={`${styles.editableStatus} ${section.isLabelEditable !== false ? styles.editable : styles.locked}`}>
+                  {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
+                </span>
+              </div>
+            </div>
+            <div className={styles.contentBodyPadded}>
+              <LabeledContentTableEditor section={section} onUpdate={onUpdate} />
+            </div>
+            <div className={styles.contentHint}>
+              {section.isLabelEditable !== false ? 'Users can edit table data at runtime.' : 'Table is locked at runtime.'}
+            </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">
-                List Items with Formatting
-              </Label>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  const items = (section.variables?.items as any[]) || [];
-                  onUpdate({
-                    ...section,
-                    variables: { 
-                      ...section.variables, 
-                      items: [...items, { text: '', children: [] }] 
-                    }
-                  });
-                }}
-                className="h-7 px-2"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add Item
-              </Button>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">List Style</Label>
-              <select
-                value={(section.variables?.listStyle as string) || 'circle'}
-                onChange={(e) => {
-                  const newListStyle = e.target.value;
-                  const listVariableName = (section.variables?.listVariableName as string) || generateListVariableName(section.id);
-                  onUpdate({
-                    ...section,
-                    variables: { 
-                      ...section.variables, 
-                      listStyle: newListStyle,
-                      listVariableName: listVariableName,
-                      listHtml: generateThymeleafListHtml(listVariableName, newListStyle)
-                    }
-                  });
-                }}
-                className={styles.selectInput}
-              >
-                <optgroup label="Bullet Lists">
-                  <option value="circle">Circle (○)</option>
-                  <option value="disc">Disc (●)</option>
-                  <option value="square">Square (■)</option>
-                </optgroup>
-                <optgroup label="Numbered Lists">
-                  <option value="decimal">Numbers (1, 2, 3)</option>
-                  <option value="lower-roman">Roman (i, ii, iii)</option>
-                  <option value="upper-roman">Roman (I, II, III)</option>
-                  <option value="lower-alpha">Letters (a, b, c)</option>
-                  <option value="upper-alpha">Letters (A, B, C)</option>
-                </optgroup>
-              </select>
-            </div>
-            
-            {/* Custom list variable name input */}
-            <div className="space-y-2">
-              <Label className="text-xs font-medium">List Variable Name</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={(section.variables?.listVariableName as string) || generateListVariableName(section.id)}
-                  onChange={(e) => {
-                    const rawValue = e.target.value;
-                    const sanitizedValue = sanitizeVariableName(rawValue);
-                    const listStyle = (section.variables?.listStyle as string) || 'circle';
-                    onUpdate({
+          <div className={styles.contentWithToggle}>
+            <div className={styles.contentToggleHeader}>
+              <span className={styles.contentToggleLabel}>List Items</span>
+              <div className={styles.contentToggleRight}>
+                <label className={styles.toggleSwitch}>
+                  <input
+                    type="checkbox"
+                    checked={section.isLabelEditable !== false}
+                    onChange={(e) => onUpdate({
                       ...section,
-                      variables: { 
-                        ...section.variables, 
-                        listVariableName: sanitizedValue,
-                        listHtml: generateThymeleafListHtml(sanitizedValue, listStyle)
-                      }
-                    });
-                  }}
-                  placeholder="e.g., incident_items"
-                  className="h-8 text-sm font-mono"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const autoName = generateListVariableName(section.id);
-                    const listStyle = (section.variables?.listStyle as string) || 'circle';
-                    onUpdate({
-                      ...section,
-                      variables: { 
-                        ...section.variables, 
-                        listVariableName: autoName,
-                        listHtml: generateThymeleafListHtml(autoName, listStyle)
-                      }
-                    });
-                  }}
-                  className="h-8 px-2 whitespace-nowrap"
-                  title="Reset to auto-generated name"
-                >
-                  Auto
-                </Button>
+                      isLabelEditable: e.target.checked
+                    })}
+                  />
+                  <span className={styles.toggleSlider}></span>
+                </label>
+                <span className={`${styles.editableStatus} ${section.isLabelEditable !== false ? styles.editable : styles.locked}`}>
+                  {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
+                </span>
               </div>
-              {!isValidListVariableName((section.variables?.listVariableName as string) || '') && (section.variables?.listVariableName as string) && (
-                <p className="text-xs text-destructive">
-                  Variable name must start with a letter or underscore and contain only letters, numbers, and underscores.
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Customize the variable name used in the Thymeleaf template. Must be a valid identifier (no hyphens or special characters).
-              </p>
             </div>
-            
-            {/* Show generated variable name info */}
-            {(() => {
-              const listVariableName = (section.variables?.listVariableName as string) || generateListVariableName(section.id);
-              const listStyle = (section.variables?.listStyle as string) || 'circle';
-              const listTag = getListTag(listStyle);
-              const listStyleType = getListStyleType(listStyle);
-              const isValid = isValidListVariableName(listVariableName);
-              
-              return (
-                <div className={`rounded-md p-3 space-y-2 ${isValid ? 'bg-muted/50' : 'bg-destructive/10 border border-destructive/20'}`}>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Info className="h-3 w-3" />
-                    <span>Generated Thymeleaf Variable</span>
-                    {!isValid && <span className="text-destructive font-medium">(Invalid)</span>}
+            <div className={styles.contentBodyPadded}>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">
+                    List Items with Formatting
+                  </Label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const items = (section.variables?.items as any[]) || [];
+                      onUpdate({
+                        ...section,
+                        variables: { 
+                          ...section.variables, 
+                          items: [...items, { text: '', children: [] }] 
+                        }
+                      });
+                    }}
+                    className="h-7 px-2"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">List Style</Label>
+                  <select
+                    value={(section.variables?.listStyle as string) || 'circle'}
+                    onChange={(e) => {
+                      const newListStyle = e.target.value;
+                      const listVariableName = (section.variables?.listVariableName as string) || generateListVariableName(section.id);
+                      onUpdate({
+                        ...section,
+                        variables: { 
+                          ...section.variables, 
+                          listStyle: newListStyle,
+                          listVariableName: listVariableName,
+                          listHtml: generateThymeleafListHtml(listVariableName, newListStyle)
+                        }
+                      });
+                    }}
+                    className={styles.selectInput}
+                  >
+                    <optgroup label="Bullet Lists">
+                      <option value="circle">Circle (○)</option>
+                      <option value="disc">Disc (●)</option>
+                      <option value="square">Square (■)</option>
+                    </optgroup>
+                    <optgroup label="Numbered Lists">
+                      <option value="decimal">Numbers (1, 2, 3)</option>
+                      <option value="lower-roman">Roman (i, ii, iii)</option>
+                      <option value="upper-roman">Roman (I, II, III)</option>
+                      <option value="lower-alpha">Letters (a, b, c)</option>
+                      <option value="upper-alpha">Letters (A, B, C)</option>
+                    </optgroup>
+                  </select>
+                </div>
+                
+                {/* Custom list variable name input */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">List Variable Name</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={(section.variables?.listVariableName as string) || generateListVariableName(section.id)}
+                      onChange={(e) => {
+                        const rawValue = e.target.value;
+                        const sanitizedValue = sanitizeVariableName(rawValue);
+                        const listStyle = (section.variables?.listStyle as string) || 'circle';
+                        onUpdate({
+                          ...section,
+                          variables: { 
+                            ...section.variables, 
+                            listVariableName: sanitizedValue,
+                            listHtml: generateThymeleafListHtml(sanitizedValue, listStyle)
+                          }
+                        });
+                      }}
+                      placeholder="e.g., incident_items"
+                      className="h-8 text-sm font-mono"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const autoName = generateListVariableName(section.id);
+                        const listStyle = (section.variables?.listStyle as string) || 'circle';
+                        onUpdate({
+                          ...section,
+                          variables: { 
+                            ...section.variables, 
+                            listVariableName: autoName,
+                            listHtml: generateThymeleafListHtml(autoName, listStyle)
+                          }
+                        });
+                      }}
+                      className="h-8 px-2 whitespace-nowrap"
+                      title="Reset to auto-generated name"
+                    >
+                      Auto
+                    </Button>
                   </div>
-                  <code className="block text-xs bg-background p-2 rounded border font-mono">
-                    {`<${listTag} style="list-style-type: ${listStyleType};">`}
-                    <br />
-                    {`  <li th:each="item : \${${listVariableName}}"><span th:utext="\${item}"/></li>`}
-                    <br />
-                    {`</${listTag}>`}
-                  </code>
+                  {!isValidListVariableName((section.variables?.listVariableName as string) || '') && (section.variables?.listVariableName as string) && (
+                    <p className="text-xs text-destructive">
+                      Variable name must start with a letter or underscore and contain only letters, numbers, and underscores.
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
-                    Variable name: <code className="bg-background px-1 rounded">${listVariableName}</code>
+                    Customize the variable name used in the Thymeleaf template. Must be a valid identifier (no hyphens or special characters).
                   </p>
                 </div>
-              );
-            })()}
-            
-            <ListItemsEditor section={section} onUpdate={onUpdate} />
-            
-            <p className="text-xs text-muted-foreground">
-              Add list items with formatting (bold, italic, colors) and create nested sub-items.
-            </p>
+                
+                {/* Show generated variable name info */}
+                {(() => {
+                  const listVariableName = (section.variables?.listVariableName as string) || generateListVariableName(section.id);
+                  const listStyle = (section.variables?.listStyle as string) || 'circle';
+                  const listTag = getListTag(listStyle);
+                  const listStyleType = getListStyleType(listStyle);
+                  const isValid = isValidListVariableName(listVariableName);
+                  
+                  return (
+                    <div className={`rounded-md p-3 space-y-2 ${isValid ? 'bg-muted/50' : 'bg-destructive/10 border border-destructive/20'}`}>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Info className="h-3 w-3" />
+                        <span>Generated Thymeleaf Variable</span>
+                        {!isValid && <span className="text-destructive font-medium">(Invalid)</span>}
+                      </div>
+                      <code className="block text-xs bg-background p-2 rounded border font-mono">
+                        {`<${listTag} style="list-style-type: ${listStyleType};">`}
+                        <br />
+                        {`  <li th:each="item : \${${listVariableName}}"><span th:utext="\${item}"/></li>`}
+                        <br />
+                        {`</${listTag}>`}
+                      </code>
+                      <p className="text-xs text-muted-foreground">
+                        Variable name: <code className="bg-background px-1 rounded">${listVariableName}</code>
+                      </p>
+                    </div>
+                  );
+                })()}
+                
+                <ListItemsEditor section={section} onUpdate={onUpdate} />
+              </div>
+            </div>
+            <div className={styles.contentHint}>
+              {section.isLabelEditable !== false ? 'Users can edit list items at runtime.' : 'List is locked at runtime.'}
+            </div>
           </div>
         )}
       </div>
@@ -988,56 +1027,76 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         </div>
         <Separator />
         
-        <div className={styles.section}>
-          <Label className={styles.label}>Content (use {`{{`}variable{`}}`} for dynamic data)</Label>
-          <Textarea
-            value={userContent}
-            onChange={(e) => {
-              const newContent = e.target.value;
-              const newPlaceholders = extractPlaceholders(newContent);
-              
-              // Get the section's HTML tag wrapper
-              const tagMatch = section.content.match(/^<(\w+)>/);
-              const htmlTag = tagMatch ? tagMatch[1] : 'div';
-              
-              // Convert placeholders to Thymeleaf syntax (using new span format)
-              let thymeleafContent = newContent;
-              newPlaceholders.forEach(placeholder => {
-                const placeholderPattern = new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g');
-                thymeleafContent = thymeleafContent.replace(placeholderPattern, `<span th:utext="\${${placeholder}}"/>`);
-              });
-              
-              // Wrap in HTML tag
-              const wrappedContent = `<${htmlTag}>${thymeleafContent}</${htmlTag}>`;
-              
-              // Preserve existing variable values and add new ones with empty defaults
-              const updatedVariables = { ...section.variables };
-              newPlaceholders.forEach(placeholder => {
-                if (!updatedVariables[placeholder]) {
-                  updatedVariables[placeholder] = '';
-                }
-              });
-              
-              // Remove variables that are no longer in content
-              Object.keys(updatedVariables).forEach(key => {
-                if (!newPlaceholders.includes(key)) {
-                  delete updatedVariables[key];
-                }
-              });
-              
-              onUpdate({
-                ...section,
-                content: wrappedContent,
-                variables: updatedVariables
-              });
-            }}
-            className={styles.staticTextArea}
-            placeholder={`Example: Incident Report {{incidentNumber}} - Status: {{status}}`}
-            rows={3}
-          />
-          <p className={styles.description}>
-            Type your content and use {`{{`}variableName{`}}`} syntax for dynamic values. Multiple placeholders are supported.
-          </p>
+        <div className={styles.contentWithToggle}>
+          <div className={styles.contentToggleHeader}>
+            <span className={styles.contentToggleLabel}>Content</span>
+            <div className={styles.contentToggleRight}>
+              <label className={styles.toggleSwitch}>
+                <input
+                  type="checkbox"
+                  checked={section.isLabelEditable !== false}
+                  onChange={(e) => onUpdate({
+                    ...section,
+                    isLabelEditable: e.target.checked
+                  })}
+                />
+                <span className={styles.toggleSlider}></span>
+              </label>
+              <span className={`${styles.editableStatus} ${section.isLabelEditable !== false ? styles.editable : styles.locked}`}>
+                {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
+              </span>
+            </div>
+          </div>
+          <div className={styles.contentBody}>
+            <Textarea
+              value={userContent}
+              onChange={(e) => {
+                const newContent = e.target.value;
+                const newPlaceholders = extractPlaceholders(newContent);
+                
+                // Get the section's HTML tag wrapper
+                const tagMatch = section.content.match(/^<(\w+)>/);
+                const htmlTag = tagMatch ? tagMatch[1] : 'div';
+                
+                // Convert placeholders to Thymeleaf syntax (using new span format)
+                let thymeleafContent = newContent;
+                newPlaceholders.forEach(placeholder => {
+                  const placeholderPattern = new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g');
+                  thymeleafContent = thymeleafContent.replace(placeholderPattern, `<span th:utext="\${${placeholder}}"/>`);
+                });
+                
+                // Wrap in HTML tag
+                const wrappedContent = `<${htmlTag}>${thymeleafContent}</${htmlTag}>`;
+                
+                // Preserve existing variable values and add new ones with empty defaults
+                const updatedVariables = { ...section.variables };
+                newPlaceholders.forEach(placeholder => {
+                  if (!updatedVariables[placeholder]) {
+                    updatedVariables[placeholder] = '';
+                  }
+                });
+                
+                // Remove variables that are no longer in content
+                Object.keys(updatedVariables).forEach(key => {
+                  if (!newPlaceholders.includes(key)) {
+                    delete updatedVariables[key];
+                  }
+                });
+                
+                onUpdate({
+                  ...section,
+                  content: wrappedContent,
+                  variables: updatedVariables
+                });
+              }}
+              className="min-h-[80px] text-sm border-0 focus-visible:ring-0"
+              placeholder={`Example: Incident Report {{incidentNumber}} - Status: {{status}}`}
+              rows={3}
+            />
+          </div>
+          <div className={styles.contentHint}>
+            Use {`{{`}variableName{`}}`} for dynamic values. {section.isLabelEditable !== false ? 'Users can edit this at runtime.' : 'Content is locked at runtime.'}
+          </div>
         </div>
         
         {detectedPlaceholders.length > 0 && (
@@ -1083,26 +1142,6 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
           </>
         )}
 
-        <Separator />
-        <div className={styles.editableToggle}>
-          <div className={styles.editableToggleRow}>
-            <span className={styles.editableLabel}>Content</span>
-            <label className={styles.toggleSwitch}>
-              <input
-                type="checkbox"
-                checked={section.isLabelEditable !== false}
-                onChange={(e) => onUpdate({
-                  ...section,
-                  isLabelEditable: e.target.checked
-                })}
-              />
-              <span className={styles.toggleSlider}></span>
-            </label>
-            <span className={`${styles.editableStatus} ${section.isLabelEditable !== false ? styles.editable : styles.locked}`}>
-              {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
-            </span>
-          </div>
-        </div>
       </div>
     );
   }
