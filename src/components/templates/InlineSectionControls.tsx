@@ -52,27 +52,29 @@ export const InlineSectionControls = ({
         </PopoverContent>
       </Popover>
 
-      {/* Customize Style */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={styles.controlButton}
-            title="Customize Style"
+      {/* Customize Style - hidden for banner sections */}
+      {section.type !== 'banner' && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={styles.controlButton}
+              title="Customize Style"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Palette className={styles.icon} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent 
+            style={{ width: '32rem', maxHeight: '500px', overflowY: 'auto' }} 
+            align="end"
             onClick={(e) => e.stopPropagation()}
           >
-            <Palette className={styles.icon} />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent 
-          style={{ width: '32rem', maxHeight: '500px', overflowY: 'auto' }} 
-          align="end"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <StyleEditor section={section} onUpdate={onUpdate} />
-        </PopoverContent>
-      </Popover>
+            <StyleEditor section={section} onUpdate={onUpdate} />
+          </PopoverContent>
+        </Popover>
+      )}
 
       {/* Move Up */}
       <Button
