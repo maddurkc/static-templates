@@ -110,8 +110,8 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       );
     }
     
-    // Handle standalone table sections
-    if (section.type === 'table' && section.variables?.tableData) {
+    // Handle standalone table sections and banner sections
+    if ((section.type === 'table' || section.type === 'banner') && section.variables?.tableData) {
       const tableData = section.variables.tableData as TableData;
       const tableHtml = generateTableHTML(tableData);
       
