@@ -112,6 +112,17 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       return `<div style="${styleString}">${tableHtml}</div>`;
     }
     
+    // Handle banner sections (table with yellow background, no border)
+    if (section.type === 'banner') {
+      const tableData = section.variables?.tableData as TableData;
+      if (tableData && tableData.rows) {
+        const tableHtml = generateTableHTML(tableData);
+        return `<div style="${styleString}">${tableHtml}</div>`;
+      }
+      // Fallback if no tableData
+      return `<div style="${styleString}"><table style="border-collapse: collapse;"><tr><td style="background-color: #FFFF00; padding: 8px;">EFT</td></tr></table></div>`;
+    }
+    
     // Handle list sections with proper rendering
     const listTypes = ['bullet-list-circle', 'bullet-list-disc', 'bullet-list-square', 'number-list-1', 'number-list-i', 'number-list-a'];
     if (listTypes.includes(section.type) && section.variables?.items) {
