@@ -2052,6 +2052,35 @@ const RunTemplates = () => {
                             );
                           }
                           
+                          // Handle banner sections - display like text sections
+                          if (section.type === 'banner') {
+                            const tableData = section.variables?.tableData as any;
+                            const bannerText = tableData?.rows?.[0]?.[0] || 'EFT';
+                            const cellStyles = tableData?.cellStyles?.['0-0'] || {};
+                            const bgColor = cellStyles.backgroundColor || '#FFFF00';
+                            
+                            return (
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Label className="text-sm font-medium">Banner</Label>
+                                  <div 
+                                    className="px-2 py-1 rounded text-xs font-semibold"
+                                    style={{ 
+                                      backgroundColor: bgColor,
+                                      fontWeight: 'bold',
+                                      fontSize: '12px'
+                                    }}
+                                  >
+                                    {bannerText}
+                                  </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Banner text and styling are configured in the template editor.
+                                </p>
+                              </div>
+                            );
+                          }
+                          
                           return null;
                         })}
                       </>
