@@ -87,7 +87,7 @@ export const getValueByPath = (obj: any, path: string): any => {
   }, obj);
 };
 
-export const generateTableHTML = (tableData: TableData): string => {
+export const generateTableHTML = (tableData: TableData, options?: { autoWidth?: boolean }): string => {
   // Guard against undefined/null tableData
   if (!tableData || !tableData.rows) {
     return '<table><tr><td>No data</td></tr></table>';
@@ -95,7 +95,11 @@ export const generateTableHTML = (tableData: TableData): string => {
   
   const borderColor = tableData.borderColor || '#ddd';
   const paddingValue = getPaddingValue(tableData.cellPadding);
-  const borderStyle = tableData.showBorder ? ` border="1" style="border-collapse: collapse; border: 1px solid ${borderColor};"` : ' style="border-collapse: collapse;"';
+  const autoWidth = options?.autoWidth || false;
+  const widthStyle = autoWidth ? 'width: auto;' : '';
+  const borderStyle = tableData.showBorder 
+    ? ` border="1" style="border-collapse: collapse; border: 1px solid ${borderColor}; ${widthStyle}"` 
+    : ` style="border-collapse: collapse; ${widthStyle}"`;
   const baseCellStyle = tableData.showBorder 
     ? `border: 1px solid ${borderColor}; padding: ${paddingValue};` 
     : `padding: ${paddingValue};`;

@@ -373,6 +373,42 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     return <TableEditor section={section} onUpdate={onUpdate} />;
   }
   
+  // Banner section - simple text editor for the cell content
+  if (section.type === 'banner') {
+    const tableData = section.variables?.tableData as any;
+    const bannerText = tableData?.rows?.[0]?.[0] || 'EFT';
+    
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Banner</h3>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <Label className={styles.label}>Banner Text</Label>
+          <Input
+            value={bannerText}
+            onChange={(e) => {
+              const newTableData = {
+                ...tableData,
+                rows: [[e.target.value]]
+              };
+              onUpdate({
+                ...section,
+                variables: { ...section.variables, tableData: newTableData }
+              });
+            }}
+            placeholder="Enter banner text..."
+            className={styles.input}
+          />
+          <p className={styles.description}>
+            This text will appear in the yellow banner.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
   // No editor needed for line breaks
   if (section.type === 'line-break') {
     return (

@@ -116,11 +116,11 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
     if (section.type === 'banner') {
       const tableData = section.variables?.tableData as TableData;
       if (tableData && tableData.rows) {
-        const tableHtml = generateTableHTML(tableData);
+        const tableHtml = generateTableHTML(tableData, { autoWidth: true });
         return `<div style="${styleString}">${tableHtml}</div>`;
       }
       // Fallback if no tableData
-      return `<div style="${styleString}"><table style="border-collapse: collapse;"><tr><td style="background-color: #FFFF00; padding: 8px;">EFT</td></tr></table></div>`;
+      return `<div style="${styleString}"><table style="border-collapse: collapse; width: auto;"><tr><td style="background-color: #FFFF00; padding: 8px;">EFT</td></tr></table></div>`;
     }
     
     // Handle list sections with proper rendering

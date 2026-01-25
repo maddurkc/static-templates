@@ -214,11 +214,11 @@ const SortableSection = ({
             }}
           />
         ) : !isContainer && section.type === 'banner' && section.variables?.tableData ? (
-          // Handle banner sections (table with yellow background)
+          // Handle banner sections (table with yellow background, auto-width)
           <div
             className={styles.tablePreview}
             dangerouslySetInnerHTML={{ 
-              __html: generateTableHTML(section.variables.tableData as TableData)
+              __html: generateTableHTML(section.variables.tableData as TableData, { autoWidth: true })
             }}
           />
         ) : !isContainer && section.type === 'banner' ? (
@@ -226,7 +226,7 @@ const SortableSection = ({
           <div
             className={styles.tablePreview}
             dangerouslySetInnerHTML={{ 
-              __html: '<table style="border-collapse: collapse;"><tr><td style="background-color: #FFFF00; padding: 8px;">EFT</td></tr></table>'
+              __html: '<table style="border-collapse: collapse; width: auto;"><tr><td style="background-color: #FFFF00; padding: 8px;">EFT</td></tr></table>'
             }}
           />
         ) : !isContainer && (
