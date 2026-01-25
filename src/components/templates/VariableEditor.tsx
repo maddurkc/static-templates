@@ -409,6 +409,27 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         </div>
         <Separator />
         <div className={styles.section}>
+          <div className={styles.checkboxGroup}>
+            <input
+              type="checkbox"
+              id="banner-editable"
+              checked={section.isLabelEditable !== false}
+              onChange={(e) => onUpdate({
+                ...section,
+                isLabelEditable: e.target.checked
+              })}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="banner-editable" className={styles.checkboxLabel}>
+              Editable at runtime
+            </Label>
+          </div>
+          <p className={styles.description}>
+            When unchecked, users won't be able to modify the banner text when running the template.
+          </p>
+        </div>
+        <Separator />
+        <div className={styles.section}>
           <Label className={styles.label}>Banner Text</Label>
           <Input
             value={bannerText}
