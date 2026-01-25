@@ -25,7 +25,8 @@ export type SectionType =
   | 'static-text'
   | 'mixed-content'
   | 'labeled-content'
-  | 'container';
+  | 'container'
+  | 'banner';
 
 export interface SectionVariable {
   name: string;
