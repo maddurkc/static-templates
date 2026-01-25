@@ -2058,25 +2058,49 @@ const RunTemplates = () => {
                             const bannerText = tableData?.rows?.[0]?.[0] || 'EFT';
                             const cellStyles = tableData?.cellStyles?.['0-0'] || {};
                             const bgColor = cellStyles.backgroundColor || '#FFFF00';
+                            const isEditable = section.isLabelEditable !== false;
+                            
+                            // Get current banner text from state or use default
+                            const currentBannerText = variables[`banner_${section.id}`] as string ?? bannerText;
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
                                 <div className="flex items-center gap-2 mb-2">
                                   <Label className="text-sm font-medium">Banner</Label>
+                                  {!isEditable && (
+                                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">Locked</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3">
                                   <div 
-                                    className="px-2 py-1 rounded text-xs font-semibold"
+                                    className="px-3 py-1.5 rounded text-sm font-semibold shrink-0"
                                     style={{ 
                                       backgroundColor: bgColor,
                                       fontWeight: 'bold',
-                                      fontSize: '12px'
+                                      fontSize: '14px'
                                     }}
                                   >
-                                    {bannerText}
+                                    {currentBannerText}
                                   </div>
+                                  {isEditable && (
+                                    <Input
+                                      value={currentBannerText}
+                                      onChange={(e) => {
+                                        setVariables(prev => ({
+                                          ...prev,
+                                          [`banner_${section.id}`]: e.target.value
+                                        }));
+                                      }}
+                                      placeholder="Enter banner text..."
+                                      className="flex-1 h-8 text-sm"
+                                    />
+                                  )}
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                  Banner text and styling are configured in the template editor.
-                                </p>
+                                {!isEditable && (
+                                  <p className="text-xs text-muted-foreground mt-2">
+                                    Banner text is locked and cannot be modified.
+                                  </p>
+                                )}
                               </div>
                             );
                           }
