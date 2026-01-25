@@ -396,6 +396,97 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     );
   }
   
+  // For banner sections - simple text editor with preview
+  if (section.type === 'banner') {
+    const tableData = section.variables?.tableData as any;
+    const bannerText = tableData?.rows?.[0]?.[0] || 'EFT';
+    const bgColor = tableData?.cellStyles?.['0-0']?.backgroundColor || '#FFFF00';
+    
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Banner Settings</h3>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <Label className={styles.label}>Banner Text</Label>
+          <Input
+            value={bannerText}
+            onChange={(e) => {
+              const newTableData = {
+                ...tableData,
+                rows: [[e.target.value]]
+              };
+              onUpdate({
+                ...section,
+                variables: { ...section.variables, tableData: newTableData },
+                content: `<table style="border-collapse: collapse;"><tr><td style="background-color: ${bgColor}; padding: 8px;">${e.target.value}</td></tr></table>`
+              });
+            }}
+            placeholder="Enter banner text"
+            className={styles.variableInput}
+          />
+          <p className={styles.description}>
+            This text will appear on a highlighted background.
+          </p>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <Label className={styles.label}>Background Color</Label>
+          <div className="flex gap-2">
+            <Input
+              type="color"
+              value={bgColor}
+              onChange={(e) => {
+                const newTableData = {
+                  ...tableData,
+                  cellStyles: { '0-0': { backgroundColor: e.target.value } }
+                };
+                onUpdate({
+                  ...section,
+                  variables: { ...section.variables, tableData: newTableData },
+                  content: `<table style="border-collapse: collapse;"><tr><td style="background-color: ${e.target.value}; padding: 8px;">${bannerText}</td></tr></table>`
+                });
+              }}
+              className="w-12 h-9 p-1"
+            />
+            <Input
+              type="text"
+              value={bgColor}
+              onChange={(e) => {
+                const newTableData = {
+                  ...tableData,
+                  cellStyles: { '0-0': { backgroundColor: e.target.value } }
+                };
+                onUpdate({
+                  ...section,
+                  variables: { ...section.variables, tableData: newTableData },
+                  content: `<table style="border-collapse: collapse;"><tr><td style="background-color: ${e.target.value}; padding: 8px;">${bannerText}</td></tr></table>`
+                });
+              }}
+              placeholder="#FFFF00"
+              className="flex-1"
+            />
+          </div>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <Label className={styles.label}>Preview</Label>
+          <div 
+            style={{ 
+              display: 'inline-block',
+              backgroundColor: bgColor, 
+              padding: '8px 12px',
+              marginTop: '8px'
+            }}
+          >
+            {bannerText}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   // For static-text sections, show a simple textarea
   if (section.type === 'static-text') {
     return (
