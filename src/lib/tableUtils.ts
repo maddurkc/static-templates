@@ -87,7 +87,7 @@ export const getValueByPath = (obj: any, path: string): any => {
   }, obj);
 };
 
-export const generateTableHTML = (tableData: TableData, options?: { autoWidth?: boolean }): string => {
+export const generateTableHTML = (tableData: TableData): string => {
   // Guard against undefined/null tableData
   if (!tableData || !tableData.rows) {
     return '<table><tr><td>No data</td></tr></table>';
@@ -95,11 +95,7 @@ export const generateTableHTML = (tableData: TableData, options?: { autoWidth?: 
   
   const borderColor = tableData.borderColor || '#ddd';
   const paddingValue = getPaddingValue(tableData.cellPadding);
-  const autoWidth = options?.autoWidth || false;
-  const widthStyle = autoWidth ? 'width: auto;' : '';
-  const borderStyle = tableData.showBorder 
-    ? ` border="1" style="border-collapse: collapse; border: 1px solid ${borderColor}; ${widthStyle}"` 
-    : ` style="border-collapse: collapse; ${widthStyle}"`;
+  const borderStyle = tableData.showBorder ? ` border="1" style="border-collapse: collapse; border: 1px solid ${borderColor};"` : ' style="border-collapse: collapse;"';
   const baseCellStyle = tableData.showBorder 
     ? `border: 1px solid ${borderColor}; padding: ${paddingValue};` 
     : `padding: ${paddingValue};`;
@@ -149,38 +145,23 @@ export const generateTableHTML = (tableData: TableData, options?: { autoWidth?: 
       
       // Get cell-specific styles
       const cellStyle = tableData.cellStyles?.[cellKey];
+      const customStyles = generateCellStyleString(cellStyle);
+      
+      // Header styling - use custom header style or defaults
+      let headerStyle = '';
+      if (rowIndex === 0) {
+        const hs = tableData.headerStyle;
+        const bgColor = hs?.backgroundColor || '#f5f5f5';
+        const textColor = hs?.textColor || 'inherit';
+        const fontWeight = hs?.bold !== false ? 'bold' : 'normal';
+        headerStyle = `background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;
+      }
       
       // Add column width to cell style if defined
       const columnWidth = tableData.columnWidths?.[colIndex];
       const widthStyle = columnWidth ? `width: ${columnWidth};` : '';
       
-      let fullStyle = baseCellStyle;
-      
-      if (rowIndex === 0) {
-        // Header row: merge header style with cell-specific overrides
-        const hs = tableData.headerStyle;
-        // Cell-specific styles override header defaults
-        const bgColor = cellStyle?.backgroundColor || hs?.backgroundColor || '#f5f5f5';
-        const textColor = cellStyle?.color || hs?.textColor || 'inherit';
-        const fontWeight = cellStyle?.bold !== undefined ? (cellStyle.bold ? 'bold' : 'normal') : (hs?.bold !== false ? 'bold' : 'normal');
-        const fontStyle = cellStyle?.italic ? 'italic' : 'normal';
-        const textDecoration = cellStyle?.underline ? 'underline' : 'none';
-        const fontSize = cellStyle?.fontSize || 'inherit';
-        
-        fullStyle += ` background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight}; font-style: ${fontStyle}; text-decoration: ${textDecoration}; font-size: ${fontSize};`;
-      } else {
-        // Non-header rows: apply cell-specific styles
-        const customStyles = generateCellStyleString(cellStyle);
-        if (customStyles) {
-          fullStyle += ` ${customStyles}`;
-        }
-      }
-      
-      if (widthStyle) {
-        fullStyle += ` ${widthStyle}`;
-      }
-      
-      fullStyle = fullStyle.trim();
+      const fullStyle = `${baseCellStyle} ${headerStyle} ${customStyles} ${widthStyle}`.trim();
       
       html += `<${tag} style="${fullStyle}"${mergeAttrs}>${cell}</${tag}>`;
     });

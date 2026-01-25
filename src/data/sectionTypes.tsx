@@ -17,8 +17,7 @@ import {
   Code,
   Minus,
   FileText,
-  Box,
-  Flag
+  Box
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
@@ -347,27 +346,5 @@ export const sectionTypes: SectionDefinition[] = [
     defaultContent: '<div>Container for nested sections</div>',
     category: 'layout',
     variables: []
-  },
-  {
-    type: 'banner',
-    label: 'Banner',
-    icon: Flag,
-    description: 'Banner with yellow background table',
-    defaultContent: '<table><tr><td style="background-color: #FFFF00;">EFT</td></tr></table>',
-    category: 'layout',
-    variables: [
-      { 
-        name: 'tableData', 
-        label: 'Banner Table Data', 
-        type: 'table' as any, 
-        defaultValue: {
-          rows: [['EFT']],
-          showBorder: false,
-          mergedCells: {},
-          cellStyles: { '0-0': { backgroundColor: '#FFFF00' } },
-          cellPadding: 'medium'
-        } as any
-      }
-    ]
   }
 ];

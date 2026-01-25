@@ -1,59 +1,24 @@
 .editorContainer {
   position: relative;
-  
-  &.focused {
-    .editor {
-      border-color: hsl(var(--primary));
-      border-width: 2px;
-      padding: 7px 11px; // Compensate for thicker border
-    }
-    
-    .floatingLabel {
-      color: hsl(var(--primary));
-    }
-  }
-}
-
-.floatingLabel {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-  pointer-events: none;
-  transition: all 0.2s ease;
-  background: hsl(var(--background));
-  padding: 0 4px;
-  z-index: 1;
-}
-
-.floatingLabelActive {
-  top: 0;
-  transform: translateY(-50%);
-  font-size: 12px;
-  left: 10px;
 }
 
 .editor {
   width: 100%;
-  padding: 16px 14px;
+  padding: 8px 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 4px;
+  border-radius: 6px;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-size: 14px;
   line-height: 1.5;
   outline: none;
   overflow-y: auto;
-  max-height: calc(1.5em * 2 + 32px); // 2 lines + padding
-  transition: border-color 0.2s ease, border-width 0.2s ease, padding 0.2s ease, max-height 0.2s ease;
-  
-  &:hover:not(:focus) {
-    border-color: hsl(var(--foreground));
-  }
+  max-height: calc(1.5em * 2 + 16px); // 2 lines + padding
+  transition: max-height 0.2s ease;
   
   &:focus {
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
     max-height: 200px; // Expand on focus to show more content
   }
   
@@ -61,11 +26,6 @@
     content: attr(data-placeholder);
     color: hsl(var(--muted-foreground));
     pointer-events: none;
-  }
-
-  &.hasLabel {
-    padding-top: 20px;
-    padding-bottom: 12px;
   }
 
   a {
@@ -79,16 +39,11 @@
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
-  height: 40px;
-  min-height: 40px !important;
-  max-height: 40px;
-  line-height: 20px;
-  padding: 10px 14px;
-
-  &.hasLabel {
-    padding-top: 14px;
-    padding-bottom: 6px;
-  }
+  height: 32px;
+  min-height: 32px !important;
+  max-height: 32px;
+  line-height: 16px;
+  padding: 7px 12px;
 
   a {
     color: hsl(var(--primary));

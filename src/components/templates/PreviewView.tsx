@@ -1,9 +1,7 @@
-import { useMemo } from "react";
 import { Section } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
 import { generateTableHTML, TableData } from "@/lib/tableUtils";
-import { IframePreview } from "./IframePreview";
 import styles from "./PreviewView.module.scss";
 
 interface PreviewViewProps {
@@ -15,33 +13,34 @@ interface PreviewViewProps {
 export const PreviewView = ({ headerSection, footerSection, sections }: PreviewViewProps) => {
   const allSections = [headerSection, ...sections, footerSection];
   
-  const generateSectionHtml = (section: Section): string => {
+  const renderSection = (section: Section): JSX.Element => {
     const defaultStyles = {
       margin: '10px 0',
       padding: '8px',
     };
     const combinedStyles = { ...defaultStyles, ...section.styles };
     
-    const styleString = Object.entries(combinedStyles)
-      .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
-      .join('; ');
-    
     // Handle container sections with nested children
     if (section.type === 'container' && section.children && section.children.length > 0) {
-      const childrenHtml = section.children.map(child => generateSectionHtml(child)).join('');
-      return `<div class="container-section">${childrenHtml}</div>`;
+      return (
+        <div key={section.id} className={styles.containerSection}>
+          {section.children.map(child => renderSection(child))}
+        </div>
+      );
     }
     
     // Handle labeled-content sections with special rendering
     if (section.type === 'labeled-content') {
       let label = (section.variables?.label as string) || 'Label';
       
+      // Helper to check if value is empty
       const isEmptyValue = (value: any): boolean => {
         if (value === null || value === undefined) return true;
         if (typeof value === 'string' && value.trim() === '') return true;
         return false;
       };
       
+      // Replace Thymeleaf in label with default values or {{placeholder}}
       label = label.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
         if (section.variables && !isEmptyValue(section.variables[varName])) {
           return String(section.variables[varName]);
@@ -59,11 +58,12 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       
       if (contentType === 'text') {
         let textContent = (section.variables?.content as string) || '';
+        // Support {{variable}} placeholders in text content - show {{placeholder}} if no value
         textContent = textContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
           if (section.variables && !isEmptyValue(section.variables[varName])) {
             return String(section.variables[varName]);
           }
-          return match;
+          return match; // Keep {{placeholder}} as-is when no value
         });
         contentHtml = `<div style="white-space: pre-wrap;">${textContent}</div>`;
       } else if (contentType === 'list') {
@@ -102,25 +102,26 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
         }
       }
       
-      return `<div style="${styleString}"><div style="font-weight: bold; margin-bottom: 8px;">${label}</div>${contentHtml}</div>`;
+      return (
+        <div key={section.id} style={combinedStyles as React.CSSProperties}>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>{label}</div>
+          <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
+        </div>
+      );
     }
     
     // Handle standalone table sections
     if (section.type === 'table' && section.variables?.tableData) {
       const tableData = section.variables.tableData as TableData;
       const tableHtml = generateTableHTML(tableData);
-      return `<div style="${styleString}">${tableHtml}</div>`;
-    }
-    
-    // Handle banner sections (table with yellow background, no border)
-    if (section.type === 'banner') {
-      const tableData = section.variables?.tableData as TableData;
-      if (tableData && tableData.rows) {
-        const tableHtml = generateTableHTML(tableData, { autoWidth: true });
-        return `<div style="${styleString}">${tableHtml}</div>`;
-      }
-      // Fallback if no tableData
-      return `<div style="${styleString}"><table style="border-collapse: collapse; width: auto;"><tr><td style="background-color: #FFFF00; padding: 8px;">EFT</td></tr></table></div>`;
+      
+      return (
+        <div
+          key={section.id}
+          dangerouslySetInnerHTML={{ __html: tableHtml }}
+          style={combinedStyles as React.CSSProperties}
+        />
+      );
     }
     
     // Handle list sections with proper rendering
@@ -139,26 +140,38 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       const isOrdered = section.type.startsWith('number-list');
       const tag = isOrdered ? 'ol' : 'ul';
       const listHtml = `<${tag} style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => `<li>${item}</li>`).join('')}</${tag}>`;
-      return `<div style="${styleString}">${listHtml}</div>`;
+      
+      return (
+        <div
+          key={section.id}
+          dangerouslySetInnerHTML={{ __html: listHtml }}
+          style={combinedStyles as React.CSSProperties}
+        />
+      );
     }
     
-    // Handle mixed-content sections
+    // Handle mixed-content sections - show content with default values or placeholders
     if (section.type === 'mixed-content' && section.variables?.content) {
       let mixedContent = thymeleafToPlaceholder(section.variables.content as string);
       
+      // Helper to check if value is empty
       const isEmptyValue = (value: any): boolean => {
         if (value === null || value === undefined) return true;
         if (typeof value === 'string' && value.trim() === '') return true;
         return false;
       };
       
+      // Replace placeholders with default values if available, else keep {{placeholder}}
       mixedContent = mixedContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+        // Check if we have a non-empty default value for this placeholder
         if (section.variables && !isEmptyValue(section.variables[varName])) {
           return String(section.variables[varName]);
         }
+        // If no default value, keep as {{placeholder}}
         return match;
       });
       
+      // Handle special control structures (if/each)
       mixedContent = mixedContent
         .replace(/\{\{if\s+(\w+)\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;">if $1</span>')
         .replace(/\{\{\/if\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;">/if</span>')
@@ -166,27 +179,37 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
         .replace(/\{\{\/each\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dcfce7; color: #15803d; border: 1px solid #86efac;">/each</span>')
         .replace(/\n/g, '<br/>');
       
-      return `<div style="${styleString}"><div style="padding: 8px; line-height: 1.6;">${mixedContent}</div></div>`;
+      return (
+        <div
+          key={section.id}
+          dangerouslySetInnerHTML={{ __html: `<div style="padding: 8px; line-height: 1.6;">${mixedContent}</div>` }}
+          style={combinedStyles as React.CSSProperties}
+        />
+      );
     }
     
-    // For heading and text sections with variables
+    // For heading and text sections with variables, show default values (but section.content keeps Thymeleaf)
     const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
     const isInlinePlaceholder = inlinePlaceholderTypes.includes(section.type);
     
+    // Display logic: show default values from variables or {{placeholder}} if empty
     let displayContent = section.content;
     if (isInlinePlaceholder && section.variables && Object.keys(section.variables).length > 0) {
+      // Replace Thymeleaf tags with actual default values for display, or {{placeholder}} if empty
       displayContent = replaceWithDefaults(section.content, section.variables);
     } else {
+      // For other sections, convert Thymeleaf to {{placeholder}} format
       displayContent = thymeleafToPlaceholder(section.content);
     }
     
-    return `<div style="${styleString}">${displayContent}</div>`;
+    return (
+      <div
+        key={section.id}
+        dangerouslySetInnerHTML={{ __html: displayContent }}
+        style={combinedStyles as React.CSSProperties}
+      />
+    );
   };
-  
-  // Generate all sections HTML as a single string
-  const previewHtml = useMemo(() => {
-    return allSections.map(section => generateSectionHtml(section)).join('');
-  }, [allSections]);
   
   return (
     <div className={styles.container}>
@@ -198,8 +221,8 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       </div>
 
       <div className={styles.previewArea}>
-        <div className={styles.iframeWrapper}>
-          <IframePreview html={previewHtml} title="Template Preview" />
+        <div className={styles.previewContent}>
+          {allSections.map((section) => renderSection(section))}
         </div>
       </div>
     </div>

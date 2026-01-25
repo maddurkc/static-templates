@@ -10,7 +10,6 @@ interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
-  label?: string;
   onFocus?: () => void;
   rows?: number;
   className?: string;
@@ -25,14 +24,12 @@ export const RichTextEditor = ({
   value, 
   onChange, 
   placeholder = "Enter content...",
-  label,
   onFocus,
   rows = 4,
   className = "",
   singleLine = false
 }: RichTextEditorProps) => {
   const editorRef = useRef<HTMLDivElement>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const [hasSelection, setHasSelection] = useState(false);
@@ -40,11 +37,6 @@ export const RichTextEditor = ({
   const [linkUrl, setLinkUrl] = useState("");
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [isLink, setIsLink] = useState(false);
-  const isToolbarInteractionRef = useRef(false);
-  const [isFocused, setIsFocused] = useState(false);
-  
-  // Check if editor has content (for floating label)
-  const hasContent = value && value.trim() !== '' && value !== '<br>';
 
   // Initialize content
   useEffect(() => {
@@ -97,11 +89,6 @@ export const RichTextEditor = ({
   }, [findLinkAncestor]);
 
   const handleSelectionChange = useCallback(() => {
-    // Skip if we're interacting with toolbar
-    if (isToolbarInteractionRef.current) {
-      return;
-    }
-    
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || selection.toString().trim() === "") {
       setShowToolbar(false);
@@ -110,13 +97,9 @@ export const RichTextEditor = ({
       return;
     }
 
-    // Check if selection is within our editor or toolbar
+    // Check if selection is within our editor
     const range = selection.getRangeAt(0);
     if (!editorRef.current?.contains(range.commonAncestorContainer)) {
-      // Don't hide if interacting with toolbar
-      if (toolbarRef.current?.contains(document.activeElement)) {
-        return;
-      }
       setShowToolbar(false);
       setHasSelection(false);
       setShowLinkInput(false);
@@ -174,21 +157,7 @@ export const RichTextEditor = ({
       const range = selection.getRangeAt(0);
       const span = document.createElement('span');
       span.style.fontSize = size;
-      
-      // Extract contents and append to span to avoid issues with surroundContents
-      const contents = range.extractContents();
-      span.appendChild(contents);
-      range.insertNode(span);
-      
-      // Re-select the content inside the span
-      const newRange = document.createRange();
-      newRange.selectNodeContents(span);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-      
-      // Save the new selection
-      savedSelectionRef.current = newRange.cloneRange();
-      
+      range.surroundContents(span);
       if (editorRef.current) {
         onChange(editorRef.current.innerHTML);
       }
@@ -330,43 +299,16 @@ export const RichTextEditor = ({
 
   const minHeight = singleLine ? 32 : rows * 24;
 
-  const handleEditorFocus = useCallback(() => {
-    setIsFocused(true);
-    onFocus?.();
-  }, [onFocus]);
-
-  const handleEditorBlur = useCallback(() => {
-    setIsFocused(false);
-  }, []);
-
   return (
-    <div className={`${styles.editorContainer} ${isFocused ? styles.focused : ''} ${className}`}>
-      {label && (
-        <label 
-          className={`${styles.floatingLabel} ${(isFocused || hasContent) ? styles.floatingLabelActive : ''}`}
-        >
-          {label}
-        </label>
-      )}
+    <div className={`${styles.editorContainer} ${className}`}>
       {showToolbar && hasSelection && (
         <div 
-          ref={toolbarRef}
           className={styles.floatingToolbar}
           style={{
             top: toolbarPosition.top,
             left: toolbarPosition.left,
           }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            isToolbarInteractionRef.current = true;
-          }}
-          onMouseUp={() => {
-            // Reset after a short delay to allow click handlers to execute
-            setTimeout(() => {
-              isToolbarInteractionRef.current = false;
-            }, 100);
-          }}
+          onMouseDown={(e) => e.preventDefault()}
         >
           <Button
             variant="ghost"
@@ -436,15 +378,12 @@ export const RichTextEditor = ({
             variant="ghost"
             size="sm"
             className={`h-7 w-7 p-0 ${isLink ? 'text-primary' : ''}`}
-            onClick={(e) => {
+            onMouseDown={(e) => {
               e.preventDefault();
-              e.stopPropagation();
-              console.log('Link button clicked, showLinkInput:', showLinkInput);
               saveSelection();
-              setShowLinkInput(prev => {
-                console.log('Setting showLinkInput to:', !prev);
-                return !prev;
-              });
+            }}
+            onClick={() => {
+              setShowLinkInput(!showLinkInput);
             }}
             title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
           >
@@ -571,15 +510,14 @@ export const RichTextEditor = ({
       <div
         ref={editorRef}
         contentEditable
-        className={`${styles.editor} ${singleLine ? styles.singleLine : ''} ${label ? styles.hasLabel : ''}`}
+        className={`${styles.editor} ${singleLine ? styles.singleLine : ''}`}
         style={{ minHeight: `${minHeight}px` }}
         onInput={handleInput}
-        onFocus={handleEditorFocus}
-        onBlur={handleEditorBlur}
+        onFocus={onFocus}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         onClick={handleLinkClick}
-        data-placeholder={!label || isFocused || hasContent ? placeholder : ''}
+        data-placeholder={placeholder}
         suppressContentEditableWarning
       />
     </div>
