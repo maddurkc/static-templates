@@ -353,7 +353,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Banner',
     icon: Flag,
     description: 'Highlight text with colored background (1x1 table)',
-    defaultContent: '<table style="border-collapse: collapse;"><tr><td style="background-color: #FFFF00; padding: 8px 12px;">EFT</td></tr></table>',
+    defaultContent: '<table style="border-collapse: collapse;"><tr><td style="background-color: #FFFF00; padding: 6pt; font-size: 18px; font-weight: bold; line-height: normal;">EFT</td></tr></table>',
     category: 'text',
     variables: [
       { 
@@ -364,7 +364,7 @@ export const sectionTypes: SectionDefinition[] = [
           rows: [['EFT']],
           showBorder: false,
           mergedCells: {},
-          cellStyles: { '0-0': { backgroundColor: '#FFFF00', padding: '8px 12px' } },
+          cellStyles: { '0-0': { backgroundColor: '#FFFF00', padding: '6pt', fontSize: '18px', fontWeight: 'bold', lineHeight: 'normal' } },
           cellPadding: 'medium'
         } as any
       }
