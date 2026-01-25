@@ -408,8 +408,8 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
           <h3 className={styles.title}>Banner Settings</h3>
         </div>
         <Separator />
-        <div className={styles.section}>
-          <div className={styles.checkboxGroup}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <input
               type="checkbox"
               id="banner-editable"
@@ -420,13 +420,13 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
               })}
               className="h-4 w-4"
             />
-            <Label htmlFor="banner-editable" className={styles.checkboxLabel}>
+            <Label htmlFor="banner-editable" className="text-sm font-medium cursor-pointer">
               Editable at runtime
             </Label>
           </div>
-          <p className={styles.description}>
-            When unchecked, users won't be able to modify the banner text when running the template.
-          </p>
+          <span className={`text-xs px-2 py-0.5 rounded ${section.isLabelEditable !== false ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+            {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
+          </span>
         </div>
         <Separator />
         <div className={styles.section}>
