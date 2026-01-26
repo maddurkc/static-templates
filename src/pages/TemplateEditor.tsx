@@ -23,7 +23,7 @@ import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, Pane
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
-import { renderSectionContent } from "@/lib/templateUtils";
+import { renderSectionContent, wrapSectionInTable } from "@/lib/templateUtils";
 import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpdateRequest, fetchTemplateById } from "@/lib/templateApi";
 import { validateTemplate, validateTemplateName, validateSubject, ValidationError } from "@/lib/templateValidation";
 import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
@@ -742,6 +742,18 @@ const TemplateEditor = () => {
   const generateHTMLWithPlaceholders = () => {
     const allSections = [headerSection, ...sections, footerSection];
     
+    // Helper to wrap section content in a table (no borders, max-width 95%, margin-top 10px)
+    const wrapInSectionTable = (content: string, isFirst: boolean): string => {
+      const marginTop = isFirst ? '0' : '10px';
+      return `<table cellpadding="0" cellspacing="0" border="0" style="max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed;">
+    <tr>
+      <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word;">
+        ${content}
+      </td>
+    </tr>
+  </table>`;
+    };
+    
     const generateSectionHTML = (section: Section, indent = ''): string => {
       const styleString = Object.entries(section.styles || {})
         .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
@@ -930,26 +942,38 @@ ${indent}</div>`;
       return `${indent}<div style="${styleString}">\n${indent}  ${listHtml}\n${indent}</div>`;
     };
     
-    return allSections.map(section => generateSectionHTML(section)).join('\n\n');
+    // Wrap all sections in a global table, with each section in its own nested table
+    const sectionHtmls = allSections.map((section, index) => {
+      const sectionContent = generateSectionHTML(section);
+      return wrapInSectionTable(sectionContent, index === 0);
+    }).join('\n');
+    
+    // Return global wrapper table with all section tables
+    return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; border: none;">
+  <tr>
+    <td style="padding: 0;">
+${sectionHtmls}
+    </td>
+  </tr>
+</table>`;
   };
 
   const generateHTML = () => {
     const allSections = [headerSection, ...sections, footerSection];
-    return allSections.map(section => {
-      // Add default spacing styles for better layout
-      const defaultStyles = {
-        margin: '10px 0',
-        padding: '8px',
-      };
-      
-      const combinedStyles = { ...defaultStyles, ...section.styles };
-      const styleString = Object.entries(combinedStyles)
-        .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
-        .join('; ');
-      
+    // Wrap all sections in a global table, with each section in its own nested table
+    const sectionHtmls = allSections.map((section, index) => {
       const content = renderSectionContent(section);
-      return `<div style="${styleString}">\n  ${content}\n</div>`;
-    }).join('\n\n');
+      return wrapSectionInTable(content, index === 0);
+    }).join('\n');
+    
+    // Return global wrapper table with all section tables
+    return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; border: none;">
+  <tr>
+    <td style="padding: 0;">
+${sectionHtmls}
+    </td>
+  </tr>
+</table>`;
   };
 
   const handleCopyHTML = async () => {

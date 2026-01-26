@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
 import { fetchTemplates, fetchTemplateById } from "@/lib/templateApi";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
-import { renderSectionContent, wrapInEmailHtml } from "@/lib/templateUtils";
+import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
@@ -973,7 +973,7 @@ const RunTemplates = () => {
       ...labelVariables
     };
     const renderedBodyHtml = selectedTemplate.sections
-      .map((section) => renderSectionContent(section, allVars))
+      .map((section, index) => wrapSectionInTable(renderSectionContent(section, allVars), index === 0))
       .join('');
     const fullEmailHtml = wrapInEmailHtml(renderedBodyHtml);
 
@@ -1053,7 +1053,7 @@ const RunTemplates = () => {
       });
       
       return selectedTemplate.sections
-        .map((section) => {
+        .map((section, index) => {
           // For labeled-content sections, inject updated label from labelVariables
           let sectionToRender = section;
           if (section.type === 'labeled-content') {
@@ -1068,7 +1068,7 @@ const RunTemplates = () => {
               };
             }
           }
-          return renderSectionContent(sectionToRender, allVars);
+          return wrapSectionInTable(renderSectionContent(sectionToRender, allVars), index === 0);
         })
         .join('');
     }
@@ -2245,7 +2245,7 @@ const RunTemplates = () => {
                           <div 
                             key={section.id} 
                             id={`preview-section-${section.id}`}
-                            dangerouslySetInnerHTML={{ __html: renderSectionContent(sectionToRender, runtimeVars) }}
+                            dangerouslySetInnerHTML={{ __html: wrapSectionInTable(renderSectionContent(sectionToRender, runtimeVars), sectionIndex === 0) }}
                           />
                         );
                       })}
