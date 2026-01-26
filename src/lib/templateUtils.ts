@@ -354,6 +354,16 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   }
   
   // Handle table sections specially - wrapped in table for Outlook margin compatibility
+  // Handle banner sections - 1x1 table with styled cell
+  if (section.type === 'banner') {
+    if (section.variables?.tableData) {
+      const tableContent = generateTableHTML(section.variables.tableData as TableData);
+      return wrapInOutlookTable(tableContent);
+    }
+    // Fallback for banner without tableData
+    return wrapInOutlookTable('<table style="border-collapse: collapse;"><tr><td style="background-color: #FFFF00; padding: 6pt; font-size: 18px; font-weight: bold;">EFT</td></tr></table>');
+  }
+  
   if (section.type === 'table') {
     // Check for runtime variables first (from RunTemplates)
     if (variables && variables[section.id] !== undefined) {
