@@ -408,27 +408,6 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
           <h3 className={styles.title}>Banner Settings</h3>
         </div>
         <Separator />
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="banner-editable"
-              checked={section.isLabelEditable !== false}
-              onChange={(e) => onUpdate({
-                ...section,
-                isLabelEditable: e.target.checked
-              })}
-              className="h-4 w-4"
-            />
-            <Label htmlFor="banner-editable" className="text-sm font-medium cursor-pointer">
-              Editable at runtime
-            </Label>
-          </div>
-          <span className={`text-xs px-2 py-0.5 rounded ${section.isLabelEditable !== false ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
-            {section.isLabelEditable !== false ? 'Editable' : 'Locked'}
-          </span>
-        </div>
-        <Separator />
         <div className={styles.section}>
           <Label className={styles.label}>Banner Text</Label>
           <Input
