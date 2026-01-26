@@ -1674,8 +1674,51 @@ const RunTemplates = () => {
                             );
                           }
                           
-                          // Handle heading/text/paragraph/banner sections
-                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph', 'banner'].includes(section.type)) {
+                          // Handle banner sections separately (uses tableData, not content)
+                          if (section.type === 'banner') {
+                            const isEditable = section.isLabelEditable !== false;
+                            const tableData = section.variables?.tableData as any;
+                            const bannerKey = `banner_${section.id}`;
+                            const bannerText = variables[bannerKey] !== undefined 
+                              ? (variables[bannerKey] as string)
+                              : (tableData?.rows?.[0]?.[0] || 'EFT');
+                            const bgColor = tableData?.cellStyles?.['0-0']?.backgroundColor || '#FFFF00';
+                            
+                            return (
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs font-medium text-muted-foreground">Banner</span>
+                                  {!isEditable && (
+                                    <Badge variant="secondary" className="text-xs">Locked</Badge>
+                                  )}
+                                </div>
+                                <div 
+                                  className="inline-block px-3 py-1 rounded text-sm font-bold mb-3"
+                                  style={{ backgroundColor: bgColor, color: '#000' }}
+                                >
+                                  {bannerText}
+                                </div>
+                                {isEditable && (
+                                  <div className="mt-2">
+                                    <Input
+                                      value={bannerText}
+                                      onChange={(e) => {
+                                        setVariables(prev => ({
+                                          ...prev,
+                                          [bannerKey]: e.target.value
+                                        }));
+                                      }}
+                                      placeholder="Enter banner text..."
+                                      className="text-sm"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                          
+                          // Handle heading/text/paragraph sections
+                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type)) {
                             // Check if this section is editable at runtime
                             const isEditable = section.isLabelEditable !== false;
                             
