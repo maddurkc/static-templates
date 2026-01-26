@@ -15,10 +15,10 @@ const wrapInOutlookTable = (content: string, marginBottom: string = '20px'): str
   </table>`;
 };
 
-// Helper function to wrap each section in a table with no borders, max-width 95%, margin-top 10px, word-wrap
+// Helper function to wrap each section in a table with no borders, width 95%, max-width 95%, margin-top 10px, word-wrap
 export const wrapSectionInTable = (content: string, isFirstSection: boolean = false): string => {
   const marginTop = isFirstSection ? '0' : '10px';
-  return `<table cellpadding="0" cellspacing="0" border="0" style="max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed;">
+  return `<table cellpadding="0" cellspacing="0" border="0" style="width: 95%; max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed;">
     <tr>
       <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word;">
         ${content}
