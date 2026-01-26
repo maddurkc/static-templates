@@ -742,10 +742,10 @@ const TemplateEditor = () => {
   const generateHTMLWithPlaceholders = () => {
     const allSections = [headerSection, ...sections, footerSection];
     
-    // Helper to wrap section content in a table (no borders, max-width 95%, margin-top 10px)
+    // Helper to wrap section content in a table (no borders, width 95%, max-width 95%, margin-top 10px)
     const wrapInSectionTable = (content: string, isFirst: boolean): string => {
       const marginTop = isFirst ? '0' : '10px';
-      return `<table cellpadding="0" cellspacing="0" border="0" style="max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed;">
+      return `<table cellpadding="0" cellspacing="0" border="0" style="width: 95%; max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed;">
     <tr>
       <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word;">
         ${content}
