@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 import styles from "./RichTextEditor.module.scss";
 
@@ -35,7 +36,7 @@ export const RichTextEditor = ({
   const [hasSelection, setHasSelection] = useState(false);
   const savedSelectionRef = useRef<Range | null>(null);
   const [linkUrl, setLinkUrl] = useState("");
-  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [isLink, setIsLink] = useState(false);
   const isUserEditingRef = useRef(false);
   const lastValueRef = useRef(value);
@@ -104,7 +105,6 @@ export const RichTextEditor = ({
     if (!selection || selection.isCollapsed || selection.toString().trim() === "") {
       setShowToolbar(false);
       setHasSelection(false);
-      setShowLinkInput(false);
       return;
     }
 
@@ -113,7 +113,6 @@ export const RichTextEditor = ({
     if (!editorRef.current?.contains(range.commonAncestorContainer)) {
       setShowToolbar(false);
       setHasSelection(false);
-      setShowLinkInput(false);
       return;
     }
 
@@ -211,7 +210,7 @@ export const RichTextEditor = ({
       onChange(editorRef.current.innerHTML);
     }
     setLinkUrl('');
-    setShowLinkInput(false);
+    setShowLinkDialog(false);
     editorRef.current?.focus();
   }, [linkUrl, onChange, restoreSelection]);
 
@@ -253,7 +252,7 @@ export const RichTextEditor = ({
       } else if (e.key === 'k') {
         e.preventDefault();
         saveSelection();
-        setShowLinkInput(true);
+        setShowLinkDialog(true);
       }
     }
   };
@@ -298,12 +297,12 @@ export const RichTextEditor = ({
       // Save selection and set all states together
       savedSelectionRef.current = range.cloneRange();
       
-      // Use setTimeout to ensure DOM selection is complete before showing toolbar
+      // Use setTimeout to ensure DOM selection is complete before showing dialog
       setTimeout(() => {
         setIsLink(true);
         setLinkUrl(linkEl.href || '');
         setHasSelection(true);
-        setShowLinkInput(true);
+        setShowLinkDialog(true);
         setShowToolbar(true);
       }, 0);
     }
@@ -395,57 +394,27 @@ export const RichTextEditor = ({
               saveSelection();
             }}
             onClick={() => {
-              setShowLinkInput(!showLinkInput);
+              setShowLinkDialog(true);
             }}
             title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
           >
             <Link className="h-3.5 w-3.5" />
           </Button>
           
-          {/* Link Input Panel - inline in toolbar */}
-          {showLinkInput && (
-            <div 
-              className="flex items-center gap-2 ml-1 pl-2 border-l border-border"
+          {/* Unlink Button - only show when link is selected */}
+          {isLink && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-destructive"
               onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                removeLink();
+              }}
+              title="Remove Link"
             >
-              <Input
-                type="url"
-                placeholder="https://example.com"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    applyLink();
-                  } else if (e.key === 'Escape') {
-                    setShowLinkInput(false);
-                    setLinkUrl('');
-                  }
-                }}
-                className="h-6 w-40 text-xs"
-                autoFocus
-              />
-              <Button
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={applyLink}
-              >
-                {isLink ? 'Update' : 'Add'}
-              </Button>
-              {isLink && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={() => {
-                    removeLink();
-                    setShowLinkInput(false);
-                  }}
-                >
-                  <Unlink className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
+              <Unlink className="h-3.5 w-3.5" />
+            </Button>
           )}
           
           <div className={styles.separator} />
@@ -532,6 +501,65 @@ export const RichTextEditor = ({
         data-placeholder={placeholder}
         suppressContentEditableWarning
       />
+      
+      {/* Link Dialog */}
+      <Dialog open={showLinkDialog} onOpenChange={(open) => {
+        if (!open) {
+          setLinkUrl('');
+        }
+        setShowLinkDialog(open);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isLink ? 'Edit Hyperlink' : 'Add Hyperlink'}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="link-url" className="text-sm font-medium mb-2 block">
+              URL
+            </Label>
+            <Input
+              id="link-url"
+              type="url"
+              placeholder="https://example.com"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  applyLink();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="flex gap-2">
+            {isLink && (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  removeLink();
+                  setShowLinkDialog(false);
+                }}
+              >
+                <Unlink className="h-4 w-4 mr-2" />
+                Remove Link
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowLinkDialog(false);
+                setLinkUrl('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={applyLink} disabled={!linkUrl.trim()}>
+              {isLink ? 'Update' : 'Add'} Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
