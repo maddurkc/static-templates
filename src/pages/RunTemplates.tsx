@@ -1675,57 +1675,27 @@ const RunTemplates = () => {
                           }
                           
                           // Handle banner sections separately (uses tableData, not content)
-                          if (section.type === 'banner') {
-                            const isEditable = section.isLabelEditable !== false;
-                            const tableData = section.variables?.tableData as any;
-                            const bannerKey = `banner_${section.id}`;
-                            const bannerText = variables[bannerKey] !== undefined 
-                              ? (variables[bannerKey] as string)
-                              : (tableData?.rows?.[0]?.[0] || 'EFT');
-                            const bgColor = tableData?.cellStyles?.['0-0']?.backgroundColor || '#FFFF00';
-                            
-                            return (
-                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs font-medium text-muted-foreground">Banner</span>
-                                  {!isEditable && (
-                                    <Badge variant="secondary" className="text-xs">Locked</Badge>
-                                  )}
-                                </div>
-                                <div 
-                                  className="inline-block px-3 py-1 rounded text-sm font-bold mb-3"
-                                  style={{ backgroundColor: bgColor, color: '#000' }}
-                                >
-                                  {bannerText}
-                                </div>
-                                {isEditable && (
-                                  <div className="mt-2">
-                                    <Input
-                                      value={bannerText}
-                                      onChange={(e) => {
-                                        setVariables(prev => ({
-                                          ...prev,
-                                          [bannerKey]: e.target.value
-                                        }));
-                                      }}
-                                      placeholder="Enter banner text..."
-                                      className="text-sm"
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          }
-                          
-                          // Handle heading/text/paragraph sections
-                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type)) {
+                          // Handle heading/text/paragraph/banner sections
+                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph', 'banner'].includes(section.type)) {
                             // Check if this section is editable at runtime
                             const isEditable = section.isLabelEditable !== false;
+                            const isBanner = section.type === 'banner';
                             
-                            // Use editedSectionContent if user has edited this section, otherwise use original
-                            const rawContent = editedSectionContent[section.id] !== undefined 
-                              ? editedSectionContent[section.id] 
-                              : (section.content || '');
+                            // For banner, get content from tableData; for others, get from content
+                            let rawContent: string;
+                            const bannerKey = `banner_${section.id}`;
+                            
+                            if (isBanner) {
+                              const tableData = section.variables?.tableData as any;
+                              rawContent = variables[bannerKey] !== undefined 
+                                ? (variables[bannerKey] as string)
+                                : (tableData?.rows?.[0]?.[0] || 'EFT');
+                            } else {
+                              // Use editedSectionContent if user has edited this section, otherwise use original
+                              rawContent = editedSectionContent[section.id] !== undefined 
+                                ? editedSectionContent[section.id] 
+                                : (section.content || '');
+                            }
                             
                             // Convert Thymeleaf tags to {{placeholder}} format BEFORE stripping HTML
                             const contentWithPlaceholders = rawContent
@@ -1753,6 +1723,11 @@ const RunTemplates = () => {
                             const isEditingThisSection = editingSectionId === section.id;
                             const hasPlaceholders = varNames.length > 0;
                             
+                            // Get banner background color for display
+                            const bannerBgColor = isBanner 
+                              ? ((section.variables?.tableData as any)?.cellStyles?.['0-0']?.backgroundColor || '#FFFF00')
+                              : undefined;
+                            
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
                                 {/* Content label - show with placeholders highlighted or as static text */}
@@ -1761,13 +1736,20 @@ const RunTemplates = () => {
                                     <Textarea
                                       value={plainTextContent}
                                       onChange={(e) => {
-                                        setEditedSectionContent(prev => ({
-                                          ...prev,
-                                          [section.id]: e.target.value
-                                        }));
+                                        if (isBanner) {
+                                          setVariables(prev => ({
+                                            ...prev,
+                                            [bannerKey]: e.target.value
+                                          }));
+                                        } else {
+                                          setEditedSectionContent(prev => ({
+                                            ...prev,
+                                            [section.id]: e.target.value
+                                          }));
+                                        }
                                       }}
                                       className="text-sm min-h-[80px]"
-                                      placeholder="Edit content... Use {{variableName}} for placeholders"
+                                      placeholder={isBanner ? "Edit banner text..." : "Edit content... Use {{variableName}} for placeholders"}
                                       autoFocus
                                     />
                                     <div className="flex items-center gap-2 mt-2">
@@ -1783,11 +1765,19 @@ const RunTemplates = () => {
                                         size="sm" 
                                         variant="ghost"
                                         onClick={() => {
-                                          setEditedSectionContent(prev => {
-                                            const newState = { ...prev };
-                                            delete newState[section.id];
-                                            return newState;
-                                          });
+                                          if (isBanner) {
+                                            setVariables(prev => {
+                                              const newState = { ...prev };
+                                              delete newState[bannerKey];
+                                              return newState;
+                                            });
+                                          } else {
+                                            setEditedSectionContent(prev => {
+                                              const newState = { ...prev };
+                                              delete newState[section.id];
+                                              return newState;
+                                            });
+                                          }
                                           setEditingSectionId(null);
                                         }}
                                       >
@@ -1797,18 +1787,33 @@ const RunTemplates = () => {
                                   </div>
                                 ) : (
                                   <div className="flex items-start gap-2">
-                                    <div 
-                                      className={`flex-1 text-sm font-medium ${hasPlaceholders ? 'text-foreground' : 'text-muted-foreground'}`}
-                                      style={{ lineHeight: 1.6 }}
-                                      dangerouslySetInnerHTML={{ 
-                                        __html: hasPlaceholders 
-                                          ? plainTextContent.replace(
-                                              /\{\{(\w+)\}\}/g, 
-                                              '<span style="background-color: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em; font-weight: 600;">{{$1}}</span>'
-                                            )
-                                          : plainTextContent
-                                      }}
-                                    />
+                                    {isBanner ? (
+                                      <div 
+                                        className="flex-1 inline-block px-3 py-1 rounded text-sm font-bold"
+                                        style={{ backgroundColor: bannerBgColor, color: '#000' }}
+                                        dangerouslySetInnerHTML={{ 
+                                          __html: hasPlaceholders 
+                                            ? plainTextContent.replace(
+                                                /\{\{(\w+)\}\}/g, 
+                                                '<span style="background-color: rgba(0,0,0,0.1); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em;">{{$1}}</span>'
+                                              )
+                                            : plainTextContent
+                                        }}
+                                      />
+                                    ) : (
+                                      <div 
+                                        className={`flex-1 text-sm font-medium ${hasPlaceholders ? 'text-foreground' : 'text-muted-foreground'}`}
+                                        style={{ lineHeight: 1.6 }}
+                                        dangerouslySetInnerHTML={{ 
+                                          __html: hasPlaceholders 
+                                            ? plainTextContent.replace(
+                                                /\{\{(\w+)\}\}/g, 
+                                                '<span style="background-color: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em; font-weight: 600;">{{$1}}</span>'
+                                              )
+                                            : plainTextContent
+                                        }}
+                                      />
+                                    )}
                                     {isEditable && (
                                       <Button
                                         size="sm"
@@ -1831,23 +1836,56 @@ const RunTemplates = () => {
                                         <Label htmlFor={`var-${varName}`} className="text-xs font-medium mb-1.5 inline-flex items-center gap-1.5 text-muted-foreground">
                                           <span className="font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-semibold">{`{{${varName}}}`}</span>
                                         </Label>
-                                        <RichTextEditor
-                                          value={typeof variables[varName] === 'object' 
-                                            ? (variables[varName] as TextStyle).text 
-                                            : (variables[varName] as string) || ''
-                                          }
-                                          onChange={(html) => {
-                                            setVariables(prev => ({
-                                              ...prev,
-                                              [varName]: html
-                                            }));
-                                          }}
-                                          onFocus={() => scrollToSection(section.id)}
-                                          placeholder={`Enter value for ${varName}...`}
-                                          singleLine={section.type.startsWith('heading')}
-                                        />
+                                        {isBanner ? (
+                                          <Input
+                                            value={(variables[varName] as string) || ''}
+                                            onChange={(e) => {
+                                              setVariables(prev => ({
+                                                ...prev,
+                                                [varName]: e.target.value
+                                              }));
+                                            }}
+                                            onFocus={() => scrollToSection(section.id)}
+                                            placeholder={`Enter value for ${varName}...`}
+                                            className="text-sm"
+                                          />
+                                        ) : (
+                                          <RichTextEditor
+                                            value={typeof variables[varName] === 'object' 
+                                              ? (variables[varName] as TextStyle).text 
+                                              : (variables[varName] as string) || ''
+                                            }
+                                            onChange={(html) => {
+                                              setVariables(prev => ({
+                                                ...prev,
+                                                [varName]: html
+                                              }));
+                                            }}
+                                            onFocus={() => scrollToSection(section.id)}
+                                            placeholder={`Enter value for ${varName}...`}
+                                            singleLine={section.type.startsWith('heading')}
+                                          />
+                                        )}
                                       </div>
                                     ))}
+                                  </div>
+                                )}
+                                
+                                {/* For banner without placeholders, show simple input */}
+                                {isBanner && !hasPlaceholders && isEditable && (
+                                  <div className="mt-3 ml-4 pl-3 border-l-2 border-primary/20">
+                                    <Input
+                                      value={rawContent}
+                                      onChange={(e) => {
+                                        setVariables(prev => ({
+                                          ...prev,
+                                          [bannerKey]: e.target.value
+                                        }));
+                                      }}
+                                      onFocus={() => scrollToSection(section.id)}
+                                      placeholder="Enter banner text..."
+                                      className="text-sm"
+                                    />
                                   </div>
                                 )}
                               </div>
