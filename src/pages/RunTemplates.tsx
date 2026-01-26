@@ -1674,8 +1674,8 @@ const RunTemplates = () => {
                             );
                           }
                           
-                          // Handle heading/text/paragraph sections
-                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type)) {
+                          // Handle heading/text/paragraph/banner sections
+                          if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph', 'banner'].includes(section.type)) {
                             // Check if this section is editable at runtime
                             const isEditable = section.isLabelEditable !== false;
                             
