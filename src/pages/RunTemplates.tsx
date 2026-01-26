@@ -2152,6 +2152,24 @@ const RunTemplates = () => {
                             }
                           }
                           
+                          // For banner sections, inject updated text into tableData
+                          if (s.type === 'banner') {
+                            const bannerKey = `banner_${s.id}`;
+                            if (variables[bannerKey] !== undefined) {
+                              const currentTableData = (s.variables?.tableData as any) || { rows: [['']], cellStyles: {} };
+                              updated = {
+                                ...updated,
+                                variables: {
+                                  ...updated.variables,
+                                  tableData: {
+                                    ...currentTableData,
+                                    rows: [[variables[bannerKey] as string]]
+                                  }
+                                }
+                              };
+                            }
+                          }
+                          
                           // Recursively apply to children
                           if (updated.children && updated.children.length > 0) {
                             updated = {
