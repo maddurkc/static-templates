@@ -37,11 +37,22 @@ export const RichTextEditor = ({
   const [linkUrl, setLinkUrl] = useState("");
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [isLink, setIsLink] = useState(false);
+  const isUserEditingRef = useRef(false);
+  const lastValueRef = useRef(value);
 
-  // Initialize content
+  // Initialize content - only update if value changed externally (not from user input)
   useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== value) {
+    // Skip if user is actively editing
+    if (isUserEditingRef.current) {
+      isUserEditingRef.current = false;
+      lastValueRef.current = value;
+      return;
+    }
+    
+    // Only update if the value actually changed from external source
+    if (editorRef.current && value !== lastValueRef.current) {
       editorRef.current.innerHTML = value || '';
+      lastValueRef.current = value;
     }
   }, [value]);
 
@@ -217,6 +228,7 @@ export const RichTextEditor = ({
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {
+      isUserEditingRef.current = true;
       onChange(editorRef.current.innerHTML);
     }
   }, [onChange]);
