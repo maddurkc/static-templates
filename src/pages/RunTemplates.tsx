@@ -1680,22 +1680,31 @@ const RunTemplates = () => {
                             // Check if this section is editable at runtime
                             const isEditable = section.isLabelEditable !== false;
                             const isBanner = section.type === 'banner';
-                            
-                            // For banner, get content from tableData; for others, get from content
-                            let rawContent: string;
                             const bannerKey = `banner_${section.id}`;
                             
-                            if (isBanner) {
-                              const tableData = section.variables?.tableData as any;
-                              rawContent = variables[bannerKey] !== undefined 
-                                ? (variables[bannerKey] as string)
-                                : (tableData?.rows?.[0]?.[0] || 'EFT');
-                            } else {
-                              // Use editedSectionContent if user has edited this section, otherwise use original
-                              rawContent = editedSectionContent[section.id] !== undefined 
-                                ? editedSectionContent[section.id] 
-                                : (section.content || '');
-                            }
+                            // Get the original content from template (before any edits)
+                            const getOriginalContent = (): string => {
+                              if (isBanner) {
+                                const tableData = section.variables?.tableData as any;
+                                return tableData?.rows?.[0]?.[0] || 'EFT';
+                              }
+                              return section.content || '';
+                            };
+                            
+                            // Get current edited value (for textarea binding)
+                            const getEditedValue = (): string => {
+                              if (isBanner) {
+                                return variables[bannerKey] as string | undefined ?? '';
+                              }
+                              return editedSectionContent[section.id] ?? '';
+                            };
+                            
+                            const originalContent = getOriginalContent();
+                            const editedValue = getEditedValue();
+                            const hasBeenEdited = isBanner ? variables[bannerKey] !== undefined : editedSectionContent[section.id] !== undefined;
+                            
+                            // Use edited value if available, otherwise use original
+                            const rawContent = hasBeenEdited ? editedValue : originalContent;
                             
                             // Convert Thymeleaf tags to {{placeholder}} format BEFORE stripping HTML
                             const contentWithPlaceholders = rawContent
@@ -1705,7 +1714,9 @@ const RunTemplates = () => {
                               .replace(/th:utext="\$\{(\w+)\}"/g, '{{$1}}');
                             
                             // Strip remaining HTML tags to get plain text for label display
-                            const plainTextContent = contentWithPlaceholders.replace(/<[^>]*>/g, '').trim();
+                            // Don't trim - preserve spaces for editing
+                            const plainTextContent = contentWithPlaceholders.replace(/<[^>]*>/g, '');
+                            const displayContent = plainTextContent.trim(); // Only trim for display checks
                             
                             // Dynamically extract placeholders from content
                             const varNames: string[] = [];
@@ -1718,7 +1729,7 @@ const RunTemplates = () => {
                             }
                             
                             // Skip sections with no content
-                            if (!plainTextContent) return null;
+                            if (!displayContent) return null;
                             
                             const isEditingThisSection = editingSectionId === section.id;
                             const hasPlaceholders = varNames.length > 0;
@@ -1728,13 +1739,22 @@ const RunTemplates = () => {
                               ? ((section.variables?.tableData as any)?.cellStyles?.['0-0']?.backgroundColor || '#FFFF00')
                               : undefined;
                             
+                            // Determine the value for textarea - use edited value or convert original to plain text
+                            const textareaValue = hasBeenEdited 
+                              ? editedValue 
+                              : originalContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
+                                  .replace(/<th:utext="\$\{(\w+)\}">[^<]*<\/th:utext>/g, '{{$1}}')
+                                  .replace(/<th:block\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
+                                  .replace(/th:utext="\$\{(\w+)\}"/g, '{{$1}}')
+                                  .replace(/<[^>]*>/g, '');
+                            
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
                                 {/* Content label - show with placeholders highlighted or as static text */}
                                 {isEditingThisSection && isEditable ? (
                                   <div className="mb-3">
                                     <Textarea
-                                      value={plainTextContent}
+                                      value={textareaValue}
                                       onChange={(e) => {
                                         if (isBanner) {
                                           setVariables(prev => ({
@@ -1793,11 +1813,11 @@ const RunTemplates = () => {
                                         style={{ backgroundColor: bannerBgColor, color: '#000' }}
                                         dangerouslySetInnerHTML={{ 
                                           __html: hasPlaceholders 
-                                            ? plainTextContent.replace(
+                                            ? displayContent.replace(
                                                 /\{\{(\w+)\}\}/g, 
                                                 '<span style="background-color: rgba(0,0,0,0.1); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em;">{{$1}}</span>'
                                               )
-                                            : plainTextContent
+                                            : displayContent
                                         }}
                                       />
                                     ) : (
@@ -1806,11 +1826,11 @@ const RunTemplates = () => {
                                         style={{ lineHeight: 1.6 }}
                                         dangerouslySetInnerHTML={{ 
                                           __html: hasPlaceholders 
-                                            ? plainTextContent.replace(
+                                            ? displayContent.replace(
                                                 /\{\{(\w+)\}\}/g, 
                                                 '<span style="background-color: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em; font-weight: 600;">{{$1}}</span>'
                                               )
-                                            : plainTextContent
+                                            : displayContent
                                         }}
                                       />
                                     )}
