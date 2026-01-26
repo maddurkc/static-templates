@@ -15,6 +15,18 @@ const wrapInOutlookTable = (content: string, marginBottom: string = '20px'): str
   </table>`;
 };
 
+// Helper function to wrap each section in a table with no borders, max-width 95%, margin-top 10px, word-wrap
+export const wrapSectionInTable = (content: string, isFirstSection: boolean = false): string => {
+  const marginTop = isFirstSection ? '0' : '10px';
+  return `<table cellpadding="0" cellspacing="0" border="0" style="max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed;">
+    <tr>
+      <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word;">
+        ${content}
+      </td>
+    </tr>
+  </table>`;
+};
+
 // Render Outlook-compatible list HTML without relying on native ul/li rendering
 const renderOutlookCompatibleList = (items: any[], listTag: string, listStyleType: string): string => {
   const isOrdered = listTag === 'ol';
@@ -132,6 +144,7 @@ const toRoman = (num: number): string => {
 };
 
 // Email wrapper with proper DOCTYPE, head, and meta tags for email client compatibility
+// Contains a global wrapper table with nested section tables
 export const wrapInEmailHtml = (bodyContent: string): string => {
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -157,6 +170,8 @@ export const wrapInEmailHtml = (bodyContent: string): string => {
     table, td {
       mso-table-lspace: 0pt;
       mso-table-rspace: 0pt;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     body {
       margin: 0;
@@ -173,7 +188,8 @@ export const wrapInEmailHtml = (bodyContent: string): string => {
   </style>
 </head>
 <body style="margin: 0; padding: 20px; background-color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto;">
+  <!-- Global wrapper table -->
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; border: none;">
     <tr>
       <td style="padding: 0;">
         ${bodyContent}

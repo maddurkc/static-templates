@@ -2,6 +2,7 @@ import { Section } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
 import { generateTableHTML, TableData } from "@/lib/tableUtils";
+import { wrapSectionInTable } from "@/lib/templateUtils";
 import styles from "./PreviewView.module.scss";
 
 interface PreviewViewProps {
@@ -13,132 +14,43 @@ interface PreviewViewProps {
 export const PreviewView = ({ headerSection, footerSection, sections }: PreviewViewProps) => {
   const allSections = [headerSection, ...sections, footerSection];
   
-  const renderSection = (section: Section): JSX.Element => {
-    const defaultStyles = {
+  // Helper function to get HTML string for a section (used with wrapSectionInTable)
+  const getSectionHtml = (section: Section): string => {
+    const defaultStyles: Record<string, string> = {
       margin: '10px 0',
       padding: '8px',
     };
     const combinedStyles = { ...defaultStyles, ...section.styles };
+    const styleString = Object.entries(combinedStyles)
+      .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
+      .join('; ');
     
     // Handle container sections with nested children
     if (section.type === 'container' && section.children && section.children.length > 0) {
-      return (
-        <div key={section.id} className={styles.containerSection}>
-          {section.children.map(child => renderSection(child))}
-        </div>
-      );
+      const childrenHtml = section.children.map(child => getSectionHtml(child)).join('');
+      return `<div style="margin: 15px 0; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa;">${childrenHtml}</div>`;
     }
     
     // Handle labeled-content sections with special rendering
     if (section.type === 'labeled-content') {
-      let label = (section.variables?.label as string) || 'Label';
-      
-      // Helper to check if value is empty
-      const isEmptyValue = (value: any): boolean => {
-        if (value === null || value === undefined) return true;
-        if (typeof value === 'string' && value.trim() === '') return true;
-        return false;
-      };
-      
-      // Replace Thymeleaf in label with default values or {{placeholder}}
-      label = label.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
-        if (section.variables && !isEmptyValue(section.variables[varName])) {
-          return String(section.variables[varName]);
-        }
-        return `{{${varName}}}`;
-      }).replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
-        if (section.variables && !isEmptyValue(section.variables[varName])) {
-          return String(section.variables[varName]);
-        }
-        return `{{${varName}}}`;
-      });
-      
-      const contentType = (section.variables?.contentType as string) || 'text';
-      let contentHtml = '';
-      
-      if (contentType === 'text') {
-        let textContent = (section.variables?.content as string) || '';
-        // Support {{variable}} placeholders in text content - show {{placeholder}} if no value
-        textContent = textContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-          if (section.variables && !isEmptyValue(section.variables[varName])) {
-            return String(section.variables[varName]);
-          }
-          return match; // Keep {{placeholder}} as-is when no value
-        });
-        contentHtml = `<div style="white-space: pre-wrap;">${textContent}</div>`;
-      } else if (contentType === 'list') {
-        const items = (section.variables?.items as any[]) || [];
-        const listStyle = (section.variables?.listStyle as string) || 'circle';
-        
-        const renderListItem = (item: any): string => {
-          if (typeof item === 'string') {
-            return `<li>${item}</li>`;
-          }
-          
-          const styles = [];
-          if (item.color) styles.push(`color: ${item.color}`);
-          if (item.bold) styles.push('font-weight: bold');
-          if (item.italic) styles.push('font-style: italic');
-          if (item.underline) styles.push('text-decoration: underline');
-          if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
-          if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
-          const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-          
-          let html = `<li${styleAttr}>${item.text}`;
-          if (item.children && item.children.length > 0) {
-            html += `<ul style="list-style-type: ${listStyle}; margin-left: 20px; margin-top: 4px;">`;
-            html += item.children.map((child: any) => renderListItem(child)).join('');
-            html += '</ul>';
-          }
-          html += '</li>';
-          return html;
-        };
-        
-        contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => renderListItem(item)).join('')}</ul>`;
-      } else if (contentType === 'table') {
-        const tableData = section.variables?.tableData as TableData;
-        if (tableData && tableData.rows) {
-          contentHtml = generateTableHTML(tableData);
-        }
-      }
-      
-      return (
-        <div key={section.id} style={combinedStyles as React.CSSProperties}>
-          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>{label}</div>
-          <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
-        </div>
-      );
+      return getLabeledContentHtml(section, combinedStyles);
     }
     
     // Handle line-break sections (empty vertical gap)
     if (section.type === 'line-break') {
-      return (
-        <div key={section.id} style={{ height: '16px' }} />
-      );
+      return '<div style="height: 16px;"></div>';
     }
     
     // Handle separator-line sections (horizontal rule)
     if (section.type === 'separator-line') {
-      return (
-        <hr 
-          key={section.id} 
-          style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: '16px 0' }} 
-        />
-      );
+      return '<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 16px 0;"/>';
     }
     
     // Handle standalone table sections and banner sections
     if ((section.type === 'table' || section.type === 'banner') && section.variables?.tableData) {
       const tableData = section.variables.tableData as TableData;
       const tableHtml = generateTableHTML(tableData);
-      
-      return (
-        <div
-          key={section.id}
-          dangerouslySetInnerHTML={{ __html: tableHtml }}
-          style={combinedStyles as React.CSSProperties}
-        />
-      );
+      return `<div style="${styleString}">${tableHtml}</div>`;
     }
     
     // Handle list sections with proper rendering
@@ -157,14 +69,7 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       const isOrdered = section.type.startsWith('number-list');
       const tag = isOrdered ? 'ol' : 'ul';
       const listHtml = `<${tag} style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => `<li>${item}</li>`).join('')}</${tag}>`;
-      
-      return (
-        <div
-          key={section.id}
-          dangerouslySetInnerHTML={{ __html: listHtml }}
-          style={combinedStyles as React.CSSProperties}
-        />
-      );
+      return `<div style="${styleString}">${listHtml}</div>`;
     }
     
     // Handle mixed-content sections - show content with default values or placeholders
@@ -196,13 +101,7 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
         .replace(/\{\{\/each\}\}/g, '<span style="display: inline-flex; align-items: center; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; font-family: monospace; background-color: #dcfce7; color: #15803d; border: 1px solid #86efac;">/each</span>')
         .replace(/\n/g, '<br/>');
       
-      return (
-        <div
-          key={section.id}
-          dangerouslySetInnerHTML={{ __html: `<div style="padding: 8px; line-height: 1.6;">${mixedContent}</div>` }}
-          style={combinedStyles as React.CSSProperties}
-        />
-      );
+      return `<div style="${styleString}; padding: 8px; line-height: 1.6;">${mixedContent}</div>`;
     }
     
     // For heading and text sections with variables, show default values (but section.content keeps Thymeleaf)
@@ -219,14 +118,90 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       displayContent = thymeleafToPlaceholder(section.content);
     }
     
-    return (
-      <div
-        key={section.id}
-        dangerouslySetInnerHTML={{ __html: displayContent }}
-        style={combinedStyles as React.CSSProperties}
-      />
-    );
+    return `<div style="${styleString}">${displayContent}</div>`;
   };
+  
+  // Helper function to generate labeled-content HTML
+  const getLabeledContentHtml = (section: Section, combinedStyles: Record<string, string | undefined>): string => {
+    let label = (section.variables?.label as string) || 'Label';
+    
+    // Helper to check if value is empty
+    const isEmptyValue = (value: any): boolean => {
+      if (value === null || value === undefined) return true;
+      if (typeof value === 'string' && value.trim() === '') return true;
+      return false;
+    };
+    
+    // Replace Thymeleaf in label with default values or {{placeholder}}
+    label = label.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+      if (section.variables && !isEmptyValue(section.variables[varName])) {
+        return String(section.variables[varName]);
+      }
+      return `{{${varName}}}`;
+    }).replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+      if (section.variables && !isEmptyValue(section.variables[varName])) {
+        return String(section.variables[varName]);
+      }
+      return `{{${varName}}}`;
+    });
+    
+    const contentType = (section.variables?.contentType as string) || 'text';
+    let contentHtml = '';
+    
+    if (contentType === 'text') {
+      let textContent = (section.variables?.content as string) || '';
+      // Support {{variable}} placeholders in text content - show {{placeholder}} if no value
+      textContent = textContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+        if (section.variables && !isEmptyValue(section.variables[varName])) {
+          return String(section.variables[varName]);
+        }
+        return match; // Keep {{placeholder}} as-is when no value
+      });
+      contentHtml = `<div style="white-space: pre-wrap;">${textContent}</div>`;
+    } else if (contentType === 'list') {
+      const items = (section.variables?.items as any[]) || [];
+      const listStyle = (section.variables?.listStyle as string) || 'circle';
+      
+      const renderListItem = (item: any): string => {
+        if (typeof item === 'string') {
+          return `<li>${item}</li>`;
+        }
+        
+        const itemStyles = [];
+        if (item.color) itemStyles.push(`color: ${item.color}`);
+        if (item.bold) itemStyles.push('font-weight: bold');
+        if (item.italic) itemStyles.push('font-style: italic');
+        if (item.underline) itemStyles.push('text-decoration: underline');
+        if (item.backgroundColor) itemStyles.push(`background-color: ${item.backgroundColor}`);
+        if (item.fontSize) itemStyles.push(`font-size: ${item.fontSize}`);
+        const styleAttr = itemStyles.length > 0 ? ` style="${itemStyles.join('; ')}"` : '';
+        
+        let html = `<li${styleAttr}>${item.text}`;
+        if (item.children && item.children.length > 0) {
+          html += `<ul style="list-style-type: ${listStyle}; margin-left: 20px; margin-top: 4px;">`;
+          html += item.children.map((child: any) => renderListItem(child)).join('');
+          html += '</ul>';
+        }
+        html += '</li>';
+        return html;
+      };
+      
+      contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => renderListItem(item)).join('')}</ul>`;
+    } else if (contentType === 'table') {
+      const tableData = section.variables?.tableData as TableData;
+      if (tableData && tableData.rows) {
+        contentHtml = generateTableHTML(tableData);
+      }
+    }
+    
+    const styleString = Object.entries(combinedStyles)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
+      .join('; ');
+    
+    return `<div style="${styleString}"><div style="font-weight: bold; margin-bottom: 8px;">${label}</div>${contentHtml}</div>`;
+  };
+  
   
   return (
     <div className={styles.container}>
@@ -239,7 +214,21 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
 
       <div className={styles.previewArea}>
         <div className={styles.previewContent}>
-          {allSections.map((section) => renderSection(section))}
+          {/* Global wrapper table */}
+          <table cellPadding={0} cellSpacing={0} style={{ border: 'none', width: '100%', maxWidth: '800px', margin: '0 auto' }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: 0 }}>
+                  {allSections.map((section, index) => (
+                    <div 
+                      key={section.id}
+                      dangerouslySetInnerHTML={{ __html: wrapSectionInTable(getSectionHtml(section), index === 0) }}
+                    />
+                  ))}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
