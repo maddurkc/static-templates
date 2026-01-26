@@ -2052,7 +2052,7 @@ const RunTemplates = () => {
                             );
                           }
                           
-                          // Handle banner sections - display like text sections
+                          // Handle banner sections - display like heading/text sections
                           if (section.type === 'banner') {
                             const tableData = section.variables?.tableData as any;
                             const bannerText = tableData?.rows?.[0]?.[0] || 'EFT';
@@ -2062,28 +2062,14 @@ const RunTemplates = () => {
                             
                             // Get current banner text from state or use default
                             const currentBannerText = variables[`banner_${section.id}`] as string ?? bannerText;
+                            const isEditingThisBanner = editingSectionId === `banner_${section.id}`;
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Label className="text-sm font-medium">Banner</Label>
-                                  {!isEditable && (
-                                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">Locked</span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div 
-                                    className="px-3 py-1.5 rounded text-sm font-semibold shrink-0"
-                                    style={{ 
-                                      backgroundColor: bgColor,
-                                      fontWeight: 'bold',
-                                      fontSize: '14px'
-                                    }}
-                                  >
-                                    {currentBannerText}
-                                  </div>
-                                  {isEditable && (
-                                    <Input
+                                {/* Banner label with preview - similar to heading sections */}
+                                {isEditingThisBanner && isEditable ? (
+                                  <div className="mb-3">
+                                    <Textarea
                                       value={currentBannerText}
                                       onChange={(e) => {
                                         setVariables(prev => ({
@@ -2091,15 +2077,87 @@ const RunTemplates = () => {
                                           [`banner_${section.id}`]: e.target.value
                                         }));
                                       }}
+                                      className="text-sm min-h-[60px]"
                                       placeholder="Enter banner text..."
-                                      className="flex-1 h-8 text-sm"
+                                      autoFocus
                                     />
-                                  )}
-                                </div>
-                                {!isEditable && (
-                                  <p className="text-xs text-muted-foreground mt-2">
-                                    Banner text is locked and cannot be modified.
-                                  </p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="default"
+                                        onClick={() => setEditingSectionId(null)}
+                                      >
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Done
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost"
+                                        onClick={() => {
+                                          setVariables(prev => ({
+                                            ...prev,
+                                            [`banner_${section.id}`]: bannerText
+                                          }));
+                                          setEditingSectionId(null);
+                                        }}
+                                      >
+                                        Reset
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-start gap-2">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-xs text-muted-foreground font-medium">Banner</span>
+                                        {!isEditable && (
+                                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">Locked</span>
+                                        )}
+                                      </div>
+                                      <div 
+                                        className="inline-block px-3 py-1.5 rounded text-sm font-semibold"
+                                        style={{ 
+                                          backgroundColor: bgColor,
+                                          fontWeight: 'bold',
+                                          fontSize: '14px'
+                                        }}
+                                      >
+                                        {currentBannerText}
+                                      </div>
+                                    </div>
+                                    {isEditable && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 shrink-0 opacity-50 hover:opacity-100"
+                                        onClick={() => setEditingSectionId(`banner_${section.id}`)}
+                                        title="Edit banner text"
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {/* Input field below - similar to placeholder inputs in heading sections */}
+                                {isEditable && !isEditingThisBanner && (
+                                  <div className="mt-3 ml-4 pl-3 border-l-2 border-primary/20">
+                                    <Label className="text-xs font-medium mb-1.5 inline-flex items-center gap-1.5 text-muted-foreground">
+                                      <span className="font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-semibold">Banner Text</span>
+                                    </Label>
+                                    <RichTextEditor
+                                      value={currentBannerText}
+                                      onChange={(html) => {
+                                        setVariables(prev => ({
+                                          ...prev,
+                                          [`banner_${section.id}`]: html
+                                        }));
+                                      }}
+                                      placeholder="Enter banner text..."
+                                      singleLine
+                                      className="mt-1"
+                                    />
+                                  </div>
                                 )}
                               </div>
                             );
