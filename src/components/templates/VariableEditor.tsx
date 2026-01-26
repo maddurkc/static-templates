@@ -377,7 +377,16 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
   if (section.type === 'line-break') {
     return (
       <div className={styles.centerText}>
-        Line break - no configuration needed
+        Line break - adds vertical spacing (empty line)
+      </div>
+    );
+  }
+  
+  // No editor needed for separator lines
+  if (section.type === 'separator-line') {
+    return (
+      <div className={styles.centerText}>
+        Separator line - horizontal divider
       </div>
     );
   }

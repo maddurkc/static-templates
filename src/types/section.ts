@@ -22,6 +22,7 @@ export type SectionType =
   | 'header'
   | 'footer'
   | 'line-break'
+  | 'separator-line'
   | 'static-text'
   | 'mixed-content'
   | 'labeled-content'
