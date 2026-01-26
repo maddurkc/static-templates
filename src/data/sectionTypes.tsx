@@ -16,6 +16,7 @@ import {
   Grid3x3,
   Code,
   Minus,
+  SeparatorHorizontal,
   FileText,
   Box,
   Flag
@@ -254,9 +255,17 @@ export const sectionTypes: SectionDefinition[] = [
     type: 'line-break',
     label: 'Line Break',
     icon: Minus,
-    description: 'Add vertical spacing between sections',
-    defaultContent: '<br/>',
-    category: 'text',
+    description: 'Add an empty line (vertical gap) between sections',
+    defaultContent: '<br/><br/>',
+    category: 'layout',
+  },
+  {
+    type: 'separator-line',
+    label: 'Separator Line',
+    icon: SeparatorHorizontal,
+    description: 'Add a horizontal divider line between sections',
+    defaultContent: '<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 16px 0;"/>',
+    category: 'layout',
   },
   {
     type: 'static-text',

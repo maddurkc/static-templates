@@ -110,6 +110,23 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
       );
     }
     
+    // Handle line-break sections (empty vertical gap)
+    if (section.type === 'line-break') {
+      return (
+        <div key={section.id} style={{ height: '16px' }} />
+      );
+    }
+    
+    // Handle separator-line sections (horizontal rule)
+    if (section.type === 'separator-line') {
+      return (
+        <hr 
+          key={section.id} 
+          style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: '16px 0' }} 
+        />
+      );
+    }
+    
     // Handle standalone table sections and banner sections
     if ((section.type === 'table' || section.type === 'banner') && section.variables?.tableData) {
       const tableData = section.variables.tableData as TableData;

@@ -798,9 +798,14 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     return wrapInOutlookTable(listHtml);
   }
   
-  // Handle line-break sections
+  // Handle line-break sections (empty line gap)
   if (section.type === 'line-break') {
-    return '<br/>';
+    return '<div style="height: 16px;"></div>';
+  }
+  
+  // Handle separator-line sections (horizontal rule)
+  if (section.type === 'separator-line') {
+    return '<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 16px 0;"/>';
   }
   
   // Handle container sections with nested children
