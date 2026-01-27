@@ -206,7 +206,14 @@ export const RichTextEditor = ({
       ? linkUrl 
       : `https://${linkUrl}`;
     document.execCommand('createLink', false, url);
+    
+    // Add target="_blank" to the newly created link
     if (editorRef.current) {
+      const links = editorRef.current.querySelectorAll(`a[href="${url}"]`);
+      links.forEach(link => {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      });
       onChange(editorRef.current.innerHTML);
     }
     setLinkUrl('');
