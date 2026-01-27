@@ -1392,27 +1392,33 @@ const RunTemplates = () => {
                                 key={section.id} 
                                 className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}
                               >
-                                {/* Label - Jira-style editable */}
+                                {/* Label - Jira-style editable with RichTextEditor */}
                                 <div className="mb-2">
                                   {editable ? (
                                     editingLabelId === section.id ? (
-                                      <Input
-                                        autoFocus
-                                        value={labelValue}
-                                        onChange={(e) => setLabelVariables(prev => ({
-                                          ...prev,
-                                          [labelVarName]: e.target.value
-                                        }))}
-                                        onFocus={() => scrollToSection(section.id)}
-                                        onBlur={() => setEditingLabelId(null)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' || e.key === 'Escape') {
-                                            setEditingLabelId(null);
-                                          }
-                                        }}
-                                        className="font-medium text-sm h-9 border-primary/30 focus:border-primary bg-background"
-                                        placeholder="Enter label..."
-                                      />
+                                      <div className="border rounded-lg border-primary/30 bg-background">
+                                        <RichTextEditor
+                                          value={labelValue}
+                                          onChange={(html) => setLabelVariables(prev => ({
+                                            ...prev,
+                                            [labelVarName]: html
+                                          }))}
+                                          onFocus={() => scrollToSection(section.id)}
+                                          placeholder="Enter label..."
+                                          className="font-medium text-sm"
+                                        />
+                                        <div className="flex justify-end p-1 border-t border-border/50">
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 px-2 text-xs"
+                                            onClick={() => setEditingLabelId(null)}
+                                          >
+                                            <Check className="h-3 w-3 mr-1" />
+                                            Done
+                                          </Button>
+                                        </div>
+                                      </div>
                                     ) : (
                                       <div 
                                         className="group flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-muted/50 transition-colors"
