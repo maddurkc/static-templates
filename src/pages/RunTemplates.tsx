@@ -135,7 +135,7 @@ const RunTemplates = () => {
     if (selectedTemplate) {
       const vars = extractAllVariables(selectedTemplate);
       const initialVars: Record<string, string | TextStyle> = {};
-      const initialListVars: Record<string, string[]> = {};
+      const initialListVars: Record<string, string[] | ListItemStyle[]> = {};
       const initialTableVars: Record<string, any> = {};
       const initialLabelVars: Record<string, string> = {};
       
@@ -379,7 +379,7 @@ const RunTemplates = () => {
         
         if (isListMatch || isSectionIdMatch) {
           if (section.variables?.contentType === 'list') {
-            return (section.variables.items as string[]) || [''];
+            return (section.variables.items as (string | ListItemStyle)[]) || [''];
           } else if (section.variables?.contentType === 'table') {
             const tableData = section.variables.tableData;
             if (tableData && tableData.headers) {
@@ -398,7 +398,7 @@ const RunTemplates = () => {
       if (LIST_SECTION_TYPES.includes(section.type)) {
         const listVarName = section.variables?.listVariableName as string;
         if ((listVarName && listVarName === varName) || section.id === varName) {
-          return (section.variables?.items as string[]) || [''];
+          return (section.variables?.items as (string | ListItemStyle)[]) || [''];
         }
       }
       
