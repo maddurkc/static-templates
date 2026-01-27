@@ -78,21 +78,16 @@ const ListItemEditor = ({
           </Button>
         )}
         
-        <Input
-          value={item.text}
-          onChange={(e) => {
-            updateItemAtPath(itemPath, (i) => ({ ...i, text: e.target.value }));
-          }}
-          className="flex-1 h-8 text-sm"
-          placeholder={`Item ${index + 1}`}
-          style={{
-            fontWeight: item.bold ? 'bold' : 'normal',
-            fontStyle: item.italic ? 'italic' : 'normal',
-            textDecoration: item.underline ? 'underline' : 'none',
-            color: item.color || 'inherit',
-            backgroundColor: item.backgroundColor || 'transparent'
-          }}
-        />
+        <div className="flex-1">
+          <RichTextEditor
+            value={item.text}
+            onChange={(html) => {
+              updateItemAtPath(itemPath, (i) => ({ ...i, text: html }));
+            }}
+            placeholder={`Item ${index + 1}`}
+            singleLine={true}
+          />
+        </div>
         
         <Popover>
           <PopoverTrigger asChild>
@@ -848,19 +843,18 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
             <Label className="text-sm font-medium">
               Text Content (use {`{{`}variable{`}}`} for dynamic data)
             </Label>
-            <Textarea
+            <RichTextEditor
               value={contentText}
-              onChange={(e) => {
+              onChange={(html) => {
                 onUpdate({
                   ...section,
-                  variables: { ...section.variables, content: e.target.value }
+                  variables: { ...section.variables, content: html }
                 });
               }}
-              className="min-h-[100px] text-sm"
-              placeholder="Example: Status is {{status}}&#10;Issue count: {{count}}"
+              placeholder="Example: Status is {{status}}. Issue count: {{count}}"
             />
             <p className="text-xs text-muted-foreground">
-              Type your content and use {`{{`}variableName{`}}`} for placeholders. Supports multiple lines.
+              Type your content and use {`{{`}variableName{`}}`} for placeholders. Supports multiple lines and rich formatting.
             </p>
             
             {contentPlaceholders.length > 0 && (
