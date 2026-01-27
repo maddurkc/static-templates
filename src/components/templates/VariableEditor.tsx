@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { TableEditor } from "./TableEditor";
 import { ThymeleafEditor } from "./ThymeleafEditor";
 import { ApiVariablePicker } from "./ApiVariablePicker";
+import { RichTextEditor } from "./RichTextEditor";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { generateListVariableName, generateThymeleafListHtml, getListTag, getListStyleType, isValidListVariableName, sanitizeVariableName } from "@/lib/listThymeleafUtils";
 import styles from "./VariableEditor.module.scss";
@@ -1091,11 +1092,12 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         
         <div className={styles.section}>
           <Label className={styles.label}>Content (use {`{{`}variable{`}}`} for dynamic data)</Label>
-          <Textarea
+          <RichTextEditor
             value={userContent}
-            onChange={(e) => {
-              const newContent = e.target.value;
-              const newPlaceholders = extractPlaceholders(newContent);
+            onChange={(newContent) => {
+              // Strip HTML tags for placeholder extraction but keep the rich content
+              const plainTextContent = newContent.replace(/<[^>]*>/g, '');
+              const newPlaceholders = extractPlaceholders(plainTextContent);
               
               // Get the section's HTML tag wrapper
               const tagMatch = section.content.match(/^<(\w+)>/);
@@ -1132,7 +1134,6 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 variables: updatedVariables
               });
             }}
-            className={styles.staticTextArea}
             placeholder={`Example: Incident Report {{incidentNumber}} - Status: {{status}}`}
             rows={3}
           />
