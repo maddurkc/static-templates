@@ -1055,16 +1055,21 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
 
   // Handle heading and text sections with inline placeholders
   if (isInlinePlaceholderSection) {
-    // Get user-friendly content (without HTML tags, with placeholders)
+    // Get user-friendly content (preserving rich text formatting, with placeholders)
     const getUserFriendlyContent = (): string => {
       let content = section.content;
+      
+      // Remove only the outer wrapper tag (e.g., <h1>...</h1>, <p>...</p>)
+      // but preserve inner HTML formatting like <br>, <div>, <span>, etc.
+      content = content.replace(/^<(\w+)>([\s\S]*)<\/\1>$/, '$2');
+      
       // Convert Thymeleaf tags back to {{placeholder}} format for editing
       // Handle new span format: <span th:utext="${varName}"/>
-      content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g, '{{$1}}');
+      content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|><\/span>|>)/g, '{{$1}}');
       // Handle legacy format: <th:utext="${varName}">
       content = content.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
-      // Remove HTML tags for clean editing
-      return content.replace(/<[^>]*>/g, '');
+      
+      return content;
     };
     
     // Get preview with default values
@@ -1081,7 +1086,9 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     
     const userContent = getUserFriendlyContent();
     const previewContent = getPreviewContent();
-    const detectedPlaceholders = extractPlaceholders(userContent);
+    // Extract placeholders from plain text (strip HTML for detection)
+    const plainTextForExtraction = userContent.replace(/<[^>]*>/g, '');
+    const detectedPlaceholders = extractPlaceholders(plainTextForExtraction);
     
     return (
       <div className={styles.container}>
