@@ -135,7 +135,7 @@ const RunTemplates = () => {
     if (selectedTemplate) {
       const vars = extractAllVariables(selectedTemplate);
       const initialVars: Record<string, string | TextStyle> = {};
-      const initialListVars: Record<string, string[]> = {};
+      const initialListVars: Record<string, string[] | ListItemStyle[]> = {};
       const initialTableVars: Record<string, any> = {};
       const initialLabelVars: Record<string, string> = {};
       
@@ -167,9 +167,10 @@ const RunTemplates = () => {
             // Initialize list variables for labeled-content with list contentType
             if (section.variables?.contentType === 'list') {
               const listVarName = (section.variables.listVariableName as string) || section.id;
-              const items = section.variables.items as string[];
-              if (items && items.length > 0) {
-                initialListVars[listVarName] = items;
+              const rawItems = section.variables.items as (string | ListItemStyle)[];
+              if (rawItems && rawItems.length > 0) {
+                // Handle both string[] and ListItemStyle[] formats
+                initialListVars[listVarName] = rawItems as (string[] | ListItemStyle[]);
               } else if (!initialListVars[listVarName]) {
                 initialListVars[listVarName] = [''];
               }
@@ -179,9 +180,9 @@ const RunTemplates = () => {
           // Initialize standalone list sections directly
           if (LIST_SECTION_TYPES.includes(section.type)) {
             const listVarName = (section.variables?.listVariableName as string) || section.id;
-            const items = section.variables?.items as string[];
-            if (items && items.length > 0) {
-              initialListVars[listVarName] = items;
+            const rawItems = section.variables?.items as (string | ListItemStyle)[];
+            if (rawItems && rawItems.length > 0) {
+              initialListVars[listVarName] = rawItems as (string[] | ListItemStyle[]);
             } else if (!initialListVars[listVarName]) {
               initialListVars[listVarName] = [''];
             }
@@ -855,9 +856,9 @@ const RunTemplates = () => {
         // Initialize standalone list sections directly
         if (LIST_SECTION_TYPES.includes(section.type)) {
           const listVarName = (section.variables?.listVariableName as string) || section.id;
-          const items = section.variables?.items as string[];
-          if (items && items.length > 0) {
-            initialListVars[listVarName] = items;
+          const rawItems = section.variables?.items as (string | ListItemStyle)[];
+          if (rawItems && rawItems.length > 0) {
+            initialListVars[listVarName] = rawItems as (string[] | ListItemStyle[]);
           } else if (!initialListVars[listVarName]) {
             initialListVars[listVarName] = [''];
           }
@@ -866,9 +867,9 @@ const RunTemplates = () => {
         // Initialize labeled-content list sections
         if (section.type === 'labeled-content' && section.variables?.contentType === 'list') {
           const listVarName = (section.variables.listVariableName as string) || section.id;
-          const items = section.variables.items as string[];
-          if (items && items.length > 0) {
-            initialListVars[listVarName] = items;
+          const rawItems = section.variables.items as (string | ListItemStyle)[];
+          if (rawItems && rawItems.length > 0) {
+            initialListVars[listVarName] = rawItems as (string[] | ListItemStyle[]);
           } else if (!initialListVars[listVarName]) {
             initialListVars[listVarName] = [''];
           }
