@@ -213,6 +213,54 @@ const SortableSection = ({
               __html: generateTableHTML(section.variables.tableData as TableData)
             }}
           />
+        ) : !isContainer && ['bullet-list-circle', 'bullet-list-disc', 'bullet-list-square', 'number-list-1', 'number-list-i', 'number-list-a'].includes(section.type) && section.variables?.items ? (
+          // Handle standalone list sections
+          <div 
+            className={styles.listPreview}
+            dangerouslySetInnerHTML={{ 
+              __html: (() => {
+                const items = section.variables.items as any[];
+                // Determine list style from section type
+                let listStyle = 'disc';
+                if (section.type === 'bullet-list-circle') listStyle = 'circle';
+                else if (section.type === 'bullet-list-disc') listStyle = 'disc';
+                else if (section.type === 'bullet-list-square') listStyle = 'square';
+                else if (section.type === 'number-list-1') listStyle = 'decimal';
+                else if (section.type === 'number-list-i') listStyle = 'lower-roman';
+                else if (section.type === 'number-list-a') listStyle = 'lower-alpha';
+                
+                if (!items || items.length === 0) {
+                  return '<p class="text-muted-foreground p-2">No list items</p>';
+                }
+                
+                const isNumbered = ['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 'upper-alpha'].includes(listStyle);
+                const tag = isNumbered ? 'ol' : 'ul';
+                
+                const renderItems = (itemList: any[]): string => {
+                  return itemList.map(item => {
+                    const text = typeof item === 'string' ? item : item.text || '';
+                    const styles: string[] = [];
+                    if (item.color) styles.push(`color: ${item.color}`);
+                    if (item.bold) styles.push('font-weight: bold');
+                    if (item.italic) styles.push('font-style: italic');
+                    if (item.underline) styles.push('text-decoration: underline');
+                    if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
+                    if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
+                    const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+                    
+                    let childHtml = '';
+                    if (item.children && item.children.length > 0) {
+                      childHtml = `<${tag} style="list-style-type: ${listStyle}; margin-left: 1rem;">${renderItems(item.children)}</${tag}>`;
+                    }
+                    
+                    return `<li${styleAttr}>${text}${childHtml}</li>`;
+                  }).join('');
+                };
+                
+                return `<${tag} style="list-style-type: ${listStyle}; padding-left: 1.5rem;">${renderItems(items)}</${tag}>`;
+              })()
+            }}
+          />
         ) : !isContainer && (
           <>
             <div
