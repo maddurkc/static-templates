@@ -135,7 +135,7 @@ const RunTemplates = () => {
     if (selectedTemplate) {
       const vars = extractAllVariables(selectedTemplate);
       const initialVars: Record<string, string | TextStyle> = {};
-      const initialListVars: Record<string, string[] | ListItemStyle[]> = {};
+      const initialListVars: Record<string, string[]> = {};
       const initialTableVars: Record<string, any> = {};
       const initialLabelVars: Record<string, string> = {};
       
@@ -151,23 +151,9 @@ const RunTemplates = () => {
         }
       });
       
-      // Helper function to flatten sections including children for initialization
-      const flattenSectionsForInit = (sections: Section[]): Section[] => {
-        const result: Section[] = [];
-        sections.forEach(section => {
-          result.push(section);
-          if (section.children && section.children.length > 0) {
-            result.push(...flattenSectionsForInit(section.children));
-          }
-        });
-        return result;
-      };
-      
-      // Initialize label variables and list variables directly from sections
+      // Initialize label variables from labeled-content sections
       if (selectedTemplate.sections) {
-        const allSections = flattenSectionsForInit(selectedTemplate.sections);
-        
-        allSections.forEach(section => {
+        selectedTemplate.sections.forEach(section => {
           if (section.type === 'labeled-content') {
             // Use stored labelVariableName, fallback to section.id for backward compatibility
             const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
@@ -177,44 +163,6 @@ const RunTemplates = () => {
               .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (_, varName) => `{{${varName}}}`)
               .replace(/<th:utext="\$\{(\w+)\}">/g, (_, varName) => `{{${varName}}}`);
             initialLabelVars[labelVarName] = cleanLabel;
-            
-            // Initialize list variables for labeled-content with list contentType
-            if (section.variables?.contentType === 'list') {
-              const listVarName = (section.variables.listVariableName as string) || section.id;
-              const rawItems = section.variables?.items;
-              
-              if (rawItems && Array.isArray(rawItems) && rawItems.length > 0) {
-                // Convert ListItemStyle[] to string[] for display, preserving the text
-                const processedItems = rawItems.map((item: string | ListItemStyle) => {
-                  if (typeof item === 'object' && item !== null && 'text' in item) {
-                    return item.text || '';
-                  }
-                  return String(item || '');
-                });
-                initialListVars[listVarName] = processedItems;
-              } else {
-                initialListVars[listVarName] = [''];
-              }
-            }
-          }
-          
-          // Initialize standalone list sections directly
-          if (LIST_SECTION_TYPES.includes(section.type)) {
-            const listVarName = (section.variables?.listVariableName as string) || section.id;
-            const rawItems = section.variables?.items;
-            
-            if (rawItems && Array.isArray(rawItems) && rawItems.length > 0) {
-              // Convert ListItemStyle[] to string[] for display, preserving the text
-              const processedItems = rawItems.map((item: string | ListItemStyle) => {
-                if (typeof item === 'object' && item !== null && 'text' in item) {
-                  return item.text || '';
-                }
-                return String(item || '');
-              });
-              initialListVars[listVarName] = processedItems;
-            } else {
-              initialListVars[listVarName] = [''];
-            }
           }
         });
       }
@@ -449,17 +397,8 @@ const RunTemplates = () => {
       // For standalone list sections (bullet-list-*, number-list-*)
       if (LIST_SECTION_TYPES.includes(section.type)) {
         const listVarName = section.variables?.listVariableName as string;
-        const matchesVarName = listVarName && listVarName === varName;
-        const matchesSectionId = section.id === varName;
-        const matchesEither = matchesVarName || matchesSectionId;
-        
-        if (matchesEither) {
-          const items = section.variables?.items as string[];
-          // Return actual items if they exist and have content, otherwise default to empty array with placeholder
-          if (items && items.length > 0) {
-            return items;
-          }
-          return [''];
+        if ((listVarName && listVarName === varName) || section.id === varName) {
+          return (section.variables?.items as string[]) || [''];
         }
       }
       
@@ -878,63 +817,6 @@ const RunTemplates = () => {
         initialVars[v] = String(defaultVal);
       }
     });
-    
-    // Helper function to flatten sections including children for initialization
-    const flattenSectionsForRun = (sections: Section[]): Section[] => {
-      const result: Section[] = [];
-      sections.forEach(section => {
-        result.push(section);
-        if (section.children && section.children.length > 0) {
-          result.push(...flattenSectionsForRun(section.children));
-        }
-      });
-      return result;
-    };
-    
-    // Also directly initialize list variables from sections to ensure all items are captured
-    if (template.sections) {
-      const allSections = flattenSectionsForRun(template.sections);
-      
-      allSections.forEach(section => {
-        // Initialize standalone list sections directly
-        if (LIST_SECTION_TYPES.includes(section.type)) {
-          const listVarName = (section.variables?.listVariableName as string) || section.id;
-          const rawItems = section.variables?.items;
-          
-          if (rawItems && Array.isArray(rawItems) && rawItems.length > 0) {
-            // Convert ListItemStyle[] to string[] for display, preserving the text
-            const processedItems = rawItems.map((item: string | ListItemStyle) => {
-              if (typeof item === 'object' && item !== null && 'text' in item) {
-                return item.text || '';
-              }
-              return String(item || '');
-            });
-            initialListVars[listVarName] = processedItems;
-          } else {
-            initialListVars[listVarName] = [''];
-          }
-        }
-        
-        // Initialize labeled-content list sections
-        if (section.type === 'labeled-content' && section.variables?.contentType === 'list') {
-          const listVarName = (section.variables.listVariableName as string) || section.id;
-          const rawItems = section.variables?.items;
-          
-          if (rawItems && Array.isArray(rawItems) && rawItems.length > 0) {
-            // Convert ListItemStyle[] to string[] for display, preserving the text
-            const processedItems = rawItems.map((item: string | ListItemStyle) => {
-              if (typeof item === 'object' && item !== null && 'text' in item) {
-                return item.text || '';
-              }
-              return String(item || '');
-            });
-            initialListVars[listVarName] = processedItems;
-          } else {
-            initialListVars[listVarName] = [''];
-          }
-        }
-      });
-    }
     
     setVariables(initialVars);
     setListVariables(initialListVars);
