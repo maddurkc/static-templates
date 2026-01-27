@@ -1704,17 +1704,21 @@ const RunTemplates = () => {
                             // Use edited value if available, otherwise use original
                             const rawContent = hasBeenEdited ? editedValue : originalContent;
                             
-                            // Convert Thymeleaf tags to {{placeholder}} format BEFORE stripping HTML
+                            // Convert Thymeleaf tags to {{placeholder}} format, preserving other HTML
                             const contentWithPlaceholders = rawContent
                               .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
+                              .replace(/<span\s+th:utext="\$\{(\w+)\}"><\/span>/g, '{{$1}}')
                               .replace(/<th:utext="\$\{(\w+)\}">[^<]*<\/th:utext>/g, '{{$1}}')
                               .replace(/<th:block\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
                               .replace(/th:utext="\$\{(\w+)\}"/g, '{{$1}}');
                             
-                            // Strip remaining HTML tags to get plain text for label display
-                            // Don't trim - preserve spaces for editing
-                            const plainTextContent = contentWithPlaceholders.replace(/<[^>]*>/g, '');
-                            const displayContent = plainTextContent.trim(); // Only trim for display checks
+                            // Remove only the outer wrapper tag (e.g., <h1>...</h1>, <p>...</p>)
+                            // but preserve inner HTML formatting like <br>, <div>, <span>, etc.
+                            let contentForDisplay = contentWithPlaceholders.replace(/^<(\w+)>([\s\S]*)<\/\1>$/, '$2');
+                            
+                            // For placeholder extraction, strip HTML to get plain text
+                            const plainTextContent = contentForDisplay.replace(/<[^>]*>/g, '');
+                            const displayContentCheck = plainTextContent.trim();
                             
                             // Dynamically extract placeholders from content
                             const varNames: string[] = [];
@@ -1727,7 +1731,7 @@ const RunTemplates = () => {
                             }
                             
                             // Skip sections with no content
-                            if (!displayContent) return null;
+                            if (!displayContentCheck) return null;
                             
                             const isEditingThisSection = editingSectionId === section.id;
                             const hasPlaceholders = varNames.length > 0;
@@ -1737,14 +1741,17 @@ const RunTemplates = () => {
                               ? ((section.variables?.tableData as any)?.cellStyles?.['0-0']?.backgroundColor || '#FFFF00')
                               : undefined;
                             
-                            // Determine the value for textarea - use edited value or convert original to plain text
-                            const textareaValue = hasBeenEdited 
+                            // Determine the value for RichTextEditor - preserve HTML formatting
+                            // Convert Thymeleaf to placeholders but keep other HTML (br, div, span styles)
+                            const richTextValue = hasBeenEdited 
                               ? editedValue 
-                              : originalContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
+                              : originalContent
+                                  .replace(/^<(\w+)>([\s\S]*)<\/\1>$/, '$2') // Remove outer wrapper only
+                                  .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
+                                  .replace(/<span\s+th:utext="\$\{(\w+)\}"><\/span>/g, '{{$1}}')
                                   .replace(/<th:utext="\$\{(\w+)\}">[^<]*<\/th:utext>/g, '{{$1}}')
                                   .replace(/<th:block\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
-                                  .replace(/th:utext="\$\{(\w+)\}"/g, '{{$1}}')
-                                  .replace(/<[^>]*>/g, '');
+                                  .replace(/th:utext="\$\{(\w+)\}"/g, '{{$1}}');
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
@@ -1752,7 +1759,7 @@ const RunTemplates = () => {
                                 {isEditingThisSection && isEditable ? (
                                   <div className="mb-3">
                                     <RichTextEditor
-                                      value={textareaValue}
+                                      value={richTextValue}
                                       onChange={(html) => {
                                         if (isBanner) {
                                           setVariables(prev => ({
@@ -1810,11 +1817,11 @@ const RunTemplates = () => {
                                         style={{ backgroundColor: bannerBgColor, color: '#000' }}
                                         dangerouslySetInnerHTML={{ 
                                           __html: hasPlaceholders 
-                                            ? displayContent.replace(
+                                            ? contentForDisplay.replace(
                                                 /\{\{(\w+)\}\}/g, 
                                                 '<span style="background-color: rgba(0,0,0,0.1); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em;">{{$1}}</span>'
                                               )
-                                            : displayContent
+                                            : contentForDisplay
                                         }}
                                       />
                                     ) : (
@@ -1823,11 +1830,11 @@ const RunTemplates = () => {
                                         style={{ lineHeight: 1.6 }}
                                         dangerouslySetInnerHTML={{ 
                                           __html: hasPlaceholders 
-                                            ? displayContent.replace(
+                                            ? contentForDisplay.replace(
                                                 /\{\{(\w+)\}\}/g, 
                                                 '<span style="background-color: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em; font-weight: 600;">{{$1}}</span>'
                                               )
-                                            : displayContent
+                                            : contentForDisplay
                                         }}
                                       />
                                     )}
