@@ -652,14 +652,18 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         
         <div className={styles.section}>
           <Label className={styles.label}>Field Label (use {`{{`}variable{`}}`} for dynamic data)</Label>
-          <Textarea
+          <RichTextEditor
             value={userFriendlyLabel}
-            onChange={(e) => {
-              const newLabel = e.target.value;
-              const newPlaceholders = newLabel.match(/\{\{(\w+)\}\}/g) || [];
+            onChange={(html) => {
+              // Extract plain text for placeholder detection while keeping rich formatting
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = html;
+              const plainText = tempDiv.textContent || '';
+              const newPlaceholders = plainText.match(/\{\{(\w+)\}\}/g) || [];
               
-              // Convert {{placeholder}} to Thymeleaf (using span format)
-              let thymeleafLabel = newLabel;
+              // Store the HTML directly (keeping rich formatting)
+              // But also convert {{placeholder}} to Thymeleaf for backend processing
+              let thymeleafLabel = html;
               newPlaceholders.forEach(match => {
                 const varName = match.replace(/\{\{|\}\}/g, '');
                 thymeleafLabel = thymeleafLabel.replace(new RegExp(`\\{\\{${varName}\\}\\}`, 'g'), `<span th:utext="\${${varName}}"/>`);
@@ -679,12 +683,10 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 variables: updatedVariables
               });
             }}
-            className="min-h-[60px] text-sm"
             placeholder='Example: Incident Report {{incidentNumber}} or Summary {{status}}'
-            rows={2}
           />
           <p className={styles.description}>
-            Type your label and use {`{{`}variableName{`}}`} syntax for dynamic values.
+            Type your label and use {`{{`}variableName{`}}`} syntax for dynamic values. Supports rich formatting.
           </p>
         </div>
         
