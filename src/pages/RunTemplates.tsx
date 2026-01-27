@@ -151,7 +151,7 @@ const RunTemplates = () => {
         }
       });
       
-      // Initialize label variables from labeled-content sections
+      // Initialize label variables and list variables directly from sections
       if (selectedTemplate.sections) {
         selectedTemplate.sections.forEach(section => {
           if (section.type === 'labeled-content') {
@@ -163,6 +163,28 @@ const RunTemplates = () => {
               .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (_, varName) => `{{${varName}}}`)
               .replace(/<th:utext="\$\{(\w+)\}">/g, (_, varName) => `{{${varName}}}`);
             initialLabelVars[labelVarName] = cleanLabel;
+            
+            // Initialize list variables for labeled-content with list contentType
+            if (section.variables?.contentType === 'list') {
+              const listVarName = (section.variables.listVariableName as string) || section.id;
+              const items = section.variables.items as string[];
+              if (items && items.length > 0) {
+                initialListVars[listVarName] = items;
+              } else if (!initialListVars[listVarName]) {
+                initialListVars[listVarName] = [''];
+              }
+            }
+          }
+          
+          // Initialize standalone list sections directly
+          if (LIST_SECTION_TYPES.includes(section.type)) {
+            const listVarName = (section.variables?.listVariableName as string) || section.id;
+            const items = section.variables?.items as string[];
+            if (items && items.length > 0) {
+              initialListVars[listVarName] = items;
+            } else if (!initialListVars[listVarName]) {
+              initialListVars[listVarName] = [''];
+            }
           }
         });
       }
@@ -397,8 +419,17 @@ const RunTemplates = () => {
       // For standalone list sections (bullet-list-*, number-list-*)
       if (LIST_SECTION_TYPES.includes(section.type)) {
         const listVarName = section.variables?.listVariableName as string;
-        if ((listVarName && listVarName === varName) || section.id === varName) {
-          return (section.variables?.items as string[]) || [''];
+        const matchesVarName = listVarName && listVarName === varName;
+        const matchesSectionId = section.id === varName;
+        const matchesEither = matchesVarName || matchesSectionId;
+        
+        if (matchesEither) {
+          const items = section.variables?.items as string[];
+          // Return actual items if they exist and have content, otherwise default to empty array with placeholder
+          if (items && items.length > 0) {
+            return items;
+          }
+          return [''];
         }
       }
       
@@ -817,6 +848,33 @@ const RunTemplates = () => {
         initialVars[v] = String(defaultVal);
       }
     });
+    
+    // Also directly initialize list variables from sections to ensure all items are captured
+    if (template.sections) {
+      template.sections.forEach(section => {
+        // Initialize standalone list sections directly
+        if (LIST_SECTION_TYPES.includes(section.type)) {
+          const listVarName = (section.variables?.listVariableName as string) || section.id;
+          const items = section.variables?.items as string[];
+          if (items && items.length > 0) {
+            initialListVars[listVarName] = items;
+          } else if (!initialListVars[listVarName]) {
+            initialListVars[listVarName] = [''];
+          }
+        }
+        
+        // Initialize labeled-content list sections
+        if (section.type === 'labeled-content' && section.variables?.contentType === 'list') {
+          const listVarName = (section.variables.listVariableName as string) || section.id;
+          const items = section.variables.items as string[];
+          if (items && items.length > 0) {
+            initialListVars[listVarName] = items;
+          } else if (!initialListVars[listVarName]) {
+            initialListVars[listVarName] = [''];
+          }
+        }
+      });
+    }
     
     setVariables(initialVars);
     setListVariables(initialListVars);
