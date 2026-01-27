@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
+import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle } from "lucide-react";
 import styles from "./RichTextEditor.module.scss";
 
 interface RichTextEditorProps {
@@ -198,6 +198,39 @@ export const RichTextEditor = ({
     editorRef.current?.focus();
   }, [onChange, restoreSelection]);
 
+  const applyList = useCallback((listType: 'bullet' | 'number', styleType?: string) => {
+    restoreSelection();
+    
+    if (listType === 'bullet') {
+      document.execCommand('insertUnorderedList', false);
+      // Apply list-style-type after creating the list
+      if (editorRef.current && styleType) {
+        const lists = editorRef.current.querySelectorAll('ul');
+        lists.forEach(list => {
+          list.style.listStyleType = styleType;
+          list.style.paddingLeft = '20px';
+          list.style.marginLeft = '0';
+        });
+      }
+    } else {
+      document.execCommand('insertOrderedList', false);
+      // Apply list-style-type after creating the list
+      if (editorRef.current && styleType) {
+        const lists = editorRef.current.querySelectorAll('ol');
+        lists.forEach(list => {
+          list.style.listStyleType = styleType;
+          list.style.paddingLeft = '20px';
+          list.style.marginLeft = '0';
+        });
+      }
+    }
+    
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+    editorRef.current?.focus();
+  }, [onChange, restoreSelection]);
+
   const applyLink = useCallback(() => {
     if (!linkUrl.trim()) return;
     
@@ -384,6 +417,97 @@ export const RichTextEditor = ({
                 </Button>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => applyAlignment('right')} title="Align Right">
                   <AlignRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          {/* Bullet List */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} title="Bullet List">
+                <List className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+              <Label className="text-xs mb-2 block">Bullet Style</Label>
+              <div className="flex gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 flex flex-col items-center justify-center" 
+                  onClick={() => applyList('bullet', 'disc')} 
+                  title="Disc (•)"
+                >
+                  <span className="text-lg leading-none">•</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 flex flex-col items-center justify-center" 
+                  onClick={() => applyList('bullet', 'circle')} 
+                  title="Circle (○)"
+                >
+                  <span className="text-lg leading-none">○</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 flex flex-col items-center justify-center" 
+                  onClick={() => applyList('bullet', 'square')} 
+                  title="Square (■)"
+                >
+                  <span className="text-lg leading-none">■</span>
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          {/* Number List */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} title="Numbered List">
+                <ListOrdered className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
+              <Label className="text-xs mb-2 block">Number Style</Label>
+              <div className="flex gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2 text-xs" 
+                  onClick={() => applyList('number', 'decimal')} 
+                  title="1, 2, 3..."
+                >
+                  1.
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2 text-xs" 
+                  onClick={() => applyList('number', 'lower-alpha')} 
+                  title="a, b, c..."
+                >
+                  a)
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2 text-xs" 
+                  onClick={() => applyList('number', 'upper-alpha')} 
+                  title="A, B, C..."
+                >
+                  A)
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2 text-xs" 
+                  onClick={() => applyList('number', 'lower-roman')} 
+                  title="i, ii, iii..."
+                >
+                  i.
                 </Button>
               </div>
             </PopoverContent>
