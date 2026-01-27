@@ -607,12 +607,10 @@ const RunTemplates = () => {
             thymeleafVars.forEach(v => varsFromSections.add(v));
           }
           
-          // For list content, use the stored listVariableName
+          // For list content, use the stored listVariableName or fallback to section.id
           if (section.variables?.contentType === 'list') {
-            const listVarName = section.variables.listVariableName as string;
-            if (listVarName) {
-              varsFromSections.add(listVarName);
-            }
+            const listVarName = (section.variables.listVariableName as string) || section.id;
+            varsFromSections.add(listVarName);
           } else if (section.variables?.contentType === 'table') {
             // For table content, use section ID as the variable key
             varsFromSections.add(section.id);
