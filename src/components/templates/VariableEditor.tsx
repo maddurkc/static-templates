@@ -1147,9 +1147,10 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
             <Separator />
             <div className={styles.section}>
               <Label className={styles.label}>Preview with Default Values</Label>
-              <div className="p-3 border rounded bg-muted/30 text-sm">
-                {previewContent || 'No content'}
-              </div>
+              <div 
+                className="p-3 border rounded bg-muted/30 text-sm"
+                dangerouslySetInnerHTML={{ __html: previewContent || 'No content' }}
+              />
             </div>
           </>
         )}
