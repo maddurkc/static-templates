@@ -1751,24 +1751,23 @@ const RunTemplates = () => {
                                 {/* Content label - show with placeholders highlighted or as static text */}
                                 {isEditingThisSection && isEditable ? (
                                   <div className="mb-3">
-                                    <Textarea
+                                    <RichTextEditor
                                       value={textareaValue}
-                                      onChange={(e) => {
+                                      onChange={(html) => {
                                         if (isBanner) {
                                           setVariables(prev => ({
                                             ...prev,
-                                            [bannerKey]: e.target.value
+                                            [bannerKey]: html
                                           }));
                                         } else {
                                           setEditedSectionContent(prev => ({
                                             ...prev,
-                                            [section.id]: e.target.value
+                                            [section.id]: html
                                           }));
                                         }
                                       }}
-                                      className="text-sm min-h-[80px]"
                                       placeholder={isBanner ? "Edit banner text..." : "Edit content... Use {{variableName}} for placeholders"}
-                                      autoFocus
+                                      rows={4}
                                     />
                                     <div className="flex items-center gap-2 mt-2">
                                       <Button 
