@@ -41,7 +41,7 @@ export const RichTextEditor = ({
   const isUserEditingRef = useRef(false);
   const lastValueRef = useRef(value);
 
-  // Initialize content - only update if value changed externally (not from user input)
+  // Initialize content on mount and update if value changed externally
   useEffect(() => {
     // Skip if user is actively editing
     if (isUserEditingRef.current) {
@@ -50,8 +50,8 @@ export const RichTextEditor = ({
       return;
     }
     
-    // Only update if the value actually changed from external source
-    if (editorRef.current && value !== lastValueRef.current) {
+    // Update if the value changed from external source OR if this is the first render
+    if (editorRef.current && (value !== lastValueRef.current || editorRef.current.innerHTML === '')) {
       editorRef.current.innerHTML = value || '';
       lastValueRef.current = value;
     }
