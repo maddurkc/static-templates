@@ -4,8 +4,8 @@ import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
 import { generateListVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
 
-// Outlook-compatible font family constant
-export const OUTLOOK_FONT_FAMILY = '"Wells Fargo Sans", Arial, Helvetica, sans-serif';
+// Outlook-compatible font family constant (use single quotes for font names in inline styles)
+export const OUTLOOK_FONT_FAMILY = "'Wells Fargo Sans', Arial, Helvetica, sans-serif";
 
 // Helper function to wrap content in table for Outlook email margin compatibility
 const wrapInOutlookTable = (content: string, marginBottom: string = '20px'): string => {

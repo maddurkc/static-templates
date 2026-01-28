@@ -23,8 +23,8 @@ import {
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
-// Default font family for Outlook email compatibility
-export const OUTLOOK_FONT_FAMILY = '"Wells Fargo Sans", Arial, Helvetica, sans-serif';
+// Default font family for Outlook email compatibility (use single quotes for font names in inline styles)
+export const OUTLOOK_FONT_FAMILY = "'Wells Fargo Sans', Arial, Helvetica, sans-serif";
 
 // Default heading styles for each heading level
 export const headingDefaultStyles: Record<string, { fontSize: string; color: string; fontFamily: string; fontWeight: string; lineHeight: string }> = {
