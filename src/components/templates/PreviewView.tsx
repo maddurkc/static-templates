@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Section } from "@/types/section";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
@@ -9,10 +10,28 @@ interface PreviewViewProps {
   headerSection: Section;
   footerSection: Section;
   sections: Section[];
+  selectedSectionId?: string | null;
 }
 
-export const PreviewView = ({ headerSection, footerSection, sections }: PreviewViewProps) => {
+export const PreviewView = ({ headerSection, footerSection, sections, selectedSectionId }: PreviewViewProps) => {
   const allSections = [headerSection, ...sections, footerSection];
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to selected section and highlight it
+  useEffect(() => {
+    if (selectedSectionId && containerRef.current) {
+      const element = containerRef.current.querySelector(`[data-preview-section-id="${selectedSectionId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Add highlight animation
+        element.classList.add(styles.highlighted);
+        const timeout = setTimeout(() => {
+          element.classList.remove(styles.highlighted);
+        }, 2000);
+        return () => clearTimeout(timeout);
+      }
+    }
+  }, [selectedSectionId]);
   
   // Helper function to get HTML string for a section (used with wrapSectionInTable)
   const getSectionHtml = (section: Section): string => {
@@ -204,7 +223,7 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
   
   
   return (
-    <div className={styles.container}>
+    <div className={styles.container} ref={containerRef}>
       <div className={styles.header}>
         <h2 className={styles.title}>Preview</h2>
         <p className={styles.subtitle}>
@@ -222,6 +241,8 @@ export const PreviewView = ({ headerSection, footerSection, sections }: PreviewV
                   {allSections.map((section, index) => (
                     <div 
                       key={section.id}
+                      data-preview-section-id={section.id}
+                      className={`${styles.previewSectionWrapper} ${selectedSectionId === section.id ? styles.selected : ''}`}
                       dangerouslySetInnerHTML={{ __html: wrapSectionInTable(getSectionHtml(section), index === 0) }}
                     />
                   ))}

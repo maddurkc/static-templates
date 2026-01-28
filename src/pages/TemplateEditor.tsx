@@ -364,6 +364,13 @@ const TemplateEditor = () => {
           description: `${sectionDef.label} has been added to your template.`,
         });
       }
+      
+      // Select the new section and scroll to it after a brief delay
+      setSelectedSection(newSection);
+      setTimeout(() => {
+        scrollToSection(newSectionId);
+      }, 100);
+      
       return;
     }
 
@@ -375,6 +382,20 @@ const TemplateEditor = () => {
       });
     }
   };
+
+  // Scroll to a section in both editor and preview with highlight animation
+  const scrollToSection = useCallback((sectionId: string) => {
+    // Scroll in editor and add highlight animation
+    const editorElement = document.querySelector(`[data-section-id="${sectionId}"]`);
+    if (editorElement) {
+      editorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Add highlight animation class (using global class name)
+      editorElement.classList.add('section-highlighted');
+      setTimeout(() => {
+        editorElement.classList.remove('section-highlighted');
+      }, 2000);
+    }
+  }, []);
 
   const handleUpdateSection = (updatedSection: Section) => {
     // Update header or footer if selected
@@ -1302,7 +1323,8 @@ ${sectionHtmls}
                 <PreviewView 
                   headerSection={headerSection}
                   footerSection={footerSection}
-                  sections={sections} 
+                  sections={sections}
+                  selectedSectionId={selectedSection?.id}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
@@ -1339,7 +1361,8 @@ ${sectionHtmls}
                   <PreviewView 
                     headerSection={headerSection}
                     footerSection={footerSection}
-                    sections={sections} 
+                    sections={sections}
+                    selectedSectionId={selectedSection?.id}
                   />
                 </div>
               )}
