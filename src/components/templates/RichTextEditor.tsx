@@ -4,7 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle } from "lucide-react";
+import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle, MousePointerClick } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import styles from "./RichTextEditor.module.scss";
 
 interface RichTextEditorProps {
@@ -632,6 +633,98 @@ export const RichTextEditor = ({
         data-placeholder={placeholder}
         suppressContentEditableWarning
       />
+      
+      {/* Static Mini Toolbar - Always visible */}
+      <div className={styles.staticToolbar}>
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={styles.toolbarButton}
+                disabled={!hasSelection}
+                onClick={() => applyStyle('bold')}
+              >
+                <Bold className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Bold (Ctrl+B)</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={styles.toolbarButton}
+                disabled={!hasSelection}
+                onClick={() => applyStyle('italic')}
+              >
+                <Italic className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Italic (Ctrl+I)</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={styles.toolbarButton}
+                disabled={!hasSelection}
+                onClick={() => applyStyle('underline')}
+              >
+                <Underline className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Underline (Ctrl+U)</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={styles.toolbarButton}
+                disabled={!hasSelection}
+                onClick={() => applyStyle('strikeThrough')}
+              >
+                <Strikethrough className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Strikethrough</TooltipContent>
+          </Tooltip>
+          
+          <div className={styles.separator} />
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={styles.toolbarButton}
+                disabled={!hasSelection}
+                onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+                onClick={() => setShowLinkDialog(true)}
+              >
+                <Link className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Add Link (Ctrl+K)</TooltipContent>
+          </Tooltip>
+          
+          <div className={styles.separator} />
+          
+          {!hasSelection && (
+            <span className={styles.staticToolbarHint}>
+              <MousePointerClick className={styles.hintIcon} />
+              Select text to format
+            </span>
+          )}
+        </TooltipProvider>
+      </div>
       
       {/* Link Dialog */}
       <Dialog open={showLinkDialog} onOpenChange={(open) => {
