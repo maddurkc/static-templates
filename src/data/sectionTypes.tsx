@@ -23,14 +23,17 @@ import {
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
+// Default font family for Outlook email compatibility
+export const OUTLOOK_FONT_FAMILY = '"Wells Fargo Sans", Arial, Helvetica, sans-serif';
+
 // Default heading styles for each heading level
 export const headingDefaultStyles: Record<string, { fontSize: string; color: string; fontFamily: string; fontWeight: string; lineHeight: string }> = {
-  heading1: { fontSize: '34px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Regular, serif', fontWeight: '400', lineHeight: '44px' },
-  heading2: { fontSize: '24px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Regular, serif', fontWeight: '600', lineHeight: '30px' },
-  heading3: { fontSize: '20px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Regular, serif', fontWeight: '400', lineHeight: '25px' },
-  heading4: { fontSize: '16px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Regular, serif', fontWeight: '400', lineHeight: '20px' },
-  heading5: { fontSize: '15px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Semibold, serif', fontWeight: '600', lineHeight: '19px' },
-  heading6: { fontSize: '14px', color: '#3B3331', fontFamily: 'WellsfargoSerif-Semibold, serif', fontWeight: '600', lineHeight: '18px' },
+  heading1: { fontSize: '34px', color: '#3B3331', fontFamily: OUTLOOK_FONT_FAMILY, fontWeight: '400', lineHeight: '44px' },
+  heading2: { fontSize: '24px', color: '#3B3331', fontFamily: OUTLOOK_FONT_FAMILY, fontWeight: '600', lineHeight: '30px' },
+  heading3: { fontSize: '20px', color: '#3B3331', fontFamily: OUTLOOK_FONT_FAMILY, fontWeight: '400', lineHeight: '25px' },
+  heading4: { fontSize: '16px', color: '#3B3331', fontFamily: OUTLOOK_FONT_FAMILY, fontWeight: '400', lineHeight: '20px' },
+  heading5: { fontSize: '15px', color: '#3B3331', fontFamily: OUTLOOK_FONT_FAMILY, fontWeight: '600', lineHeight: '19px' },
+  heading6: { fontSize: '14px', color: '#3B3331', fontFamily: OUTLOOK_FONT_FAMILY, fontWeight: '600', lineHeight: '18px' },
 };
 
 export const sectionTypes: SectionDefinition[] = [
@@ -39,7 +42,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 1',
     icon: Heading1,
     description: 'Large heading - use {{variable}} for dynamic values',
-    defaultContent: '<h1 style="font-size: 34px; color: #3B3331; font-family: WellsfargoSerif-Regular, serif; font-weight: 400; line-height: 44px;">Main Title</h1>',
+    defaultContent: `<h1 style="font-size: 34px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 400; line-height: 44px; margin: 0; mso-line-height-rule: exactly;">Main Title</h1>`,
     category: 'text',
     variables: []
   },
@@ -48,7 +51,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 2',
     icon: Heading2,
     description: 'Section heading - use {{variable}} for dynamic values',
-    defaultContent: '<h2 style="font-size: 24px; color: #3B3331; font-family: WellsfargoSerif-Regular, serif; font-weight: 600; line-height: 30px;">Section Title</h2>',
+    defaultContent: `<h2 style="font-size: 24px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 600; line-height: 30px; margin: 0; mso-line-height-rule: exactly;">Section Title</h2>`,
     category: 'text',
     variables: []
   },
@@ -57,7 +60,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 3',
     icon: Heading3,
     description: 'Subsection heading - use {{variable}} for dynamic values',
-    defaultContent: '<h3 style="font-size: 20px; color: #3B3331; font-family: WellsfargoSerif-Regular, serif; font-weight: 400; line-height: 25px;">Subsection Title</h3>',
+    defaultContent: `<h3 style="font-size: 20px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 400; line-height: 25px; margin: 0; mso-line-height-rule: exactly;">Subsection Title</h3>`,
     category: 'text',
     variables: []
   },
@@ -66,7 +69,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 4',
     icon: Heading4,
     description: 'Minor heading - use {{variable}} for dynamic values',
-    defaultContent: '<h4 style="font-size: 16px; color: #3B3331; font-family: WellsfargoSerif-Regular, serif; font-weight: 400; line-height: 20px;">Minor Title</h4>',
+    defaultContent: `<h4 style="font-size: 16px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 400; line-height: 20px; margin: 0; mso-line-height-rule: exactly;">Minor Title</h4>`,
     category: 'text',
     variables: []
   },
@@ -75,7 +78,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 5',
     icon: Heading5,
     description: 'Small heading - use {{variable}} for dynamic values',
-    defaultContent: '<h5 style="font-size: 15px; color: #3B3331; font-family: WellsfargoSerif-Semibold, serif; font-weight: 600; line-height: 19px;">Small Title</h5>',
+    defaultContent: `<h5 style="font-size: 15px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 600; line-height: 19px; margin: 0; mso-line-height-rule: exactly;">Small Title</h5>`,
     category: 'text',
     variables: []
   },
@@ -84,7 +87,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 6',
     icon: Heading6,
     description: 'Smallest heading - use {{variable}} for dynamic values',
-    defaultContent: '<h6 style="font-size: 14px; color: #3B3331; font-family: WellsfargoSerif-Semibold, serif; font-weight: 600; line-height: 18px;">Tiny Title</h6>',
+    defaultContent: `<h6 style="font-size: 14px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 600; line-height: 18px; margin: 0; mso-line-height-rule: exactly;">Tiny Title</h6>`,
     category: 'text',
     variables: []
   },
@@ -93,7 +96,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Text',
     icon: Type,
     description: 'Simple text - use {{variable}} for dynamic values',
-    defaultContent: '<span>Your text here</span>',
+    defaultContent: `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333;">Your text here</span>`,
     category: 'text',
     variables: []
   },
@@ -102,7 +105,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Paragraph',
     icon: AlignLeft,
     description: 'Text paragraph - use {{variable}} for dynamic values',
-    defaultContent: '<p>This is a paragraph. You can add {{dynamic}} values like this.</p>',
+    defaultContent: `<p style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 1.5; margin: 0; mso-line-height-rule: exactly;">This is a paragraph. You can add {{dynamic}} values like this.</p>`,
     category: 'text',
     variables: []
   },
@@ -111,7 +114,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Table',
     icon: Table,
     description: 'Data table',
-    defaultContent: '<table><tr><th>Header 1</th><th>Header 2</th></tr><tr><td>Data 1</td><td>Data 2</td></tr></table>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; font-family: ${OUTLOOK_FONT_FAMILY};"><tr><th style="padding: 8px; border: 1px solid #ddd;">Header 1</th><th style="padding: 8px; border: 1px solid #ddd;">Header 2</th></tr><tr><td style="padding: 8px; border: 1px solid #ddd;">Data 1</td><td style="padding: 8px; border: 1px solid #ddd;">Data 2</td></tr></table>`,
     category: 'layout',
     variables: [
       { 
@@ -131,7 +134,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Bullet List (Circle)',
     icon: List,
     description: 'List with circle bullets',
-    defaultContent: '<ul style="list-style-type: circle;"><span th:utext="${items}"/></ul>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="vertical-align: top; padding-right: 8px;">○</td><td style="vertical-align: top;">Item 1</td></tr></table>`,
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['Item 1', 'Item 2', 'Item 3'] }
@@ -142,7 +145,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Bullet List (Disc)',
     icon: List,
     description: 'List with disc bullets',
-    defaultContent: '<ul style="list-style-type: disc;"><span th:utext="${items}"/></ul>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="vertical-align: top; padding-right: 8px;">•</td><td style="vertical-align: top;">Item 1</td></tr></table>`,
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['Item 1', 'Item 2', 'Item 3'] }
@@ -153,7 +156,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Bullet List (Square)',
     icon: List,
     description: 'List with square bullets',
-    defaultContent: '<ul style="list-style-type: square;"><span th:utext="${items}"/></ul>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="vertical-align: top; padding-right: 8px;">■</td><td style="vertical-align: top;">Item 1</td></tr></table>`,
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['Item 1', 'Item 2', 'Item 3'] }
@@ -164,7 +167,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Numbered List (1,2,3)',
     icon: ListOrdered,
     description: 'List with numbers',
-    defaultContent: '<ol style="list-style-type: decimal;"><span th:utext="${items}"/></ol>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="vertical-align: top; padding-right: 8px;">1.</td><td style="vertical-align: top;">First item</td></tr></table>`,
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['First item', 'Second item', 'Third item'] }
@@ -175,7 +178,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Numbered List (i,ii,iii)',
     icon: ListOrdered,
     description: 'List with roman numerals',
-    defaultContent: '<ol style="list-style-type: lower-roman;"><span th:utext="${items}"/></ol>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="vertical-align: top; padding-right: 8px;">i.</td><td style="vertical-align: top;">First item</td></tr></table>`,
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['First item', 'Second item', 'Third item'] }
@@ -186,7 +189,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Numbered List (a,b,c)',
     icon: ListOrdered,
     description: 'List with letters',
-    defaultContent: '<ol style="list-style-type: lower-alpha;"><span th:utext="${items}"/></ol>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="vertical-align: top; padding-right: 8px;">a.</td><td style="vertical-align: top;">First item</td></tr></table>`,
     category: 'text',
     variables: [
       { name: 'items', label: 'List Items', type: 'list', defaultValue: ['First item', 'Second item', 'Third item'] }
@@ -197,7 +200,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Image',
     icon: Image,
     description: 'Image element',
-    defaultContent: '<img src="<span th:utext="${src}"/>" alt="<span th:utext="${alt}"/>" />',
+    defaultContent: '<img src="<span th:utext="${src}"/>" alt="<span th:utext="${alt}"/>" style="display: block; max-width: 100%; height: auto;" />',
     category: 'media',
     variables: [
       { name: 'src', label: 'Image URL', type: 'url', defaultValue: 'https://placehold.co/600x400' },
@@ -209,7 +212,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Link',
     icon: Link,
     description: 'Hyperlink element',
-    defaultContent: '<a href="<span th:utext="${href}"/>"><span th:utext="${text}"/></a>',
+    defaultContent: `<a href="<span th:utext="\${href}"/>" style="font-family: ${OUTLOOK_FONT_FAMILY}; color: #0066cc; text-decoration: underline;"><span th:utext="\${text}"/></a>`,
     category: 'interactive',
     variables: [
       { name: 'href', label: 'Link URL', type: 'url', defaultValue: '#' },
@@ -221,7 +224,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Button',
     icon: MousePointerClick,
     description: 'Button element',
-    defaultContent: '<button><span th:utext="${text}"/></button>',
+    defaultContent: `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" style="height:40px;v-text-anchor:middle;width:150px;" arcsize="10%" strokecolor="#0066cc" fillcolor="#0066cc"><w:anchorlock/><center style="color:#ffffff;font-family:${OUTLOOK_FONT_FAMILY};font-size:14px;font-weight:bold;"><![endif]--><a href="#" style="background-color:#0066cc;border:1px solid #0066cc;border-radius:4px;color:#ffffff;display:inline-block;font-family:${OUTLOOK_FONT_FAMILY};font-size:14px;font-weight:bold;line-height:40px;text-align:center;text-decoration:none;width:150px;-webkit-text-size-adjust:none;mso-hide:all;"><span th:utext="\${text}"/></a><!--[if mso]></center></v:roundrect><![endif]-->`,
     category: 'interactive',
     variables: [
       { name: 'text', label: 'Button Text', type: 'text', defaultValue: 'Click me' }
@@ -232,7 +235,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Grid',
     icon: Grid3x3,
     description: 'Grid layout container',
-    defaultContent: '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;"><div>Column 1</div><div>Column 2</div><div>Column 3</div></div>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="width: 33%; padding: 8px;">Column 1</td><td style="width: 33%; padding: 8px;">Column 2</td><td style="width: 33%; padding: 8px;">Column 3</td></tr></table>`,
     category: 'layout'
   },
   {
@@ -247,7 +250,7 @@ export const sectionTypes: SectionDefinition[] = [
         name: 'htmlContent', 
         label: 'HTML Content', 
         type: 'text', 
-        defaultValue: '<div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px;"><h3>Sample HTML Content</h3><p>This section can display any HTML content from your API response.</p></div>' 
+        defaultValue: `<table cellpadding="0" cellspacing="0" border="0" style="font-family: ${OUTLOOK_FONT_FAMILY}; padding: 20px; border: 1px solid #ddd;"><tr><td><h3 style="margin: 0 0 10px 0;">Sample HTML Content</h3><p style="margin: 0;">This section can display any HTML content from your API response.</p></td></tr></table>` 
       }
     ]
   },
@@ -256,7 +259,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Line Break',
     icon: Minus,
     description: 'Add an empty line (vertical gap) between sections',
-    defaultContent: '<br/><br/>',
+    defaultContent: '<!--[if mso]><br/><![endif]--><br style="mso-line-height-rule: exactly; line-height: 20px;"/>',
     category: 'layout',
   },
   {
@@ -264,7 +267,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Separator Line',
     icon: SeparatorHorizontal,
     description: 'Add a horizontal divider line between sections',
-    defaultContent: '<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 16px 0;"/>',
+    defaultContent: '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 16px 0;"><tr><td style="border-top: 1px solid #e0e0e0; font-size: 0; line-height: 0;">&nbsp;</td></tr></table>',
     category: 'layout',
   },
   {
@@ -272,7 +275,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Static Text',
     icon: FileText,
     description: 'Enter text directly without placeholders',
-    defaultContent: 'Enter your static text here...',
+    defaultContent: `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333;">Enter your static text here...</span>`,
     category: 'text',
     variables: [
       {
@@ -288,7 +291,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Mixed Content',
     icon: Type,
     description: 'Combine static text with dynamic variables and links (e.g., "P3 Incident: {{label}} <a href="{{linkUrl}}">{{linkText}}</a>")',
-    defaultContent: '<span th:utext="${content}"/>',
+    defaultContent: `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px;"><span th:utext="\${content}"/></span>`,
     category: 'text',
     variables: [
       {
@@ -304,7 +307,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Labeled Content',
     icon: FileText,
     description: 'Section with dynamic label (e.g., "Incident {{number}}") and customizable content type',
-    defaultContent: '<div><strong><span th:utext="${label}"/></strong><div><span th:utext="${content}"/></div></div>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 0;"><div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;"><span th:utext="\${label}"/></div><div><span th:utext="\${content}"/></div></td></tr></table>`,
     category: 'text',
     variables: [
       {
@@ -323,7 +326,7 @@ export const sectionTypes: SectionDefinition[] = [
         name: 'content',
         label: 'Text Content',
         type: 'text',
-        defaultValue: 'Messages journaled in exchange online:\n- Invalid Characters\n- Header too Large'
+        defaultValue: 'Messages journaled in exchange online:<br/>- Invalid Characters<br/>- Header too Large'
       },
       {
         name: 'items',
@@ -353,7 +356,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Container',
     icon: Box,
     description: 'Container to group nested sections together',
-    defaultContent: '<div>Container for nested sections</div>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 10px;">Container for nested sections</td></tr></table>`,
     category: 'layout',
     variables: []
   },
@@ -362,7 +365,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Banner',
     icon: Flag,
     description: 'Highlight text with colored background (1x1 table)',
-    defaultContent: '<table style="border-collapse: collapse;"><tr><td style="background-color: #FFFF00; padding: 6pt; font-size: 18px; font-weight: bold; line-height: normal;">EFT</td></tr></table>',
+    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="background-color: #FFFF00; padding: 6pt; font-size: 18px; font-weight: bold; line-height: normal; mso-line-height-rule: exactly;">EFT</td></tr></table>`,
     category: 'text',
     variables: [
       { 

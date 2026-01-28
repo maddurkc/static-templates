@@ -4,11 +4,14 @@ import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
 import { generateListVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
 
+// Outlook-compatible font family constant
+export const OUTLOOK_FONT_FAMILY = '"Wells Fargo Sans", Arial, Helvetica, sans-serif';
+
 // Helper function to wrap content in table for Outlook email margin compatibility
 const wrapInOutlookTable = (content: string, marginBottom: string = '20px'): string => {
-  return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: ${marginBottom};">
+  return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: ${marginBottom}; font-family: ${OUTLOOK_FONT_FAMILY};">
     <tr>
-      <td style="padding: 0;">
+      <td style="padding: 0; font-family: ${OUTLOOK_FONT_FAMILY};">
         ${content}
       </td>
     </tr>
@@ -18,9 +21,9 @@ const wrapInOutlookTable = (content: string, marginBottom: string = '20px'): str
 // Helper function to wrap each section in a table with no borders, width 95%, max-width 95%, margin-top 10px, word-wrap
 export const wrapSectionInTable = (content: string, isFirstSection: boolean = false): string => {
   const marginTop = isFirstSection ? '0' : '10px';
-  return `<table cellpadding="0" cellspacing="0" border="0" style="width: 95%; max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed;">
+  return `<table cellpadding="0" cellspacing="0" border="0" style="width: 95%; max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed; font-family: ${OUTLOOK_FONT_FAMILY};">
     <tr>
-      <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word;">
+      <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word; font-family: ${OUTLOOK_FONT_FAMILY};">
         ${content}
       </td>
     </tr>
@@ -33,7 +36,7 @@ const renderOutlookCompatibleList = (items: any[], listTag: string, listStyleTyp
   
   const renderItem = (item: any, index: number): string => {
     const text = typeof item === 'string' ? item : (item.text || '');
-    const styles: string[] = [];
+    const styles: string[] = [`font-family: ${OUTLOOK_FONT_FAMILY}`];
     
     if (typeof item === 'object') {
       if (item.color) styles.push(`color: ${item.color}`);
@@ -43,7 +46,7 @@ const renderOutlookCompatibleList = (items: any[], listTag: string, listStyleTyp
       if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
       if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
     }
-    const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+    const styleAttr = ` style="${styles.join('; ')}"`;
     
     // Use bullet character or number based on list type
     let bullet = '';
@@ -66,12 +69,12 @@ const renderOutlookCompatibleList = (items: any[], listTag: string, listStyleTyp
     }
     
     return `<tr>
-      <td style="vertical-align: top; padding-right: 8px; width: 20px;">${bullet}</td>
-      <td style="vertical-align: top;${styleAttr ? ' ' + styles.join('; ') : ''}">${sanitizeInput(text)}</td>
+      <td style="vertical-align: top; padding-right: 8px; width: 20px; font-family: ${OUTLOOK_FONT_FAMILY};">${bullet}</td>
+      <td${styleAttr}>${sanitizeInput(text)}</td>
     </tr>`;
   };
   
-  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-left: 20px;">
+  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-left: 20px; font-family: ${OUTLOOK_FONT_FAMILY};">
     ${items.map((item, idx) => renderItem(item, idx)).join('')}
   </table>`;
 };
@@ -96,7 +99,7 @@ const renderOutlookCompatibleListWithNesting = (items: any[], listTag: string, l
   
   const renderItem = (item: any, index: number): string => {
     const text = typeof item === 'string' ? item : (item.text || '');
-    const styles: string[] = [];
+    const styles: string[] = [`font-family: ${OUTLOOK_FONT_FAMILY}`];
     
     if (typeof item === 'object') {
       if (item.color) styles.push(`color: ${item.color}`);
@@ -106,7 +109,7 @@ const renderOutlookCompatibleListWithNesting = (items: any[], listTag: string, l
       if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
       if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
     }
-    const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+    const styleAttr = ` style="${styles.join('; ')}"`;
     
     let childrenHtml = '';
     if (typeof item === 'object' && item.children && item.children.length > 0) {
@@ -115,13 +118,13 @@ const renderOutlookCompatibleListWithNesting = (items: any[], listTag: string, l
     }
     
     return `<tr>
-      <td style="vertical-align: top; padding-right: 8px; width: 20px;">${getBullet(index)}</td>
-      <td style="vertical-align: top;${styleAttr ? ' ' + styles.join('; ') : ''}">${sanitizeInput(text)}${childrenHtml}</td>
+      <td style="vertical-align: top; padding-right: 8px; width: 20px; font-family: ${OUTLOOK_FONT_FAMILY};">${getBullet(index)}</td>
+      <td${styleAttr}>${sanitizeInput(text)}${childrenHtml}</td>
     </tr>`;
   };
   
   const marginLeft = 20 + (indentLevel * 20);
-  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-left: ${marginLeft}px;">
+  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-left: ${marginLeft}px; font-family: ${OUTLOOK_FONT_FAMILY};">
     ${items.map((item, idx) => renderItem(item, idx)).join('')}
   </table>`;
 };
@@ -161,11 +164,16 @@ export const wrapInEmailHtml = (bodyContent: string): string => {
       </o:OfficeDocumentSettings>
     </xml>
   </noscript>
+  <style type="text/css">
+    table {border-collapse: collapse !important; mso-table-lspace: 0pt; mso-table-rspace: 0pt;}
+    td {mso-line-height-rule: exactly;}
+  </style>
   <![endif]-->
   <style type="text/css">
     body, table, td, p, a, li {
       -webkit-text-size-adjust: 100%;
       -ms-text-size-adjust: 100%;
+      font-family: ${OUTLOOK_FONT_FAMILY};
     }
     table, td {
       mso-table-lspace: 0pt;
@@ -177,7 +185,7 @@ export const wrapInEmailHtml = (bodyContent: string): string => {
       margin: 0;
       padding: 0;
       width: 100% !important;
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: ${OUTLOOK_FONT_FAMILY};
       font-size: 14px;
       line-height: 1.5;
       color: #333333;
@@ -185,13 +193,17 @@ export const wrapInEmailHtml = (bodyContent: string): string => {
     table {
       border-collapse: collapse !important;
     }
+    p, h1, h2, h3, h4, h5, h6 {
+      margin: 0;
+      mso-line-height-rule: exactly;
+    }
   </style>
 </head>
-<body style="margin: 0; padding: 20px; background-color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333;">
+<body style="margin: 0; padding: 20px; background-color: #ffffff; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 1.5; color: #333333;">
   <!-- Global wrapper table -->
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; border: none;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; border: none; font-family: ${OUTLOOK_FONT_FAMILY};">
     <tr>
-      <td style="padding: 0;">
+      <td style="padding: 0; font-family: ${OUTLOOK_FONT_FAMILY};">
         ${bodyContent}
       </td>
     </tr>
@@ -296,19 +308,22 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         // Use Outlook-compatible table-based list rendering
         contentHtml = renderOutlookCompatibleListWithNesting(runtimeValue, listTag, listStyleType);
       } else if (typeof runtimeValue === 'string') {
-        contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(runtimeValue)}</div>`;
+        // Convert newlines to <br> tags for Outlook compatibility
+        const formattedContent = sanitizeInput(runtimeValue).replace(/\n/g, '<br/>');
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 1.5; mso-line-height-rule: exactly;">${formattedContent}</div>`;
       } else if (typeof runtimeValue === 'object' && runtimeValue !== null && 'text' in runtimeValue) {
         // Handle TextStyle object with styling properties
         const textStyle = runtimeValue as { text: string; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; backgroundColor?: string; fontSize?: string };
-        const styles = [];
+        const styles = [`font-family: ${OUTLOOK_FONT_FAMILY}`];
         if (textStyle.color) styles.push(`color: ${textStyle.color}`);
         if (textStyle.bold) styles.push('font-weight: bold');
         if (textStyle.italic) styles.push('font-style: italic');
         if (textStyle.underline) styles.push('text-decoration: underline');
         if (textStyle.backgroundColor) styles.push(`background-color: ${textStyle.backgroundColor}`);
         if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
-        const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-        contentHtml = `<div style="white-space: pre-wrap;"><span${styleAttr}>${sanitizeInput(textStyle.text)}</span></div>`;
+        const styleAttr = ` style="${styles.join('; ')}"`;
+        const formattedText = sanitizeInput(textStyle.text).replace(/\n/g, '<br/>');
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 1.5; mso-line-height-rule: exactly;"><span${styleAttr}>${formattedText}</span></div>`;
       }
     } else {
       // Use default values from section variables
@@ -353,16 +368,18 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         contentHtml = renderOutlookCompatibleListWithNesting(items, listTag, listStyleType);
       } else {
         const content = (section.variables?.content as string) || '';
-        contentHtml = `<div style="white-space: pre-wrap;">${sanitizeInput(content)}</div>`;
+        // Convert newlines to <br> tags for Outlook compatibility
+        const formattedContent = sanitizeInput(content).replace(/\n/g, '<br/>');
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 1.5; mso-line-height-rule: exactly;">${formattedContent}</div>`;
       }
     }
     
     const labelColor = section.variables?.labelColor ? `color: ${section.variables.labelColor};` : '';
     // Use table-based layout for Outlook email client compatibility with proper margins
-    return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px;">
+    return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px; font-family: ${OUTLOOK_FONT_FAMILY};">
       <tr>
-        <td style="padding: 0;">
-          <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em; ${labelColor}">${sanitizeInput(label)}</div>
+        <td style="padding: 0; font-family: ${OUTLOOK_FONT_FAMILY};">
+          <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em; font-family: ${OUTLOOK_FONT_FAMILY}; ${labelColor}">${sanitizeInput(label)}</div>
           ${contentHtml}
         </td>
       </tr>
@@ -434,7 +451,9 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   
   // Handle static-text sections - use content variable directly
   if (section.type === 'static-text' && section.variables?.content) {
-    const staticContent = `<div style="padding: 8px; line-height: 1.6;">${sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>')}</div>`;
+    // Convert newlines to <br> tags for Outlook compatibility
+    const formattedContent = sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>');
+    const staticContent = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${formattedContent}</div>`;
     return wrapInOutlookTable(staticContent);
   }
   
@@ -565,7 +584,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
     );
     
-    const mixedHtml = `<div style="padding: 8px; line-height: 1.6;">${mixedContent.replace(/\n/g, '<br/>')}</div>`;
+    // Convert newlines to <br> tags for Outlook compatibility
+    const mixedHtml = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${mixedContent.replace(/\n/g, '<br/>')}</div>`;
     return wrapInOutlookTable(mixedHtml);
   }
   
@@ -728,10 +748,9 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     
     const tag = tagMap[section.type] || 'div';
     
-    // Apply section styles if available
-    let styleStr = '';
+    // Apply section styles if available - always include Outlook font family
+    const styleProps = [`font-family: ${OUTLOOK_FONT_FAMILY}`, 'margin: 0', 'mso-line-height-rule: exactly'];
     if (section.styles) {
-      const styleProps = [];
       if (section.styles.fontSize) styleProps.push(`font-size: ${section.styles.fontSize}`);
       if (section.styles.color) styleProps.push(`color: ${section.styles.color}`);
       if (section.styles.backgroundColor) styleProps.push(`background-color: ${section.styles.backgroundColor}`);
@@ -739,25 +758,30 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       if (section.styles.fontStyle) styleProps.push(`font-style: ${section.styles.fontStyle}`);
       if (section.styles.textDecoration) styleProps.push(`text-decoration: ${section.styles.textDecoration}`);
       if (section.styles.textAlign) styleProps.push(`text-align: ${section.styles.textAlign}`);
-      if (section.styles.margin) styleProps.push(`margin: ${section.styles.margin}`);
+      if (section.styles.lineHeight) styleProps.push(`line-height: ${section.styles.lineHeight}`);
       if (section.styles.padding) styleProps.push(`padding: ${section.styles.padding}`);
-      if (styleProps.length > 0) {
-        styleStr = ` style="${styleProps.join('; ')}"`;
-      }
     }
+    const styleStr = ` style="${styleProps.join('; ')}"`;
+    
+    // Convert newlines to <br> tags for multi-line content (Outlook compatibility)
+    processedContent = processedContent.replace(/\n/g, '<br/>');
     
     // Check if processedContent already has the wrapper tag to avoid double-wrapping
     const tagRegex = new RegExp(`^\\s*<${tag}[^>]*>`, 'i');
     let headingTextHtml: string;
     if (tagRegex.test(processedContent)) {
-      // Content already has the tag, just use it directly (but inject styles if needed)
-      if (styleStr && !processedContent.includes('style=')) {
-        headingTextHtml = processedContent.replace(new RegExp(`<${tag}`, 'i'), `<${tag}${styleStr}`);
+      // Content already has the tag - inject Outlook font family into existing style
+      if (processedContent.includes('style=')) {
+        // Add font-family to existing style attribute
+        headingTextHtml = processedContent.replace(
+          /style="([^"]*)"/i, 
+          `style="font-family: ${OUTLOOK_FONT_FAMILY}; margin: 0; mso-line-height-rule: exactly; $1"`
+        );
       } else {
-        headingTextHtml = processedContent;
+        headingTextHtml = processedContent.replace(new RegExp(`<${tag}`, 'i'), `<${tag}${styleStr}`);
       }
     } else {
-      // Wrap content in the appropriate tag
+      // Wrap content in the appropriate tag with styles
       headingTextHtml = `<${tag}${styleStr}>${processedContent}</${tag}>`;
     }
     return wrapInOutlookTable(headingTextHtml);
