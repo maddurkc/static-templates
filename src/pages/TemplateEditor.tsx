@@ -78,6 +78,7 @@ const TemplateEditor = () => {
     }
   ]);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
+  const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
   const [globalApiConfig, setGlobalApiConfig] = useState<GlobalApiConfig>(DEFAULT_GLOBAL_API_CONFIG);
   const [showApiPanel, setShowApiPanel] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -1313,6 +1314,8 @@ ${sectionHtmls}
                     onCopyStyles={handleCopyStyles}
                     onPasteStyles={handlePasteStyles}
                     globalApiConfig={globalApiConfig}
+                    hoveredSectionId={hoveredSectionId}
+                    onHoverSection={setHoveredSectionId}
                   />
                 </SortableContext>
               </ResizablePanel>
@@ -1325,6 +1328,8 @@ ${sectionHtmls}
                   footerSection={footerSection}
                   sections={sections}
                   selectedSectionId={selectedSection?.id}
+                  hoveredSectionId={hoveredSectionId}
+                  onHoverSection={setHoveredSectionId}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
@@ -1350,6 +1355,8 @@ ${sectionHtmls}
                       onCopyStyles={handleCopyStyles}
                       onPasteStyles={handlePasteStyles}
                       globalApiConfig={globalApiConfig}
+                      hoveredSectionId={hoveredSectionId}
+                      onHoverSection={setHoveredSectionId}
                     />
                   </SortableContext>
                 </div>
@@ -1363,6 +1370,8 @@ ${sectionHtmls}
                     footerSection={footerSection}
                     sections={sections}
                     selectedSectionId={selectedSection?.id}
+                    hoveredSectionId={hoveredSectionId}
+                    onHoverSection={setHoveredSectionId}
                   />
                 </div>
               )}
