@@ -299,12 +299,6 @@ const TemplateEditor = () => {
           const contentVar = sectionDef.variables?.find(v => v.name === 'content');
           variables['content'] = contentVar?.defaultValue || 'Enter content here...';
         }
-      } else if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(sectionDef.type)) {
-        // For text sections (headings, text, paragraph), copy default variables with unique names
-        sectionDef.variables?.forEach(varDef => {
-          // Use the default variable name from the definition (e.g., heading1Content, textContent)
-          variables[varDef.name] = varDef.defaultValue;
-        });
       } else {
         // For other section types, copy all default variables
         sectionDef.variables?.forEach(varDef => {
