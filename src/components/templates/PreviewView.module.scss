@@ -133,6 +133,12 @@
     outline-offset: 2px;
     background-color: rgba(67, 97, 238, 0.03);
   }
+
+  &.hovered {
+    outline: 2px dashed rgba(67, 97, 238, 0.6);
+    outline-offset: 2px;
+    background-color: rgba(67, 97, 238, 0.02);
+  }
   
   &.highlighted {
     animation: highlightPulse 2s ease-out;

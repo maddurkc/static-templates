@@ -11,9 +11,11 @@ interface PreviewViewProps {
   footerSection: Section;
   sections: Section[];
   selectedSectionId?: string | null;
+  hoveredSectionId?: string | null;
+  onHoverSection?: (id: string | null) => void;
 }
 
-export const PreviewView = ({ headerSection, footerSection, sections, selectedSectionId }: PreviewViewProps) => {
+export const PreviewView = ({ headerSection, footerSection, sections, selectedSectionId, hoveredSectionId, onHoverSection }: PreviewViewProps) => {
   const allSections = [headerSection, ...sections, footerSection];
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -242,8 +244,10 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
                     <div 
                       key={section.id}
                       data-preview-section-id={section.id}
-                      className={`${styles.previewSectionWrapper} ${selectedSectionId === section.id ? styles.selected : ''}`}
+                      className={`${styles.previewSectionWrapper} ${selectedSectionId === section.id ? styles.selected : ''} ${hoveredSectionId === section.id && selectedSectionId !== section.id ? styles.hovered : ''}`}
                       dangerouslySetInnerHTML={{ __html: wrapSectionInTable(getSectionHtml(section), index === 0) }}
+                      onMouseEnter={() => onHoverSection?.(section.id)}
+                      onMouseLeave={() => onHoverSection?.(null)}
                     />
                   ))}
                 </td>

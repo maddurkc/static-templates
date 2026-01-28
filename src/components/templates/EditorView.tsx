@@ -17,6 +17,7 @@ import styles from "./EditorView.module.scss";
 interface SortableSectionProps {
   section: Section;
   isSelected: boolean;
+  isHovered: boolean;
   hasError: boolean;
   onSelect: () => void;
   onUpdate: (section: Section) => void;
@@ -31,11 +32,14 @@ interface SortableSectionProps {
   onPasteStyles: (id: string) => void;
   renderChildren?: (section: Section) => React.ReactNode;
   globalApiConfig?: GlobalApiConfig;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
 }
 
 const SortableSection = ({
   section,
   isSelected,
+  isHovered,
   hasError,
   onSelect,
   onUpdate,
@@ -50,6 +54,8 @@ const SortableSection = ({
   onPasteStyles,
   renderChildren,
   globalApiConfig,
+  onMouseEnter,
+  onMouseLeave,
 }: SortableSectionProps) => {
   const {
     attributes,
@@ -86,12 +92,15 @@ const SortableSection = ({
           "group relative",
           styles.section,
           isSelected && styles.selected,
+          isHovered && !isSelected && styles.hovered,
           isDragging && styles.dragging,
           isContainer && styles.container,
           isContainer && isDropOver && styles.dropOver,
           hasError && styles.hasError
         )}
         onClick={onSelect}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
       >
       {/* Drag Handle */}
       <div
@@ -392,6 +401,8 @@ interface EditorViewProps {
   onCopyStyles: (id: string) => void;
   onPasteStyles: (id: string) => void;
   globalApiConfig?: GlobalApiConfig;
+  hoveredSectionId?: string | null;
+  onHoverSection?: (id: string | null) => void;
 }
 
 export const EditorView = ({
@@ -410,6 +421,8 @@ export const EditorView = ({
   onCopyStyles,
   onPasteStyles,
   globalApiConfig,
+  hoveredSectionId,
+  onHoverSection,
 }: EditorViewProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'editor-drop-zone',
@@ -513,6 +526,7 @@ export const EditorView = ({
               key={section.id}
               section={section}
               isSelected={selectedSection?.id === section.id}
+              isHovered={hoveredSectionId === section.id}
               hasError={sectionIdsWithErrors.has(section.id)}
               onSelect={() => onSelectSection(section)}
               onUpdate={onUpdateSection}
@@ -527,6 +541,8 @@ export const EditorView = ({
               onPasteStyles={onPasteStyles}
               renderChildren={renderNestedChildren}
               globalApiConfig={globalApiConfig}
+              onMouseEnter={() => onHoverSection?.(section.id)}
+              onMouseLeave={() => onHoverSection?.(null)}
             />
           ))
         )}
