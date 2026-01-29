@@ -267,7 +267,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Separator Line',
     icon: SeparatorHorizontal,
     description: 'Add a horizontal divider line between sections',
-    defaultContent: '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 16px 0;"><tr><td style="border-top: 1px solid #e0e0e0; font-size: 0; line-height: 0;">&nbsp;</td></tr></table>',
+    defaultContent: `<!--[if mso]><table cellpadding="0" cellspacing="0" border="0" width="100%" style="mso-table-lspace:0pt;mso-table-rspace:0pt;"><tr><td style="padding:16px 0;"><table cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td style="background-color:#e0e0e0;font-size:1px;line-height:1px;height:1px;">&nbsp;</td></tr></table></td></tr></table><![endif]--><!--[if !mso]><!--><table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY}; border-collapse: collapse;"><tr><td style="padding: 16px 0;"><table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;"><tr><td style="background-color: #e0e0e0; font-size: 1px; line-height: 1px; height: 1px; mso-line-height-rule: exactly;">&nbsp;</td></tr></table></td></tr></table><!--<![endif]-->`,
     category: 'layout',
   },
   {
