@@ -36,6 +36,7 @@ export const RichTextEditor = ({
   const [hasSelection, setHasSelection] = useState(false);
   const savedSelectionRef = useRef<Range | null>(null);
   const [linkUrl, setLinkUrl] = useState("");
+  const [linkText, setLinkText] = useState("");
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [isLink, setIsLink] = useState(false);
   const isUserEditingRef = useRef(false);
@@ -92,11 +93,13 @@ export const RichTextEditor = ({
       if (linkEl) {
         setIsLink(true);
         setLinkUrl(linkEl.href || '');
+        setLinkText(linkEl.textContent || '');
         return true;
       }
     }
     setIsLink(false);
     setLinkUrl('');
+    setLinkText('');
     return false;
   }, [findLinkAncestor]);
 
@@ -238,21 +241,37 @@ export const RichTextEditor = ({
     const url = linkUrl.startsWith('http://') || linkUrl.startsWith('https://') 
       ? linkUrl 
       : `https://${linkUrl}`;
+    
+    const selection = window.getSelection();
+    
+    // If we have linkText and a selection, update the text first
+    if (linkText.trim() && selection && !selection.isCollapsed) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(linkText));
+      // Re-select the inserted text
+      range.selectNodeContents(range.startContainer);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    
     document.execCommand('createLink', false, url);
     
-    // Add target="_blank" to the newly created link
+    // Add target="_blank", rel, and color #141414 to the newly created link
     if (editorRef.current) {
       const links = editorRef.current.querySelectorAll(`a[href="${url}"]`);
       links.forEach(link => {
         link.setAttribute('target', '_blank');
         link.setAttribute('rel', 'noopener noreferrer');
+        (link as HTMLElement).style.color = '#141414';
       });
       onChange(editorRef.current.innerHTML);
     }
     setLinkUrl('');
+    setLinkText('');
     setShowLinkDialog(false);
     editorRef.current?.focus();
-  }, [linkUrl, onChange, restoreSelection]);
+  }, [linkUrl, linkText, onChange, restoreSelection]);
 
   const removeLink = useCallback(() => {
     restoreSelection();
@@ -341,6 +360,7 @@ export const RichTextEditor = ({
       setTimeout(() => {
         setIsLink(true);
         setLinkUrl(linkEl.href || '');
+        setLinkText(linkEl.textContent || '');
         setHasSelection(true);
         setShowLinkDialog(true);
         setShowToolbar(true);
@@ -525,6 +545,13 @@ export const RichTextEditor = ({
               saveSelection();
             }}
             onClick={() => {
+              // If not already a link, get selected text for the text field
+              if (!isLink) {
+                const selection = window.getSelection();
+                if (selection && !selection.isCollapsed) {
+                  setLinkText(selection.toString());
+                }
+              }
               setShowLinkDialog(true);
             }}
             title={isLink ? "Edit Link (Ctrl+K)" : "Add Link (Ctrl+K)"}
@@ -637,6 +664,7 @@ export const RichTextEditor = ({
       <Dialog open={showLinkDialog} onOpenChange={(open) => {
         if (!open) {
           setLinkUrl('');
+          setLinkText('');
         }
         setShowLinkDialog(open);
       }}>
@@ -644,24 +672,38 @@ export const RichTextEditor = ({
           <DialogHeader>
             <DialogTitle>{isLink ? 'Edit Hyperlink' : 'Add Hyperlink'}</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="link-url" className="text-sm font-medium mb-2 block">
-              URL
-            </Label>
-            <Input
-              id="link-url"
-              type="url"
-              placeholder="https://example.com"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  applyLink();
-                }
-              }}
-              autoFocus
-            />
+          <div className="py-4 space-y-4">
+            <div>
+              <Label htmlFor="link-text" className="text-sm font-medium mb-2 block">
+                Text
+              </Label>
+              <Input
+                id="link-text"
+                type="text"
+                placeholder="Link text"
+                value={linkText}
+                onChange={(e) => setLinkText(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="link-url" className="text-sm font-medium mb-2 block">
+                URL
+              </Label>
+              <Input
+                id="link-url"
+                type="url"
+                placeholder="https://example.com"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyLink();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
           </div>
           <DialogFooter className="flex gap-2">
             {isLink && (
@@ -681,6 +723,7 @@ export const RichTextEditor = ({
               onClick={() => {
                 setShowLinkDialog(false);
                 setLinkUrl('');
+                setLinkText('');
               }}
             >
               Cancel
