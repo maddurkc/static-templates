@@ -18,16 +18,45 @@ const wrapInOutlookTable = (content: string, marginBottom: string = '20px'): str
   </table>`;
 };
 
-// Helper function to wrap each section in a table with no borders, width 95%, max-width 95%, margin-top 10px, word-wrap
+// Helper function to wrap each section in a table row with nested table (for Outlook compatibility - each section in its own <tr>)
 export const wrapSectionInTable = (content: string, isFirstSection: boolean = false): string => {
-  const marginTop = isFirstSection ? '0' : '10px';
-  return `<table cellpadding="0" cellspacing="0" border="0" style="width: 95%; max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed; font-family: ${OUTLOOK_FONT_FAMILY};">
-    <tr>
-      <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word; font-family: ${OUTLOOK_FONT_FAMILY};">
-        ${content}
-      </td>
-    </tr>
-  </table>`;
+  const paddingTop = isFirstSection ? '0' : '10px';
+  return `<tr>
+  <td style="padding-top: ${paddingTop};">
+    <!--[if mso]>
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="mso-table-lspace:0pt;mso-table-rspace:0pt;">
+      <tr>
+        <td style="padding:0;font-family:${OUTLOOK_FONT_FAMILY};">
+    ${content}
+        </td>
+      </tr>
+    </table>
+    <![endif]-->
+    <!--[if !mso]><!-->
+    <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 100%; border: none; word-wrap: break-word; table-layout: fixed; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">
+      <tr>
+        <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word; font-family: ${OUTLOOK_FONT_FAMILY};">
+    ${content}
+        </td>
+      </tr>
+    </table>
+    <!--<![endif]-->
+  </td>
+</tr>`;
+};
+
+// Helper function to wrap all section rows in a global table wrapper
+export const wrapInGlobalTable = (sectionRows: string): string => {
+  return `<!--[if mso]>
+<table cellpadding="0" cellspacing="0" border="0" width="800" align="center" style="mso-table-lspace:0pt;mso-table-rspace:0pt;">
+${sectionRows}
+</table>
+<![endif]-->
+<!--[if !mso]><!-->
+<table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 800px; margin: 0 auto; border: none;">
+${sectionRows}
+</table>
+<!--<![endif]-->`;
 };
 
 // Render Outlook-compatible list HTML without relying on native ul/li rendering

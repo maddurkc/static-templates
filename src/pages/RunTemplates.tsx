@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
 import { fetchTemplates, fetchTemplateById } from "@/lib/templateApi";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
-import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable } from "@/lib/templateUtils";
+import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobalTable } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
@@ -970,9 +970,10 @@ const RunTemplates = () => {
       ...tableVariables,
       ...labelVariables
     };
-    const renderedBodyHtml = selectedTemplate.sections
+    const sectionRows = selectedTemplate.sections
       .map((section, index) => wrapSectionInTable(renderSectionContent(section, allVars), index === 0))
       .join('');
+    const renderedBodyHtml = wrapInGlobalTable(sectionRows);
     const fullEmailHtml = wrapInEmailHtml(renderedBodyHtml);
 
     // Build the payload in the requested format
@@ -1050,7 +1051,7 @@ const RunTemplates = () => {
         allVars[key] = value;
       });
       
-      return selectedTemplate.sections
+      const sectionRows = selectedTemplate.sections
         .map((section, index) => {
           // For labeled-content sections, inject updated label from labelVariables
           let sectionToRender = section;
@@ -1069,6 +1070,7 @@ const RunTemplates = () => {
           return wrapSectionInTable(renderSectionContent(sectionToRender, allVars), index === 0);
         })
         .join('');
+      return wrapInGlobalTable(sectionRows);
     }
     
     // Otherwise render from html field
