@@ -764,27 +764,31 @@ const TemplateEditor = () => {
   const generateHTMLWithPlaceholders = () => {
     const allSections = [headerSection, ...sections, footerSection];
     
-    // Helper to wrap section content in a table (no borders, width 95%, max-width 95%, margin-top 10px for Outlook compatibility)
-    const wrapInSectionTable = (content: string, isFirst: boolean): string => {
-      const marginTop = isFirst ? '0' : '10px';
-      return `<!--[if mso]>
-<table cellpadding="0" cellspacing="0" border="0" width="95%" style="mso-table-lspace:0pt;mso-table-rspace:0pt;margin-top:${marginTop};">
-  <tr>
-    <td style="padding:0;font-family:'Wells Fargo Sans',Arial,Helvetica,sans-serif;">
-${content}
-    </td>
-  </tr>
-</table>
-<![endif]-->
-<!--[if !mso]><!-->
-<table cellpadding="0" cellspacing="0" border="0" style="width: 95%; max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; mso-line-height-rule: exactly;">
-  <tr>
-    <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif;">
-${content}
-    </td>
-  </tr>
-</table>
-<!--<![endif]-->`;
+    // Helper to wrap section content in a row with nested table (for Outlook compatibility - each section in its own <tr>)
+    const wrapInSectionRow = (content: string, isFirst: boolean): string => {
+      const paddingTop = isFirst ? '0' : '10px';
+      return `<tr>
+  <td style="padding-top: ${paddingTop};">
+    <!--[if mso]>
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="mso-table-lspace:0pt;mso-table-rspace:0pt;">
+      <tr>
+        <td style="padding:0;font-family:'Wells Fargo Sans',Arial,Helvetica,sans-serif;">
+    ${content}
+        </td>
+      </tr>
+    </table>
+    <![endif]-->
+    <!--[if !mso]><!-->
+    <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 100%; border: none; word-wrap: break-word; table-layout: fixed; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; mso-line-height-rule: exactly;">
+      <tr>
+        <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif;">
+    ${content}
+        </td>
+      </tr>
+    </table>
+    <!--<![endif]-->
+  </td>
+</tr>`;
     };
     
     const generateSectionHTML = (section: Section, indent = ''): string => {
@@ -975,38 +979,44 @@ ${indent}</div>`;
       return `${indent}<div style="${styleString}">\n${indent}  ${listHtml}\n${indent}</div>`;
     };
     
-    // Wrap all sections in a global table, with each section in its own nested table
-    const sectionHtmls = allSections.map((section, index) => {
+    // Wrap all sections in a global table, with each section in its own <tr> row
+    const sectionRows = allSections.map((section, index) => {
       const sectionContent = generateSectionHTML(section);
-      return wrapInSectionTable(sectionContent, index === 0);
+      return wrapInSectionRow(sectionContent, index === 0);
     }).join('\n');
     
-    // Return global wrapper table with all section tables
-    return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; border: none;">
-  <tr>
-    <td style="padding: 0;">
-${sectionHtmls}
-    </td>
-  </tr>
-</table>`;
+    // Return global wrapper table with each section in its own row
+    return `<!--[if mso]>
+<table cellpadding="0" cellspacing="0" border="0" width="800" align="center" style="mso-table-lspace:0pt;mso-table-rspace:0pt;">
+${sectionRows}
+</table>
+<![endif]-->
+<!--[if !mso]><!-->
+<table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 800px; margin: 0 auto; border: none;">
+${sectionRows}
+</table>
+<!--<![endif]-->`;
   };
 
   const generateHTML = () => {
     const allSections = [headerSection, ...sections, footerSection];
-    // Wrap all sections in a global table, with each section in its own nested table
-    const sectionHtmls = allSections.map((section, index) => {
+    // Wrap all sections in a global table, with each section in its own <tr> row
+    const sectionRows = allSections.map((section, index) => {
       const content = renderSectionContent(section);
       return wrapSectionInTable(content, index === 0);
     }).join('\n');
     
-    // Return global wrapper table with all section tables
-    return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; border: none;">
-  <tr>
-    <td style="padding: 0;">
-${sectionHtmls}
-    </td>
-  </tr>
-</table>`;
+    // Return global wrapper table with each section in its own row
+    return `<!--[if mso]>
+<table cellpadding="0" cellspacing="0" border="0" width="800" align="center" style="mso-table-lspace:0pt;mso-table-rspace:0pt;">
+${sectionRows}
+</table>
+<![endif]-->
+<!--[if !mso]><!-->
+<table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 800px; margin: 0 auto; border: none;">
+${sectionRows}
+</table>
+<!--<![endif]-->`;
   };
 
   const handleCopyHTML = async () => {
