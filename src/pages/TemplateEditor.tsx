@@ -764,16 +764,27 @@ const TemplateEditor = () => {
   const generateHTMLWithPlaceholders = () => {
     const allSections = [headerSection, ...sections, footerSection];
     
-    // Helper to wrap section content in a table (no borders, width 95%, max-width 95%, margin-top 10px)
+    // Helper to wrap section content in a table (no borders, width 95%, max-width 95%, margin-top 10px for Outlook compatibility)
     const wrapInSectionTable = (content: string, isFirst: boolean): string => {
       const marginTop = isFirst ? '0' : '10px';
-      return `<table cellpadding="0" cellspacing="0" border="0" style="width: 95%; max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed;">
-    <tr>
-      <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word;">
-        ${content}
-      </td>
-    </tr>
-  </table>`;
+      return `<!--[if mso]>
+<table cellpadding="0" cellspacing="0" border="0" width="95%" style="mso-table-lspace:0pt;mso-table-rspace:0pt;margin-top:${marginTop};">
+  <tr>
+    <td style="padding:0;font-family:'Wells Fargo Sans',Arial,Helvetica,sans-serif;">
+${content}
+    </td>
+  </tr>
+</table>
+<![endif]-->
+<!--[if !mso]><!-->
+<table cellpadding="0" cellspacing="0" border="0" style="width: 95%; max-width: 95%; margin-top: ${marginTop}; border: none; word-wrap: break-word; table-layout: fixed; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; mso-line-height-rule: exactly;">
+  <tr>
+    <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif;">
+${content}
+    </td>
+  </tr>
+</table>
+<!--<![endif]-->`;
     };
     
     const generateSectionHTML = (section: Section, indent = ''): string => {
