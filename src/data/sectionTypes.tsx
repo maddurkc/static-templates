@@ -42,10 +42,10 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 1',
     icon: Heading1,
     description: 'Large heading - use {{variable}} for dynamic values',
-    defaultContent: `<h1 style="font-size: 34px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 400; line-height: 44px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${headingText}"/></h1>`,
+    defaultContent: `<h1 style="font-size: 34px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 400; line-height: 44px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${heading1Text}"/></h1>`,
     category: 'text',
     variables: [
-      { name: 'headingText', label: 'Heading Text', type: 'text', defaultValue: 'Main Title' }
+      { name: 'heading1Text', label: 'Heading 1 Text', type: 'text', defaultValue: 'Main Title' }
     ]
   },
   {
@@ -53,10 +53,10 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 2',
     icon: Heading2,
     description: 'Section heading - use {{variable}} for dynamic values',
-    defaultContent: `<h2 style="font-size: 24px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 600; line-height: 30px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${headingText}"/></h2>`,
+    defaultContent: `<h2 style="font-size: 24px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 600; line-height: 30px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${heading2Text}"/></h2>`,
     category: 'text',
     variables: [
-      { name: 'headingText', label: 'Heading Text', type: 'text', defaultValue: 'Section Title' }
+      { name: 'heading2Text', label: 'Heading 2 Text', type: 'text', defaultValue: 'Section Title' }
     ]
   },
   {
@@ -64,10 +64,10 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 3',
     icon: Heading3,
     description: 'Subsection heading - use {{variable}} for dynamic values',
-    defaultContent: `<h3 style="font-size: 20px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 400; line-height: 25px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${headingText}"/></h3>`,
+    defaultContent: `<h3 style="font-size: 20px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 400; line-height: 25px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${heading3Text}"/></h3>`,
     category: 'text',
     variables: [
-      { name: 'headingText', label: 'Heading Text', type: 'text', defaultValue: 'Subsection Title' }
+      { name: 'heading3Text', label: 'Heading 3 Text', type: 'text', defaultValue: 'Subsection Title' }
     ]
   },
   {
@@ -75,10 +75,10 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 4',
     icon: Heading4,
     description: 'Minor heading - use {{variable}} for dynamic values',
-    defaultContent: `<h4 style="font-size: 16px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 400; line-height: 20px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${headingText}"/></h4>`,
+    defaultContent: `<h4 style="font-size: 16px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 400; line-height: 20px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${heading4Text}"/></h4>`,
     category: 'text',
     variables: [
-      { name: 'headingText', label: 'Heading Text', type: 'text', defaultValue: 'Minor Title' }
+      { name: 'heading4Text', label: 'Heading 4 Text', type: 'text', defaultValue: 'Minor Title' }
     ]
   },
   {
@@ -86,10 +86,10 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 5',
     icon: Heading5,
     description: 'Small heading - use {{variable}} for dynamic values',
-    defaultContent: `<h5 style="font-size: 15px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 600; line-height: 19px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${headingText}"/></h5>`,
+    defaultContent: `<h5 style="font-size: 15px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 600; line-height: 19px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${heading5Text}"/></h5>`,
     category: 'text',
     variables: [
-      { name: 'headingText', label: 'Heading Text', type: 'text', defaultValue: 'Small Title' }
+      { name: 'heading5Text', label: 'Heading 5 Text', type: 'text', defaultValue: 'Small Title' }
     ]
   },
   {
@@ -97,10 +97,10 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Heading 6',
     icon: Heading6,
     description: 'Smallest heading - use {{variable}} for dynamic values',
-    defaultContent: `<h6 style="font-size: 14px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 600; line-height: 18px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${headingText}"/></h6>`,
+    defaultContent: `<h6 style="font-size: 14px; color: #3B3331; font-family: ${OUTLOOK_FONT_FAMILY}; font-weight: 600; line-height: 18px; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${heading6Text}"/></h6>`,
     category: 'text',
     variables: [
-      { name: 'headingText', label: 'Heading Text', type: 'text', defaultValue: 'Tiny Title' }
+      { name: 'heading6Text', label: 'Heading 6 Text', type: 'text', defaultValue: 'Tiny Title' }
     ]
   },
   {
