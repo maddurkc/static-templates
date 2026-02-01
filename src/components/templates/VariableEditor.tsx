@@ -492,6 +492,76 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     );
   }
   
+  // For CTA text sections - link with text and URL
+  if (section.type === 'cta-text') {
+    const ctaText = (section.variables?.ctaText as string) || 'Call to action&nbsp;>';
+    const ctaUrl = (section.variables?.ctaUrl as string) || '#';
+    
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>CTA Text Link</h3>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <Label className={styles.label}>Link Text</Label>
+          <Input
+            value={ctaText}
+            onChange={(e) => {
+              onUpdate({
+                ...section,
+                variables: { ...section.variables, ctaText: e.target.value }
+              });
+            }}
+            placeholder="Enter link text"
+            className={styles.variableInput}
+          />
+          <p className={styles.description}>
+            The text displayed for the link. Use &amp;nbsp; for non-breaking space.
+          </p>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <Label className={styles.label}>Link URL</Label>
+          <Input
+            type="url"
+            value={ctaUrl}
+            onChange={(e) => {
+              onUpdate({
+                ...section,
+                variables: { ...section.variables, ctaUrl: e.target.value }
+              });
+            }}
+            placeholder="https://example.com"
+            className={styles.variableInput}
+          />
+          <p className={styles.description}>
+            The destination URL when users click the link.
+          </p>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <Label className={styles.label}>Preview</Label>
+          <div className="mt-2">
+            <a 
+              href={ctaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ 
+                fontSize: '14px',
+                color: '#5A469B',
+                lineHeight: '24px',
+                fontWeight: 'bold',
+                textDecoration: 'underline'
+              }}
+              dangerouslySetInnerHTML={{ __html: ctaText }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // For static-text sections, show a simple textarea
   if (section.type === 'static-text') {
     return (
