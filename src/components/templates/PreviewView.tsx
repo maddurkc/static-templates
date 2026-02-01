@@ -125,6 +125,19 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
       return `<div style="${styleString}; padding: 8px; line-height: 1.6;">${mixedContent}</div>`;
     }
     
+    // Handle CTA text sections - render as styled link
+    if (section.type === 'cta-text') {
+      const ctaText = (section.variables?.ctaText as string) || 'Call to action&nbsp;>';
+      const ctaUrl = (section.variables?.ctaUrl as string) || '#';
+      return `<p style="margin: 0; margin-bottom: 0px;"><a href="${ctaUrl}" style="font-size: 14px; color: #5A469B; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; line-height: 24px; font-weight: bold; text-decoration: underline;">${ctaText}</a></p>`;
+    }
+    
+    // Handle program-name sections
+    if (section.type === 'program-name') {
+      const programName = (section.variables?.programName as string) || 'Program Name';
+      return `<font style="font-size: 14px; line-height: 21px; color: #141414; font-weight: bold; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif;">${programName}</font>`;
+    }
+    
     // For heading and text sections with variables, show default values (but section.content keeps Thymeleaf)
     const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
     const isInlinePlaceholder = inlinePlaceholderTypes.includes(section.type);
