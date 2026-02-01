@@ -2165,6 +2165,112 @@ const RunTemplates = () => {
                             );
                           }
                           
+                          // Handle CTA text sections
+                          if (section.type === 'cta-text') {
+                            const ctaText = (variables[`ctaText_${section.id}`] as string) || (section.variables?.ctaText as string) || 'Call to action&nbsp;>';
+                            const ctaUrl = (variables[`ctaUrl_${section.id}`] as string) || (section.variables?.ctaUrl as string) || '#';
+                            
+                            return (
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                <div className="text-xs text-muted-foreground mb-2">CTA Text Link</div>
+                                
+                                {/* Preview */}
+                                <div className="mb-3">
+                                  <a 
+                                    href={ctaUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ 
+                                      fontSize: '14px',
+                                      color: '#5A469B',
+                                      lineHeight: '24px',
+                                      fontWeight: 'bold',
+                                      textDecoration: 'underline'
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: ctaText }}
+                                  />
+                                </div>
+                                
+                                {/* Inputs */}
+                                <div className="ml-4 pl-3 border-l-2 border-primary/20 space-y-3">
+                                  <div className={styles.formField}>
+                                    <Label className="text-xs font-medium mb-1.5 text-muted-foreground">Link Text</Label>
+                                    <Input
+                                      value={ctaText}
+                                      onChange={(e) => {
+                                        setVariables(prev => ({
+                                          ...prev,
+                                          [`ctaText_${section.id}`]: e.target.value
+                                        }));
+                                      }}
+                                      onFocus={() => scrollToSection(section.id)}
+                                      placeholder="Enter link text..."
+                                      className="text-sm"
+                                    />
+                                  </div>
+                                  <div className={styles.formField}>
+                                    <Label className="text-xs font-medium mb-1.5 text-muted-foreground">Link URL</Label>
+                                    <Input
+                                      type="url"
+                                      value={ctaUrl}
+                                      onChange={(e) => {
+                                        setVariables(prev => ({
+                                          ...prev,
+                                          [`ctaUrl_${section.id}`]: e.target.value
+                                        }));
+                                      }}
+                                      onFocus={() => scrollToSection(section.id)}
+                                      placeholder="https://example.com"
+                                      className="text-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          // Handle Program Name sections
+                          if (section.type === 'program-name') {
+                            const programName = (variables[`programName_${section.id}`] as string) || (section.variables?.programName as string) || 'Program Name';
+                            
+                            return (
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                <div className="text-xs text-muted-foreground mb-2">Program Name</div>
+                                
+                                {/* Preview */}
+                                <div 
+                                  className="mb-3"
+                                  style={{ 
+                                    fontSize: '14px',
+                                    lineHeight: '21px',
+                                    color: '#141414',
+                                    fontWeight: 'bold'
+                                  }}
+                                  dangerouslySetInnerHTML={{ __html: programName }}
+                                />
+                                
+                                {/* Input */}
+                                <div className="ml-4 pl-3 border-l-2 border-primary/20">
+                                  <div className={styles.formField}>
+                                    <Label className="text-xs font-medium mb-1.5 text-muted-foreground">Program Name</Label>
+                                    <Input
+                                      value={programName}
+                                      onChange={(e) => {
+                                        setVariables(prev => ({
+                                          ...prev,
+                                          [`programName_${section.id}`]: e.target.value
+                                        }));
+                                      }}
+                                      onFocus={() => scrollToSection(section.id)}
+                                      placeholder="Enter program name..."
+                                      className="text-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
                           return null;
                         })}
                       </>
@@ -2235,6 +2341,36 @@ const RunTemplates = () => {
                                     ...currentTableData,
                                     rows: [[variables[bannerKey] as string]]
                                   }
+                                }
+                              };
+                            }
+                          }
+                          
+                          // For CTA text sections, inject updated text and URL
+                          if (s.type === 'cta-text') {
+                            const ctaTextKey = `ctaText_${s.id}`;
+                            const ctaUrlKey = `ctaUrl_${s.id}`;
+                            if (variables[ctaTextKey] !== undefined || variables[ctaUrlKey] !== undefined) {
+                              updated = {
+                                ...updated,
+                                variables: {
+                                  ...updated.variables,
+                                  ctaText: (variables[ctaTextKey] as string) || s.variables?.ctaText,
+                                  ctaUrl: (variables[ctaUrlKey] as string) || s.variables?.ctaUrl
+                                }
+                              };
+                            }
+                          }
+                          
+                          // For program-name sections, inject updated name
+                          if (s.type === 'program-name') {
+                            const programNameKey = `programName_${s.id}`;
+                            if (variables[programNameKey] !== undefined) {
+                              updated = {
+                                ...updated,
+                                variables: {
+                                  ...updated.variables,
+                                  programName: variables[programNameKey] as string
                                 }
                               };
                             }

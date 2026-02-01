@@ -270,6 +270,33 @@ const SortableSection = ({
               })()
             }}
           />
+        ) : !isContainer && section.type === 'cta-text' ? (
+          // Handle CTA text sections - display as styled link
+          <div className={styles.ctaPreview}>
+            <a 
+              href={section.variables?.ctaUrl as string || '#'}
+              style={{ 
+                fontSize: '14px',
+                color: '#5A469B',
+                lineHeight: '24px',
+                fontWeight: 'bold',
+                textDecoration: 'underline'
+              }}
+              onClick={(e) => e.preventDefault()}
+              dangerouslySetInnerHTML={{ __html: (section.variables?.ctaText as string) || 'Call to action&nbsp;>' }}
+            />
+          </div>
+        ) : !isContainer && section.type === 'program-name' ? (
+          // Handle Program Name sections
+          <div 
+            style={{ 
+              fontSize: '14px',
+              lineHeight: '21px',
+              color: '#141414',
+              fontWeight: 'bold'
+            }}
+            dangerouslySetInnerHTML={{ __html: (section.variables?.programName as string) || 'Program Name' }}
+          />
         ) : !isContainer && (
           <>
             <div

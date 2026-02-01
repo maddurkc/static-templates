@@ -867,6 +867,32 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     return wrapInOutlookTable(listHtml);
   }
   
+  // Handle CTA text sections
+  if (section.type === 'cta-text') {
+    const ctaText = (variables?.[`ctaText_${section.id}`] as string) || 
+                    (variables?.ctaText as string) || 
+                    (section.variables?.ctaText as string) || 
+                    'Call to action&nbsp;>';
+    const ctaUrl = (variables?.[`ctaUrl_${section.id}`] as string) || 
+                   (variables?.ctaUrl as string) || 
+                   (section.variables?.ctaUrl as string) || 
+                   '#';
+    
+    const ctaHtml = `<p style="margin: 0; margin-bottom: 0px;"><a href="${ctaUrl}" style="font-size: 14px; color: #5A469B; font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 24px; font-weight: bold; text-decoration: underline;">${ctaText}</a></p>`;
+    return wrapInOutlookTable(ctaHtml);
+  }
+  
+  // Handle program-name sections
+  if (section.type === 'program-name') {
+    const programName = (variables?.[`programName_${section.id}`] as string) || 
+                        (variables?.programName as string) || 
+                        (section.variables?.programName as string) || 
+                        'Program Name';
+    
+    const programHtml = `<font style="font-size: 14px; line-height: 21px; color: #141414; font-weight: bold; font-family: ${OUTLOOK_FONT_FAMILY};">${programName}</font>`;
+    return wrapInOutlookTable(programHtml);
+  }
+  
   // Handle line-break sections (empty line gap)
   if (section.type === 'line-break') {
     return '<div style="height: 16px;"></div>';
