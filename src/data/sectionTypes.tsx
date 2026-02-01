@@ -408,5 +408,16 @@ export const sectionTypes: SectionDefinition[] = [
     variables: [
       { name: 'programName', label: 'Program Name', type: 'text', defaultValue: 'Program Name' }
     ]
+  },
+  {
+    type: 'cta-text',
+    label: 'CTA Text',
+    icon: Link,
+    description: 'Call to action text link with arrow',
+    defaultContent: `<p style="margin: 0; margin-bottom: 0px;"><a href="#" style="font-size: 14px; color: #5A469B; font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 24px; font-weight: bold; text-decoration: none;"><span th:utext="\${ctaText}"/></a></p>`,
+    category: 'interactive',
+    variables: [
+      { name: 'ctaText', label: 'CTA Text', type: 'text', defaultValue: 'Call to action&nbsp;>' }
+    ]
   }
 ];
