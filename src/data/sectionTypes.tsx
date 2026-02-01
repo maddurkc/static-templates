@@ -397,5 +397,16 @@ export const sectionTypes: SectionDefinition[] = [
         } as any
       }
     ]
+  },
+  {
+    type: 'program-name',
+    label: 'Program Name',
+    icon: Type,
+    description: 'Program name with bold styling',
+    defaultContent: `<font style="font-size: 14px; line-height: 21px; color: #141414; font-weight: bold; font-family: ${OUTLOOK_FONT_FAMILY};"><span th:utext="\${programName}"/></font>`,
+    category: 'text',
+    variables: [
+      { name: 'programName', label: 'Program Name', type: 'text', defaultValue: 'Program Name' }
+    ]
   }
 ];
