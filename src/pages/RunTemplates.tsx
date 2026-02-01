@@ -962,6 +962,25 @@ const RunTemplates = () => {
     Object.entries(labelVariables).forEach(([key, value]) => {
       bodyData[key] = value;
     });
+    
+    // Add CTA Text and Program Name section variables
+    if (selectedTemplate.sections) {
+      selectedTemplate.sections.forEach(section => {
+        if (section.type === 'cta-text') {
+          const ctaTextKey = `ctaText_${section.id}`;
+          const ctaUrlKey = `ctaUrl_${section.id}`;
+          const ctaText = variables[ctaTextKey] || section.variables?.ctaText || 'Call to action&nbsp;>';
+          const ctaUrl = variables[ctaUrlKey] || section.variables?.ctaUrl || '#';
+          bodyData[ctaTextKey] = generateStyledHtml(ctaText);
+          bodyData[ctaUrlKey] = typeof ctaUrl === 'string' ? ctaUrl : (ctaUrl as TextStyle).text || '#';
+        }
+        if (section.type === 'program-name') {
+          const programNameKey = `programName_${section.id}`;
+          const programName = variables[programNameKey] || section.variables?.programName || 'Program Name';
+          bodyData[programNameKey] = generateStyledHtml(programName);
+        }
+      });
+    }
 
     // Generate full rendered HTML with email wrapper for Outlook/email client compatibility
     const allVars: Record<string, string | string[] | any> = {
