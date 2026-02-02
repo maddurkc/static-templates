@@ -300,9 +300,15 @@ export const RichTextEditor = ({
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const text = e.clipboardData.getData('text/plain');
-    // For single line, remove newlines
-    const processedText = singleLine ? text.replace(/[\r\n]+/g, ' ') : text;
-    document.execCommand('insertText', false, processedText);
+    // For single line, remove newlines; for multi-line, convert newlines to <br>
+    if (singleLine) {
+      const processedText = text.replace(/[\r\n]+/g, ' ');
+      document.execCommand('insertText', false, processedText);
+    } else {
+      // Convert newlines to <br> tags for multi-line content
+      const htmlContent = text.replace(/\r\n/g, '\n').replace(/\n/g, '<br>');
+      document.execCommand('insertHTML', false, htmlContent);
+    }
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
     }
