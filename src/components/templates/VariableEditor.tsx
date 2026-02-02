@@ -14,6 +14,7 @@ import { ApiVariablePicker } from "./ApiVariablePicker";
 import { RichTextEditor } from "./RichTextEditor";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { generateListVariableName, generateThymeleafListHtml, getListTag, getListStyleType, isValidListVariableName, sanitizeVariableName } from "@/lib/listThymeleafUtils";
+import { generateTextSectionVariableName } from "@/lib/textThymeleafUtils";
 import styles from "./VariableEditor.module.scss";
 
 interface VariableEditorProps {
@@ -1121,12 +1122,10 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
 
   // Handle heading and text sections with inline placeholders
   if (isInlinePlaceholderSection) {
-    // Get the stored dynamic variable name or fall back to static default
+    // Get the stored dynamic variable name - this should ALWAYS exist from TemplateEditor drag-drop
+    // If missing (legacy data), generate it now using the same function as TemplateEditor
     const storedVarName = section.variables?.textVariableName as string | undefined;
-    const defaultVarName = storedVarName || 
-      (section.type === 'paragraph' ? 'paragraphContent' : 
-       section.type === 'text' ? 'textContent' : 
-       section.type.startsWith('heading') ? `${section.type}Text` : 'headingText');
+    const defaultVarName = storedVarName || generateTextSectionVariableName(section.type, section.id);
     
     // Get user-friendly content (preserving rich text formatting, with placeholders)
     const getUserFriendlyContent = (): string => {
@@ -1196,12 +1195,10 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
               const htmlTag = tagMatch ? tagMatch[1] : 'div';
               const tagStyles = tagMatch ? tagMatch[2] : '';
               
-              // Get the stored dynamic variable name or fall back to static default
+              // Get the stored dynamic variable name - this should ALWAYS exist from TemplateEditor drag-drop
+              // If missing (legacy data), generate it now using the same function as TemplateEditor
               const storedVarName = section.variables?.textVariableName as string | undefined;
-              const defaultVarName = storedVarName || 
-                (section.type === 'paragraph' ? 'paragraphContent' : 
-                 section.type === 'text' ? 'textContent' : 
-                 section.type.startsWith('heading') ? `${section.type}Text` : 'headingText');
+              const defaultVarName = storedVarName || generateTextSectionVariableName(section.type, section.id);
               
               // Check if there are ANY user-defined placeholders in content
               const hasUserPlaceholders = newPlaceholders.length > 0;
