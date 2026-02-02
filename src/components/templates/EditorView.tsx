@@ -295,7 +295,7 @@ const SortableSection = ({
               color: '#141414',
               fontWeight: 'bold'
             }}
-            dangerouslySetInnerHTML={{ __html: (section.variables?.programName as string) || 'Program Name' }}
+            dangerouslySetInnerHTML={{ __html: (section.variables?.programNameText as string) || 'Program Name' }}
           />
         ) : !isContainer && (
           <>
