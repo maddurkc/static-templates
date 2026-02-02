@@ -1,6 +1,9 @@
 import { Section } from "@/types/section";
 import { isValidListVariableName } from "@/lib/listThymeleafUtils";
 
+// Section types that can only appear once per template
+export const SINGLE_USE_SECTION_TYPES = ['program-name', 'banner'] as const;
+
 export interface ValidationError {
   field: string;
   message: string;
@@ -225,6 +228,30 @@ export const validateSections = (sections: Section[]): ValidationError[] => {
       field: 'sections',
       message: 'Template must have at least one content section'
     });
+  }
+  
+  // Validate single-use sections (program-name, banner) - only one of each allowed
+  const countSectionTypes = (sectionList: Section[], counts: Record<string, number> = {}): Record<string, number> => {
+    for (const section of sectionList) {
+      counts[section.type] = (counts[section.type] || 0) + 1;
+      if (section.children) {
+        countSectionTypes(section.children, counts);
+      }
+    }
+    return counts;
+  };
+  
+  const sectionCounts = countSectionTypes(sections);
+  
+  for (const sectionType of SINGLE_USE_SECTION_TYPES) {
+    const count = sectionCounts[sectionType] || 0;
+    if (count > 1) {
+      const typeLabel = sectionType === 'program-name' ? 'Program Name' : 'Banner';
+      errors.push({
+        field: 'sections',
+        message: `Only one ${typeLabel} section is allowed per template (found ${count})`
+      });
+    }
   }
   
   // Validate each section

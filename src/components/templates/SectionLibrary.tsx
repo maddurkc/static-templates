@@ -1,31 +1,45 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { sectionTypes } from "@/data/sectionTypes";
+import { Section } from "@/types/section";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { GripVertical, Ban } from "lucide-react";
 import styles from "./SectionLibrary.module.scss";
 
-const DraggableSection = ({ section }: { section: typeof sectionTypes[0] }) => {
+// Section types that can only appear once per template
+export const SINGLE_USE_SECTION_TYPES = ['program-name', 'banner'] as const;
+
+interface DraggableSectionProps {
+  section: typeof sectionTypes[0];
+  isDisabled?: boolean;
+}
+
+const DraggableSection = ({ section, isDisabled = false }: DraggableSectionProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `library-${section.type}`,
+    disabled: isDisabled,
   });
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : isDisabled ? 0.5 : 1,
   };
 
-  return (
+  const card = (
     <Card
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={styles.draggableCard}
+      {...(isDisabled ? {} : { ...attributes, ...listeners })}
+      className={`${styles.draggableCard} ${isDisabled ? styles.disabledCard : ''}`}
     >
       <div className={styles.cardContent}>
-        <GripVertical className={styles.dragIcon} />
+        {isDisabled ? (
+          <Ban className={styles.dragIcon} />
+        ) : (
+          <GripVertical className={styles.dragIcon} />
+        )}
         <section.icon className={styles.sectionIcon} />
         <div className={styles.cardText}>
           <p className={styles.sectionTitle}>{section.label}</p>
@@ -34,9 +48,45 @@ const DraggableSection = ({ section }: { section: typeof sectionTypes[0] }) => {
       </div>
     </Card>
   );
+
+  if (isDisabled) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {card}
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Only one {section.label} section allowed per template</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return card;
 };
 
-export const SectionLibrary = () => {
+interface SectionLibraryProps {
+  existingSections?: Section[];
+}
+
+export const SectionLibrary = ({ existingSections = [] }: SectionLibraryProps) => {
+  // Check which single-use sections already exist in the template
+  const existingSingleUseSections = new Set<string>();
+  
+  const checkSections = (sections: Section[]) => {
+    for (const section of sections) {
+      if (SINGLE_USE_SECTION_TYPES.includes(section.type as any)) {
+        existingSingleUseSections.add(section.type);
+      }
+      if (section.children) {
+        checkSections(section.children);
+      }
+    }
+  };
+  checkSections(existingSections);
+
   const groupedSections = sectionTypes.reduce((acc, section) => {
     if (!acc[section.category]) {
       acc[section.category] = [];
@@ -66,7 +116,11 @@ export const SectionLibrary = () => {
           </div>
           <div className={styles.sectionsList}>
             {categorySections.map((section) => (
-              <DraggableSection key={section.type} section={section} />
+              <DraggableSection 
+                key={section.type} 
+                section={section}
+                isDisabled={existingSingleUseSections.has(section.type)}
+              />
             ))}
           </div>
         </div>
