@@ -278,6 +278,17 @@ export const RichTextEditor = ({
       e.preventDefault();
       return;
     }
+    
+    // For multi-line mode, insert <br> instead of browser default (which may insert <div>)
+    if (!singleLine && e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      document.execCommand('insertHTML', false, '<br><br>');
+      if (editorRef.current) {
+        onChange(editorRef.current.innerHTML);
+      }
+      return;
+    }
+    
     // Handle bold/italic/underline shortcuts
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'b') {
