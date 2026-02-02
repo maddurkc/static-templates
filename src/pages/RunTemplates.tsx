@@ -1745,6 +1745,9 @@ const RunTemplates = () => {
                             const isBanner = section.type === 'banner';
                             const bannerKey = `banner_${section.id}`;
                             
+                            // Get the stored textVariableName for this section
+                            const textVarName = section.variables?.textVariableName as string;
+                            
                             // Get the original content from template (before any edits)
                             const getOriginalContent = (): string => {
                               if (isBanner) {
@@ -1769,7 +1772,7 @@ const RunTemplates = () => {
                             // Use edited value if available, otherwise use original
                             const rawContent = hasBeenEdited ? editedValue : originalContent;
                             
-                            // Convert Thymeleaf tags to {{placeholder}} format, preserving other HTML
+                            // Convert Thymeleaf tags to {{placeholder}} format for internal processing
                             const contentWithPlaceholders = rawContent
                               .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
                               .replace(/<span\s+th:utext="\$\{(\w+)\}"><\/span>/g, '{{$1}}')
@@ -1778,7 +1781,6 @@ const RunTemplates = () => {
                               .replace(/th:utext="\$\{(\w+)\}"/g, '{{$1}}');
                             
                             // Remove only the outer wrapper tag (e.g., <h1>...</h1>, <p>...</p>)
-                            // but preserve inner HTML formatting like <br>, <div>, <span>, etc.
                             let contentForDisplay = contentWithPlaceholders.replace(/^<(\w+)>([\s\S]*)<\/\1>$/, '$2');
                             
                             // For placeholder extraction, strip HTML to get plain text
@@ -1788,8 +1790,7 @@ const RunTemplates = () => {
                             // Dynamically extract placeholders from content
                             const varNames: string[] = [];
                             
-                            // First check for stored textVariableName (dynamic naming)
-                            const textVarName = section.variables?.textVariableName as string;
+                            // Check for stored textVariableName (dynamic naming) 
                             if (textVarName) {
                               varNames.push(textVarName);
                             }
@@ -1807,7 +1808,6 @@ const RunTemplates = () => {
                             if (!displayContentCheck) return null;
                             
                             const isEditingThisSection = editingSectionId === section.id;
-                            const hasPlaceholders = varNames.length > 0;
                             
                             // Get banner background color for display
                             const bannerBgColor = isBanner 
@@ -1815,20 +1815,62 @@ const RunTemplates = () => {
                               : undefined;
                             
                             // Determine the value for RichTextEditor - preserve HTML formatting
-                            // Convert Thymeleaf to placeholders but keep other HTML (br, div, span styles)
                             const richTextValue = hasBeenEdited 
                               ? editedValue 
                               : originalContent
-                                  .replace(/^<(\w+)>([\s\S]*)<\/\1>$/, '$2') // Remove outer wrapper only
+                                  .replace(/^<(\w+)>([\s\S]*)<\/\1>$/, '$2')
                                   .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
                                   .replace(/<span\s+th:utext="\$\{(\w+)\}"><\/span>/g, '{{$1}}')
                                   .replace(/<th:utext="\$\{(\w+)\}">[^<]*<\/th:utext>/g, '{{$1}}')
                                   .replace(/<th:block\s+th:utext="\$\{(\w+)\}"\/>/g, '{{$1}}')
                                   .replace(/th:utext="\$\{(\w+)\}"/g, '{{$1}}');
                             
+                            // Function to get the display value - replace placeholders with actual values
+                            const getDisplayValueWithReplacements = (): string => {
+                              let display = contentForDisplay;
+                              
+                              // Replace dynamic text variable placeholder with its value
+                              if (textVarName) {
+                                const varValue = typeof variables[textVarName] === 'object' 
+                                  ? (variables[textVarName] as TextStyle).text 
+                                  : (variables[textVarName] as string) || '';
+                                
+                                // Replace the {{textVarName}} placeholder with the actual value
+                                display = display.replace(new RegExp(`\\{\\{${textVarName}\\}\\}`, 'g'), varValue || `{{${textVarName}}}`);
+                              }
+                              
+                              // Replace any other inline placeholders
+                              varNames.forEach(varName => {
+                                if (varName !== textVarName) {
+                                  const varValue = typeof variables[varName] === 'object' 
+                                    ? (variables[varName] as TextStyle).text 
+                                    : (variables[varName] as string) || '';
+                                  display = display.replace(new RegExp(`\\{\\{${varName}\\}\\}`, 'g'), varValue || `{{${varName}}}`);
+                                }
+                              });
+                              
+                              return display;
+                            };
+                            
+                            // Check if any placeholder still has no value (shows as {{...}})
+                            const displayValue = getDisplayValueWithReplacements();
+                            const hasUnfilledPlaceholders = /\{\{\w+\}\}/.test(displayValue);
+                            
+                            // Determine which variables need input fields (ones without values or with textVarName)
+                            const variablesNeedingInput = varNames.filter(varName => {
+                              const varValue = typeof variables[varName] === 'object' 
+                                ? (variables[varName] as TextStyle).text 
+                                : (variables[varName] as string) || '';
+                              // Show input if no value is set
+                              return !varValue || varValue.trim() === '';
+                            });
+                            
+                            // Always show the main text variable input for editing
+                            const showTextVarInput = textVarName && isEditable;
+                            
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
-                                {/* Content label - show with placeholders highlighted or as static text */}
+                                {/* Content display - show actual value with edit icon */}
                                 {isEditingThisSection && isEditable ? (
                                   <div className="mb-3">
                                     <RichTextEditor
@@ -1889,25 +1931,20 @@ const RunTemplates = () => {
                                         className="flex-1 inline-block px-3 py-1 rounded text-sm font-bold"
                                         style={{ backgroundColor: bannerBgColor, color: '#000' }}
                                         dangerouslySetInnerHTML={{ 
-                                          __html: hasPlaceholders 
-                                            ? contentForDisplay.replace(
-                                                /\{\{(\w+)\}\}/g, 
-                                                '<span style="background-color: rgba(0,0,0,0.1); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em;">{{$1}}</span>'
-                                              )
-                                            : contentForDisplay
+                                          __html: displayValue
                                         }}
                                       />
                                     ) : (
                                       <div 
-                                        className={`flex-1 text-sm font-medium ${hasPlaceholders ? 'text-foreground' : 'text-muted-foreground'}`}
+                                        className={`flex-1 text-sm font-medium ${hasUnfilledPlaceholders ? 'text-muted-foreground' : 'text-foreground'}`}
                                         style={{ lineHeight: 1.6 }}
                                         dangerouslySetInnerHTML={{ 
-                                          __html: hasPlaceholders 
-                                            ? contentForDisplay.replace(
+                                          __html: hasUnfilledPlaceholders 
+                                            ? displayValue.replace(
                                                 /\{\{(\w+)\}\}/g, 
                                                 '<span style="background-color: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em; font-weight: 600;">{{$1}}</span>'
                                               )
-                                            : contentForDisplay
+                                            : displayValue
                                         }}
                                       />
                                     )}
@@ -1925,10 +1962,48 @@ const RunTemplates = () => {
                                   </div>
                                 )}
                                 
-                                {/* Show input boxes for each placeholder - indented to show association */}
-                                {hasPlaceholders && (
+                                {/* Show input field for the main text variable - always show when section is editable */}
+                                {showTextVarInput && !isEditingThisSection && (
                                   <div className="mt-3 ml-4 pl-3 border-l-2 border-primary/20 space-y-3">
-                                    {varNames.map(varName => (
+                                    <div className={styles.formField}>
+                                      {isBanner ? (
+                                        <Input
+                                          value={(variables[textVarName] as string) || ''}
+                                          onChange={(e) => {
+                                            setVariables(prev => ({
+                                              ...prev,
+                                              [textVarName]: e.target.value
+                                            }));
+                                          }}
+                                          onFocus={() => scrollToSection(section.id)}
+                                          placeholder={`Enter ${section.type.replace(/\d+/, '')} value...`}
+                                          className="text-sm"
+                                        />
+                                      ) : (
+                                        <RichTextEditor
+                                          value={typeof variables[textVarName] === 'object' 
+                                            ? (variables[textVarName] as TextStyle).text 
+                                            : (variables[textVarName] as string) || ''
+                                          }
+                                          onChange={(html) => {
+                                            setVariables(prev => ({
+                                              ...prev,
+                                              [textVarName]: html
+                                            }));
+                                          }}
+                                          onFocus={() => scrollToSection(section.id)}
+                                          placeholder={`Enter ${section.type.replace(/\d+/, '')} value...`}
+                                          singleLine={section.type.startsWith('heading')}
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Show additional input boxes for other placeholders that don't have values */}
+                                {!isEditingThisSection && variablesNeedingInput.length > 0 && variablesNeedingInput.some(v => v !== textVarName) && (
+                                  <div className="mt-3 ml-4 pl-3 border-l-2 border-primary/20 space-y-3">
+                                    {variablesNeedingInput.filter(v => v !== textVarName).map(varName => (
                                       <div key={varName} className={styles.formField}>
                                         <Label htmlFor={`var-${varName}`} className="text-xs font-medium mb-1.5 inline-flex items-center gap-1.5 text-muted-foreground">
                                           <span className="font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-semibold">{`{{${varName}}}`}</span>
@@ -1969,7 +2044,7 @@ const RunTemplates = () => {
                                 )}
                                 
                                 {/* For banner without placeholders, show simple input */}
-                                {isBanner && !hasPlaceholders && isEditable && (
+                                {isBanner && !textVarName && varNames.length === 0 && isEditable && (
                                   <div className="mt-3 ml-4 pl-3 border-l-2 border-primary/20">
                                     <Input
                                       value={rawContent}
