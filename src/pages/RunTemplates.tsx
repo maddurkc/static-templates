@@ -426,8 +426,28 @@ const RunTemplates = () => {
       if (inlinePlaceholderTypes.includes(section.type)) {
         // Check if this varName matches the stored textVariableName
         const textVarName = section.variables?.textVariableName as string;
-        if (textVarName && textVarName === varName && section.variables?.[varName] !== undefined) {
-          return String(section.variables[varName]);
+        if (textVarName && textVarName === varName) {
+          // Get the default value from section.variables stored value or use type-based default
+          const storedValue = section.variables?.[varName];
+          if (storedValue !== undefined) {
+            return String(storedValue);
+          }
+          // Return type-based default
+          if (section.type.startsWith('heading')) {
+            const level = section.type.replace('heading', '');
+            const defaults: Record<string, string> = {
+              '1': 'Main Title',
+              '2': 'Section Title',
+              '3': 'Subsection Title',
+              '4': 'Minor Title',
+              '5': 'Small Title',
+              '6': 'Tiny Title'
+            };
+            return defaults[level] || 'Title';
+          }
+          if (section.type === 'text') return 'Your text here';
+          if (section.type === 'paragraph') return 'This is a paragraph. You can add more text here.';
+          return '';
         }
         // Fallback to checking if variable exists directly
         if (section.variables && section.variables[varName] !== undefined) {
@@ -1856,41 +1876,80 @@ const RunTemplates = () => {
                             const displayValue = getDisplayValueWithReplacements();
                             const hasUnfilledPlaceholders = /\{\{\w+\}\}/.test(displayValue);
                             
-                            // Determine which variables need input fields (ones without values or with textVarName)
-                            const variablesNeedingInput = varNames.filter(varName => {
-                              const varValue = typeof variables[varName] === 'object' 
-                                ? (variables[varName] as TextStyle).text 
-                                : (variables[varName] as string) || '';
-                              // Show input if no value is set
-                              return !varValue || varValue.trim() === '';
+                            // Get the default variable name pattern to identify the "main" placeholder
+                            const getDefaultVarNameForType = (type: string): string | null => {
+                              if (type.startsWith('heading')) {
+                                const level = type.replace('heading', '');
+                                return `heading${level}Text`;
+                              }
+                              if (type === 'text') return 'textContent';
+                              if (type === 'paragraph') return 'paragraphContent';
+                              return null;
+                            };
+                            
+                            const defaultVarPattern = getDefaultVarNameForType(section.type);
+                            
+                            // Determine which variables are "extra" (not the default/main placeholder)
+                            // These are {{placeholders}} added by the user beyond the default one
+                            const extraPlaceholders = varNames.filter(varName => {
+                              // If it's the textVarName (dynamic naming), it's the main variable - exclude it
+                              if (varName === textVarName) return false;
+                              // If it matches the default pattern (e.g., heading1Text), it's the main variable - exclude it
+                              if (defaultVarPattern && varName === defaultVarPattern) return false;
+                              // If it starts with the default pattern + underscore (dynamic naming), it's the main variable - exclude it
+                              if (defaultVarPattern && varName.startsWith(defaultVarPattern + '_')) return false;
+                              return true;
                             });
                             
-                            // Always show the main text variable input for editing
-                            const showTextVarInput = textVarName && isEditable;
+                            // Get the main variable key for editing
+                            const mainVarKey = textVarName || (isBanner ? bannerKey : null);
+                            
+                            // Get current value of the main variable for editing
+                            const getMainVarValue = (): string => {
+                              if (isBanner) {
+                                return (variables[bannerKey] as string) ?? (section.variables?.tableData as any)?.rows?.[0]?.[0] ?? 'EFT';
+                              }
+                              if (textVarName) {
+                                const val = variables[textVarName];
+                                return typeof val === 'object' ? (val as TextStyle).text : (val as string) || '';
+                              }
+                              return '';
+                            };
+                            
+                            const mainVarValue = getMainVarValue();
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
-                                {/* Content display - show actual value with edit icon */}
-                                {isEditingThisSection && isEditable ? (
-                                  <div className="mb-3">
-                                    <RichTextEditor
-                                      value={richTextValue}
-                                      onChange={(html) => {
-                                        if (isBanner) {
+                                {/* Content display - show actual value with edit icon, or editable field when editing */}
+                                {isEditingThisSection && isEditable && mainVarKey ? (
+                                  <div>
+                                    {isBanner ? (
+                                      <Input
+                                        value={mainVarValue}
+                                        onChange={(e) => {
                                           setVariables(prev => ({
                                             ...prev,
-                                            [bannerKey]: html
+                                            [mainVarKey]: e.target.value
                                           }));
-                                        } else {
-                                          setEditedSectionContent(prev => ({
+                                        }}
+                                        autoFocus
+                                        placeholder="Enter value..."
+                                        className="text-sm font-bold"
+                                        style={{ backgroundColor: (section.variables?.tableData as any)?.cellStyles?.['0-0']?.backgroundColor || '#FFFF00' }}
+                                      />
+                                    ) : (
+                                      <RichTextEditor
+                                        value={mainVarValue}
+                                        onChange={(html) => {
+                                          setVariables(prev => ({
                                             ...prev,
-                                            [section.id]: html
+                                            [mainVarKey]: html
                                           }));
-                                        }
-                                      }}
-                                      placeholder={isBanner ? "Edit banner text..." : "Edit content... Use {{variableName}} for placeholders"}
-                                      rows={4}
-                                    />
+                                        }}
+                                        placeholder={`Enter ${section.type.replace(/\d+/, '')} value...`}
+                                        singleLine={section.type.startsWith('heading')}
+                                      />
+                                    )}
                                     <div className="flex items-center gap-2 mt-2">
                                       <Button 
                                         size="sm" 
@@ -1899,28 +1958,6 @@ const RunTemplates = () => {
                                       >
                                         <Check className="h-3 w-3 mr-1" />
                                         Done
-                                      </Button>
-                                      <Button 
-                                        size="sm" 
-                                        variant="ghost"
-                                        onClick={() => {
-                                          if (isBanner) {
-                                            setVariables(prev => {
-                                              const newState = { ...prev };
-                                              delete newState[bannerKey];
-                                              return newState;
-                                            });
-                                          } else {
-                                            setEditedSectionContent(prev => {
-                                              const newState = { ...prev };
-                                              delete newState[section.id];
-                                              return newState;
-                                            });
-                                          }
-                                          setEditingSectionId(null);
-                                        }}
-                                      >
-                                        Reset
                                       </Button>
                                     </div>
                                   </div>
@@ -1931,30 +1968,25 @@ const RunTemplates = () => {
                                         className="flex-1 inline-block px-3 py-1 rounded text-sm font-bold"
                                         style={{ backgroundColor: bannerBgColor, color: '#000' }}
                                         dangerouslySetInnerHTML={{ 
-                                          __html: displayValue
+                                          __html: mainVarValue || '<span style="color: #999;">Click to enter value...</span>'
                                         }}
                                       />
                                     ) : (
                                       <div 
-                                        className={`flex-1 text-sm font-medium ${hasUnfilledPlaceholders ? 'text-muted-foreground' : 'text-foreground'}`}
+                                        className={`flex-1 text-sm font-medium ${!mainVarValue ? 'text-muted-foreground italic' : 'text-foreground'}`}
                                         style={{ lineHeight: 1.6 }}
                                         dangerouslySetInnerHTML={{ 
-                                          __html: hasUnfilledPlaceholders 
-                                            ? displayValue.replace(
-                                                /\{\{(\w+)\}\}/g, 
-                                                '<span style="background-color: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em; font-weight: 600;">{{$1}}</span>'
-                                              )
-                                            : displayValue
+                                          __html: mainVarValue || 'Click to enter value...'
                                         }}
                                       />
                                     )}
-                                    {isEditable && (
+                                    {isEditable && mainVarKey && (
                                       <Button
                                         size="sm"
                                         variant="ghost"
                                         className="h-6 w-6 p-0 shrink-0 opacity-50 hover:opacity-100"
                                         onClick={() => setEditingSectionId(section.id)}
-                                        title="Edit content"
+                                        title="Edit value"
                                       >
                                         <Pencil className="h-3 w-3" />
                                       </Button>
@@ -1962,48 +1994,10 @@ const RunTemplates = () => {
                                   </div>
                                 )}
                                 
-                                {/* Show input field for the main text variable - always show when section is editable */}
-                                {showTextVarInput && !isEditingThisSection && (
+                                {/* Show input boxes ONLY for extra placeholders (not the default/main one) */}
+                                {!isEditingThisSection && extraPlaceholders.length > 0 && (
                                   <div className="mt-3 ml-4 pl-3 border-l-2 border-primary/20 space-y-3">
-                                    <div className={styles.formField}>
-                                      {isBanner ? (
-                                        <Input
-                                          value={(variables[textVarName] as string) || ''}
-                                          onChange={(e) => {
-                                            setVariables(prev => ({
-                                              ...prev,
-                                              [textVarName]: e.target.value
-                                            }));
-                                          }}
-                                          onFocus={() => scrollToSection(section.id)}
-                                          placeholder={`Enter ${section.type.replace(/\d+/, '')} value...`}
-                                          className="text-sm"
-                                        />
-                                      ) : (
-                                        <RichTextEditor
-                                          value={typeof variables[textVarName] === 'object' 
-                                            ? (variables[textVarName] as TextStyle).text 
-                                            : (variables[textVarName] as string) || ''
-                                          }
-                                          onChange={(html) => {
-                                            setVariables(prev => ({
-                                              ...prev,
-                                              [textVarName]: html
-                                            }));
-                                          }}
-                                          onFocus={() => scrollToSection(section.id)}
-                                          placeholder={`Enter ${section.type.replace(/\d+/, '')} value...`}
-                                          singleLine={section.type.startsWith('heading')}
-                                        />
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Show additional input boxes for other placeholders that don't have values */}
-                                {!isEditingThisSection && variablesNeedingInput.length > 0 && variablesNeedingInput.some(v => v !== textVarName) && (
-                                  <div className="mt-3 ml-4 pl-3 border-l-2 border-primary/20 space-y-3">
-                                    {variablesNeedingInput.filter(v => v !== textVarName).map(varName => (
+                                    {extraPlaceholders.map(varName => (
                                       <div key={varName} className={styles.formField}>
                                         <Label htmlFor={`var-${varName}`} className="text-xs font-medium mb-1.5 inline-flex items-center gap-1.5 text-muted-foreground">
                                           <span className="font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-semibold">{`{{${varName}}}`}</span>
