@@ -245,12 +245,14 @@ export const RichTextEditor = ({
       : `https://${linkUrl}`;
     document.execCommand('createLink', false, url);
     
-    // Add target="_blank" to the newly created link
+    // Add target="_blank" and apply link color to the newly created link
     if (editorRef.current) {
       const links = editorRef.current.querySelectorAll(`a[href="${url}"]`);
       links.forEach(link => {
         link.setAttribute('target', '_blank');
         link.setAttribute('rel', 'noopener noreferrer');
+        // Apply link color using style attribute
+        (link as HTMLElement).style.color = '#0066CC';
       });
       onChange(editorRef.current.innerHTML);
     }
