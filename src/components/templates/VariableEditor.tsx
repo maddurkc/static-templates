@@ -1121,9 +1121,12 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
 
   // Handle heading and text sections with inline placeholders
   if (isInlinePlaceholderSection) {
-    // Get the default variable name for this section type
-    const defaultVarName = section.type === 'paragraph' ? 'paragraphContent' : 
-                           section.type === 'text' ? 'textContent' : 'headingText';
+    // Get the stored dynamic variable name or fall back to static default
+    const storedVarName = section.variables?.textVariableName as string | undefined;
+    const defaultVarName = storedVarName || 
+      (section.type === 'paragraph' ? 'paragraphContent' : 
+       section.type === 'text' ? 'textContent' : 
+       section.type.startsWith('heading') ? `${section.type}Text` : 'headingText');
     
     // Get user-friendly content (preserving rich text formatting, with placeholders)
     const getUserFriendlyContent = (): string => {
@@ -1133,12 +1136,13 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
       // but preserve inner HTML formatting like <br>, <div>, <span>, etc.
       content = content.replace(/^<(\w+)[^>]*>([\s\S]*)<\/\1>$/, '$2');
       
-      // Check if the content is just a single Thymeleaf variable with the default name
+      // Check if the content is just a single Thymeleaf variable
       // In this case, the actual content is stored in the variable value
       const singleVarMatch = content.match(/^<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|><\/span>|>)$/);
-      if (singleVarMatch && singleVarMatch[1] === defaultVarName) {
+      if (singleVarMatch) {
+        const varName = singleVarMatch[1];
         // Return the variable's default value (the user's actual text)
-        const varValue = section.variables?.[defaultVarName];
+        const varValue = section.variables?.[varName];
         if (varValue && typeof varValue === 'string') {
           return varValue;
         }
@@ -1192,9 +1196,12 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
               const htmlTag = tagMatch ? tagMatch[1] : 'div';
               const tagStyles = tagMatch ? tagMatch[2] : '';
               
-              // Get the default variable name for this section type
-              const defaultVarName = section.type === 'paragraph' ? 'paragraphContent' : 
-                                     section.type === 'text' ? 'textContent' : 'headingText';
+              // Get the stored dynamic variable name or fall back to static default
+              const storedVarName = section.variables?.textVariableName as string | undefined;
+              const defaultVarName = storedVarName || 
+                (section.type === 'paragraph' ? 'paragraphContent' : 
+                 section.type === 'text' ? 'textContent' : 
+                 section.type.startsWith('heading') ? `${section.type}Text` : 'headingText');
               
               // Check if there are ANY user-defined placeholders in content
               const hasUserPlaceholders = newPlaceholders.length > 0;
@@ -1218,9 +1225,9 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                   }
                 });
                 
-                // Remove old variables that are no longer in content
+                // Remove old variables that are no longer in content (but keep textVariableName metadata)
                 Object.keys(updatedVariables).forEach(key => {
-                  if (!newPlaceholders.includes(key) && key !== defaultVarName) {
+                  if (!newPlaceholders.includes(key) && key !== defaultVarName && key !== 'textVariableName') {
                     delete updatedVariables[key];
                   }
                 });
@@ -1230,7 +1237,9 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 thymeleafContent = `<span th:utext="\${${defaultVarName}}"/>`;
                 
                 // Store the user's text as the default value for the variable
+                // Preserve textVariableName if it exists
                 updatedVariables = {
+                  ...(section.variables?.textVariableName ? { textVariableName: section.variables.textVariableName } : {}),
                   [defaultVarName]: newContent
                 };
               }

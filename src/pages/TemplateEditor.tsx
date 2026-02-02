@@ -29,8 +29,8 @@ import { validateTemplate, validateTemplateName, validateSubject, ValidationErro
 import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
 import { subjectPlaceholderToThymeleaf, subjectThymeleafToPlaceholder } from "@/lib/thymeleafUtils";
 import { generateListVariableName, generateThymeleafListHtml } from "@/lib/listThymeleafUtils";
+import { generateTextSectionVariableName, isTextBasedSection, generateThymeleafTextHtml } from "@/lib/textThymeleafUtils";
 import styles from "./TemplateEditor.module.scss";
-
 const TemplateEditor = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -329,6 +329,26 @@ const TemplateEditor = () => {
           variables['listHtml'] = generateThymeleafListHtml(listVariableName, variables['listStyle'] as string || 'circle');
         }
       }
+      
+      // For text-based sections (headings, text, paragraph), generate unique variable names
+      // This prevents collisions when multiple sections of the same type exist
+      let dynamicContent = sectionDef.defaultContent;
+      if (isTextBasedSection(sectionDef.type)) {
+        const textVariableName = generateTextSectionVariableName(sectionDef.type, newSectionId);
+        variables['textVariableName'] = textVariableName;
+        
+        // Get the first variable from section def (e.g., heading1Text, textContent, paragraphContent)
+        const defaultVar = sectionDef.variables?.[0];
+        if (defaultVar) {
+          // Store the default value under the dynamic variable name
+          variables[textVariableName] = defaultVar.defaultValue;
+          
+          // Update the content to use the dynamic variable name
+          // Replace the static variable name with the dynamic one in the Thymeleaf expression
+          const staticVarPattern = new RegExp(`\\$\\{${defaultVar.name}\\}`, 'g');
+          dynamicContent = sectionDef.defaultContent.replace(staticVarPattern, `\${${textVariableName}}`);
+        }
+      }
 
       // Get default styles for heading sections - include Outlook font family for all sections
       const isHeadingSection = sectionDef.type.startsWith('heading');
@@ -339,7 +359,7 @@ const TemplateEditor = () => {
       const newSection: Section = {
         id: newSectionId,
         type: sectionDef.type,
-        content: sectionDef.defaultContent,
+        content: dynamicContent,
         variables,
         styles: defaultStyles,
         isLabelEditable: true // Default to editable at runtime

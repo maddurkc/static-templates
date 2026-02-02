@@ -421,10 +421,18 @@ const RunTemplates = () => {
         return { headers: ['Column 1'], rows: [['Data 1']] };
       }
       
-      // For heading/text sections with inline placeholders
+      // For heading/text sections with inline placeholders or dynamic variable names
       const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
-      if (inlinePlaceholderTypes.includes(section.type) && section.variables && section.variables[varName] !== undefined) {
-        return String(section.variables[varName]);
+      if (inlinePlaceholderTypes.includes(section.type)) {
+        // Check if this varName matches the stored textVariableName
+        const textVarName = section.variables?.textVariableName as string;
+        if (textVarName && textVarName === varName && section.variables?.[varName] !== undefined) {
+          return String(section.variables[varName]);
+        }
+        // Fallback to checking if variable exists directly
+        if (section.variables && section.variables[varName] !== undefined) {
+          return String(section.variables[varName]);
+        }
       }
       
       if (section.variables && section.variables[varName] !== undefined) {
@@ -518,10 +526,21 @@ const RunTemplates = () => {
         }
       }
       
-      // Check heading/text sections with inline placeholders
+      // Check heading/text sections with inline placeholders or dynamic variable names
       const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
-      if (inlinePlaceholderTypes.includes(section.type) && section.content) {
-        if (section.content.includes(`{{${varName}}}`)) {
+      if (inlinePlaceholderTypes.includes(section.type)) {
+        // Check if this matches the stored textVariableName
+        const textVarName = section.variables?.textVariableName as string;
+        if (textVarName && textVarName === varName) {
+          const typeLabel = section.type.replace(/(\d)/, ' $1').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          return {
+            sectionType: typeLabel,
+            context: `Editable ${typeLabel.toLowerCase()} content`
+          };
+        }
+        
+        // Also check for inline {{placeholder}} syntax
+        if (section.content && section.content.includes(`{{${varName}}}`)) {
           const typeLabel = section.type.replace(/(\d)/, ' $1').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
           // Extract surrounding text for context
           const regex = new RegExp(`([^{]*)\\{\\{${varName}\\}\\}([^{]*)`, 'g');
@@ -579,7 +598,7 @@ const RunTemplates = () => {
   // Metadata keys that should NOT be treated as user-editable variables
   const METADATA_KEYS = [
     'label', 'content', 'contentType', 'listStyle', 'items', 'tableData',
-    'listVariableName', 'listHtml', 'labelColor'
+    'listVariableName', 'listHtml', 'labelColor', 'textVariableName', 'labelVariableName'
   ];
 
   const extractAllVariables = (template: Template): string[] => {
@@ -648,16 +667,25 @@ const RunTemplates = () => {
         
         // For heading/text sections with inline placeholders, extract from content
         const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
-        if (inlinePlaceholderTypes.includes(section.type) && section.content) {
-          const placeholderMatches = section.content.match(/\{\{(\w+)\}\}/g) || [];
-          placeholderMatches.forEach(match => {
-            const varName = match.replace(/\{\{|\}\}/g, '');
-            varsFromSections.add(varName);
-          });
+        if (inlinePlaceholderTypes.includes(section.type)) {
+          // Use stored textVariableName if available (new dynamic naming)
+          const textVarName = section.variables?.textVariableName as string;
+          if (textVarName) {
+            varsFromSections.add(textVarName);
+          }
           
-          // Also extract Thymeleaf variables from content
-          const contentVars = extractVariables(section.content);
-          contentVars.forEach(v => varsFromSections.add(v));
+          // Also extract any custom placeholders from content
+          if (section.content) {
+            const placeholderMatches = section.content.match(/\{\{(\w+)\}\}/g) || [];
+            placeholderMatches.forEach(match => {
+              const varName = match.replace(/\{\{|\}\}/g, '');
+              varsFromSections.add(varName);
+            });
+            
+            // Also extract Thymeleaf variables from content
+            const contentVars = extractVariables(section.content);
+            contentVars.forEach(v => varsFromSections.add(v));
+          }
         }
         
         // For standalone list sections (bullet-list-*, number-list-*)
@@ -978,6 +1006,16 @@ const RunTemplates = () => {
           const programNameKey = `programName_${section.id}`;
           const programName = variables[programNameKey] || section.variables?.programName || 'Program Name';
           bodyData[programNameKey] = generateStyledHtml(programName);
+        }
+        
+        // Add heading/text/paragraph section variables using textVariableName
+        const textBasedTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
+        if (textBasedTypes.includes(section.type)) {
+          const textVarName = section.variables?.textVariableName as string;
+          if (textVarName) {
+            const textValue = variables[textVarName] || section.variables?.[textVarName] || '';
+            bodyData[textVarName] = generateStyledHtml(textValue);
+          }
         }
       });
     }
@@ -1749,6 +1787,14 @@ const RunTemplates = () => {
                             
                             // Dynamically extract placeholders from content
                             const varNames: string[] = [];
+                            
+                            // First check for stored textVariableName (dynamic naming)
+                            const textVarName = section.variables?.textVariableName as string;
+                            if (textVarName) {
+                              varNames.push(textVarName);
+                            }
+                            
+                            // Also check for inline {{placeholder}} syntax
                             if (plainTextContent) {
                               const placeholderMatches = plainTextContent.match(/\{\{(\w+)\}\}/g) || [];
                               placeholderMatches.forEach(match => {
