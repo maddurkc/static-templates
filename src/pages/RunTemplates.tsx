@@ -1022,10 +1022,10 @@ const RunTemplates = () => {
           bodyData[ctaTextKey] = generateStyledHtml(ctaText);
           bodyData[ctaUrlKey] = typeof ctaUrl === 'string' ? ctaUrl : (ctaUrl as TextStyle).text || '#';
         }
+        // Program-name uses static variable name (single-use section)
         if (section.type === 'program-name') {
-          const programNameKey = `programNameText_${section.id}`;
-          const programName = variables[programNameKey] || section.variables?.programNameText || 'Program Name';
-          bodyData[programNameKey] = generateStyledHtml(programName);
+          const programName = variables['programNameText'] || section.variables?.programNameText || 'Program Name';
+          bodyData['programNameText'] = generateStyledHtml(programName);
         }
         
         // Add heading/text/paragraph section variables using textVariableName
@@ -2363,9 +2363,9 @@ const RunTemplates = () => {
                             );
                           }
                           
-                          // Handle Program Name sections
+                          // Handle Program Name sections (uses static variable name)
                           if (section.type === 'program-name') {
-                            const programName = (variables[`programNameText_${section.id}`] as string) || (section.variables?.programNameText as string) || 'Program Name';
+                            const programName = (variables['programNameText'] as string) || (section.variables?.programNameText as string) || 'Program Name';
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
@@ -2392,7 +2392,7 @@ const RunTemplates = () => {
                                       onChange={(e) => {
                                         setVariables(prev => ({
                                           ...prev,
-                                          [`programNameText_${section.id}`]: e.target.value
+                                          ['programNameText']: e.target.value
                                         }));
                                       }}
                                       onFocus={() => scrollToSection(section.id)}
@@ -2496,15 +2496,14 @@ const RunTemplates = () => {
                             }
                           }
                           
-                          // For program-name sections, inject updated name
+                          // For program-name sections, inject updated name (uses static variable)
                           if (s.type === 'program-name') {
-                            const programNameKey = `programNameText_${s.id}`;
-                            if (variables[programNameKey] !== undefined) {
+                            if (variables['programNameText'] !== undefined) {
                               updated = {
                                 ...updated,
                                 variables: {
                                   ...updated.variables,
-                                  programNameText: variables[programNameKey] as string
+                                  programNameText: variables['programNameText'] as string
                                 }
                               };
                             }

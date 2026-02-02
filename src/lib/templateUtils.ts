@@ -882,10 +882,9 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     return wrapInOutlookTable(ctaHtml);
   }
   
-  // Handle program-name sections
+  // Handle program-name sections (uses static variable name - single-use section)
   if (section.type === 'program-name') {
-    const programName = (variables?.[`programNameText_${section.id}`] as string) || 
-                        (variables?.programNameText as string) || 
+    const programName = (variables?.programNameText as string) || 
                         (section.variables?.programNameText as string) || 
                         'Program Name';
     

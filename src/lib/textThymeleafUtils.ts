@@ -68,12 +68,21 @@ export const generateTextSectionVariableName = (sectionType: string, sectionId: 
 
 /**
  * Check if a section type is a text-based section that should use dynamic variable names
+ * Note: 'program-name' is excluded because it's a single-use section with static variable name
  */
 export const isTextBasedSection = (sectionType: string): boolean => {
   return [
     'heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6',
     'text', 'paragraph', 'static-text'
   ].includes(sectionType);
+};
+
+/**
+ * Check if a section uses a static (non-dynamic) variable name
+ * These are single-use sections that don't need unique variable suffixes
+ */
+export const isStaticVariableSection = (sectionType: string): boolean => {
+  return ['program-name'].includes(sectionType);
 };
 
 /**
