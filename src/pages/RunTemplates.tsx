@@ -1023,8 +1023,8 @@ const RunTemplates = () => {
           bodyData[ctaUrlKey] = typeof ctaUrl === 'string' ? ctaUrl : (ctaUrl as TextStyle).text || '#';
         }
         if (section.type === 'program-name') {
-          const programNameKey = `programName_${section.id}`;
-          const programName = variables[programNameKey] || section.variables?.programName || 'Program Name';
+          const programNameKey = `programNameText_${section.id}`;
+          const programName = variables[programNameKey] || section.variables?.programNameText || 'Program Name';
           bodyData[programNameKey] = generateStyledHtml(programName);
         }
         
@@ -2365,7 +2365,7 @@ const RunTemplates = () => {
                           
                           // Handle Program Name sections
                           if (section.type === 'program-name') {
-                            const programName = (variables[`programName_${section.id}`] as string) || (section.variables?.programName as string) || 'Program Name';
+                            const programName = (variables[`programNameText_${section.id}`] as string) || (section.variables?.programNameText as string) || 'Program Name';
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
@@ -2392,7 +2392,7 @@ const RunTemplates = () => {
                                       onChange={(e) => {
                                         setVariables(prev => ({
                                           ...prev,
-                                          [`programName_${section.id}`]: e.target.value
+                                          [`programNameText_${section.id}`]: e.target.value
                                         }));
                                       }}
                                       onFocus={() => scrollToSection(section.id)}
@@ -2498,13 +2498,13 @@ const RunTemplates = () => {
                           
                           // For program-name sections, inject updated name
                           if (s.type === 'program-name') {
-                            const programNameKey = `programName_${s.id}`;
+                            const programNameKey = `programNameText_${s.id}`;
                             if (variables[programNameKey] !== undefined) {
                               updated = {
                                 ...updated,
                                 variables: {
                                   ...updated.variables,
-                                  programName: variables[programNameKey] as string
+                                  programNameText: variables[programNameKey] as string
                                 }
                               };
                             }

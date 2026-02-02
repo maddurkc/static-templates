@@ -884,9 +884,9 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   
   // Handle program-name sections
   if (section.type === 'program-name') {
-    const programName = (variables?.[`programName_${section.id}`] as string) || 
-                        (variables?.programName as string) || 
-                        (section.variables?.programName as string) || 
+    const programName = (variables?.[`programNameText_${section.id}`] as string) || 
+                        (variables?.programNameText as string) || 
+                        (section.variables?.programNameText as string) || 
                         'Program Name';
     
     const programHtml = `<font style="font-size: 14px; line-height: 21px; color: #141414; font-weight: bold; font-family: ${OUTLOOK_FONT_FAMILY};">${programName}</font>`;

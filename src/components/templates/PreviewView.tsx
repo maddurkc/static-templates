@@ -134,7 +134,7 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
     
     // Handle program-name sections
     if (section.type === 'program-name') {
-      const programName = (section.variables?.programName as string) || 'Program Name';
+      const programName = (section.variables?.programNameText as string) || 'Program Name';
       return `<font style="font-size: 14px; line-height: 21px; color: #141414; font-weight: bold; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif;">${programName}</font>`;
     }
     
