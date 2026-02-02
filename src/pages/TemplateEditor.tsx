@@ -274,6 +274,28 @@ const TemplateEditor = () => {
       
       if (!sectionDef) return;
       
+      // Check if this is a single-use section type that already exists
+      const SINGLE_USE_SECTION_TYPES = ['program-name', 'banner'];
+      if (SINGLE_USE_SECTION_TYPES.includes(sectionType)) {
+        const checkSectionExists = (sectionList: Section[]): boolean => {
+          for (const s of sectionList) {
+            if (s.type === sectionType) return true;
+            if (s.children && checkSectionExists(s.children)) return true;
+          }
+          return false;
+        };
+        
+        if (checkSectionExists(sections)) {
+          const typeLabel = sectionType === 'program-name' ? 'Program Name' : 'Banner';
+          toast({
+            title: "Section limit reached",
+            description: `Only one ${typeLabel} section is allowed per template.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
       // Check if dropping into a container
       const targetContainer = sections.find(s => s.id === dropTargetId && s.type === 'container');
       
@@ -1143,7 +1165,7 @@ ${sectionRows}
                       </Button>
                     </div>
                   </SheetHeader>
-                  <SectionLibrary />
+                  <SectionLibrary existingSections={sections} />
                 </SheetContent>
               </Sheet>
               

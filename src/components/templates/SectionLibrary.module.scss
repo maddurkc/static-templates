@@ -1,3 +1,15 @@
+.disabledCard {
+  cursor: not-allowed !important;
+  background-color: hsl(var(--muted)) !important;
+  border-color: hsl(var(--border)) !important;
+  
+  &:hover {
+    box-shadow: none !important;
+    border-color: hsl(var(--border)) !important;
+    transform: none !important;
+  }
+}
+
 .container {
   padding: 1rem;
 }
