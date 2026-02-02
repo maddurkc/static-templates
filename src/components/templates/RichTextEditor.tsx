@@ -175,12 +175,17 @@ export const RichTextEditor = ({
     editorRef.current?.focus();
   }, [onChange, restoreSelection]);
 
-  const applyColor = useCallback((color: string, isBackground: boolean) => {
+  const applyColor = useCallback((color: string | null, isBackground: boolean) => {
     restoreSelection();
     if (isBackground) {
-      document.execCommand('hiliteColor', false, color);
+      if (color === null) {
+        // Remove background color by applying transparent
+        document.execCommand('hiliteColor', false, 'transparent');
+      } else {
+        document.execCommand('hiliteColor', false, color);
+      }
     } else {
-      document.execCommand('foreColor', false, color);
+      document.execCommand('foreColor', false, color || '#000000');
     }
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
@@ -622,6 +627,14 @@ export const RichTextEditor = ({
             <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
               <Label className="text-xs mb-1 block">Background</Label>
               <div className="flex flex-wrap gap-1 max-w-[160px]">
+                {/* None/Remove background option */}
+                <button
+                  className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform relative bg-white"
+                  onClick={() => applyColor(null, true)}
+                  title="Remove Background"
+                >
+                  <span className="absolute inset-0 flex items-center justify-center text-destructive text-xs font-bold">✕</span>
+                </button>
                 {BG_COLORS.map((color) => (
                   <button
                     key={color}
