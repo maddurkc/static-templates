@@ -2363,44 +2363,66 @@ const RunTemplates = () => {
                             );
                           }
                           
-                          // Handle Program Name sections (uses static variable name)
+                          // Handle Program Name sections (uses static variable name - single instance per template)
                           if (section.type === 'program-name') {
-                            const programName = (variables['programNameText'] as string) || (section.variables?.programNameText as string) || 'Program Name';
+                            const isEditable = section.isLabelEditable !== false;
+                            const mainVarKey = 'programNameText';
+                            const mainVarValue = (variables[mainVarKey] as string) || (section.variables?.programNameText as string) || '';
+                            const isEditingThisSection = editingSectionId === section.id;
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
-                                <div className="text-xs text-muted-foreground mb-2">Program Name</div>
-                                
-                                {/* Preview */}
-                                <div 
-                                  className="mb-3"
-                                  style={{ 
-                                    fontSize: '14px',
-                                    lineHeight: '21px',
-                                    color: '#141414',
-                                    fontWeight: 'bold'
-                                  }}
-                                  dangerouslySetInnerHTML={{ __html: programName }}
-                                />
-                                
-                                {/* Input */}
-                                <div className="ml-4 pl-3 border-l-2 border-primary/20">
-                                  <div className={styles.formField}>
-                                    <Label className="text-xs font-medium mb-1.5 text-muted-foreground">Program Name</Label>
-                                    <Input
-                                      value={programName}
-                                      onChange={(e) => {
+                                {/* Content display with inline editing - same as heading/text/paragraph */}
+                                {isEditingThisSection && isEditable ? (
+                                  <div>
+                                    <RichTextEditor
+                                      value={mainVarValue}
+                                      onChange={(html) => {
                                         setVariables(prev => ({
                                           ...prev,
-                                          ['programNameText']: e.target.value
+                                          [mainVarKey]: html
                                         }));
                                       }}
-                                      onFocus={() => scrollToSection(section.id)}
                                       placeholder="Enter program name..."
-                                      className="text-sm"
+                                      singleLine
                                     />
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="default"
+                                        onClick={() => setEditingSectionId(null)}
+                                      >
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Done
+                                      </Button>
+                                    </div>
                                   </div>
-                                </div>
+                                ) : (
+                                  <div className="flex items-start gap-2">
+                                    <div 
+                                      className={`flex-1 text-sm font-bold ${!mainVarValue ? 'text-muted-foreground italic' : 'text-foreground'}`}
+                                      style={{ 
+                                        fontSize: '14px',
+                                        lineHeight: '21px',
+                                        color: mainVarValue ? '#141414' : undefined
+                                      }}
+                                      dangerouslySetInnerHTML={{ 
+                                        __html: mainVarValue || 'Click to enter program name...'
+                                      }}
+                                    />
+                                    {isEditable && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 shrink-0 opacity-50 hover:opacity-100"
+                                        onClick={() => setEditingSectionId(section.id)}
+                                        title="Edit program name"
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             );
                           }
