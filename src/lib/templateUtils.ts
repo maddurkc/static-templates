@@ -249,22 +249,23 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     let label = section.variables?.label || 'Label';
     
     // Process Thymeleaf expressions in label - supports both new and legacy formats
+    // Use sanitizeHTML to preserve styled HTML content (spans with inline styles)
     label = String(label)
         .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
           if (variables && variables[varName] !== undefined) {
-            return sanitizeInput(String(variables[varName]));
+            return sanitizeHTML(String(variables[varName]));
           }
           if (section.variables && section.variables[varName]) {
-            return sanitizeInput(String(section.variables[varName]));
+            return sanitizeHTML(String(section.variables[varName]));
           }
           return match;
         })
         .replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
           if (variables && variables[varName] !== undefined) {
-            return sanitizeInput(String(variables[varName]));
+            return sanitizeHTML(String(variables[varName]));
           }
           if (section.variables && section.variables[varName]) {
-            return sanitizeInput(String(section.variables[varName]));
+            return sanitizeHTML(String(section.variables[varName]));
           }
           return match;
         });
@@ -431,10 +432,12 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     }
     
     // Use table-based layout for Outlook email client compatibility with proper margins
+    // The label value already contains inline styles (if styled), so use a div wrapper with base styles
+    // that will be overridden by the inline styles in the label span
     return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px; font-family: ${OUTLOOK_FONT_FAMILY};">
       <tr>
         <td style="padding: 0; font-family: ${OUTLOOK_FONT_FAMILY};">
-          <div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 18px; line-height: 27px; font-weight: bold; color: #D71E28; margin: 0; margin-bottom: 10px;">${sanitizeInput(label)}</div>
+          <div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 18px; line-height: 27px; font-weight: bold; color: #D71E28; margin: 0; margin-bottom: 10px;">${label}</div>
           ${contentHtml}
         </td>
       </tr>
