@@ -299,6 +299,15 @@ const TemplateEditor = () => {
       // Check if dropping into a container
       const targetContainer = sections.find(s => s.id === dropTargetId && s.type === 'container');
       
+      // Determine insertion index - find the index of the section being dropped over
+      let insertIndex = sections.length; // Default to end
+      if (dropTargetId !== 'editor-drop-zone' && !targetContainer) {
+        const overIndex = sections.findIndex(s => s.id === dropTargetId);
+        if (overIndex !== -1) {
+          insertIndex = overIndex; // Insert before the section being dropped over
+        }
+      }
+      
       const variables: Record<string, string | string[]> = {};
       
       // For labeled-content sections, only initialize essential variables based on default contentType
@@ -400,8 +409,10 @@ const TemplateEditor = () => {
           description: `${sectionDef.label} added inside container.`,
         });
       } else {
-        // Add to main sections
-        setSections([...sections, newSection]);
+        // Insert at the calculated position
+        const newSections = [...sections];
+        newSections.splice(insertIndex, 0, newSection);
+        setSections(newSections);
         toast({
           title: "Section added",
           description: `${sectionDef.label} has been added to your template.`,
