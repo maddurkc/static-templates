@@ -205,9 +205,12 @@ const SortableSection = ({
                 }}
               />
             ) : section.variables.contentType === 'text' && section.variables.content ? (
-              <div className={styles.contentPlaceholder}>
-                {String(section.variables.content).substring(0, 100)}{String(section.variables.content).length > 100 ? '...' : ''}
-              </div>
+              <div 
+                className={styles.contentPlaceholder}
+                dangerouslySetInnerHTML={{ 
+                  __html: String(section.variables.content)
+                }}
+              />
             ) : (
               <div className={styles.contentPlaceholder}>
                 {'{'}content{'}'} - {section.variables.contentType || 'text'}
