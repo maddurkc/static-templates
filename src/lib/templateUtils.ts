@@ -338,7 +338,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         const listStyleType = getListStyleType(listStyle);
         
         // Use Outlook-compatible table-based list rendering
-        contentHtml = renderOutlookCompatibleListWithNesting(runtimeValue, listTag, listStyleType);
+        contentHtml = `<div style="padding-left: 20px;">${renderOutlookCompatibleListWithNesting(runtimeValue, listTag, listStyleType)}</div>`;
       } else if (typeof runtimeValue === 'string') {
         // Convert newlines to <br> tags for Outlook compatibility
         const formattedContent = sanitizeInput(runtimeValue).replace(/\n/g, '<br/>');
@@ -397,7 +397,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         const listStyleType = getListStyleType(listStyle);
         
         // Use Outlook-compatible table-based list rendering
-        contentHtml = renderOutlookCompatibleListWithNesting(items, listTag, listStyleType);
+        contentHtml = `<div style="padding-left: 20px;">${renderOutlookCompatibleListWithNesting(items, listTag, listStyleType)}</div>`;
       } else {
         let content = (section.variables?.content as string) || '';
         
@@ -425,7 +425,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         
         // Convert newlines to <br> tags for Outlook compatibility
         const formattedContent = content.replace(/\n/g, '<br/>');
-        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 1.5; mso-line-height-rule: exactly;">${formattedContent}</div>`;
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 1.5; mso-line-height-rule: exactly; padding-left: 20px;">${formattedContent}</div>`;
       }
     }
     
