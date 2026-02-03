@@ -151,18 +151,64 @@ const RunTemplates = () => {
         }
       });
       
-      // Initialize label variables from labeled-content sections
+      // Initialize label and text content variables from labeled-content sections
       if (selectedTemplate.sections) {
         selectedTemplate.sections.forEach(section => {
           if (section.type === 'labeled-content') {
             // Use stored labelVariableName, fallback to section.id for backward compatibility
             const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
-            const rawLabel = (section.variables?.label as string) || 'Label';
-            // Extract clean label text (without Thymeleaf tags)
-            const cleanLabel = rawLabel
-              .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (_, varName) => `{{${varName}}}`)
-              .replace(/<th:utext="\$\{(\w+)\}">/g, (_, varName) => `{{${varName}}}`);
-            initialLabelVars[labelVarName] = cleanLabel;
+            
+            // Priority: Get the actual stored value for the label variable, not the Thymeleaf syntax
+            let labelValue = 'Label';
+            if (labelVarName && section.variables?.[labelVarName] !== undefined) {
+              // New pattern: Use the resolved value stored under the variable name
+              labelValue = String(section.variables[labelVarName]);
+            } else if (section.variables?.label) {
+              // Legacy pattern: Use the label field, but resolve any Thymeleaf tags
+              const rawLabel = section.variables.label as string;
+              labelValue = rawLabel
+                .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (_, varName) => {
+                  // Try to get the actual value from section.variables
+                  if (section.variables && section.variables[varName] !== undefined) {
+                    return String(section.variables[varName]);
+                  }
+                  return `{{${varName}}}`;
+                })
+                .replace(/<th:utext="\$\{(\w+)\}">/g, (_, varName) => {
+                  if (section.variables && section.variables[varName] !== undefined) {
+                    return String(section.variables[varName]);
+                  }
+                  return `{{${varName}}}`;
+                });
+            }
+            initialLabelVars[labelVarName] = labelValue;
+            
+            // Initialize text content for text type labeled-content sections
+            const contentType = section.variables?.contentType || 'text';
+            if (contentType === 'text') {
+              const textVarName = (section.variables?.textVariableName as string) || section.id;
+              let textValue = '';
+              
+              if (textVarName && section.variables?.[textVarName] !== undefined) {
+                // New pattern: Use the resolved value stored under the variable name
+                textValue = String(section.variables[textVarName]);
+              } else if (section.variables?.content) {
+                // Legacy pattern: Use the content field, but resolve any Thymeleaf tags
+                const rawContent = section.variables.content as string;
+                textValue = rawContent
+                  .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (_, varName) => {
+                    if (section.variables && section.variables[varName] !== undefined) {
+                      return String(section.variables[varName]);
+                    }
+                    return `{{${varName}}}`;
+                  });
+              }
+              
+              // Only set if we have a value
+              if (textValue) {
+                initialVars[textVarName] = textValue;
+              }
+            }
           }
         });
       }
@@ -1461,10 +1507,35 @@ const RunTemplates = () => {
                           // Handle labeled-content sections
                           if (section.type === 'labeled-content') {
                             const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
-                            const labelValue = labelVariables[labelVarName] || (section.variables?.label as string) || 'Label';
+                            // Priority: Use runtime label value, then stored variable value, then resolved label field
+                            let labelValue = labelVariables[labelVarName];
+                            if (!labelValue) {
+                              // Try to get from stored variable value
+                              if (labelVarName && section.variables?.[labelVarName] !== undefined) {
+                                labelValue = String(section.variables[labelVarName]);
+                              } else if (section.variables?.label) {
+                                // Resolve Thymeleaf syntax to actual values
+                                labelValue = String(section.variables.label)
+                                  .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (_, varName) => {
+                                    if (section.variables && section.variables[varName] !== undefined) {
+                                      return String(section.variables[varName]);
+                                    }
+                                    return `{{${varName}}}`;
+                                  })
+                                  .replace(/<th:utext="\$\{(\w+)\}">/g, (_, varName) => {
+                                    if (section.variables && section.variables[varName] !== undefined) {
+                                      return String(section.variables[varName]);
+                                    }
+                                    return `{{${varName}}}`;
+                                  });
+                              } else {
+                                labelValue = 'Label';
+                              }
+                            }
                             const editable = section.isLabelEditable !== false;
                             const contentType = section.variables?.contentType || 'text';
                             const listVarName = section.variables?.listVariableName as string || section.id;
+                            const textVarName = section.variables?.textVariableName as string || section.id;
                             
                             return (
                               <div 
@@ -1525,23 +1596,41 @@ const RunTemplates = () => {
                                 
                                 {/* Content - with left margin */}
                                 <div className="ml-4">
-                                  {contentType === 'text' && (
-                                    <div className={styles.inputWrapper}>
-                                      <RichTextEditor
-                                        value={typeof variables[section.id] === 'object' 
-                                          ? (variables[section.id] as TextStyle).text 
-                                          : (variables[section.id] as string) || (section.variables?.content as string) || ''
-                                        }
-                                        onChange={(html) => setVariables(prev => ({
-                                          ...prev,
-                                          [section.id]: html
-                                        }))}
-                                        onFocus={() => scrollToSection(section.id)}
-                                        rows={4}
-                                        placeholder="Enter content... (select text to apply styles)"
-                                      />
-                                    </div>
-                                  )}
+                                  {contentType === 'text' && (() => {
+                                    // Get the content value - prioritize runtime value, then stored variable value, then content field
+                                    let textContent = '';
+                                    if (typeof variables[textVarName] === 'object') {
+                                      textContent = (variables[textVarName] as TextStyle).text;
+                                    } else if (variables[textVarName] !== undefined) {
+                                      textContent = variables[textVarName] as string;
+                                    } else if (textVarName && section.variables?.[textVarName] !== undefined) {
+                                      textContent = String(section.variables[textVarName]);
+                                    } else if (section.variables?.content) {
+                                      // Resolve Thymeleaf syntax in legacy content field
+                                      textContent = String(section.variables.content)
+                                        .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (_, varName) => {
+                                          if (section.variables && section.variables[varName] !== undefined) {
+                                            return String(section.variables[varName]);
+                                          }
+                                          return `{{${varName}}}`;
+                                        });
+                                    }
+                                    
+                                    return (
+                                      <div className={styles.inputWrapper}>
+                                        <RichTextEditor
+                                          value={textContent}
+                                          onChange={(html) => setVariables(prev => ({
+                                            ...prev,
+                                            [textVarName]: html
+                                          }))}
+                                          onFocus={() => scrollToSection(section.id)}
+                                          rows={4}
+                                          placeholder="Enter content... (select text to apply styles)"
+                                        />
+                                      </div>
+                                    );
+                                  })()}
                                   
                                   {contentType === 'list' && (
                                     <div className="space-y-2">
@@ -2460,18 +2549,31 @@ const RunTemplates = () => {
                         const applyEditedContent = (s: Section): Section => {
                           let updated = s;
                           
-                          // For labeled-content sections, inject updated label from labelVariables
+                          // For labeled-content sections, inject updated label and content from runtime variables
                           if (s.type === 'labeled-content') {
                             const labelVarName = (s.variables?.labelVariableName as string) || `label_${s.id}`;
+                            const textVarName = (s.variables?.textVariableName as string) || s.id;
+                            const contentType = s.variables?.contentType || 'text';
+                            
+                            let updatedVars = { ...updated.variables };
+                            
+                            // Inject label from runtime labelVariables
                             if (labelVariables[labelVarName]) {
-                              updated = {
-                                ...updated,
-                                variables: {
-                                  ...updated.variables,
-                                  label: labelVariables[labelVarName]
-                                }
-                              };
+                              updatedVars.label = labelVariables[labelVarName];
+                              // Also set the resolved value under the variable name for renderSectionContent
+                              updatedVars[labelVarName] = labelVariables[labelVarName];
                             }
+                            
+                            // For text content type, inject content from variables
+                            if (contentType === 'text' && variables[textVarName] !== undefined) {
+                              const textValue = typeof variables[textVarName] === 'object'
+                                ? (variables[textVarName] as any).text
+                                : variables[textVarName];
+                              updatedVars.content = textValue;
+                              updatedVars[textVarName] = textValue;
+                            }
+                            
+                            updated = { ...updated, variables: updatedVars };
                           }
                           
                           // For heading/text/paragraph sections, inject edited content
