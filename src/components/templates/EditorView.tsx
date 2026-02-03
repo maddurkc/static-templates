@@ -132,14 +132,21 @@ const SortableSection = ({
 
       {/* Content */}
       <div className={cn(styles.sectionContent, isContainer && styles.containerContent)}>
-        {!isContainer && section.type === 'labeled-content' && section.variables?.label ? (
+        {!isContainer && section.type === 'labeled-content' && (section.variables?.label || section.variables?.labelVariableName) ? (
           <div className={styles.labeledContent}>
             <div className={styles.labelRow}>
               <span 
                 className={styles.labelText}
                 dangerouslySetInnerHTML={{ 
                   __html: (() => {
-                    let labelContent = String(section.variables.label);
+                    // Get label value - check for labelVariableName first (new pattern), then fall back to label (legacy)
+                    const labelVariableName = section.variables?.labelVariableName as string;
+                    let labelContent = 'Label';
+                    if (labelVariableName && section.variables?.[labelVariableName]) {
+                      labelContent = String(section.variables[labelVariableName]);
+                    } else if (section.variables?.label) {
+                      labelContent = String(section.variables.label);
+                    }
                     // First resolve Thymeleaf to actual values, falling back to {{placeholder}} format
                     labelContent = labelContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
                       if (section.variables && section.variables[varName] !== undefined) {
@@ -215,19 +222,26 @@ const SortableSection = ({
                   })()
                 }}
               />
-            ) : section.variables.contentType === 'text' && section.variables.content ? (
+            ) : section.variables.contentType === 'text' && (section.variables.content || section.variables.textVariableName) ? (
               <div 
                 className={styles.contentPlaceholder}
                 dangerouslySetInnerHTML={{ 
                   __html: (() => {
-                    let content = String(section.variables.content);
-                    // Resolve Thymeleaf expressions to actual values for display
-                    content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
-                      if (section.variables && section.variables[varName] !== undefined) {
-                        return String(section.variables[varName]);
-                      }
-                      return `{{${varName}}}`;
-                    });
+                    // Get text content - check for textVariableName first (new pattern), then fall back to content (legacy)
+                    const textVariableName = section.variables?.textVariableName as string;
+                    let content = '';
+                    if (textVariableName && section.variables?.[textVariableName]) {
+                      content = String(section.variables[textVariableName]);
+                    } else if (section.variables?.content) {
+                      content = String(section.variables.content);
+                      // Resolve Thymeleaf expressions to actual values for display
+                      content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+                        if (section.variables && section.variables[varName] !== undefined) {
+                          return String(section.variables[varName]);
+                        }
+                        return `{{${varName}}}`;
+                      });
+                    }
                     return content;
                   })()
                 }}

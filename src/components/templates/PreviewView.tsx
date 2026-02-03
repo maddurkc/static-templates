@@ -157,14 +157,21 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
   
   // Helper function to generate labeled-content HTML
   const getLabeledContentHtml = (section: Section, combinedStyles: Record<string, string | undefined>): string => {
-    let label = (section.variables?.label as string) || 'Label';
-    
     // Helper to check if value is empty
     const isEmptyValue = (value: any): boolean => {
       if (value === null || value === undefined) return true;
       if (typeof value === 'string' && value.trim() === '') return true;
       return false;
     };
+    
+    // Get label value - check for labelVariableName first (new pattern), then fall back to label (legacy)
+    const labelVariableName = section.variables?.labelVariableName as string;
+    let label = 'Label';
+    if (labelVariableName && section.variables?.[labelVariableName]) {
+      label = String(section.variables[labelVariableName]);
+    } else if (section.variables?.label) {
+      label = String(section.variables.label);
+    }
     
     // Replace Thymeleaf in label with default values or {{placeholder}}
     label = label.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
@@ -183,15 +190,22 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
     let contentHtml = '';
     
     if (contentType === 'text') {
-      let textContent = (section.variables?.content as string) || '';
-      
-      // Replace Thymeleaf <span th:utext="${varName}"/> with actual values or {{placeholder}}
-      textContent = textContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
-        if (section.variables && !isEmptyValue(section.variables[varName])) {
-          return String(section.variables[varName]);
-        }
-        return `{{${varName}}}`;
-      });
+      // Get text content - check for textVariableName first (new pattern), then fall back to content (legacy)
+      const textVariableName = section.variables?.textVariableName as string;
+      let textContent = '';
+      if (textVariableName && section.variables?.[textVariableName]) {
+        textContent = String(section.variables[textVariableName]);
+      } else if (section.variables?.content) {
+        // For legacy content with Thymeleaf, resolve the placeholder
+        textContent = String(section.variables.content);
+        // Replace Thymeleaf <span th:utext="${varName}"/> with actual values or {{placeholder}}
+        textContent = textContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+          if (section.variables && !isEmptyValue(section.variables[varName])) {
+            return String(section.variables[varName]);
+          }
+          return `{{${varName}}}`;
+        });
+      }
       
       // Support {{variable}} placeholders in text content - show {{placeholder}} if no value
       textContent = textContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
