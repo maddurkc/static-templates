@@ -330,7 +330,7 @@ export const sectionTypes: SectionDefinition[] = [
         name: 'label',
         label: 'Label/Heading (can include variables)',
         type: 'text',
-        defaultValue: 'Incident Report'
+        defaultValue: 'Title'
       },
       {
         name: 'contentType',
@@ -342,7 +342,7 @@ export const sectionTypes: SectionDefinition[] = [
         name: 'content',
         label: 'Text Content',
         type: 'text',
-        defaultValue: 'Messages journaled in exchange online:<br/>- Invalid Characters<br/>- Header too Large'
+        defaultValue: 'text content goes here'
       },
       {
         name: 'items',
