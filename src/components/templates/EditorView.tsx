@@ -430,6 +430,7 @@ interface EditorViewProps {
   globalApiConfig?: GlobalApiConfig;
   hoveredSectionId?: string | null;
   onHoverSection?: (id: string | null) => void;
+  dropIndicator?: { sectionId: string; position: 'before' | 'after' } | null;
 }
 
 export const EditorView = ({
@@ -450,6 +451,7 @@ export const EditorView = ({
   globalApiConfig,
   hoveredSectionId,
   onHoverSection,
+  dropIndicator,
 }: EditorViewProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'editor-drop-zone',
@@ -549,28 +551,37 @@ export const EditorView = ({
           </div>
         ) : (
           sections.map((section, index) => (
-            <SortableSection
-              key={section.id}
-              section={section}
-              isSelected={selectedSection?.id === section.id}
-              isHovered={hoveredSectionId === section.id}
-              hasError={sectionIdsWithErrors.has(section.id)}
-              onSelect={() => onSelectSection(section)}
-              onUpdate={onUpdateSection}
-              onDelete={() => onDeleteSection(section.id)}
-              onMoveUp={() => onMoveUp(section.id)}
-              onMoveDown={() => onMoveDown(section.id)}
-              isFirst={index === 0}
-              isLast={index === sections.length - 1}
-              onAddChild={onAddChildToContainer}
-              onDuplicate={onDuplicateSection}
-              onCopyStyles={onCopyStyles}
-              onPasteStyles={onPasteStyles}
-              renderChildren={renderNestedChildren}
-              globalApiConfig={globalApiConfig}
-              onMouseEnter={() => onHoverSection?.(section.id)}
-              onMouseLeave={() => onHoverSection?.(null)}
-            />
+            <div key={section.id}>
+              {/* Drop indicator before section */}
+              {dropIndicator?.sectionId === section.id && dropIndicator.position === 'before' && (
+                <div className={styles.dropIndicator} />
+              )}
+              <SortableSection
+                section={section}
+                isSelected={selectedSection?.id === section.id}
+                isHovered={hoveredSectionId === section.id}
+                hasError={sectionIdsWithErrors.has(section.id)}
+                onSelect={() => onSelectSection(section)}
+                onUpdate={onUpdateSection}
+                onDelete={() => onDeleteSection(section.id)}
+                onMoveUp={() => onMoveUp(section.id)}
+                onMoveDown={() => onMoveDown(section.id)}
+                isFirst={index === 0}
+                isLast={index === sections.length - 1}
+                onAddChild={onAddChildToContainer}
+                onDuplicate={onDuplicateSection}
+                onCopyStyles={onCopyStyles}
+                onPasteStyles={onPasteStyles}
+                renderChildren={renderNestedChildren}
+                globalApiConfig={globalApiConfig}
+                onMouseEnter={() => onHoverSection?.(section.id)}
+                onMouseLeave={() => onHoverSection?.(null)}
+              />
+              {/* Drop indicator after section */}
+              {dropIndicator?.sectionId === section.id && dropIndicator.position === 'after' && (
+                <div className={styles.dropIndicator} />
+              )}
+            </div>
           ))
         )}
         
