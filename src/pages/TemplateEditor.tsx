@@ -430,6 +430,12 @@ const TemplateEditor = () => {
           const listVariableName = generateListVariableName(newSectionId);
           variables['listVariableName'] = listVariableName;
           variables['listHtml'] = generateThymeleafListHtml(listVariableName, variables['listStyle'] as string || 'circle');
+          
+          // Set default list items with proper structure
+          variables['items'] = [
+            { text: 'Item 1', children: [] },
+            { text: 'Item 2', children: [] }
+          ] as any;
         } else if (contentType === 'text') {
           // Generate unique variable name for text content
           const textVariableName = `content_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;

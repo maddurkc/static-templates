@@ -839,12 +839,22 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 }
               });
               
+              // Preserve labelVariableName when switching content types
+              if (section.variables?.labelVariableName) {
+                newVariables.labelVariableName = section.variables.labelVariableName;
+                newVariables[section.variables.labelVariableName as string] = section.variables[section.variables.labelVariableName as string] || 'Title';
+                newVariables.label = section.variables.label;
+              }
+              
               // Initialize appropriate content based on new type
               if (newContentType === 'list') {
-                // Carry over existing items if switching to list
-                newVariables.items = section.variables?.items || [{ text: 'Item 1', children: [] }];
+                // Carry over existing items if switching to list, or create default items
+                newVariables.items = section.variables?.items || [
+                  { text: 'Item 1', children: [] },
+                  { text: 'Item 2', children: [] }
+                ];
                 // Generate unique list variable name
-                const listVariableName = generateListVariableName(section.id);
+                const listVariableName = section.variables?.listVariableName as string || generateListVariableName(section.id);
                 newVariables.listVariableName = listVariableName;
                 newVariables.listHtml = generateThymeleafListHtml(listVariableName, listStyle);
               } else if (newContentType === 'table') {
@@ -863,7 +873,13 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 };
               } else {
                 // Carry over existing content if switching to text
-                newVariables.content = section.variables?.content || '';
+                // Preserve textVariableName if it exists, otherwise generate a new one
+                const textVariableName = section.variables?.textVariableName as string || `content_${section.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                newVariables.textVariableName = textVariableName;
+                // Get the content value from the existing textVariableName or fall back to content
+                const existingContent = section.variables?.[textVariableName] || section.variables?.content || 'text content goes here';
+                newVariables[textVariableName] = existingContent;
+                newVariables.content = `<span th:utext="\${${textVariableName}}"/>`;
               }
               
               onUpdate({
