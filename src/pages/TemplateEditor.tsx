@@ -780,6 +780,30 @@ const TemplateEditor = () => {
       const allSections = [headerSection, ...sections, footerSection];
       const apiSections = flattenSectionsForApi(allSections);
       
+      // Log all sections info for debugging
+      console.log('=== TEMPLATE SAVE - SECTIONS INFO ===');
+      console.log('Total sections count:', allSections.length);
+      console.log('Header section:', JSON.stringify(headerSection, null, 2));
+      console.log('User sections:', JSON.stringify(sections, null, 2));
+      console.log('Footer section:', JSON.stringify(footerSection, null, 2));
+      console.log('All sections combined:', JSON.stringify(allSections, null, 2));
+      console.log('API sections (flattened):', JSON.stringify(apiSections, null, 2));
+      
+      // Log each section individually for easier debugging
+      allSections.forEach((section, index) => {
+        console.log(`--- Section ${index} ---`);
+        console.log('ID:', section.id);
+        console.log('Type:', section.type);
+        console.log('Content:', section.content);
+        console.log('Variables:', JSON.stringify(section.variables, null, 2));
+        console.log('Styles:', JSON.stringify(section.styles, null, 2));
+        console.log('isLabelEditable:', section.isLabelEditable);
+        if (section.children && section.children.length > 0) {
+          console.log('Children:', JSON.stringify(section.children, null, 2));
+        }
+      });
+      console.log('=== END SECTIONS INFO ===');
+      
       // Extract all template variables for the centralized registry
       // Use the converted subject with Thymeleaf tags for proper extraction
       const templateVariables = extractAllTemplateVariables(
