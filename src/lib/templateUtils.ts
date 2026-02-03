@@ -338,16 +338,17 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         const listStyleType = getListStyleType(listStyle);
         
         // Use Outlook-compatible table-based list rendering
-        contentHtml = `<div style="padding-left: 20px;">${renderOutlookCompatibleListWithNesting(runtimeValue, listTag, listStyleType)}</div>`;
+        contentHtml = `<div style="padding-left: 20px; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414;">${renderOutlookCompatibleListWithNesting(runtimeValue, listTag, listStyleType)}</div>`;
       } else if (typeof runtimeValue === 'string') {
         // Convert newlines to <br> tags for Outlook compatibility
         const formattedContent = sanitizeInput(runtimeValue).replace(/\n/g, '<br/>');
-        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 1.5; mso-line-height-rule: exactly;">${formattedContent}</div>`;
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; padding-left: 20px;">${formattedContent}</div>`;
       } else if (typeof runtimeValue === 'object' && runtimeValue !== null && 'text' in runtimeValue) {
         // Handle TextStyle object with styling properties
         const textStyle = runtimeValue as { text: string; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; backgroundColor?: string; fontSize?: string };
-        const styles = [`font-family: ${OUTLOOK_FONT_FAMILY}`];
+        const styles = [`font-family: ${OUTLOOK_FONT_FAMILY}`, 'font-size: 14px', 'line-height: 21px'];
         if (textStyle.color) styles.push(`color: ${textStyle.color}`);
+        else styles.push('color: #141414');
         if (textStyle.bold) styles.push('font-weight: bold');
         if (textStyle.italic) styles.push('font-style: italic');
         if (textStyle.underline) styles.push('text-decoration: underline');
@@ -355,7 +356,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
         const styleAttr = ` style="${styles.join('; ')}"`;
         const formattedText = sanitizeInput(textStyle.text).replace(/\n/g, '<br/>');
-        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 1.5; mso-line-height-rule: exactly;"><span${styleAttr}>${formattedText}</span></div>`;
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; padding-left: 20px;"><span${styleAttr}>${formattedText}</span></div>`;
       }
     } else {
       // Use default values from section variables
@@ -397,7 +398,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         const listStyleType = getListStyleType(listStyle);
         
         // Use Outlook-compatible table-based list rendering
-        contentHtml = `<div style="padding-left: 20px;">${renderOutlookCompatibleListWithNesting(items, listTag, listStyleType)}</div>`;
+        contentHtml = `<div style="padding-left: 20px; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414;">${renderOutlookCompatibleListWithNesting(items, listTag, listStyleType)}</div>`;
       } else {
         let content = (section.variables?.content as string) || '';
         
@@ -425,16 +426,15 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         
         // Convert newlines to <br> tags for Outlook compatibility
         const formattedContent = content.replace(/\n/g, '<br/>');
-        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 1.5; mso-line-height-rule: exactly; padding-left: 20px;">${formattedContent}</div>`;
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; padding-left: 20px;">${formattedContent}</div>`;
       }
     }
     
-    const labelColor = section.variables?.labelColor ? `color: ${section.variables.labelColor};` : '';
     // Use table-based layout for Outlook email client compatibility with proper margins
     return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px; font-family: ${OUTLOOK_FONT_FAMILY};">
       <tr>
         <td style="padding: 0; font-family: ${OUTLOOK_FONT_FAMILY};">
-          <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em; font-family: ${OUTLOOK_FONT_FAMILY}; ${labelColor}">${sanitizeInput(label)}</div>
+          <div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 18px; line-height: 27px; font-weight: bold; color: #D71E28; margin: 0; margin-bottom: 10px;">${sanitizeInput(label)}</div>
           ${contentHtml}
         </td>
       </tr>
