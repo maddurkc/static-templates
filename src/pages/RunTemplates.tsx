@@ -158,25 +158,29 @@ const RunTemplates = () => {
             // Use stored labelVariableName, fallback to section.id for backward compatibility
             const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
             
-            // Priority: Get the actual stored value for the label variable, not the Thymeleaf syntax
+            // Priority: Get the actual stored value for the label variable, preserving HTML styling
             let labelValue = 'Label';
             if (labelVarName && section.variables?.[labelVarName] !== undefined) {
               // New pattern: Use the resolved value stored under the variable name
-              labelValue = String(section.variables[labelVarName]);
+              // Preserve HTML content as-is (don't convert to plain string if it has HTML)
+              const storedValue = section.variables[labelVarName];
+              labelValue = typeof storedValue === 'string' ? storedValue : String(storedValue);
             } else if (section.variables?.label) {
               // Legacy pattern: Use the label field, but resolve any Thymeleaf tags
-              const rawLabel = section.variables.label as string;
+              const rawLabel = String(section.variables.label);
               labelValue = rawLabel
                 .replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (_, varName) => {
-                  // Try to get the actual value from section.variables
+                  // Try to get the actual value from section.variables (preserve HTML)
                   if (section.variables && section.variables[varName] !== undefined) {
-                    return String(section.variables[varName]);
+                    const val = section.variables[varName];
+                    return typeof val === 'string' ? val : String(val);
                   }
                   return `{{${varName}}}`;
                 })
                 .replace(/<th:utext="\$\{(\w+)\}">/g, (_, varName) => {
                   if (section.variables && section.variables[varName] !== undefined) {
-                    return String(section.variables[varName]);
+                    const val = section.variables[varName];
+                    return typeof val === 'string' ? val : String(val);
                   }
                   return `{{${varName}}}`;
                 });
