@@ -138,16 +138,27 @@ const SortableSection = ({
               <span 
                 className={styles.labelText}
                 dangerouslySetInnerHTML={{ 
-                  __html: thymeleafToPlaceholder(String(section.variables.label)).replace(
-                    /\{\{(\w+)\}\}/g,
-                    '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>'
-                  )
+                  __html: (() => {
+                    let labelContent = String(section.variables.label);
+                    // First resolve Thymeleaf to actual values, falling back to {{placeholder}} format
+                    labelContent = labelContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+                      if (section.variables && section.variables[varName] !== undefined) {
+                        return String(section.variables[varName]);
+                      }
+                      return `{{${varName}}}`;
+                    });
+                    // Style any remaining {{placeholder}} markers
+                    return labelContent.replace(
+                      /\{\{(\w+)\}\}/g,
+                      '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>'
+                    );
+                  })()
                 }}
               />
               <Badge variant="secondary" className={styles.badgeSmall}>
                 {section.variables.contentType === 'text' ? 'Text' : section.variables.contentType === 'list' ? 'List' : 'Table'}
               </Badge>
-              {String(section.variables.label).includes('{{') && (
+              {(String(section.variables.label).includes('{{') || String(section.variables.label).includes('th:utext')) && (
                 <Badge variant="outline" className={styles.badgeDynamic}>
                   Dynamic Label
                 </Badge>
@@ -208,7 +219,17 @@ const SortableSection = ({
               <div 
                 className={styles.contentPlaceholder}
                 dangerouslySetInnerHTML={{ 
-                  __html: String(section.variables.content)
+                  __html: (() => {
+                    let content = String(section.variables.content);
+                    // Resolve Thymeleaf expressions to actual values for display
+                    content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+                      if (section.variables && section.variables[varName] !== undefined) {
+                        return String(section.variables[varName]);
+                      }
+                      return `{{${varName}}}`;
+                    });
+                    return content;
+                  })()
                 }}
               />
             ) : (
