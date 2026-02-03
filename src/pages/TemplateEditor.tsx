@@ -263,6 +263,24 @@ const TemplateEditor = () => {
     }
   };
 
+  // Track current mouse position for accurate drop placement
+  const [currentMouseY, setCurrentMouseY] = useState<number>(0);
+
+  // Global mouse move handler for accurate drag positioning
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setCurrentMouseY(e.clientY);
+    };
+    
+    if (activeId) {
+      window.addEventListener('mousemove', handleMouseMove);
+    }
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [activeId]);
+
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     
@@ -294,13 +312,10 @@ const TemplateEditor = () => {
     }
 
     const rect = sectionElement.getBoundingClientRect();
-    const cursorY = (event.activatorEvent as MouseEvent)?.clientY || 0;
-    
-    // Use the current pointer position from the event
-    const pointerY = cursorY + (event.delta?.y || 0);
     const middleY = rect.top + rect.height / 2;
     
-    const position: 'before' | 'after' = pointerY < middleY ? 'before' : 'after';
+    // Use the tracked current mouse position for accurate placement
+    const position: 'before' | 'after' = currentMouseY < middleY ? 'before' : 'after';
     
     setDropIndicator({ sectionId: dropTargetId, position });
   };
