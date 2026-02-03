@@ -200,7 +200,7 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
         }
         return match; // Keep {{placeholder}} as-is when no value
       });
-      contentHtml = `<div style="white-space: pre-wrap;">${textContent}</div>`;
+      contentHtml = `<div style="white-space: pre-wrap; padding-left: 20px;">${textContent}</div>`;
     } else if (contentType === 'list') {
       const items = (section.variables?.items as any[]) || [];
       const listStyle = (section.variables?.listStyle as string) || 'circle';
@@ -229,7 +229,7 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
         return html;
       };
       
-      contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px;">${items.map(item => renderListItem(item)).join('')}</ul>`;
+      contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px; padding-left: 20px;">${items.map(item => renderListItem(item)).join('')}</ul>`;
     } else if (contentType === 'table') {
       const tableData = section.variables?.tableData as TableData;
       if (tableData && tableData.rows) {
