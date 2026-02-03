@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
 import { TemplateVariable } from "@/types/template-variable";
@@ -98,6 +98,7 @@ const TemplateEditor = () => {
   const [nameError, setNameError] = useState<string | null>(null);
   const [subjectError, setSubjectError] = useState<string | null>(null);
   const [showVariablesPanel, setShowVariablesPanel] = useState(false);
+  const [dropIndicator, setDropIndicator] = useState<{ sectionId: string; position: 'before' | 'after' } | null>(null);
   const { toast } = useToast();
 
   // Extract all template variables from sections and subject
@@ -256,14 +257,59 @@ const TemplateEditor = () => {
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id);
     setActiveId(id);
+    setDropIndicator(null);
     if (id.startsWith('library-')) {
       setShowLibrary(false);
     }
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    
+    if (!over || !active.id.toString().startsWith('library-')) {
+      setDropIndicator(null);
+      return;
+    }
+
+    const dropTargetId = String(over.id);
+    
+    // Skip if dropping on the main drop zone
+    if (dropTargetId === 'editor-drop-zone') {
+      setDropIndicator(null);
+      return;
+    }
+
+    // Find the section being hovered over
+    const overIndex = sections.findIndex(s => s.id === dropTargetId);
+    if (overIndex === -1) {
+      setDropIndicator(null);
+      return;
+    }
+
+    // Get the DOM element and cursor position to determine before/after
+    const sectionElement = document.querySelector(`[data-section-id="${dropTargetId}"]`);
+    if (!sectionElement) {
+      setDropIndicator(null);
+      return;
+    }
+
+    const rect = sectionElement.getBoundingClientRect();
+    const cursorY = (event.activatorEvent as MouseEvent)?.clientY || 0;
+    
+    // Use the current pointer position from the event
+    const pointerY = cursorY + (event.delta?.y || 0);
+    const middleY = rect.top + rect.height / 2;
+    
+    const position: 'before' | 'after' = pointerY < middleY ? 'before' : 'after';
+    
+    setDropIndicator({ sectionId: dropTargetId, position });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
+    const currentDropIndicator = dropIndicator;
+    setDropIndicator(null);
 
     if (!over) return;
 
@@ -299,12 +345,17 @@ const TemplateEditor = () => {
       // Check if dropping into a container
       const targetContainer = sections.find(s => s.id === dropTargetId && s.type === 'container');
       
-      // Determine insertion index - find the index of the section being dropped over
+      // Determine insertion index using the tracked drop indicator
       let insertIndex = sections.length; // Default to end
       if (dropTargetId !== 'editor-drop-zone' && !targetContainer) {
         const overIndex = sections.findIndex(s => s.id === dropTargetId);
         if (overIndex !== -1) {
-          insertIndex = overIndex; // Insert before the section being dropped over
+          // Use the drop indicator to determine position
+          if (currentDropIndicator && currentDropIndicator.sectionId === dropTargetId) {
+            insertIndex = currentDropIndicator.position === 'after' ? overIndex + 1 : overIndex;
+          } else {
+            insertIndex = overIndex;
+          }
         }
       }
       
@@ -1098,6 +1149,7 @@ ${sectionRows}
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className={styles.container}>
@@ -1390,6 +1442,7 @@ ${sectionRows}
                     globalApiConfig={globalApiConfig}
                     hoveredSectionId={hoveredSectionId}
                     onHoverSection={setHoveredSectionId}
+                    dropIndicator={dropIndicator}
                   />
                 </SortableContext>
               </ResizablePanel>
@@ -1431,6 +1484,7 @@ ${sectionRows}
                       globalApiConfig={globalApiConfig}
                       hoveredSectionId={hoveredSectionId}
                       onHoverSection={setHoveredSectionId}
+                      dropIndicator={dropIndicator}
                     />
                   </SortableContext>
                 </div>
