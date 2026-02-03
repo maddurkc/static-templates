@@ -674,10 +674,17 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     const labelVariableName = section.variables?.labelVariableName as string;
     const textVariableName = section.variables?.textVariableName as string;
     
+    // Default label style for labeled-content sections
+    const defaultLabelStyle = `<span style="font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 18px; line-height: 27px; font-weight: bold; color: #D71E28;">Title</span>`;
+    
     // Get the actual values (from the dynamic variable keys)
-    const labelValue = labelVariableName 
-      ? (section.variables?.[labelVariableName] as string) || 'Title'
-      : (section.variables?.label as string) || 'Title';
+    const rawLabelValue = labelVariableName 
+      ? (section.variables?.[labelVariableName] as string)
+      : (section.variables?.label as string);
+    // Apply default styled label if no value or plain text "Title"
+    const labelValue = rawLabelValue 
+      ? rawLabelValue 
+      : defaultLabelStyle;
     
     const contentType = (section.variables?.contentType as string) || 'text';
     
@@ -742,41 +749,43 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         
         <div className={styles.section}>
           <Label className={styles.label}>Label</Label>
-          <RichTextEditor
-            value={labelValue}
-            onChange={(html) => {
-              // Extract plain text for placeholder detection
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = html;
-              const plainText = tempDiv.textContent || '';
-              const newPlaceholders = plainText.match(/\{\{(\w+)\}\}/g) || [];
-              
-              // Update the actual value in the dynamic variable
-              const updatedVariables = { ...section.variables };
-              
-              if (labelVariableName) {
-                // Store the actual value (with {{placeholder}} kept for manual placeholders)
-                updatedVariables[labelVariableName] = html;
-              } else {
-                // Fallback for legacy sections without labelVariableName
-                updatedVariables['label'] = html;
-              }
-              
-              // Add entries for any manual placeholders
-              newPlaceholders.forEach(match => {
-                const varName = match.replace(/\{\{|\}\}/g, '');
-                if (!updatedVariables[varName]) {
-                  updatedVariables[varName] = '';
+          <div className={styles.labelEditorWrapper}>
+            <RichTextEditor
+              value={labelValue}
+              onChange={(html) => {
+                // Extract plain text for placeholder detection
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                const plainText = tempDiv.textContent || '';
+                const newPlaceholders = plainText.match(/\{\{(\w+)\}\}/g) || [];
+                
+                // Update the actual value in the dynamic variable
+                const updatedVariables = { ...section.variables };
+                
+                if (labelVariableName) {
+                  // Store the actual value (with {{placeholder}} kept for manual placeholders)
+                  updatedVariables[labelVariableName] = html;
+                } else {
+                  // Fallback for legacy sections without labelVariableName
+                  updatedVariables['label'] = html;
                 }
-              });
-              
-              onUpdate({
-                ...section,
-                variables: updatedVariables
-              });
-            }}
-            placeholder='Title (use {{variable}} for dynamic values)'
-          />
+                
+                // Add entries for any manual placeholders
+                newPlaceholders.forEach(match => {
+                  const varName = match.replace(/\{\{|\}\}/g, '');
+                  if (!updatedVariables[varName]) {
+                    updatedVariables[varName] = '';
+                  }
+                });
+                
+                onUpdate({
+                  ...section,
+                  variables: updatedVariables
+                });
+              }}
+              placeholder='Title (use {{variable}} for dynamic values)'
+            />
+          </div>
           <p className={styles.description}>
             Enter the label text. Use {`{{`}variableName{`}}`} for dynamic values.
           </p>

@@ -1582,8 +1582,8 @@ const RunTemplates = () => {
                                         }}
                                       >
                                         <span 
-                                          className="flex-1 font-semibold" 
-                                          style={{ fontSize: '1rem', color: '#212529' }}
+                                          className="flex-1" 
+                                          style={{ fontFamily: "'Wells Fargo Sans', Arial, Helvetica, sans-serif", fontSize: '18px', lineHeight: '27px', fontWeight: 'bold', color: '#D71E28' }}
                                           dangerouslySetInnerHTML={{ __html: labelValue || 'Click to edit...' }}
                                         />
                                         <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1592,7 +1592,7 @@ const RunTemplates = () => {
                                   ) : (
                                     <div 
                                       className="px-3 py-1.5 bg-muted rounded"
-                                      style={{ fontSize: '1rem', color: '#212529', fontWeight: 600 }}
+                                      style={{ fontFamily: "'Wells Fargo Sans', Arial, Helvetica, sans-serif", fontSize: '18px', lineHeight: '27px', fontWeight: 'bold', color: '#D71E28' }}
                                       dangerouslySetInnerHTML={{ __html: labelValue }}
                                     />
                                   )}
