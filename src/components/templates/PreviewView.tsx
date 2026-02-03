@@ -200,7 +200,7 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
         }
         return match; // Keep {{placeholder}} as-is when no value
       });
-      contentHtml = `<div style="white-space: pre-wrap; padding-left: 20px;">${textContent}</div>`;
+      contentHtml = `<div style="white-space: pre-wrap; padding-left: 20px; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 21px; color: #141414;">${textContent}</div>`;
     } else if (contentType === 'list') {
       const items = (section.variables?.items as any[]) || [];
       const listStyle = (section.variables?.listStyle as string) || 'circle';
@@ -229,7 +229,7 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
         return html;
       };
       
-      contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px; padding-left: 20px;">${items.map(item => renderListItem(item)).join('')}</ul>`;
+      contentHtml = `<ul style="list-style-type: ${listStyle}; margin-left: 20px; padding-left: 20px; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 21px; color: #141414;">${items.map(item => renderListItem(item)).join('')}</ul>`;
     } else if (contentType === 'table') {
       const tableData = section.variables?.tableData as TableData;
       if (tableData && tableData.rows) {
@@ -242,7 +242,7 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
       .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
       .join('; ');
     
-    return `<div style="${styleString}"><div style="font-weight: bold; margin-bottom: 8px;">${label}</div>${contentHtml}</div>`;
+    return `<div style="${styleString}"><div style="font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 18px; line-height: 27px; font-weight: bold; color: #D71E28; margin: 0; margin-bottom: 10px;">${label}</div>${contentHtml}</div>`;
   };
   
   
