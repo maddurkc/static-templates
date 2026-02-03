@@ -185,13 +185,35 @@ export const sectionToRequest = (
       cleanVariables[listVariableName] = variables.items || [{ text: 'Item 1', children: [] }];
       cleanVariables.items = variables.items || [{ text: 'Item 1', children: [] }];
       cleanVariables.listHtml = generateThymeleafListHtml(listVariableName, listStyle);
+      // Also store labelVariableName for list type
+      if (variables.labelVariableName) {
+        cleanVariables.labelVariableName = variables.labelVariableName;
+        cleanVariables[variables.labelVariableName as string] = variables[variables.labelVariableName as string] || '';
+      }
       // Do NOT include content or tableData for list type
     } else if (contentType === 'table') {
       cleanVariables.tableData = variables.tableData || { headers: ['Column 1'], rows: [['Cell 1']] };
+      // Also store labelVariableName for table type
+      if (variables.labelVariableName) {
+        cleanVariables.labelVariableName = variables.labelVariableName;
+        cleanVariables[variables.labelVariableName as string] = variables[variables.labelVariableName as string] || '';
+      }
       // Do NOT include content, items, listStyle, or listVariableName for table type
     } else {
-      // text content type
+      // text content type - store both labelVariableName and textVariableName
       cleanVariables.content = variables.content || '';
+      
+      // Store labelVariableName and its value
+      if (variables.labelVariableName) {
+        cleanVariables.labelVariableName = variables.labelVariableName;
+        cleanVariables[variables.labelVariableName as string] = variables[variables.labelVariableName as string] || '';
+      }
+      
+      // Store textVariableName and its value
+      if (variables.textVariableName) {
+        cleanVariables.textVariableName = variables.textVariableName;
+        cleanVariables[variables.textVariableName as string] = variables[variables.textVariableName as string] || '';
+      }
       // Do NOT include items, tableData, listStyle, or listVariableName for text type
     }
   } else {
