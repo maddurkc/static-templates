@@ -275,10 +275,13 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     
     // Determine the correct variable name for runtime data lookup
     // For list content: use listVariableName (e.g., items_abc123)
-    // For text/table content: use section ID
+    // For text content: use textVariableName (e.g., content_abc123)
+    // For table content: use section ID
     const contentVarName = contentType === 'list' 
       ? (section.variables?.listVariableName as string) || section.id
-      : section.id;
+      : contentType === 'text'
+        ? (section.variables?.textVariableName as string) || section.id
+        : section.id;
     
     // Check if we have runtime variables (from RunTemplates)
     if (variables && variables[contentVarName] !== undefined) {
@@ -396,9 +399,32 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         // Use Outlook-compatible table-based list rendering
         contentHtml = renderOutlookCompatibleListWithNesting(items, listTag, listStyleType);
       } else {
-        const content = (section.variables?.content as string) || '';
+        let content = (section.variables?.content as string) || '';
+        
+        // Process Thymeleaf expressions in content - supports <span th:utext="${varName}"/> format
+        content = content.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+          if (variables && variables[varName] !== undefined) {
+            return sanitizeInput(String(variables[varName]));
+          }
+          if (section.variables && section.variables[varName] !== undefined) {
+            return sanitizeInput(String(section.variables[varName]));
+          }
+          return match;
+        });
+        
+        // Also handle legacy format: <th:utext="${varName}">
+        content = content.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+          if (variables && variables[varName] !== undefined) {
+            return sanitizeInput(String(variables[varName]));
+          }
+          if (section.variables && section.variables[varName] !== undefined) {
+            return sanitizeInput(String(section.variables[varName]));
+          }
+          return match;
+        });
+        
         // Convert newlines to <br> tags for Outlook compatibility
-        const formattedContent = sanitizeInput(content).replace(/\n/g, '<br/>');
+        const formattedContent = content.replace(/\n/g, '<br/>');
         contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 1.5; mso-line-height-rule: exactly;">${formattedContent}</div>`;
       }
     }

@@ -184,6 +184,15 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
     
     if (contentType === 'text') {
       let textContent = (section.variables?.content as string) || '';
+      
+      // Replace Thymeleaf <span th:utext="${varName}"/> with actual values or {{placeholder}}
+      textContent = textContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
+        if (section.variables && !isEmptyValue(section.variables[varName])) {
+          return String(section.variables[varName]);
+        }
+        return `{{${varName}}}`;
+      });
+      
       // Support {{variable}} placeholders in text content - show {{placeholder}} if no value
       textContent = textContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
         if (section.variables && !isEmptyValue(section.variables[varName])) {

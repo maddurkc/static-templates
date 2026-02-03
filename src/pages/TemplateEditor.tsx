@@ -413,17 +413,31 @@ const TemplateEditor = () => {
         variables['listVariableName'] = listVariableName;
       }
       
-      // For labeled-content sections, store unique variable names for label and list
+      // For labeled-content sections, store unique variable names for label, content, and list
       if (sectionDef.type === 'labeled-content') {
         // Always store labelVariableName for consistency across template updates
         const labelVariableName = `label_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
         variables['labelVariableName'] = labelVariableName;
+        
+        // Store the label value under the variable name and convert label to Thymeleaf format
+        const labelValue = variables['label'] as string || 'Label';
+        variables[labelVariableName] = labelValue;
+        variables['label'] = `<span th:utext="\${${labelVariableName}}"/>`;
         
         const contentType = variables['contentType'] as string;
         if (contentType === 'list') {
           const listVariableName = generateListVariableName(newSectionId);
           variables['listVariableName'] = listVariableName;
           variables['listHtml'] = generateThymeleafListHtml(listVariableName, variables['listStyle'] as string || 'circle');
+        } else if (contentType === 'text') {
+          // Generate unique variable name for text content
+          const textVariableName = `content_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          variables['textVariableName'] = textVariableName;
+          
+          // Store the content value under the variable name and convert content to Thymeleaf format
+          const contentValue = variables['content'] as string || 'Enter content here...';
+          variables[textVariableName] = contentValue;
+          variables['content'] = `<span th:utext="\${${textVariableName}}"/>`;
         }
       }
       
