@@ -210,3 +210,20 @@
   height: 1rem;
   color: hsl(var(--primary));
 }
+
+.labelEditorWrapper {
+  // Apply default label styling to the RichTextEditor content
+  font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif;
+  font-size: 18px;
+  line-height: 27px;
+  font-weight: bold;
+  color: #D71E28;
+  
+  [contenteditable="true"] {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    font-weight: inherit;
+    color: inherit;
+  }
+}

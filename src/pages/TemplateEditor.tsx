@@ -420,8 +420,11 @@ const TemplateEditor = () => {
         variables['labelVariableName'] = labelVariableName;
         
         // Store the label value under the variable name and convert label to Thymeleaf format
-        // Default label value is "Title"
-        const labelValue = variables['label'] as string || 'Title';
+        // Default label value is "Title" with proper styling (font-size:18px, line-height:27px, font-weight:bold, color:#D71E28)
+        const rawLabelValue = variables['label'] as string || 'Title';
+        // Wrap the label with inline styling if it doesn't already have HTML
+        const labelValue = rawLabelValue.includes('<') ? rawLabelValue : 
+          `<span style="font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 18px; line-height: 27px; font-weight: bold; color: #D71E28;">${rawLabelValue}</span>`;
         variables[labelVariableName] = labelValue;
         variables['label'] = '<span th:utext="${' + labelVariableName + '}"/>';
         
