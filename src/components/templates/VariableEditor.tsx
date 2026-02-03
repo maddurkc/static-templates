@@ -670,49 +670,68 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
 
   // For labeled-content sections - static label + dynamic content
   if (section.type === 'labeled-content') {
-    // Extract label placeholders (both {{placeholder}} and Thymeleaf formats)
-    const labelText = (section.variables?.label as string) || '';
-    const extractLabelPlaceholders = (): string[] => {
+    // Get the stored variable names
+    const labelVariableName = section.variables?.labelVariableName as string;
+    const textVariableName = section.variables?.textVariableName as string;
+    
+    // Get the actual values (from the dynamic variable keys)
+    const labelValue = labelVariableName 
+      ? (section.variables?.[labelVariableName] as string) || 'Title'
+      : (section.variables?.label as string) || 'Title';
+    
+    const contentType = (section.variables?.contentType as string) || 'text';
+    
+    // Get content value for text type
+    const contentValue = textVariableName
+      ? (section.variables?.[textVariableName] as string) || 'text content goes here'
+      : (section.variables?.content as string) || 'text content goes here';
+    
+    // Extract manual placeholders from label (both {{placeholder}} and Thymeleaf formats)
+    // Exclude the auto-generated labelVariableName
+    const extractManualLabelPlaceholders = (): string[] => {
+      const labelText = (section.variables?.label as string) || '';
       const placeholders: string[] = [];
+      
       // Match {{placeholder}} format
       const placeholderMatches = labelText.match(/\{\{(\w+)\}\}/g) || [];
       placeholderMatches.forEach(m => {
         const match = m.match(/\{\{(\w+)\}\}/);
-        if (match && !placeholders.includes(match[1])) placeholders.push(match[1]);
+        if (match && !placeholders.includes(match[1]) && match[1] !== labelVariableName) {
+          placeholders.push(match[1]);
+        }
       });
-      // Match Thymeleaf formats
-      const thymeleafMatches = labelText.match(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)|<th:utext="\$\{(\w+)\}">/g) || [];
+      
+      // Match Thymeleaf formats - exclude auto-generated variable
+      const thymeleafMatches = labelText.match(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g) || [];
       thymeleafMatches.forEach(m => {
         const match = m.match(/\$\{(\w+)\}/);
-        if (match && !placeholders.includes(match[1])) placeholders.push(match[1]);
+        if (match && !placeholders.includes(match[1]) && match[1] !== labelVariableName) {
+          placeholders.push(match[1]);
+        }
       });
+      
       return placeholders;
     };
     
-    // Get user-friendly label (convert Thymeleaf to {{placeholder}})
-    const getUserFriendlyLabel = (): string => {
-      let label = labelText;
-      // Convert span format
-      label = label.replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|>)/g, '{{$1}}');
-      // Convert legacy format
-      label = label.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
-      return label;
-    };
-    
-    const userFriendlyLabel = getUserFriendlyLabel();
-    const labelPlaceholders = extractLabelPlaceholders();
-    const contentType = (section.variables?.contentType as string) || 'text';
-    
-    // Extract content placeholders (for text content type)
-    const contentText = (section.variables?.content as string) || '';
-    const extractContentPlaceholders = (): string[] => {
-      const placeholderMatches = contentText.match(/\{\{(\w+)\}\}/g) || [];
-      return [...new Set(placeholderMatches.map(m => {
+    // Extract manual placeholders from content text
+    // Exclude the auto-generated textVariableName
+    const extractManualContentPlaceholders = (): string[] => {
+      const content = contentValue || '';
+      const placeholders: string[] = [];
+      
+      const placeholderMatches = content.match(/\{\{(\w+)\}\}/g) || [];
+      placeholderMatches.forEach(m => {
         const match = m.match(/\{\{(\w+)\}\}/);
-        return match ? match[1] : '';
-      }).filter(Boolean))];
+        if (match && !placeholders.includes(match[1]) && match[1] !== textVariableName) {
+          placeholders.push(match[1]);
+        }
+      });
+      
+      return placeholders;
     };
-    const contentPlaceholders = contentType === 'text' ? extractContentPlaceholders() : [];
+    
+    const manualLabelPlaceholders = extractManualLabelPlaceholders();
+    const manualContentPlaceholders = contentType === 'text' ? extractManualContentPlaceholders() : [];
     
     return (
       <div className={styles.container}>
@@ -722,26 +741,28 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         <Separator />
         
         <div className={styles.section}>
-          <Label className={styles.label}>Field Label (use {`{{`}variable{`}}`} for dynamic data)</Label>
+          <Label className={styles.label}>Label</Label>
           <RichTextEditor
-            value={userFriendlyLabel}
+            value={labelValue}
             onChange={(html) => {
-              // Extract plain text for placeholder detection while keeping rich formatting
+              // Extract plain text for placeholder detection
               const tempDiv = document.createElement('div');
               tempDiv.innerHTML = html;
               const plainText = tempDiv.textContent || '';
               const newPlaceholders = plainText.match(/\{\{(\w+)\}\}/g) || [];
               
-              // Store the HTML directly (keeping rich formatting)
-              // But also convert {{placeholder}} to Thymeleaf for backend processing
-              let thymeleafLabel = html;
-              newPlaceholders.forEach(match => {
-                const varName = match.replace(/\{\{|\}\}/g, '');
-                thymeleafLabel = thymeleafLabel.replace(new RegExp(`\\{\\{${varName}\\}\\}`, 'g'), `<span th:utext="\${${varName}}"/>`);
-              });
+              // Update the actual value in the dynamic variable
+              const updatedVariables = { ...section.variables };
               
-              // Update variables with new placeholders
-              const updatedVariables = { ...section.variables, label: thymeleafLabel };
+              if (labelVariableName) {
+                // Store the actual value (with {{placeholder}} kept for manual placeholders)
+                updatedVariables[labelVariableName] = html;
+              } else {
+                // Fallback for legacy sections without labelVariableName
+                updatedVariables['label'] = html;
+              }
+              
+              // Add entries for any manual placeholders
               newPlaceholders.forEach(match => {
                 const varName = match.replace(/\{\{|\}\}/g, '');
                 if (!updatedVariables[varName]) {
@@ -754,14 +775,14 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 variables: updatedVariables
               });
             }}
-            placeholder='Example: Incident Report {{incidentNumber}} or Summary {{status}}'
+            placeholder='Title (use {{variable}} for dynamic values)'
           />
           <p className={styles.description}>
-            Type your label and use {`{{`}variableName{`}}`} syntax for dynamic values. Supports rich formatting.
+            Enter the label text. Use {`{{`}variableName{`}}`} for dynamic values.
           </p>
         </div>
         
-        {labelPlaceholders.length > 0 && (
+        {manualLabelPlaceholders.length > 0 && (
           <>
             <Separator />
             <div className={styles.variablesSection}>
@@ -769,7 +790,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
               <p className={styles.description}>
                 Set default values for placeholders in your label:
               </p>
-              {labelPlaceholders.map(placeholder => (
+              {manualLabelPlaceholders.map(placeholder => (
                 <div key={placeholder} className={styles.variableField}>
                   <Label className={styles.variableLabel}>
                     {`{{${placeholder}}}`}
@@ -913,30 +934,52 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
 
         {contentType === 'text' ? (
           <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Text Content (use {`{{`}variable{`}}`} for dynamic data)
-            </Label>
+            <Label className="text-sm font-medium">Content</Label>
             <RichTextEditor
-              value={contentText}
+              value={contentValue}
               onChange={(html) => {
+                // Extract manual placeholders
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                const plainText = tempDiv.textContent || '';
+                const newPlaceholders = plainText.match(/\{\{(\w+)\}\}/g) || [];
+                
+                const updatedVariables = { ...section.variables };
+                
+                if (textVariableName) {
+                  // Store the actual value in the dynamic variable
+                  updatedVariables[textVariableName] = html;
+                } else {
+                  // Fallback for legacy sections
+                  updatedVariables['content'] = html;
+                }
+                
+                // Add entries for any manual placeholders
+                newPlaceholders.forEach(match => {
+                  const varName = match.replace(/\{\{|\}\}/g, '');
+                  if (!updatedVariables[varName]) {
+                    updatedVariables[varName] = '';
+                  }
+                });
+                
                 onUpdate({
                   ...section,
-                  variables: { ...section.variables, content: html }
+                  variables: updatedVariables
                 });
               }}
-              placeholder="Example: Status is {{status}}. Issue count: {{count}}"
+              placeholder="text content goes here (use {{variable}} for dynamic values)"
             />
             <p className="text-xs text-muted-foreground">
-              Type your content and use {`{{`}variableName{`}}`} for placeholders. Supports multiple lines and rich formatting.
+              Enter the content. Use {`{{`}variableName{`}}`} for dynamic values.
             </p>
             
-            {contentPlaceholders.length > 0 && (
+            {manualContentPlaceholders.length > 0 && (
               <div className="space-y-2 mt-4 pt-4 border-t">
                 <Label className="text-sm font-medium">Content Variables - Default Values</Label>
                 <p className="text-xs text-muted-foreground">
                   Set default values for placeholders in your content:
                 </p>
-                {contentPlaceholders.map(placeholder => (
+                {manualContentPlaceholders.map(placeholder => (
                   <div key={placeholder} className="flex items-center gap-2">
                     <Label className="text-xs font-mono min-w-[120px]">
                       {`{{${placeholder}}}`}

@@ -420,7 +420,8 @@ const TemplateEditor = () => {
         variables['labelVariableName'] = labelVariableName;
         
         // Store the label value under the variable name and convert label to Thymeleaf format
-        const labelValue = variables['label'] as string || 'Label';
+        // Default label value is "Title"
+        const labelValue = variables['label'] as string || 'Title';
         variables[labelVariableName] = labelValue;
         variables['label'] = `<span th:utext="\${${labelVariableName}}"/>`;
         
@@ -435,7 +436,8 @@ const TemplateEditor = () => {
           variables['textVariableName'] = textVariableName;
           
           // Store the content value under the variable name and convert content to Thymeleaf format
-          const contentValue = variables['content'] as string || 'Enter content here...';
+          // Default content value is "text content goes here"
+          const contentValue = variables['content'] as string || 'text content goes here';
           variables[textVariableName] = contentValue;
           variables['content'] = `<span th:utext="\${${textVariableName}}"/>`;
         }
