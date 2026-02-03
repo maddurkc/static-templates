@@ -879,7 +879,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 // Get the content value from the existing textVariableName or fall back to content
                 const existingContent = section.variables?.[textVariableName] || section.variables?.content || 'text content goes here';
                 newVariables[textVariableName] = existingContent;
-                newVariables.content = `<span th:utext="\${${textVariableName}}"/>`;
+                newVariables.content = '<span th:utext="${' + textVariableName + '}"/>';
               }
               
               onUpdate({

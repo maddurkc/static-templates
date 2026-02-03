@@ -423,7 +423,7 @@ const TemplateEditor = () => {
         // Default label value is "Title"
         const labelValue = variables['label'] as string || 'Title';
         variables[labelVariableName] = labelValue;
-        variables['label'] = `<span th:utext="\${${labelVariableName}}"/>`;
+        variables['label'] = '<span th:utext="${' + labelVariableName + '}"/>';
         
         const contentType = variables['contentType'] as string;
         if (contentType === 'list') {
@@ -445,7 +445,7 @@ const TemplateEditor = () => {
           // Default content value is "text content goes here"
           const contentValue = variables['content'] as string || 'text content goes here';
           variables[textVariableName] = contentValue;
-          variables['content'] = `<span th:utext="\${${textVariableName}}"/>`;
+          variables['content'] = '<span th:utext="${' + textVariableName + '}"/>';
         }
       }
       
