@@ -11,57 +11,18 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
   const introRef = useRef<ReturnType<typeof introJs> | null>(null);
   const [isWalkthroughActive, setIsWalkthroughActive] = useState(false);
   const waitingForActionRef = useRef<string | null>(null);
-  const eventListenersRef = useRef<{ element: Element; event: string; handler: EventListener }[]>([]);
+  const actionCompletedRef = useRef<boolean>(false);
+  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup function
-  const cleanupEventListeners = useCallback(() => {
-    eventListenersRef.current.forEach(({ element, event, handler }) => {
-      element.removeEventListener(event, handler);
-    });
-    eventListenersRef.current = [];
+  const cleanup = useCallback(() => {
+    if (checkIntervalRef.current) {
+      clearInterval(checkIntervalRef.current);
+      checkIntervalRef.current = null;
+    }
+    waitingForActionRef.current = null;
+    actionCompletedRef.current = false;
   }, []);
-
-  // Add event listener with tracking
-  const addTrackedListener = useCallback((element: Element, event: string, handler: EventListener) => {
-    element.addEventListener(event, handler);
-    eventListenersRef.current.push({ element, event, handler });
-  }, []);
-
-  // Wait for user action helper
-  const waitForAction = useCallback((
-    selector: string,
-    eventType: string,
-    callback: () => void,
-    timeout = 60000
-  ) => {
-    return new Promise<void>((resolve, reject) => {
-      const element = document.querySelector(selector);
-      if (!element) {
-        reject(new Error(`Element not found: ${selector}`));
-        return;
-      }
-
-      let resolved = false;
-      const timeoutId = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          cleanupEventListeners();
-          reject(new Error('Timeout waiting for user action'));
-        }
-      }, timeout);
-
-      const handler = () => {
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeoutId);
-          callback();
-          resolve();
-        }
-      };
-
-      addTrackedListener(element, eventType, handler);
-    });
-  }, [addTrackedListener, cleanupEventListeners]);
 
   // Start walkthrough
   const startWalkthrough = useCallback(() => {
@@ -103,11 +64,9 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       .introjs-helperLayer {
         box-shadow: rgba(0, 0, 0, 0.5) 0px 0px 0px 5000px, rgba(52, 152, 219, 0.8) 0px 0px 0px 4px !important;
       }
-      /* When in interactive mode, make overlay click-through */
+      /* Make overlay and helper layer click-through for interactive steps */
       .introjs-interactive-mode .introjs-helperLayer,
-      .introjs-interactive-mode .introjs-overlay {
-        pointer-events: none !important;
-      }
+      .introjs-interactive-mode .introjs-overlay,
       .introjs-interactive-mode .introjs-tooltipReferenceLayer {
         pointer-events: none !important;
       }
@@ -120,11 +79,17 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
         z-index: 10000002 !important;
         pointer-events: auto !important;
       }
+      /* Also make editor view interactive for drag-drop */
+      .introjs-interactive-mode [data-walkthrough="editor-view"] {
+        pointer-events: auto !important;
+        z-index: 10000001 !important;
+      }
+      /* Disabled next button styling */
       .introjs-tooltipbuttons .introjs-nextbutton.waiting-for-action {
         background: hsl(var(--muted));
         color: hsl(var(--muted-foreground));
         cursor: not-allowed;
-        pointer-events: none;
+        opacity: 0.6;
       }
       .intro-pulse-highlight {
         animation: intro-pulse 1.5s infinite;
@@ -138,17 +103,13 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
     document.head.appendChild(style);
 
     // Helper to enable interactive mode
-    const enableInteractiveMode = (selector: string) => {
+    const enableInteractiveMode = (selector: string | string[]) => {
       document.body.classList.add('introjs-interactive-mode');
-      const element = document.querySelector(selector);
-      if (element) {
-        element.classList.add('introjs-interactive-element');
-      }
-      // Hide Next button during interactive steps
-      const nextBtn = document.querySelector('.introjs-nextbutton');
-      if (nextBtn) {
-        nextBtn.classList.add('waiting-for-action');
-      }
+      const selectors = Array.isArray(selector) ? selector : [selector];
+      selectors.forEach(sel => {
+        const elements = document.querySelectorAll(sel);
+        elements.forEach(el => el.classList.add('introjs-interactive-element'));
+      });
     };
 
     // Helper to disable interactive mode
@@ -157,9 +118,23 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       document.querySelectorAll('.introjs-interactive-element').forEach(el => {
         el.classList.remove('introjs-interactive-element');
       });
-      const nextBtn = document.querySelector('.introjs-nextbutton');
+    };
+
+    // Helper to disable Next button
+    const disableNextButton = () => {
+      const nextBtn = document.querySelector('.introjs-nextbutton') as HTMLButtonElement;
+      if (nextBtn) {
+        nextBtn.classList.add('waiting-for-action');
+        nextBtn.disabled = true;
+      }
+    };
+
+    // Helper to enable Next button
+    const enableNextButton = () => {
+      const nextBtn = document.querySelector('.introjs-nextbutton') as HTMLButtonElement;
       if (nextBtn) {
         nextBtn.classList.remove('waiting-for-action');
+        nextBtn.disabled = false;
       }
     };
 
@@ -176,7 +151,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       prevLabel: '← Back',
       skipLabel: 'Skip Tour',
       steps: [
-        // Step 1: Section Library Button
+        // Step 1 (index 0): Section Library Button intro
         {
           element: '[data-walkthrough="section-library-btn"]',
           intro: `
@@ -191,7 +166,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           `,
           position: 'right',
         },
-        // Step 2: Editor View
+        // Step 2 (index 1): Editor View
         {
           element: '[data-walkthrough="editor-view"]',
           intro: `
@@ -205,7 +180,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           `,
           position: 'right',
         },
-        // Step 3: Preview View
+        // Step 3 (index 2): Preview View
         {
           element: '[data-walkthrough="preview-view"]',
           intro: `
@@ -220,7 +195,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           `,
           position: 'left',
         },
-        // Step 4: Click Section Library Button (waiting step)
+        // Step 4 (index 3): Click Section Library Button - WAIT for click
         {
           element: '[data-walkthrough="section-library-btn"]',
           intro: `
@@ -235,9 +210,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
             </div>
           `,
           position: 'bottom',
-          disableInteraction: false,
         },
-        // Step 5: Sections in Library (after library opens)
+        // Step 5 (index 4): Library opened - show content, WAIT for drag-drop
         {
           element: '[data-walkthrough="section-library-content"]',
           intro: `
@@ -248,32 +222,43 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
                 <strong>Drag any section</strong> from here and drop it into the Editor View on the right.
               </p>
               <p style="margin: 8px 0 0 0; font-size: 12px; color: hsl(var(--primary)); font-weight: 500;">
-                ⏳ Try dragging a section to the editor...
+                ⏳ Drag a section to the editor...
               </p>
             </div>
           `,
           position: 'right',
-          disableInteraction: false,
         },
-        // Step 6: Highlight section in Editor
+        // Step 6 (index 5): Highlight dropped section - NEXT enabled
         {
           element: '[data-walkthrough="editor-section"]',
           intro: `
             <div>
-              <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">🎯 Section Controls</h3>
+              <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">🎯 Your Section</h3>
               <p style="margin: 0; color: hsl(var(--muted-foreground));">
-                Each section has control buttons. Click the <strong>first icon button</strong> 
-                (Edit Variable) to customize the section content.
-              </p>
-              <p style="margin: 8px 0 0 0; font-size: 12px; color: hsl(var(--primary)); font-weight: 500;">
-                ⏳ Click on the Edit Variable button...
+                Great! Your section is now in the editor. Each section has control buttons.
+                Click <strong>Next</strong> to continue.
               </p>
             </div>
           `,
           position: 'left',
-          disableInteraction: false,
         },
-        // Step 7: Text input highlight
+        // Step 7 (index 6): Point to Edit Variable button - WAIT for click
+        {
+          element: '[data-walkthrough="edit-variable-btn"]',
+          intro: `
+            <div>
+              <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">⚙️ Edit Variable</h3>
+              <p style="margin: 0; color: hsl(var(--muted-foreground));">
+                Click this <strong>Edit Variable</strong> button to customize the section content.
+              </p>
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: hsl(var(--primary)); font-weight: 500;">
+                ⏳ Click the button to open the editor...
+              </p>
+            </div>
+          `,
+          position: 'left',
+        },
+        // Step 8 (index 7): Variable input - WAIT for typing
         {
           element: '[data-walkthrough="variable-input"]',
           intro: `
@@ -284,14 +269,13 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
                 immediately in the preview.
               </p>
               <p style="margin: 8px 0 0 0; font-size: 12px; color: hsl(var(--primary)); font-weight: 500;">
-                ⏳ Enter or update some text...
+                ⏳ Type something in the text box...
               </p>
             </div>
           `,
           position: 'left',
-          disableInteraction: false,
         },
-        // Step 8: Preview updated content
+        // Step 9 (index 8): Preview updated content
         {
           element: '[data-walkthrough="preview-view"]',
           intro: `
@@ -305,9 +289,9 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           `,
           position: 'left',
         },
-        // Step 9: Text Selection
+        // Step 10 (index 9): Go back to text, ask to select text - WAIT for selection
         {
-          element: '[data-walkthrough="editor-section"]',
+          element: '[data-walkthrough="variable-input"]',
           intro: `
             <div>
               <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">🖌️ Text Styling</h3>
@@ -321,9 +305,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
             </div>
           `,
           position: 'left',
-          disableInteraction: false,
         },
-        // Step 10: Formatting Toolbar
+        // Step 11 (index 10): Toolbar appeared - highlight it
         {
           element: '[data-walkthrough="text-toolbar"]',
           intro: `
@@ -337,29 +320,11 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
                   <li>Font sizes</li>
                 </ul>
               </p>
-              <p style="margin: 8px 0 0 0; font-size: 12px; color: hsl(var(--primary)); font-weight: 500;">
-                ⏳ Click any formatting option...
-              </p>
             </div>
           `,
           position: 'bottom',
-          disableInteraction: false,
         },
-        // Step 11: Preview styled content
-        {
-          element: '[data-walkthrough="preview-view"]',
-          intro: `
-            <div>
-              <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">🎉 Styled Content</h3>
-              <p style="margin: 0; color: hsl(var(--muted-foreground));">
-                Your styled content is now visible in the preview. 
-                All formatting is preserved and will appear in the final template.
-              </p>
-            </div>
-          `,
-          position: 'left',
-        },
-        // Step 12: Save Button
+        // Step 12 (index 11): Save Button
         {
           element: '[data-walkthrough="save-btn"]',
           intro: `
@@ -380,121 +345,127 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       ],
     });
 
-    // Track current step manually
-    let currentStepIndex = 0;
-
-    // Handle after step change - enable interactivity for certain steps
+    // Handle after each step renders
     intro.onafterchange(function(targetElement) {
-      // Disable interactive mode first
+      const currentStep = intro.currentStep() ?? 0;
+      cleanup();
       disableInteractiveMode();
-      
-      // Step 4 (index 3): Enable interactive mode for library button click
-      if (currentStepIndex === 3) {
-        enableInteractiveMode('[data-walkthrough="section-library-btn"]');
-      }
-      // Step 5 (index 4): Enable interactive mode for drag and drop
-      else if (currentStepIndex === 4) {
-        enableInteractiveMode('[data-walkthrough="section-library-content"]');
-      }
-      // Step 6 (index 5): Enable interactive mode for section controls
-      else if (currentStepIndex === 5) {
-        enableInteractiveMode('[data-walkthrough="editor-section"]');
-      }
-      // Step 7 (index 6): Enable interactive mode for variable input
-      else if (currentStepIndex === 6) {
-        enableInteractiveMode('[data-walkthrough="variable-input"]');
-      }
-      // Step 9 (index 8): Enable interactive mode for text selection
-      else if (currentStepIndex === 8) {
-        enableInteractiveMode('[data-walkthrough="editor-section"]');
-      }
-      // Step 10 (index 9): Enable interactive mode for toolbar
-      else if (currentStepIndex === 9) {
-        enableInteractiveMode('[data-walkthrough="text-toolbar"]');
-      }
-    });
+      enableNextButton();
 
-    // Handle step changes for waiting behavior
-    intro.onbeforechange(async function(targetElement) {
-      // Disable interactive mode before changing step
-      disableInteractiveMode();
-      
-      // Step 4: Wait for Section Library click
-      if (currentStepIndex === 3) {
+      // Step 4 (index 3): Wait for library button click
+      if (currentStep === 3) {
+        enableInteractiveMode('[data-walkthrough="section-library-btn"]');
+        disableNextButton();
         waitingForActionRef.current = 'library-click';
         
-        // Wait for the sheet to open
-        return new Promise<boolean>((resolve) => {
-          const checkLibraryOpen = setInterval(() => {
-            const libraryContent = document.querySelector('[data-walkthrough="section-library-content"]');
-            if (libraryContent) {
-              clearInterval(checkLibraryOpen);
-              waitingForActionRef.current = null;
-              setTimeout(() => resolve(true), 500);
-            }
-          }, 200);
-          
-          // Timeout after 60 seconds
-          setTimeout(() => {
-            clearInterval(checkLibraryOpen);
-            resolve(true);
-          }, 60000);
-        });
+        checkIntervalRef.current = setInterval(() => {
+          const libraryContent = document.querySelector('[data-walkthrough="section-library-content"]');
+          if (libraryContent) {
+            cleanup();
+            enableNextButton();
+            // Auto-advance after library opens
+            setTimeout(() => intro.nextStep(), 300);
+          }
+        }, 200);
       }
       
-      // Step 5: Wait for drag and drop
-      if (currentStepIndex === 4) {
+      // Step 5 (index 4): Library is open, wait for drag-drop
+      else if (currentStep === 4) {
+        enableInteractiveMode(['[data-walkthrough="section-library-content"]', '[data-walkthrough="editor-view"]']);
+        disableNextButton();
         waitingForActionRef.current = 'drag-drop';
         
-        return new Promise<boolean>((resolve) => {
-          const initialSectionCount = document.querySelectorAll('[data-walkthrough="editor-section"]').length;
-          
-          const checkNewSection = setInterval(() => {
-            const currentSectionCount = document.querySelectorAll('[data-walkthrough="editor-section"]').length;
-            if (currentSectionCount > initialSectionCount) {
-              clearInterval(checkNewSection);
-              waitingForActionRef.current = null;
-              setTimeout(() => resolve(true), 500);
-            }
-          }, 200);
-          
-          // Timeout after 60 seconds
-          setTimeout(() => {
-            clearInterval(checkNewSection);
-            resolve(true);
-          }, 60000);
-        });
+        const initialCount = document.querySelectorAll('[data-walkthrough="editor-section"]').length;
+        checkIntervalRef.current = setInterval(() => {
+          const currentCount = document.querySelectorAll('[data-walkthrough="editor-section"]').length;
+          if (currentCount > initialCount) {
+            cleanup();
+            enableNextButton();
+            // Auto-advance after drop
+            setTimeout(() => intro.nextStep(), 500);
+          }
+        }, 200);
       }
       
-      // Increment step counter after successful navigation
-      currentStepIndex++;
-      return true;
+      // Step 7 (index 6): Wait for Edit Variable button click
+      else if (currentStep === 6) {
+        enableInteractiveMode('[data-walkthrough="edit-variable-btn"]');
+        disableNextButton();
+        waitingForActionRef.current = 'edit-variable-click';
+        
+        checkIntervalRef.current = setInterval(() => {
+          const variableInput = document.querySelector('[data-walkthrough="variable-input"]');
+          if (variableInput) {
+            cleanup();
+            enableNextButton();
+            // Auto-advance after popover opens
+            setTimeout(() => intro.nextStep(), 300);
+          }
+        }, 200);
+      }
+      
+      // Step 8 (index 7): Wait for user to type in text box
+      else if (currentStep === 7) {
+        enableInteractiveMode('[data-walkthrough="variable-input"]');
+        disableNextButton();
+        waitingForActionRef.current = 'type-content';
+        
+        const variableInput = document.querySelector('[data-walkthrough="variable-input"]') as HTMLElement;
+        if (variableInput) {
+          const initialContent = variableInput.innerHTML || variableInput.textContent || '';
+          
+          checkIntervalRef.current = setInterval(() => {
+            const currentContent = variableInput.innerHTML || variableInput.textContent || '';
+            if (currentContent !== initialContent && currentContent.length > 0) {
+              cleanup();
+              enableNextButton();
+            }
+          }, 200);
+        }
+      }
+      
+      // Step 10 (index 9): Wait for text selection / toolbar to appear
+      else if (currentStep === 9) {
+        enableInteractiveMode('[data-walkthrough="variable-input"]');
+        disableNextButton();
+        waitingForActionRef.current = 'text-selection';
+        
+        checkIntervalRef.current = setInterval(() => {
+          const toolbar = document.querySelector('[data-walkthrough="text-toolbar"]');
+          if (toolbar) {
+            cleanup();
+            enableNextButton();
+            // Auto-advance to show toolbar
+            setTimeout(() => intro.nextStep(), 300);
+          }
+        }, 200);
+      }
     });
 
     intro.onexit(() => {
+      cleanup();
       disableInteractiveMode();
       setIsWalkthroughActive(false);
-      cleanupEventListeners();
       const customStyle = document.getElementById('intro-custom-styles');
       if (customStyle) customStyle.remove();
       options?.onExit?.();
     });
 
     intro.oncomplete(() => {
+      cleanup();
       disableInteractiveMode();
       setIsWalkthroughActive(false);
-      cleanupEventListeners();
       const customStyle = document.getElementById('intro-custom-styles');
       if (customStyle) customStyle.remove();
       options?.onComplete?.();
     });
 
     intro.start();
-  }, [options, cleanupEventListeners]);
+  }, [options, cleanup]);
 
   // Stop walkthrough
   const stopWalkthrough = useCallback(() => {
-    // Remove interactive mode class
+    cleanup();
     document.body.classList.remove('introjs-interactive-mode');
     document.querySelectorAll('.introjs-interactive-element').forEach(el => {
       el.classList.remove('introjs-interactive-element');
@@ -505,10 +476,9 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       introRef.current = null;
     }
     setIsWalkthroughActive(false);
-    cleanupEventListeners();
     const customStyle = document.getElementById('intro-custom-styles');
     if (customStyle) customStyle.remove();
-  }, [cleanupEventListeners]);
+  }, [cleanup]);
 
   // Go to specific step
   const goToStep = useCallback((step: number) => {
