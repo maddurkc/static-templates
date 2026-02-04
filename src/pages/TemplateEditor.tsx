@@ -987,14 +987,35 @@ const TemplateEditor = () => {
       // The actual content (which may contain embedded Thymeleaf for manual {{placeholders}}) is in section.variables[primaryVar]
       const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
       if (inlinePlaceholderTypes.includes(section.type) && section.content) {
-        // The content already contains proper Thymeleaf structure
-        // section.content = <h1 style="..."><span th:utext="${heading1Text_xxx}"/></h1>
-        // section.variables.heading1Text_xxx = "Work Request Id <span th:utext="${requestId}"/>"
-        // We return section.content as-is because it already has the correct structure
-        // The backend Thymeleaf processor will:
-        // 1. Resolve heading1Text_xxx -> "Work Request Id <span th:utext="${requestId}"/>"
-        // 2. Then resolve requestId -> actual value
-        return section.content;
+        // Verify content has proper Thymeleaf wrapper structure
+        // Expected format: <tag style="..."><span th:utext="${primaryVar}"/></tag>
+        const hasThymeleafWrapper = /<span\s+th:utext="\$\{[^}]+\}"/.test(section.content);
+        
+        if (hasThymeleafWrapper) {
+          // section.content = <h1 style="..."><span th:utext="${heading1Text_xxx}"/></h1>
+          // section.variables.heading1Text_xxx = "Work Request Id <span th:utext="${requestId}"/>"
+          // Return section.content as-is - backend Thymeleaf processor will:
+          // 1. Resolve heading1Text_xxx -> "Work Request Id <span th:utext="${requestId}"/>"
+          // 2. Then resolve requestId -> actual value
+          return section.content;
+        } else {
+          // Content doesn't have Thymeleaf wrapper - reconstruct it
+          // This handles edge cases where content was corrupted or legacy data
+          const textVariableName = (section.variables?.textVariableName as string) || 
+            generateTextSectionVariableName(section.type, section.id);
+          
+          // Get the correct HTML tag based on section type
+          const getHtmlTag = (type: string): string => {
+            if (type.startsWith('heading')) return `h${type.replace('heading', '')}`;
+            if (type === 'paragraph') return 'p';
+            if (type === 'text') return 'span';
+            return 'div';
+          };
+          
+          const htmlTag = getHtmlTag(section.type);
+          const thymeleafContent = `<span th:utext="\${${textVariableName}}"/>`;
+          return `<${htmlTag} style="${styleString}">${thymeleafContent}</${htmlTag}>`;
+        }
       }
       
       // Handle labeled-content sections
