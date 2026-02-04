@@ -382,6 +382,7 @@ export const RichTextEditor = ({
       {showToolbar && hasSelection && (
         <div 
           className={styles.floatingToolbar}
+          data-walkthrough="text-toolbar"
           style={{
             top: toolbarPosition.top,
             left: toolbarPosition.left,
@@ -665,6 +666,7 @@ export const RichTextEditor = ({
         onPaste={handlePaste}
         onClick={handleLinkClick}
         data-placeholder={placeholder}
+        data-walkthrough="variable-input"
         suppressContentEditableWarning
       />
       

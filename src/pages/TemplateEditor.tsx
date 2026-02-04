@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database, HelpCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
@@ -30,6 +30,8 @@ import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableEx
 import { subjectPlaceholderToThymeleaf, subjectThymeleafToPlaceholder } from "@/lib/thymeleafUtils";
 import { generateListVariableName, generateThymeleafListHtml } from "@/lib/listThymeleafUtils";
 import { generateTextSectionVariableName, isTextBasedSection, generateThymeleafTextHtml } from "@/lib/textThymeleafUtils";
+import { useTemplateWalkthrough } from "@/hooks/useTemplateWalkthrough";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import styles from "./TemplateEditor.module.scss";
 const TemplateEditor = () => {
   const navigate = useNavigate();
@@ -100,6 +102,22 @@ const TemplateEditor = () => {
   const [showVariablesPanel, setShowVariablesPanel] = useState(false);
   const [dropIndicator, setDropIndicator] = useState<{ sectionId: string; position: 'before' | 'after' } | null>(null);
   const { toast } = useToast();
+
+  // Walkthrough hook
+  const { startWalkthrough, stopWalkthrough, isWalkthroughActive } = useTemplateWalkthrough({
+    onComplete: () => {
+      toast({
+        title: "🎉 Tour Complete!",
+        description: "You're now ready to create amazing templates.",
+      });
+    },
+    onExit: () => {
+      toast({
+        title: "Tour Exited",
+        description: "You can restart the tour anytime by clicking the Help button.",
+      });
+    }
+  });
 
   // Extract all template variables from sections and subject
   const extractedVariables = useMemo(() => {
@@ -1266,9 +1284,29 @@ ${sectionRows}
             </div>
             
             <div className={styles.viewControls}>
+              {/* Walkthrough Tour Button */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isWalkthroughActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => isWalkthroughActive ? stopWalkthrough() : startWalkthrough()}
+                      className="gap-2"
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                      {isWalkthroughActive ? "Exit Tour" : "Start Tour"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{isWalkthroughActive ? "Exit the guided tour" : "Take a guided tour of the template editor"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
               <Sheet open={showLibrary} onOpenChange={setShowLibrary}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" data-walkthrough="section-library-btn">
                     <Library className="h-4 w-4 mr-2" />
                     Section Library
                   </Button>
@@ -1292,7 +1330,9 @@ ${sectionRows}
                       </Button>
                     </div>
                   </SheetHeader>
-                  <SectionLibrary existingSections={sections} />
+                  <div data-walkthrough="section-library-content">
+                    <SectionLibrary existingSections={sections} />
+                  </div>
                 </SheetContent>
               </Sheet>
               
@@ -1407,6 +1447,7 @@ ${sectionRows}
                 className="shadow-lg shadow-primary/20"
                 onClick={handleSaveTemplate}
                 disabled={isSaving || !!nameError || !!subjectError}
+                data-walkthrough="save-btn"
               >
                 {isSaving ? (
                   <>
@@ -1486,7 +1527,7 @@ ${sectionRows}
           
           {viewMode === 'split' ? (
             <ResizablePanelGroup direction="horizontal" className={styles.resizableGroup}>
-              <ResizablePanel defaultSize={50} minSize={20} className={styles.editorSection}>
+              <ResizablePanel defaultSize={50} minSize={20} className={styles.editorSection} data-walkthrough="editor-view">
                 <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
                   <EditorView
                     headerSection={headerSection}
@@ -1513,7 +1554,7 @@ ${sectionRows}
               
               <ResizableHandle withHandle className={styles.resizeHandle} />
               
-              <ResizablePanel defaultSize={50} minSize={20} className={styles.previewSection}>
+              <ResizablePanel defaultSize={50} minSize={20} className={styles.previewSection} data-walkthrough="preview-view">
                 <PreviewView 
                   headerSection={headerSection}
                   footerSection={footerSection}
