@@ -131,9 +131,6 @@ const isEmptyValue = (value: any): boolean => {
  * 
  * This function extracts variable names FROM the content first, then looks them up
  * in the variables object to ensure proper matching.
- * 
- * IMPORTANT: Handles nested Thymeleaf - when a primary variable's value contains
- * embedded Thymeleaf tags (for manual placeholders), those are also resolved.
  */
 export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }> | Record<string, any>): string => {
   if (!variables) {
@@ -153,8 +150,9 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
     }
   };
 
-  // Helper to replace a single Thymeleaf variable
-  const replaceThymeleafVar = (match: string, varName: string): string => {
+  // Extract all Thymeleaf variable names from content and replace them
+  // Pattern 1: <span th:utext="${varName}"/>
+  result = result.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
     const value = getVariableValue(varName);
     if (isEmptyValue(value)) {
       return `{{${varName}}}`;
@@ -163,27 +161,21 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
       return value.map(item => `<li>${item}</li>`).join('');
     }
     return String(value);
-  };
+  });
 
-  // Keep replacing until no more Thymeleaf tags remain (handles nested Thymeleaf)
-  let iterations = 0;
-  const maxIterations = 5; // Prevent infinite loops
-  
-  while (iterations < maxIterations) {
-    const previousResult = result;
-    
-    // Pattern 1: <span th:utext="${varName}"/>
-    result = result.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, replaceThymeleafVar);
-    
-    // Pattern 2: <th:utext="${varName}">
-    result = result.replace(/<th:utext="\$\{(\w+)\}">/g, replaceThymeleafVar);
-    
-    // If no changes were made, we're done
-    if (result === previousResult) break;
-    iterations++;
-  }
+  // Pattern 2: <th:utext="${varName}">
+  result = result.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
+    const value = getVariableValue(varName);
+    if (isEmptyValue(value)) {
+      return `{{${varName}}}`;
+    }
+    if (Array.isArray(value)) {
+      return value.map(item => `<li>${item}</li>`).join('');
+    }
+    return String(value);
+  });
 
-  // Pattern 3: {{varName}} placeholders (final pass)
+  // Pattern 3: {{varName}} placeholders
   result = result.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
     const value = getVariableValue(varName);
     if (isEmptyValue(value)) {

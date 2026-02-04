@@ -689,49 +689,35 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     
     // If content contains Thymeleaf tags, replace them with variable values
     // Priority: runtime variables > section.variables > {{placeholder}}
-    // Note: The primary variable's value may contain embedded Thymeleaf for manual placeholders
-    // e.g., section.content = "<span th:utext="${heading1Text_xxx}"/>"
-    //       section.variables.heading1Text_xxx = "Work Request Id <span th:utext="${requestId}"/>"
-    // We need to first expand the primary variable, then resolve embedded placeholders
     if (processedContent.includes('th:utext')) {
-      // Helper function to resolve a single Thymeleaf placeholder value
-      // This may recursively contain more Thymeleaf tags
-      const resolveThymeleafValue = (varName: string): string => {
-        // Runtime variables take priority
-        if (variables && !isEmptyValue(variables[varName])) {
-          return sanitizeHTML(String(variables[varName]));
-        }
-        // Fall back to section variables
-        if (section.variables && !isEmptyValue(section.variables[varName])) {
-          return sanitizeHTML(String(section.variables[varName]));
-        }
-        // Show {{placeholder}} when no value
-        return `{{${varName}}}`;
-      };
-      
       // Replace all Thymeleaf patterns with their values from runtime or section variables
       processedContent = processedContent.replace(
         /<span\s+th:utext="\$\{(\w+)\}"\/>/g,
-        (match, varName) => resolveThymeleafValue(varName)
+        (match, varName) => {
+          // Runtime variables take priority
+          if (variables && !isEmptyValue(variables[varName])) {
+            return sanitizeHTML(String(variables[varName]));
+          }
+          // Fall back to section variables
+          if (section.variables && !isEmptyValue(section.variables[varName])) {
+            return sanitizeHTML(String(section.variables[varName]));
+          }
+          // Show {{placeholder}} when no value
+          return `{{${varName}}}`;
+        }
       ).replace(
         /<th:utext="\$\{(\w+)\}">/g,
-        (match, varName) => resolveThymeleafValue(varName)
+        (match, varName) => {
+          if (variables && !isEmptyValue(variables[varName])) {
+            return sanitizeHTML(String(variables[varName]));
+          }
+          if (section.variables && !isEmptyValue(section.variables[varName])) {
+            return sanitizeHTML(String(section.variables[varName]));
+          }
+          // Show {{placeholder}} when no value
+          return `{{${varName}}}`;
+        }
       );
-      
-      // SECOND PASS: The resolved value might contain MORE Thymeleaf tags (manual placeholders)
-      // Keep resolving until no more Thymeleaf tags remain
-      let iterations = 0;
-      const maxIterations = 5; // Prevent infinite loops
-      while (processedContent.includes('th:utext') && iterations < maxIterations) {
-        processedContent = processedContent.replace(
-          /<span\s+th:utext="\$\{(\w+)\}"\/>/g,
-          (match, varName) => resolveThymeleafValue(varName)
-        ).replace(
-          /<th:utext="\$\{(\w+)\}">/g,
-          (match, varName) => resolveThymeleafValue(varName)
-        );
-        iterations++;
-      }
     }
     
     // Replace {{variable}} placeholders with values

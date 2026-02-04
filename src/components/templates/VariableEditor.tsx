@@ -1203,7 +1203,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
       // but preserve inner HTML formatting like <br>, <div>, <span>, etc.
       content = content.replace(/^<(\w+)[^>]*>([\s\S]*)<\/\1>$/, '$2');
       
-      // Check if the content is just a single Thymeleaf variable (primary wrapper)
+      // Check if the content is just a single Thymeleaf variable
       // In this case, the actual content is stored in the variable value
       const singleVarMatch = content.match(/^<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|><\/span>|>)$/);
       if (singleVarMatch) {
@@ -1211,12 +1211,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
         // Return the variable's default value (the user's actual text)
         const varValue = section.variables?.[varName];
         if (varValue && typeof varValue === 'string') {
-          // The stored value might contain embedded Thymeleaf for manual placeholders
-          // Convert those back to {{placeholder}} format for editing
-          let displayValue = varValue;
-          displayValue = displayValue.replace(/<span\s+th:utext="\$\{(\w+)\}"(?:\s*\/>|><\/span>|>)/g, '{{$1}}');
-          displayValue = displayValue.replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
-          return displayValue;
+          return varValue;
         }
       }
       
@@ -1263,21 +1258,9 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
               const plainTextContent = newContent.replace(/<[^>]*>/g, '');
               const newPlaceholders = extractPlaceholders(plainTextContent);
               
-              // Determine HTML tag based on section type (more reliable than parsing content)
-              const getHtmlTagFromType = (type: string): string => {
-                if (type.startsWith('heading')) {
-                  const level = type.replace('heading', '');
-                  return `h${level}`;
-                }
-                if (type === 'paragraph') return 'p';
-                if (type === 'text') return 'span';
-                return 'div';
-              };
-              
               // Get the section's HTML tag wrapper and extract styles
-              // First try to extract from existing content, fall back to type-based determination
               const tagMatch = section.content.match(/^<(\w+)([^>]*)>/);
-              const htmlTag = tagMatch ? tagMatch[1] : getHtmlTagFromType(section.type);
+              const htmlTag = tagMatch ? tagMatch[1] : 'div';
               const tagStyles = tagMatch ? tagMatch[2] : '';
               
               // Get the stored dynamic variable name - this should ALWAYS exist from TemplateEditor drag-drop
@@ -1291,57 +1274,42 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
               let thymeleafContent: string;
               let updatedVariables: Record<string, any>;
               
-              // ALWAYS keep the primary variable wrapper - this is the main Thymeleaf variable
-              // The primary variable's VALUE contains the user's content with any manual {{placeholders}} converted
-              thymeleafContent = `<span th:utext="\${${defaultVarName}}"/>`;
-              
               if (hasUserPlaceholders) {
-                // User is using {{placeholder}} syntax - convert each to Thymeleaf in the stored value
-                let storedContent = newContent;
+                // User is using {{placeholder}} syntax - convert each to Thymeleaf
+                thymeleafContent = newContent;
                 newPlaceholders.forEach(placeholder => {
                   const placeholderPattern = new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g');
-                  storedContent = storedContent.replace(placeholderPattern, `<span th:utext="\${${placeholder}}"/>`);
+                  thymeleafContent = thymeleafContent.replace(placeholderPattern, `<span th:utext="\${${placeholder}}"/>`);
                 });
                 
                 // Preserve existing variable values and add new ones with empty defaults
-                updatedVariables = { 
-                  ...section.variables,
-                  textVariableName: defaultVarName,
-                  [defaultVarName]: storedContent // Store content WITH embedded Thymeleaf for manual placeholders
-                };
-                
-                // Add entries for manual placeholders with empty defaults
+                updatedVariables = { ...section.variables };
                 newPlaceholders.forEach(placeholder => {
                   if (!updatedVariables[placeholder]) {
                     updatedVariables[placeholder] = '';
                   }
                 });
                 
-                // Clean up old placeholder variables that are no longer in content
-                // Keep: textVariableName, defaultVarName, and current placeholders
+                // Remove old variables that are no longer in content (but keep textVariableName metadata)
                 Object.keys(updatedVariables).forEach(key => {
-                  if (key !== defaultVarName && 
-                      key !== 'textVariableName' && 
-                      !newPlaceholders.includes(key) &&
-                      // Check if it looks like a placeholder variable (not metadata)
-                      !['tableData', 'items', 'listStyle', 'listVariableName', 'labelVariableName', 'contentType', 'label', 'content'].includes(key)) {
-                    // Only delete if it was previously a placeholder variable
-                    const previousPlaceholders = extractPlaceholders(section.variables?.[defaultVarName] as string || '');
-                    if (previousPlaceholders.includes(key)) {
-                      delete updatedVariables[key];
-                    }
+                  if (!newPlaceholders.includes(key) && key !== defaultVarName && key !== 'textVariableName') {
+                    delete updatedVariables[key];
                   }
                 });
               } else {
-                // No placeholders - store the user's content as the default value for the primary variable
+                // No placeholders - wrap entire content in a single Thymeleaf variable
+                // This ensures the content remains dynamic at runtime
+                thymeleafContent = `<span th:utext="\${${defaultVarName}}"/>`;
+                
+                // Store the user's text as the default value for the variable
                 // Preserve textVariableName if it exists
                 updatedVariables = {
-                  ...(section.variables?.textVariableName ? { textVariableName: section.variables.textVariableName } : { textVariableName: defaultVarName }),
+                  ...(section.variables?.textVariableName ? { textVariableName: section.variables.textVariableName } : {}),
                   [defaultVarName]: newContent
                 };
               }
               
-              // Wrap in HTML tag with original styles - ALWAYS preserve the primary Thymeleaf wrapper
+              // Wrap in HTML tag with original styles
               const wrappedContent = `<${htmlTag}${tagStyles}>${thymeleafContent}</${htmlTag}>`;
               
               onUpdate({
