@@ -79,8 +79,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
         z-index: 10000002 !important;
         pointer-events: auto !important;
       }
-      /* Also make editor view interactive for drag-drop */
-      .introjs-interactive-mode [data-walkthrough="editor-view"] {
+      /* Also make editor view interactive for drag-drop - only when drag-drop mode is active */
+      .introjs-drag-drop-mode [data-walkthrough="editor-view"] {
         pointer-events: auto !important;
         z-index: 10000001 !important;
       }
@@ -146,6 +146,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
     // Helper to disable interactive mode
     const disableInteractiveMode = () => {
       document.body.classList.remove('introjs-interactive-mode');
+      document.body.classList.remove('introjs-drag-drop-mode');
       document.querySelectorAll('.introjs-interactive-element').forEach(el => {
         el.classList.remove('introjs-interactive-element');
       });
@@ -403,6 +404,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       // Step 5 (index 4): Library is open, wait for drag-drop
       else if (currentStep === 4) {
         enableInteractiveMode(['[data-walkthrough="section-library-content"]', '[data-walkthrough="editor-view"]']);
+        // Add drag-drop mode class to enable editor-view interactivity
+        document.body.classList.add('introjs-drag-drop-mode');
         disableNextButton();
         waitingForActionRef.current = 'drag-drop';
         
@@ -411,6 +414,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           const currentCount = document.querySelectorAll('[data-walkthrough="editor-section"]').length;
           if (currentCount > initialCount) {
             cleanup();
+            document.body.classList.remove('introjs-drag-drop-mode');
             enableNextButton();
             // Auto-advance after drop
             setTimeout(() => intro.nextStep(), 500);
@@ -498,6 +502,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
   const stopWalkthrough = useCallback(() => {
     cleanup();
     document.body.classList.remove('introjs-interactive-mode');
+    document.body.classList.remove('introjs-drag-drop-mode');
     document.querySelectorAll('.introjs-interactive-element').forEach(el => {
       el.classList.remove('introjs-interactive-element');
     });
