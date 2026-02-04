@@ -121,6 +121,19 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
         z-index: 10000003 !important;
         pointer-events: auto !important;
       }
+      /* Highlight variable input during typing/selection steps */
+      .introjs-variable-input-step [data-walkthrough="variable-input"] {
+        outline: 4px solid rgba(52, 152, 219, 0.8) !important;
+        outline-offset: 2px !important;
+        border-radius: 6px !important;
+      }
+      /* Highlight text toolbar during formatting step */
+      .introjs-text-toolbar-step [data-walkthrough="text-toolbar"] {
+        outline: 4px solid rgba(52, 152, 219, 0.8) !important;
+        outline-offset: 2px !important;
+        border-radius: 6px !important;
+        z-index: 10000004 !important;
+      }
 
       .introjs-tooltipbuttons .introjs-nextbutton.waiting-for-action {
         background: hsl(var(--muted));
@@ -154,6 +167,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       document.body.classList.remove('introjs-interactive-mode');
       document.body.classList.remove('introjs-drag-drop-mode');
       document.body.classList.remove('introjs-section-library-step');
+      document.body.classList.remove('introjs-variable-input-step');
+      document.body.classList.remove('introjs-text-toolbar-step');
       document.querySelectorAll('.introjs-interactive-element').forEach(el => {
         el.classList.remove('introjs-interactive-element');
       });
@@ -460,6 +475,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       // Step 8 (index 7): Wait for user to type in text box
       else if (currentStep === 7) {
         enableInteractiveMode('[data-walkthrough="variable-input"]');
+        // Add highlight to variable input
+        document.body.classList.add('introjs-variable-input-step');
         disableNextButton();
         waitingForActionRef.current = 'type-content';
         
@@ -471,6 +488,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
             const currentContent = variableInput.innerHTML || variableInput.textContent || '';
             if (currentContent !== initialContent && currentContent.length > 0) {
               cleanup();
+              document.body.classList.remove('introjs-variable-input-step');
               enableNextButton();
             }
           }, 200);
@@ -480,6 +498,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       // Step 10 (index 9): Wait for text selection / toolbar to appear
       else if (currentStep === 9) {
         enableInteractiveMode('[data-walkthrough="variable-input"]');
+        // Add highlight to variable input
+        document.body.classList.add('introjs-variable-input-step');
         disableNextButton();
         waitingForActionRef.current = 'text-selection';
         
@@ -487,11 +507,19 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           const toolbar = document.querySelector('[data-walkthrough="text-toolbar"]');
           if (toolbar) {
             cleanup();
+            document.body.classList.remove('introjs-variable-input-step');
             enableNextButton();
             // Auto-advance to show toolbar
             setTimeout(() => intro.nextStep(), 300);
           }
         }, 200);
+      }
+      
+      // Step 11 (index 10): Highlight the text toolbar
+      else if (currentStep === 10) {
+        enableInteractiveMode('[data-walkthrough="text-toolbar"]');
+        // Add highlight to text toolbar
+        document.body.classList.add('introjs-text-toolbar-step');
       }
     });
 
@@ -521,6 +549,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
     cleanup();
     document.body.classList.remove('introjs-interactive-mode');
     document.body.classList.remove('introjs-drag-drop-mode');
+    document.body.classList.remove('introjs-variable-input-step');
+    document.body.classList.remove('introjs-text-toolbar-step');
     document.body.classList.remove('introjs-section-library-step');
     document.querySelectorAll('.introjs-interactive-element').forEach(el => {
       el.classList.remove('introjs-interactive-element');
