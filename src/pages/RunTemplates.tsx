@@ -2075,12 +2075,12 @@ const RunTemplates = () => {
                                       />
                                     ) : (
                                       // Multiple placeholders or content with inline placeholders
-                                      // Show the full content template with placeholders replaced by their values
+                                      // Show the content template WITH placeholders visible (not replaced with values)
                                       <div 
                                         className={`flex-1 text-sm font-medium text-foreground`}
                                         style={{ lineHeight: 1.6, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}
                                         dangerouslySetInnerHTML={{ 
-                                          __html: displayValue || contentForDisplay || 'No content'
+                                          __html: contentForDisplay || 'No content'
                                         }}
                                       />
                                     )}
