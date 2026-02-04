@@ -2064,8 +2064,8 @@ const RunTemplates = () => {
                                           __html: mainVarValue || '<span style="color: #999;">Click to enter value...</span>'
                                         }}
                                       />
-                                    ) : mainVarKey ? (
-                                      // Single main variable: show the variable value directly
+                                    ) : mainVarKey && extraPlaceholders.length === 0 ? (
+                                      // Single main variable with no extra placeholders: show the variable value directly
                                       <div 
                                         className={`flex-1 text-sm font-medium ${!mainVarValue ? 'text-muted-foreground italic' : 'text-foreground'}`}
                                         style={{ lineHeight: 1.6 }}
@@ -2074,7 +2074,7 @@ const RunTemplates = () => {
                                         }}
                                       />
                                     ) : (
-                                      // No main variable, or content with multiple inline placeholders
+                                      // Multiple placeholders or content with inline placeholders
                                       // Show the full content template with placeholders replaced by their values
                                       <div 
                                         className={`flex-1 text-sm font-medium text-foreground`}
