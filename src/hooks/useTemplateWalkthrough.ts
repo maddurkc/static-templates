@@ -102,33 +102,29 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       }
       .introjs-helperLayer {
         box-shadow: rgba(0, 0, 0, 0.5) 0px 0px 0px 5000px, rgba(52, 152, 219, 0.8) 0px 0px 0px 4px !important;
+      }
+      /* When in interactive mode, make overlay click-through */
+      .introjs-interactive-mode .introjs-helperLayer,
+      .introjs-interactive-mode .introjs-overlay {
         pointer-events: none !important;
       }
-      .introjs-tooltipReferenceLayer {
+      .introjs-interactive-mode .introjs-tooltipReferenceLayer {
         pointer-events: none !important;
       }
-      .introjs-fixedTooltip {
+      .introjs-interactive-mode .introjs-tooltip {
         pointer-events: auto !important;
       }
-      .introjs-tooltip {
-        pointer-events: auto !important;
-      }
-      [data-walkthrough] {
-        pointer-events: auto !important;
-        position: relative;
-        z-index: 10000001 !important;
-      }
-      .introjs-showElement {
-        pointer-events: auto !important;
-        z-index: 10000001 !important;
-      }
-      .introjs-waiting {
+      /* Highlight the interactive element */
+      .introjs-interactive-element {
+        position: relative !important;
+        z-index: 10000002 !important;
         pointer-events: auto !important;
       }
       .introjs-tooltipbuttons .introjs-nextbutton.waiting-for-action {
         background: hsl(var(--muted));
         color: hsl(var(--muted-foreground));
         cursor: not-allowed;
+        pointer-events: none;
       }
       .intro-pulse-highlight {
         animation: intro-pulse 1.5s infinite;
@@ -140,6 +136,32 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       }
     `;
     document.head.appendChild(style);
+
+    // Helper to enable interactive mode
+    const enableInteractiveMode = (selector: string) => {
+      document.body.classList.add('introjs-interactive-mode');
+      const element = document.querySelector(selector);
+      if (element) {
+        element.classList.add('introjs-interactive-element');
+      }
+      // Hide Next button during interactive steps
+      const nextBtn = document.querySelector('.introjs-nextbutton');
+      if (nextBtn) {
+        nextBtn.classList.add('waiting-for-action');
+      }
+    };
+
+    // Helper to disable interactive mode
+    const disableInteractiveMode = () => {
+      document.body.classList.remove('introjs-interactive-mode');
+      document.querySelectorAll('.introjs-interactive-element').forEach(el => {
+        el.classList.remove('introjs-interactive-element');
+      });
+      const nextBtn = document.querySelector('.introjs-nextbutton');
+      if (nextBtn) {
+        nextBtn.classList.remove('waiting-for-action');
+      }
+    };
 
     intro.setOptions({
       showProgress: true,
@@ -361,17 +383,45 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
     // Track current step manually
     let currentStepIndex = 0;
 
+    // Handle after step change - enable interactivity for certain steps
+    intro.onafterchange(function(targetElement) {
+      // Disable interactive mode first
+      disableInteractiveMode();
+      
+      // Step 4 (index 3): Enable interactive mode for library button click
+      if (currentStepIndex === 3) {
+        enableInteractiveMode('[data-walkthrough="section-library-btn"]');
+      }
+      // Step 5 (index 4): Enable interactive mode for drag and drop
+      else if (currentStepIndex === 4) {
+        enableInteractiveMode('[data-walkthrough="section-library-content"]');
+      }
+      // Step 6 (index 5): Enable interactive mode for section controls
+      else if (currentStepIndex === 5) {
+        enableInteractiveMode('[data-walkthrough="editor-section"]');
+      }
+      // Step 7 (index 6): Enable interactive mode for variable input
+      else if (currentStepIndex === 6) {
+        enableInteractiveMode('[data-walkthrough="variable-input"]');
+      }
+      // Step 9 (index 8): Enable interactive mode for text selection
+      else if (currentStepIndex === 8) {
+        enableInteractiveMode('[data-walkthrough="editor-section"]');
+      }
+      // Step 10 (index 9): Enable interactive mode for toolbar
+      else if (currentStepIndex === 9) {
+        enableInteractiveMode('[data-walkthrough="text-toolbar"]');
+      }
+    });
+
     // Handle step changes for waiting behavior
     intro.onbeforechange(async function(targetElement) {
+      // Disable interactive mode before changing step
+      disableInteractiveMode();
+      
       // Step 4: Wait for Section Library click
       if (currentStepIndex === 3) {
         waitingForActionRef.current = 'library-click';
-        
-        // Make the button clickable
-        const btn = document.querySelector('[data-walkthrough="section-library-btn"]');
-        if (btn) {
-          btn.classList.add('introjs-waiting');
-        }
         
         // Wait for the sheet to open
         return new Promise<boolean>((resolve) => {
@@ -408,7 +458,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
             }
           }, 200);
           
-          // Allow manual progression after 5 seconds
+          // Timeout after 60 seconds
           setTimeout(() => {
             clearInterval(checkNewSection);
             resolve(true);
@@ -421,11 +471,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       return true;
     });
 
-    intro.onafterchange(() => {
-      // Track current step for logic
-    });
-
     intro.onexit(() => {
+      disableInteractiveMode();
       setIsWalkthroughActive(false);
       cleanupEventListeners();
       const customStyle = document.getElementById('intro-custom-styles');
@@ -434,6 +481,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
     });
 
     intro.oncomplete(() => {
+      disableInteractiveMode();
       setIsWalkthroughActive(false);
       cleanupEventListeners();
       const customStyle = document.getElementById('intro-custom-styles');
@@ -446,6 +494,12 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
 
   // Stop walkthrough
   const stopWalkthrough = useCallback(() => {
+    // Remove interactive mode class
+    document.body.classList.remove('introjs-interactive-mode');
+    document.querySelectorAll('.introjs-interactive-element').forEach(el => {
+      el.classList.remove('introjs-interactive-element');
+    });
+    
     if (introRef.current) {
       introRef.current.exit();
       introRef.current = null;
