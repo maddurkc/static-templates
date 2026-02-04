@@ -1079,12 +1079,39 @@ const RunTemplates = () => {
         }
         
         // Add heading/text/paragraph section variables using textVariableName
+        // Include edited content from editedSectionContent state
         const textBasedTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
         if (textBasedTypes.includes(section.type)) {
           const textVarName = section.variables?.textVariableName as string;
           if (textVarName) {
-            const textValue = variables[textVarName] || section.variables?.[textVarName] || '';
+            // Check if section has been edited - use editedSectionContent first
+            let textValue: string | TextStyle = '';
+            
+            if (editedSectionContent[section.id] !== undefined) {
+              // Section was edited - use the edited content directly
+              textValue = editedSectionContent[section.id];
+            } else if (variables[textVarName] !== undefined) {
+              // Use variable state value
+              textValue = variables[textVarName];
+            } else if (section.variables?.[textVarName] !== undefined) {
+              // Fallback to section's stored variable
+              textValue = section.variables[textVarName] as string;
+            }
+            
             bodyData[textVarName] = generateStyledHtml(textValue);
+          }
+          
+          // Also include any additional inline placeholders from edited content
+          if (editedSectionContent[section.id] !== undefined) {
+            const editedContent = editedSectionContent[section.id];
+            // Extract all placeholders from the edited content and add their values
+            const placeholderMatches = editedContent.match(/\{\{(\w+)\}\}/g) || [];
+            placeholderMatches.forEach(match => {
+              const varName = match.replace(/\{\{|\}\}/g, '');
+              if (variables[varName] !== undefined) {
+                bodyData[varName] = generateStyledHtml(variables[varName]);
+              }
+            });
           }
         }
       });
