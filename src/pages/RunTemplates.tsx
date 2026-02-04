@@ -2030,7 +2030,28 @@ const RunTemplates = () => {
                                         className="text-sm font-bold"
                                         style={{ backgroundColor: (section.variables?.tableData as any)?.cellStyles?.['0-0']?.backgroundColor || '#FFFF00' }}
                                       />
+                                    ) : extraPlaceholders.length > 0 ? (
+                                      // Multiple placeholders - edit the full content template
+                                      <RichTextEditor
+                                        value={richTextValue}
+                                        onChange={(html) => {
+                                          // Update the editedSectionContent with the full content
+                                          setEditedSectionContent(prev => ({
+                                            ...prev,
+                                            [section.id]: html
+                                          }));
+                                          // Also extract and update individual placeholder values
+                                          const placeholderMatches = html.match(/\{\{(\w+)\}\}/g) || [];
+                                          placeholderMatches.forEach(match => {
+                                            const varName = match.replace(/\{\{|\}\}/g, '');
+                                            // Keep the placeholder in the content, don't replace with empty values
+                                          });
+                                        }}
+                                        placeholder={`Enter ${section.type.replace(/\d+/, '')} value...`}
+                                        singleLine={section.type.startsWith('heading')}
+                                      />
                                     ) : (
+                                      // Single main variable - edit just that value
                                       <RichTextEditor
                                         value={mainVarValue}
                                         onChange={(html) => {
@@ -2598,6 +2619,29 @@ const RunTemplates = () => {
                                 ...updated,
                                 content: editedSectionContent[s.id]
                               };
+                            }
+                            
+                            // Also update section variables with values from the variables state
+                            // This ensures individual placeholder edits are reflected in preview
+                            const updatedVars = { ...updated.variables };
+                            let hasVarUpdates = false;
+                            
+                            Object.keys(variables).forEach(varName => {
+                              // Only include variables that might be placeholders in this section's content
+                              const content = updated.content || '';
+                              if (content.includes(`\${${varName}}`) || content.includes(`{{${varName}}}`)) {
+                                const varValue = typeof variables[varName] === 'object'
+                                  ? (variables[varName] as any).text
+                                  : variables[varName];
+                                if (varValue !== undefined && varValue !== '') {
+                                  updatedVars[varName] = varValue;
+                                  hasVarUpdates = true;
+                                }
+                              }
+                            });
+                            
+                            if (hasVarUpdates) {
+                              updated = { ...updated, variables: updatedVars };
                             }
                           }
                           
