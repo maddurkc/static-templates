@@ -84,6 +84,37 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
         pointer-events: auto !important;
         z-index: 10000001 !important;
       }
+      /* Ensure popovers, sheets, dialogs appear ABOVE the walkthrough overlay */
+      .introjs-interactive-mode [data-radix-popper-content-wrapper],
+      .introjs-interactive-mode [role="dialog"],
+      .introjs-interactive-mode [data-state="open"][data-side],
+      .introjs-interactive-mode .fixed[data-state="open"] {
+        z-index: 10000003 !important;
+        pointer-events: auto !important;
+      }
+      /* Sheet/Drawer content - ensure it's above walkthrough */
+      .introjs-interactive-mode [data-vaul-drawer],
+      .introjs-interactive-mode [data-radix-dialog-content],
+      .introjs-interactive-mode [data-radix-popover-content] {
+        z-index: 10000003 !important;
+        pointer-events: auto !important;
+      }
+      /* Sheet overlay should also be interactive */
+      .introjs-interactive-mode [data-radix-dialog-overlay],
+      .introjs-interactive-mode [data-vaul-overlay] {
+        z-index: 10000002 !important;
+        pointer-events: auto !important;
+      }
+      /* Section Library specific - ensure the sheet content is fully interactive */
+      .introjs-interactive-mode [data-walkthrough="section-library-content"] {
+        z-index: 10000003 !important;
+        pointer-events: auto !important;
+      }
+      /* Variable editor popover */
+      .introjs-interactive-mode [data-walkthrough="variable-input"] {
+        z-index: 10000003 !important;
+        pointer-events: auto !important;
+      }
       /* Disabled next button styling */
       .introjs-tooltipbuttons .introjs-nextbutton.waiting-for-action {
         background: hsl(var(--muted));
