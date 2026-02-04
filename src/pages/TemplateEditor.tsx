@@ -983,24 +983,18 @@ const TemplateEditor = () => {
         .join('; ');
       
       // Handle heading/text sections with inline placeholders
+      // The section.content contains the primary Thymeleaf variable wrapper: <tag><span th:utext="${primaryVar}"/></tag>
+      // The actual content (which may contain embedded Thymeleaf for manual {{placeholders}}) is in section.variables[primaryVar]
       const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
       if (inlinePlaceholderTypes.includes(section.type) && section.content) {
-        const contentWithThymeleaf = section.content.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
-        
-        // Wrap in appropriate HTML tag
-        const tagMap: Record<string, string> = {
-          'heading1': 'h1',
-          'heading2': 'h2',
-          'heading3': 'h3',
-          'heading4': 'h4',
-          'heading5': 'h5',
-          'heading6': 'h6',
-          'text': 'span',
-          'paragraph': 'p'
-        };
-        const tag = tagMap[section.type] || 'div';
-        
-        return `${indent}<${tag} style="${styleString}">${contentWithThymeleaf}</${tag}>`;
+        // The content already contains proper Thymeleaf structure
+        // section.content = <h1 style="..."><span th:utext="${heading1Text_xxx}"/></h1>
+        // section.variables.heading1Text_xxx = "Work Request Id <span th:utext="${requestId}"/>"
+        // We return section.content as-is because it already has the correct structure
+        // The backend Thymeleaf processor will:
+        // 1. Resolve heading1Text_xxx -> "Work Request Id <span th:utext="${requestId}"/>"
+        // 2. Then resolve requestId -> actual value
+        return section.content;
       }
       
       // Handle labeled-content sections
