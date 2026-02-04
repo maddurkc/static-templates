@@ -288,7 +288,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
               </p>
             </div>
           `,
-          position: 'left',
+          position: 'bottom',
         },
         // Step 8 (index 7): Variable input - WAIT for typing
         {
@@ -425,6 +425,11 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       // Step 7 (index 6): Wait for Edit Variable button click
       else if (currentStep === 6) {
         enableInteractiveMode('[data-walkthrough="edit-variable-btn"]');
+        // Add pulse highlight to the button for better visibility
+        const editBtn = document.querySelector('[data-walkthrough="edit-variable-btn"]');
+        if (editBtn) {
+          editBtn.classList.add('intro-pulse-highlight');
+        }
         disableNextButton();
         waitingForActionRef.current = 'edit-variable-click';
         
@@ -432,6 +437,9 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           const variableInput = document.querySelector('[data-walkthrough="variable-input"]');
           if (variableInput) {
             cleanup();
+            // Remove pulse highlight
+            const btn = document.querySelector('[data-walkthrough="edit-variable-btn"]');
+            if (btn) btn.classList.remove('intro-pulse-highlight');
             enableNextButton();
             // Auto-advance after popover opens
             setTimeout(() => intro.nextStep(), 300);
