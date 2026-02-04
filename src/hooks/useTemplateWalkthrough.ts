@@ -110,12 +110,18 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
         z-index: 10000003 !important;
         pointer-events: auto !important;
       }
+      /* Highlight border for section library content during its step */
+      .introjs-section-library-step [data-walkthrough="section-library-content"] {
+        outline: 4px solid rgba(52, 152, 219, 0.8) !important;
+        outline-offset: 2px !important;
+        border-radius: 8px !important;
+      }
       /* Variable editor popover */
       .introjs-interactive-mode [data-walkthrough="variable-input"] {
         z-index: 10000003 !important;
         pointer-events: auto !important;
       }
-      /* Disabled next button styling */
+
       .introjs-tooltipbuttons .introjs-nextbutton.waiting-for-action {
         background: hsl(var(--muted));
         color: hsl(var(--muted-foreground));
@@ -147,6 +153,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
     const disableInteractiveMode = () => {
       document.body.classList.remove('introjs-interactive-mode');
       document.body.classList.remove('introjs-drag-drop-mode');
+      document.body.classList.remove('introjs-section-library-step');
       document.querySelectorAll('.introjs-interactive-element').forEach(el => {
         el.classList.remove('introjs-interactive-element');
       });
@@ -404,6 +411,8 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       // Step 5 (index 4): Library is open, wait for drag-drop
       else if (currentStep === 4) {
         enableInteractiveMode(['[data-walkthrough="section-library-content"]', '[data-walkthrough="editor-view"]']);
+        // Add section library step class for highlight border
+        document.body.classList.add('introjs-section-library-step');
         // Add drag-drop mode class to enable editor-view interactivity
         document.body.classList.add('introjs-drag-drop-mode');
         disableNextButton();
@@ -415,6 +424,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           if (currentCount > initialCount) {
             cleanup();
             document.body.classList.remove('introjs-drag-drop-mode');
+            document.body.classList.remove('introjs-section-library-step');
             enableNextButton();
             // Auto-advance after drop
             setTimeout(() => intro.nextStep(), 500);
@@ -511,8 +521,12 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
     cleanup();
     document.body.classList.remove('introjs-interactive-mode');
     document.body.classList.remove('introjs-drag-drop-mode');
+    document.body.classList.remove('introjs-section-library-step');
     document.querySelectorAll('.introjs-interactive-element').forEach(el => {
       el.classList.remove('introjs-interactive-element');
+    });
+    document.querySelectorAll('.intro-pulse-highlight').forEach(el => {
+      el.classList.remove('intro-pulse-highlight');
     });
     
     if (introRef.current) {
