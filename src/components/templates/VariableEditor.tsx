@@ -1263,9 +1263,21 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
               const plainTextContent = newContent.replace(/<[^>]*>/g, '');
               const newPlaceholders = extractPlaceholders(plainTextContent);
               
+              // Determine HTML tag based on section type (more reliable than parsing content)
+              const getHtmlTagFromType = (type: string): string => {
+                if (type.startsWith('heading')) {
+                  const level = type.replace('heading', '');
+                  return `h${level}`;
+                }
+                if (type === 'paragraph') return 'p';
+                if (type === 'text') return 'span';
+                return 'div';
+              };
+              
               // Get the section's HTML tag wrapper and extract styles
+              // First try to extract from existing content, fall back to type-based determination
               const tagMatch = section.content.match(/^<(\w+)([^>]*)>/);
-              const htmlTag = tagMatch ? tagMatch[1] : 'div';
+              const htmlTag = tagMatch ? tagMatch[1] : getHtmlTagFromType(section.type);
               const tagStyles = tagMatch ? tagMatch[2] : '';
               
               // Get the stored dynamic variable name - this should ALWAYS exist from TemplateEditor drag-drop
@@ -1329,7 +1341,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 };
               }
               
-              // Wrap in HTML tag with original styles
+              // Wrap in HTML tag with original styles - ALWAYS preserve the primary Thymeleaf wrapper
               const wrappedContent = `<${htmlTag}${tagStyles}>${thymeleafContent}</${htmlTag}>`;
               
               onUpdate({
