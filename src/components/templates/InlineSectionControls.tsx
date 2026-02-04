@@ -39,6 +39,7 @@ export const InlineSectionControls = ({
             className={styles.controlButton}
             title="Edit Variables"
             onClick={(e) => e.stopPropagation()}
+            data-walkthrough="edit-variable-btn"
           >
             <Settings2 className={styles.icon} />
           </Button>
@@ -47,6 +48,7 @@ export const InlineSectionControls = ({
           style={{ width: '24rem', maxHeight: '500px', overflowY: 'auto' }} 
           align="end"
           onClick={(e) => e.stopPropagation()}
+          data-walkthrough="variable-editor-popover"
         >
           <VariableEditor section={section} onUpdate={onUpdate} globalApiConfig={globalApiConfig} />
         </PopoverContent>

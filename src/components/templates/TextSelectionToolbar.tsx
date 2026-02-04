@@ -85,6 +85,7 @@ export const TextSelectionToolbar = ({ onApplyStyle }: TextSelectionToolbarProps
     <div 
       ref={toolbarRef}
       className={styles.toolbar}
+      data-walkthrough="text-toolbar"
       style={{
         position: 'absolute',
         top: `${position.top}px`,

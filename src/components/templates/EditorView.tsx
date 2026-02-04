@@ -88,6 +88,7 @@ const SortableSection = ({
         ref={setNodeRef}
         style={style}
         data-section-id={section.id}
+        data-walkthrough="editor-section"
         className={cn(
           "group relative",
           styles.section,
