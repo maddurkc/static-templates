@@ -102,6 +102,25 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       }
       .introjs-helperLayer {
         box-shadow: rgba(0, 0, 0, 0.5) 0px 0px 0px 5000px, rgba(52, 152, 219, 0.8) 0px 0px 0px 4px !important;
+        pointer-events: none !important;
+      }
+      .introjs-tooltipReferenceLayer {
+        pointer-events: none !important;
+      }
+      .introjs-fixedTooltip {
+        pointer-events: auto !important;
+      }
+      .introjs-tooltip {
+        pointer-events: auto !important;
+      }
+      [data-walkthrough] {
+        pointer-events: auto !important;
+        position: relative;
+        z-index: 10000001 !important;
+      }
+      .introjs-showElement {
+        pointer-events: auto !important;
+        z-index: 10000001 !important;
       }
       .introjs-waiting {
         pointer-events: auto !important;
