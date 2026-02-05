@@ -343,15 +343,19 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           `,
           position: 'left',
         },
-        // Step 10 (index 9): Go back to text, ask to select text - WAIT for selection
+        // Step 10 (index 9): Select text to see formatting toolbar
         {
           element: '[data-walkthrough="variable-input"]',
           intro: `
             <div>
               <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">🖌️ Text Styling</h3>
               <p style="margin: 0; color: hsl(var(--muted-foreground));">
-                <strong>Select a portion of text</strong> in the content area to see 
-                the formatting toolbar appear.
+                <strong>Select a portion of text</strong> in the content area. A formatting toolbar will appear with options to apply:
+                <ul style="margin: 8px 0 0 0; padding-left: 20px; color: hsl(var(--muted-foreground));">
+                  <li><strong>Bold</strong>, <em>Italic</em>, <u>Underline</u></li>
+                  <li>Text colors and background colors</li>
+                  <li>Font sizes</li>
+                </ul>
               </p>
               <p style="margin: 8px 0 0 0; font-size: 12px; color: hsl(var(--primary)); font-weight: 500;">
                 ⏳ Select some text to see the toolbar...
@@ -360,25 +364,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           `,
           position: 'left',
         },
-        // Step 11 (index 10): Toolbar appeared - highlight it
-        {
-          element: '[data-walkthrough="text-toolbar"]',
-          intro: `
-            <div>
-              <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">🎨 Formatting Toolbar</h3>
-              <p style="margin: 0; color: hsl(var(--muted-foreground));">
-                This toolbar appears when you select text. Use it to apply:
-                <ul style="margin: 8px 0 0 0; padding-left: 20px; color: hsl(var(--muted-foreground));">
-                  <li><strong>Bold</strong>, <em>Italic</em>, <u>Underline</u></li>
-                  <li>Text colors and background colors</li>
-                  <li>Font sizes</li>
-                </ul>
-              </p>
-            </div>
-          `,
-          position: 'bottom',
-        },
-        // Step 12 (index 11): Save Button
+        // Step 11 (index 10): Save Button
         {
           element: '[data-walkthrough="save-btn"]',
           intro: `
@@ -508,18 +494,12 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
           if (toolbar) {
             cleanup();
             document.body.classList.remove('introjs-variable-input-step');
+            // Also highlight the toolbar
+            document.body.classList.add('introjs-text-toolbar-step');
+            enableInteractiveMode('[data-walkthrough="text-toolbar"]');
             enableNextButton();
-            // Auto-advance to show toolbar
-            setTimeout(() => intro.nextStep(), 300);
           }
         }, 200);
-      }
-      
-      // Step 11 (index 10): Highlight the text toolbar
-      else if (currentStep === 10) {
-        enableInteractiveMode('[data-walkthrough="text-toolbar"]');
-        // Add highlight to text toolbar
-        document.body.classList.add('introjs-text-toolbar-step');
       }
     });
 
