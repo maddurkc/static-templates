@@ -489,6 +489,19 @@ const TemplateEditor = () => {
           dynamicContent = sectionDef.defaultContent.replace(staticVarPattern, `\${${textVariableName}}`);
         }
       }
+      
+      // For date sections, generate unique variable name for the date value
+      if (sectionDef.type === 'date') {
+        const dateVariableName = `dateValue_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        variables['dateVariableName'] = dateVariableName;
+        
+        // Store the default date value under the dynamic variable name
+        const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+        variables[dateVariableName] = currentDate;
+        
+        // Update the content to use the dynamic variable name
+        dynamicContent = `<div style="text-align: right; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 21px; mso-line-height-rule: exactly;"><span th:utext="\${${dateVariableName}}"/></div>`;
+      }
 
       // Get default styles for heading sections - include Outlook font family for all sections
       const isHeadingSection = sectionDef.type.startsWith('heading');
@@ -1026,6 +1039,14 @@ const TemplateEditor = () => {
           .replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>')
           .replace(/\n/g, '<br/>');
         return `${indent}<div style="${styleString}; padding: 8px; line-height: 1.6;">${contentWithThymeleaf}</div>`;
+      }
+      
+      // Handle date sections - right-aligned date display with Thymeleaf variable
+      if (section.type === 'date') {
+        const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
+        // Return the Thymeleaf-ready HTML directly from section.content (which was set during drop)
+        // Ensure it has the dynamic variable name
+        return `${indent}<div style="text-align: right; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; line-height: 21px; mso-line-height-rule: exactly;"><span th:utext="\${${dateVarName}}"/></div>`;
       }
       
       // Handle container sections with children
