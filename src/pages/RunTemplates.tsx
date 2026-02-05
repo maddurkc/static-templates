@@ -215,11 +215,10 @@ const RunTemplates = () => {
             }
           }
           
-          // Initialize date section variables
+          // Initialize date section variables (only use dateValue_{sectionId})
           if (section.type === 'date') {
             const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
             const dateValue = (section.variables?.[dateVarName] as string) ||
-                              (section.variables?.dateValue as string) ||
                               new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
             initialVars[dateVarName] = dateValue;
           }
@@ -1087,12 +1086,11 @@ const RunTemplates = () => {
           bodyData['programNameText'] = generateStyledHtml(programName);
         }
         
-        // Date sections - add date value to payload
+        // Date sections - add date value to payload (only use dateValue_{sectionId})
         if (section.type === 'date') {
           const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
           const dateValue = variables[dateVarName] || 
                             section.variables?.[dateVarName] ||
-                            section.variables?.dateValue || 
                             new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
           bodyData[dateVarName] = typeof dateValue === 'string' ? dateValue : String(dateValue);
         }
@@ -2598,13 +2596,12 @@ const RunTemplates = () => {
                             );
                           }
                           
-                          // Handle Date sections - right-aligned date display
+                          // Handle Date sections - right-aligned date display (only use dateValue_{sectionId})
                           if (section.type === 'date') {
                             const isEditable = section.isLabelEditable !== false;
                             const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
                             const dateValue = (variables[dateVarName] as string) || 
                                               (section.variables?.[dateVarName] as string) ||
-                                              (section.variables?.dateValue as string) || 
                                               new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
                             const isEditingThisSection = editingSectionId === section.id;
                             
@@ -2806,7 +2803,7 @@ const RunTemplates = () => {
                             }
                           }
                           
-                          // For date sections, inject updated date value
+                          // For date sections, inject updated date value (only use dateValue_{sectionId})
                           if (s.type === 'date') {
                             const dateVarName = (s.variables?.dateVariableName as string) || `dateValue_${s.id}`;
                             if (variables[dateVarName] !== undefined) {
@@ -2815,8 +2812,7 @@ const RunTemplates = () => {
                                 variables: {
                                   ...updated.variables,
                                   dateVariableName: dateVarName,
-                                  [dateVarName]: variables[dateVarName] as string,
-                                  dateValue: variables[dateVarName] as string
+                                  [dateVarName]: variables[dateVarName] as string
                                 }
                               };
                             }
