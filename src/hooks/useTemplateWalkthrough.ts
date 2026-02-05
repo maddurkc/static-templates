@@ -523,6 +523,15 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
       }
     });
 
+    // Prevent advancing when waiting for user action
+    intro.onbeforechange(function() {
+      // If we're waiting for a specific action, prevent manual advancement
+      if (waitingForActionRef.current) {
+        return false;
+      }
+      return true;
+    });
+
     intro.onexit(() => {
       cleanup();
       disableInteractiveMode();
