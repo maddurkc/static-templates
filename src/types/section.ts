@@ -29,7 +29,8 @@ export type SectionType =
   | 'container'
   | 'banner'
   | 'program-name'
-  | 'cta-text';
+  | 'cta-text'
+  | 'date';
 
 export interface SectionVariable {
   name: string;

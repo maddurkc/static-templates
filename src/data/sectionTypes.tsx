@@ -19,7 +19,8 @@ import {
   SeparatorHorizontal,
   FileText,
   Box,
-  Flag
+  Flag,
+  Calendar
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
@@ -419,6 +420,17 @@ export const sectionTypes: SectionDefinition[] = [
     variables: [
       { name: 'ctaText', label: 'CTA Text', type: 'text', defaultValue: 'Call to action&nbsp;>' },
       { name: 'ctaUrl', label: 'CTA URL', type: 'url', defaultValue: '#' }
+    ]
+  },
+  {
+    type: 'date',
+    label: 'Date',
+    icon: Calendar,
+    description: 'Right-aligned date display (e.g., February 05, 2026)',
+    defaultContent: `<div style="text-align: right; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 21px; mso-line-height-rule: exactly;"><span th:utext="\${dateValue}"/></div>`,
+    category: 'text',
+    variables: [
+      { name: 'dateValue', label: 'Date Value', type: 'text', defaultValue: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' }) }
     ]
   }
 ];
