@@ -1359,7 +1359,13 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                   }
                 });
                 
-                // Remove old variables that are no longer in content (but keep textVariableName metadata)
+                // IMPORTANT: Store the full template content with placeholders under textVariableName
+                // This ensures the payload includes the complete template text, not just individual placeholder values
+                updatedVariables[defaultVarName] = newContent;
+                // Preserve textVariableName metadata
+                updatedVariables.textVariableName = defaultVarName;
+                
+                // Remove old variables that are no longer in content (but keep textVariableName and defaultVarName)
                 Object.keys(updatedVariables).forEach(key => {
                   if (!newPlaceholders.includes(key) && key !== defaultVarName && key !== 'textVariableName') {
                     delete updatedVariables[key];
