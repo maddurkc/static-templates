@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { X } from "lucide-react";
+
 import styles from "./UserAutocomplete.module.scss";
 
 export interface User {
@@ -212,23 +212,12 @@ export const UserAutocomplete: React.FC<UserAutocompleteProps> = ({
   return (
     <div className={styles.container} ref={containerRef}>
       <div className={styles.inputWrapper} onClick={handleContainerClick}>
-        {/* Selected user chips */}
-        {value.map((user) => (
-          <div key={user.id} className={styles.userChip}>
-            <span className={styles.chipEmail}>{user.email}</span>
-            <button
-              type="button"
-              className={styles.removeChip}
-              onClick={(e) => {
-                e.stopPropagation();
-                removeUser(user.id);
-              }}
-              aria-label={`Remove ${user.name}`}
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ))}
+        {/* Selected emails as plain text */}
+        {value.length > 0 && (
+          <span className={styles.selectedEmails}>
+            {value.map((user) => user.email).join("; ")}
+          </span>
+        )}
 
         {/* Input */}
         <input
