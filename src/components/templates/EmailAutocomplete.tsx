@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { X } from "lucide-react";
+import { X, Users } from "lucide-react";
 import styles from "./EmailAutocomplete.module.scss";
 
 interface EmailAutocompleteProps {
@@ -8,27 +8,33 @@ interface EmailAutocompleteProps {
   placeholder?: string;
 }
 
+interface EmailContact {
+  email: string;
+  name: string;
+  initials?: string;
+}
+
 // Mock email data - simulates backend database
-const MOCK_EMAILS = [
-  { email: "john.doe@company.com", name: "John Doe" },
-  { email: "jane.smith@company.com", name: "Jane Smith" },
-  { email: "bob.wilson@company.com", name: "Bob Wilson" },
-  { email: "alice.johnson@company.com", name: "Alice Johnson" },
-  { email: "mike.brown@company.com", name: "Mike Brown" },
-  { email: "sarah.davis@company.com", name: "Sarah Davis" },
-  { email: "tom.miller@company.com", name: "Tom Miller" },
-  { email: "emma.taylor@company.com", name: "Emma Taylor" },
-  { email: "chris.anderson@company.com", name: "Chris Anderson" },
-  { email: "lisa.martinez@company.com", name: "Lisa Martinez" },
-  { email: "david.garcia@external.org", name: "David Garcia" },
-  { email: "laura.robinson@external.org", name: "Laura Robinson" },
-  { email: "james.clark@partner.net", name: "James Clark" },
-  { email: "jennifer.lewis@partner.net", name: "Jennifer Lewis" },
-  { email: "robert.walker@client.io", name: "Robert Walker" },
+const MOCK_EMAILS: EmailContact[] = [
+  { email: "john.doe@company.com", name: "John Doe", initials: "JD" },
+  { email: "jane.smith@company.com", name: "Jane Smith", initials: "JS" },
+  { email: "bob.wilson@company.com", name: "Bob Wilson", initials: "BW" },
+  { email: "alice.johnson@company.com", name: "Alice Johnson", initials: "AJ" },
+  { email: "mike.brown@company.com", name: "Mike Brown", initials: "MB" },
+  { email: "sarah.davis@company.com", name: "Sarah Davis", initials: "SD" },
+  { email: "tom.miller@company.com", name: "Tom Miller", initials: "TM" },
+  { email: "emma.taylor@company.com", name: "Emma Taylor", initials: "ET" },
+  { email: "chris.anderson@company.com", name: "Chris Anderson", initials: "CA" },
+  { email: "lisa.martinez@company.com", name: "Lisa Martinez", initials: "LM" },
+  { email: "david.garcia@external.org", name: "David Garcia", initials: "DG" },
+  { email: "laura.robinson@external.org", name: "Laura Robinson", initials: "LR" },
+  { email: "james.clark@partner.net", name: "James Clark", initials: "JC" },
+  { email: "jennifer.lewis@partner.net", name: "Jennifer Lewis", initials: "JL" },
+  { email: "robert.walker@client.io", name: "Robert Walker", initials: "RW" },
 ];
 
 // Simulated API call with delay
-const searchEmails = async (query: string): Promise<typeof MOCK_EMAILS> => {
+const searchEmails = async (query: string): Promise<EmailContact[]> => {
   // Simulate network delay (200-500ms)
   await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
   
@@ -42,13 +48,37 @@ const searchEmails = async (query: string): Promise<typeof MOCK_EMAILS> => {
   ).slice(0, 8); // Limit results
 };
 
+// Get initials from name
+const getInitials = (name: string): string => {
+  return name
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+// Get name from email for selected emails that might not be in the mock data
+const getNameFromEmail = (email: string): string => {
+  const contact = MOCK_EMAILS.find(c => c.email === email);
+  if (contact) return contact.name;
+  
+  // Parse name from email if not found
+  const localPart = email.split('@')[0];
+  return localPart
+    .replace(/[._-]/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export const EmailAutocomplete: React.FC<EmailAutocompleteProps> = ({
   value,
   onChange,
-  placeholder = "Enter email addresses",
+  placeholder = "Enter a name or email address",
 }) => {
   const [inputValue, setInputValue] = useState("");
-  const [suggestions, setSuggestions] = useState<typeof MOCK_EMAILS>([]);
+  const [suggestions, setSuggestions] = useState<EmailContact[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -142,6 +172,12 @@ export const EmailAutocomplete: React.FC<EmailAutocompleteProps> = ({
     } else if (e.key === "Backspace" && !inputValue && selectedEmails.length > 0) {
       // Remove last email when backspace on empty input
       removeEmail(selectedEmails[selectedEmails.length - 1]);
+    } else if (e.key === ";" || e.key === ",") {
+      // Also accept semicolon or comma to add email
+      e.preventDefault();
+      if (inputValue.includes("@") && inputValue.trim()) {
+        selectEmail(inputValue.trim());
+      }
     }
   };
 
@@ -166,22 +202,37 @@ export const EmailAutocomplete: React.FC<EmailAutocompleteProps> = ({
     };
   }, []);
 
+  // Focus input when clicking the container
+  const handleContainerClick = () => {
+    inputRef.current?.focus();
+  };
+
   return (
     <div className={styles.container} ref={containerRef}>
-      <div className={styles.inputWrapper}>
-        {/* Selected email chips */}
-        {selectedEmails.map((email, index) => (
-          <span key={`${email}-${index}`} className={styles.emailChip}>
-            {email}
-            <button
-              type="button"
-              className={styles.removeChip}
-              onClick={() => removeEmail(email)}
-            >
-              <X size={12} />
-            </button>
-          </span>
-        ))}
+      <div className={styles.inputWrapper} onClick={handleContainerClick}>
+        {/* Selected email chips - Outlook style */}
+        {selectedEmails.map((email, index) => {
+          const name = getNameFromEmail(email);
+          return (
+            <div key={`${email}-${index}`} className={styles.emailChip}>
+              <span className={styles.chipAvatar}>
+                {getInitials(name)}
+              </span>
+              <span className={styles.chipName}>{name}</span>
+              <button
+                type="button"
+                className={styles.removeChip}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeEmail(email);
+                }}
+                aria-label={`Remove ${name}`}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          );
+        })}
         
         {/* Input field */}
         <input
@@ -196,11 +247,14 @@ export const EmailAutocomplete: React.FC<EmailAutocompleteProps> = ({
         />
       </div>
 
-      {/* Suggestions dropdown */}
+      {/* Suggestions dropdown - Outlook style */}
       {showSuggestions && (suggestions.length > 0 || isLoading) && (
         <div className={styles.suggestionsDropdown}>
           {isLoading ? (
-            <div className={styles.loadingItem}>Searching...</div>
+            <div className={styles.loadingItem}>
+              <div className={styles.loadingSpinner} />
+              <span>Searching contacts...</span>
+            </div>
           ) : (
             suggestions.map((item, index) => (
               <div
@@ -211,8 +265,13 @@ export const EmailAutocomplete: React.FC<EmailAutocompleteProps> = ({
                 onClick={() => selectEmail(item.email)}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
-                <span className={styles.suggestionName}>{item.name}</span>
-                <span className={styles.suggestionEmail}>{item.email}</span>
+                <div className={styles.suggestionAvatar}>
+                  {item.initials || getInitials(item.name)}
+                </div>
+                <div className={styles.suggestionInfo}>
+                  <span className={styles.suggestionName}>{item.name}</span>
+                  <span className={styles.suggestionEmail}>{item.email}</span>
+                </div>
               </div>
             ))
           )}
