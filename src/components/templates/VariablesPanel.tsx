@@ -86,7 +86,25 @@ export const VariablesPanel: React.FC<VariablesPanelProps> = ({
     footer: true,
   });
 
-  // Group variables by source
+  // Filter to only show manual/user-created placeholder variables
+  // System-generated variables follow patterns like: label_xxx, content_xxx, heading1Text_xxx, dateValue_xxx, etc.
+  const isSystemVariable = (varName: string): boolean => {
+    const systemPatterns = [
+      /^label_/,
+      /^content_/,
+      /^heading\dText_/,
+      /^dateValue_/,
+      /^items_/,
+      /^ctaText_/,
+      /^ctaUrl_/,
+      /^programNameText$/,
+      /^text_/,
+      /^paragraph_/,
+    ];
+    return systemPatterns.some(pattern => pattern.test(varName));
+  };
+
+  // Group variables by source, filtering out system variables
   const groupedVariables = useMemo(() => {
     const groups: Record<string, TemplateVariable[]> = {
       subject: [],
@@ -95,7 +113,10 @@ export const VariablesPanel: React.FC<VariablesPanelProps> = ({
       footer: [],
     };
 
-    variables.forEach((v) => {
+    // Only include manual/user-created placeholders
+    const manualVariables = variables.filter(v => !isSystemVariable(v.variableName));
+
+    manualVariables.forEach((v) => {
       if (groups[v.source]) {
         groups[v.source].push(v);
       } else {
@@ -105,6 +126,12 @@ export const VariablesPanel: React.FC<VariablesPanelProps> = ({
 
     return groups;
   }, [variables]);
+
+  // Calculate counts based on filtered manual variables only
+  const manualVariables = useMemo(() => 
+    variables.filter(v => !isSystemVariable(v.variableName)), 
+    [variables]
+  );
 
   const toggleGroup = (group: string) => {
     setExpandedGroups((prev) => ({
@@ -225,8 +252,8 @@ export const VariablesPanel: React.FC<VariablesPanelProps> = ({
     );
   };
 
-  const totalCount = variables.length;
-  const requiredCount = variables.filter((v) => v.isRequired).length;
+  const totalCount = manualVariables.length;
+  const requiredCount = manualVariables.filter((v) => v.isRequired).length;
 
   return (
     <div className={styles.panel}>
