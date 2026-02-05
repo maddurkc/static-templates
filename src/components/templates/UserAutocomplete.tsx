@@ -222,7 +222,7 @@ export const UserAutocomplete: React.FC<UserAutocompleteProps> = ({
                 getInitials(user.name)
               )}
             </span>
-            <span className={styles.chipName}>{user.name}</span>
+            <span className={styles.chipName}>{user.email}</span>
             <button
               type="button"
               className={styles.removeChip}
