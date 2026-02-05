@@ -215,14 +215,7 @@ export const UserAutocomplete: React.FC<UserAutocompleteProps> = ({
         {/* Selected user chips */}
         {value.map((user) => (
           <div key={user.id} className={styles.userChip}>
-            <span className={styles.chipAvatar}>
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name} />
-              ) : (
-                getInitials(user.name)
-              )}
-            </span>
-            <span className={styles.chipName}>{user.email}</span>
+            <span className={styles.chipEmail}>{user.email}</span>
             <button
               type="button"
               className={styles.removeChip}
