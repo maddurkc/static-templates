@@ -181,6 +181,45 @@ export const EmailAutocomplete: React.FC<EmailAutocompleteProps> = ({
     }
   };
 
+  // Handle paste - parse multiple emails from clipboard
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text');
+    
+    // Check if pasted text contains email separators (comma, semicolon, newline, space)
+    if (pastedText.includes(',') || pastedText.includes(';') || pastedText.includes('\n') || pastedText.includes(' ')) {
+      e.preventDefault();
+      
+      // Split by common separators and clean up
+      const emails = pastedText
+        .split(/[,;\n\s]+/)
+        .map(email => email.trim())
+        .filter(email => email.includes('@') && email.length > 0);
+      
+      if (emails.length > 0) {
+        // Filter out already selected emails
+        const newEmails = emails.filter(email => !selectedEmails.includes(email));
+        if (newEmails.length > 0) {
+          const updatedEmails = [...selectedEmails, ...newEmails];
+          onChange(updatedEmails.join(", "));
+          setInputValue("");
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      }
+    } else if (pastedText.includes('@')) {
+      // Single email pasted
+      e.preventDefault();
+      const email = pastedText.trim();
+      if (!selectedEmails.includes(email)) {
+        const updatedEmails = [...selectedEmails, email];
+        onChange(updatedEmails.join(", "));
+        setInputValue("");
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }
+  };
+
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -242,6 +281,7 @@ export const EmailAutocomplete: React.FC<EmailAutocompleteProps> = ({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onFocus={() => inputValue && setShowSuggestions(true)}
           placeholder={selectedEmails.length === 0 ? placeholder : ""}
         />
