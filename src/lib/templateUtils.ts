@@ -921,6 +921,21 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     return wrapInOutlookTable(programHtml);
   }
   
+  // Handle date sections - right-aligned date display with Thymeleaf variable
+  if (section.type === 'date') {
+    // Use unique variable name based on section id for runtime editing
+    const dateVarName = section.variables?.dateVariableName as string || `dateValue_${section.id}`;
+    const dateValue = (variables?.[dateVarName] as string) || 
+                      (variables?.dateValue as string) || 
+                      (section.variables?.[dateVarName] as string) ||
+                      (section.variables?.dateValue as string) || 
+                      new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+    
+    // For preview, show the actual date value; the Thymeleaf placeholder is in section.content
+    const dateHtml = `<div style="text-align: right; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 21px; mso-line-height-rule: exactly;">${sanitizeInput(dateValue)}</div>`;
+    return wrapInOutlookTable(dateHtml);
+  }
+  
   // Handle line-break sections (empty line gap)
   if (section.type === 'line-break') {
     return '<div style="height: 16px;"></div>';

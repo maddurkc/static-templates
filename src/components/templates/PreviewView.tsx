@@ -132,6 +132,15 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
       return `<p style="margin: 0; margin-bottom: 0px;"><a href="${ctaUrl}" style="font-size: 14px; color: #5A469B; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; line-height: 24px; font-weight: bold; text-decoration: underline;">${ctaText}</a></p>`;
     }
     
+    // Handle date sections - right-aligned date display
+    if (section.type === 'date') {
+      const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
+      const dateValue = (section.variables?.[dateVarName] as string) || 
+                        (section.variables?.dateValue as string) || 
+                        new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+      return `<div style="text-align: right; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; line-height: 21px;">${dateValue}</div>`;
+    }
+    
     // Handle program-name sections
     if (section.type === 'program-name') {
       const programName = (section.variables?.programNameText as string) || 'Program Name';

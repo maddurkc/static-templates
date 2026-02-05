@@ -388,6 +388,75 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     );
   }
   
+  // For date sections - date input with format preview
+  if (section.type === 'date') {
+    // Generate unique variable name on first render if not present
+    const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
+    const currentDate = (section.variables?.[dateVarName] as string) || 
+                        (section.variables?.dateValue as string) || 
+                        new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+    
+    // Ensure dateVariableName is stored
+    if (!section.variables?.dateVariableName) {
+      onUpdate({
+        ...section,
+        variables: { 
+          ...section.variables, 
+          dateVariableName: dateVarName,
+          [dateVarName]: currentDate
+        }
+      });
+    }
+    
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Date Section</h3>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <Label className={styles.label}>Date Value</Label>
+          <Input
+            value={currentDate}
+            onChange={(e) => {
+              onUpdate({
+                ...section,
+                variables: { 
+                  ...section.variables, 
+                  dateVariableName: dateVarName,
+                  [dateVarName]: e.target.value,
+                  dateValue: e.target.value
+                }
+              });
+            }}
+            placeholder="February 05, 2026"
+            className={styles.variableInput}
+          />
+          <p className={styles.description}>
+            Enter the date in your preferred format. Example: February 05, 2026
+          </p>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <Label className={styles.label}>Preview</Label>
+          <div 
+            style={{ 
+              textAlign: 'right',
+              fontFamily: "'Wells Fargo Sans', Arial, Helvetica, sans-serif",
+              fontSize: '14px',
+              color: '#333333',
+              lineHeight: '21px',
+              padding: '8px 0',
+              marginTop: '8px'
+            }}
+          >
+            {currentDate}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   // No editor needed for containers (children are managed separately)
   if (section.type === 'container') {
     return (

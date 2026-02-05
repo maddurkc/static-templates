@@ -214,6 +214,15 @@ const RunTemplates = () => {
               }
             }
           }
+          
+          // Initialize date section variables
+          if (section.type === 'date') {
+            const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
+            const dateValue = (section.variables?.[dateVarName] as string) ||
+                              (section.variables?.dateValue as string) ||
+                              new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+            initialVars[dateVarName] = dateValue;
+          }
         });
       }
       
@@ -1076,6 +1085,16 @@ const RunTemplates = () => {
         if (section.type === 'program-name') {
           const programName = variables['programNameText'] || section.variables?.programNameText || 'Program Name';
           bodyData['programNameText'] = generateStyledHtml(programName);
+        }
+        
+        // Date sections - add date value to payload
+        if (section.type === 'date') {
+          const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
+          const dateValue = variables[dateVarName] || 
+                            section.variables?.[dateVarName] ||
+                            section.variables?.dateValue || 
+                            new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+          bodyData[dateVarName] = typeof dateValue === 'string' ? dateValue : String(dateValue);
         }
         
         // Add heading/text/paragraph section variables using textVariableName
@@ -2579,6 +2598,74 @@ const RunTemplates = () => {
                             );
                           }
                           
+                          // Handle Date sections - right-aligned date display
+                          if (section.type === 'date') {
+                            const isEditable = section.isLabelEditable !== false;
+                            const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
+                            const dateValue = (variables[dateVarName] as string) || 
+                                              (section.variables?.[dateVarName] as string) ||
+                                              (section.variables?.dateValue as string) || 
+                                              new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+                            const isEditingThisSection = editingSectionId === section.id;
+                            
+                            return (
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                {/* Content display with inline editing */}
+                                {isEditingThisSection && isEditable ? (
+                                  <div>
+                                    <Input
+                                      value={dateValue}
+                                      onChange={(e) => {
+                                        setVariables(prev => ({
+                                          ...prev,
+                                          [dateVarName]: e.target.value
+                                        }));
+                                      }}
+                                      onFocus={() => scrollToSection(section.id)}
+                                      placeholder="February 05, 2026"
+                                      className="text-sm text-right"
+                                    />
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="default"
+                                        onClick={() => setEditingSectionId(null)}
+                                      >
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Done
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-start gap-2">
+                                    <div 
+                                      className={`flex-1 text-sm ${!dateValue ? 'text-muted-foreground italic' : 'text-foreground'}`}
+                                      style={{ 
+                                        textAlign: 'right',
+                                        fontSize: '14px',
+                                        lineHeight: '21px',
+                                        color: dateValue ? '#333333' : undefined
+                                      }}
+                                    >
+                                      {dateValue || 'Click to enter date...'}
+                                    </div>
+                                    {isEditable && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 shrink-0 opacity-50 hover:opacity-100"
+                                        onClick={() => setEditingSectionId(section.id)}
+                                        title="Edit date"
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                          
                           return null;
                         })}
                       </>
@@ -2714,6 +2801,22 @@ const RunTemplates = () => {
                                 variables: {
                                   ...updated.variables,
                                   programNameText: variables['programNameText'] as string
+                                }
+                              };
+                            }
+                          }
+                          
+                          // For date sections, inject updated date value
+                          if (s.type === 'date') {
+                            const dateVarName = (s.variables?.dateVariableName as string) || `dateValue_${s.id}`;
+                            if (variables[dateVarName] !== undefined) {
+                              updated = {
+                                ...updated,
+                                variables: {
+                                  ...updated.variables,
+                                  dateVariableName: dateVarName,
+                                  [dateVarName]: variables[dateVarName] as string,
+                                  dateValue: variables[dateVarName] as string
                                 }
                               };
                             }

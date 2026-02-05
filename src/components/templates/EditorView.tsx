@@ -336,6 +336,23 @@ const SortableSection = ({
             }}
             dangerouslySetInnerHTML={{ __html: (section.variables?.programNameText as string) || 'Program Name' }}
           />
+        ) : !isContainer && section.type === 'date' ? (
+          // Handle Date sections - right-aligned display
+          <div 
+            style={{ 
+              textAlign: 'right',
+              fontSize: '14px',
+              lineHeight: '21px',
+              color: '#333333'
+            }}
+          >
+            {(() => {
+              const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
+              return (section.variables?.[dateVarName] as string) || 
+                     (section.variables?.dateValue as string) || 
+                     new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+            })()}
+          </div>
         ) : !isContainer && (
           <>
             <div
