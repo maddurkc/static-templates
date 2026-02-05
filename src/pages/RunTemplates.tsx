@@ -26,7 +26,6 @@ import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobalTable } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
-import { EmailAutocomplete } from "@/components/templates/EmailAutocomplete";
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
 import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
 
@@ -42,10 +41,9 @@ const RunTemplates = () => {
   const [listVariables, setListVariables] = useState<Record<string, string[] | ListItemStyle[]>>({});
   const [tableVariables, setTableVariables] = useState<Record<string, any>>({});
   const [labelVariables, setLabelVariables] = useState<Record<string, string>>({});
-  const [toEmails, setToEmails] = useState("");
-  const [ccEmails, setCcEmails] = useState("");
-  const [bccEmails, setBccEmails] = useState("");
-  const [assignedUsers, setAssignedUsers] = useState<User[]>([]);
+  const [toUsers, setToUsers] = useState<User[]>([]);
+  const [ccUsers, setCcUsers] = useState<User[]>([]);
+  const [bccUsers, setBccUsers] = useState<User[]>([]);
   const [viewMode, setViewMode] = useState<'template' | 'execution'>('template'); // New: toggle between template view and execution view
   const [executedOn, setExecutedOn] = useState<string>("");
   const [emailSubject, setEmailSubject] = useState<string>("");
@@ -1002,10 +1000,10 @@ const RunTemplates = () => {
     }
 
     // Validate emails
-    if (!toEmails.trim()) {
+    if (toUsers.length === 0) {
       toast({
         title: "Validation Error",
-        description: "Please enter at least one recipient email.",
+        description: "Please select at least one recipient.",
         variant: "destructive",
       });
       return;
@@ -1155,9 +1153,9 @@ const RunTemplates = () => {
     // Build the payload in the requested format
     const payload = {
       templateId: selectedTemplate.id,
-      toEmails: toEmails.split(',').map(e => e.trim()).filter(Boolean),
-      ccEmails: ccEmails.split(',').map(e => e.trim()).filter(Boolean),
-      bccEmails: bccEmails.split(',').map(e => e.trim()).filter(Boolean),
+      toEmails: toUsers.map(u => u.email),
+      ccEmails: ccUsers.map(u => u.email),
+      bccEmails: bccUsers.map(u => u.email),
       contentData: {
         subject_data: { ...subjectVariables },
         body_data: bodyData
@@ -1177,9 +1175,9 @@ const RunTemplates = () => {
   };
 
   const resetForm = () => {
-    setToEmails("");
-    setCcEmails("");
-    setBccEmails("");
+    setToUsers([]);
+    setCcUsers([]);
+    setBccUsers([]);
     setVariables({});
     setListVariables({});
     setTableVariables({});
@@ -1391,9 +1389,9 @@ const RunTemplates = () => {
               {/* To Field */}
               <div className={styles.emailFieldRow}>
                 <label>To:</label>
-                <EmailAutocomplete
-                  value={toEmails}
-                  onChange={setToEmails}
+                <UserAutocomplete
+                  value={toUsers}
+                  onChange={setToUsers}
                   placeholder="Search and select recipients"
                 />
               </div>
@@ -1401,9 +1399,9 @@ const RunTemplates = () => {
               {/* CC Field */}
               <div className={styles.emailFieldRow}>
                 <label>CC:</label>
-                <EmailAutocomplete
-                  value={ccEmails}
-                  onChange={setCcEmails}
+                <UserAutocomplete
+                  value={ccUsers}
+                  onChange={setCcUsers}
                   placeholder="Add CC recipients (optional)"
                 />
               </div>
@@ -1411,20 +1409,10 @@ const RunTemplates = () => {
               {/* BCC Field */}
               <div className={styles.emailFieldRow}>
                 <label>BCC:</label>
-                <EmailAutocomplete
-                  value={bccEmails}
-                  onChange={setBccEmails}
-                  placeholder="Add BCC recipients (optional)"
-                />
-              </div>
-
-              {/* Assigned Users Field - Demo of UserAutocomplete */}
-              <div className={styles.emailFieldRow}>
-                <label>Users:</label>
                 <UserAutocomplete
-                  value={assignedUsers}
-                  onChange={setAssignedUsers}
-                  placeholder="Search and assign users"
+                  value={bccUsers}
+                  onChange={setBccUsers}
+                  placeholder="Add BCC recipients (optional)"
                 />
               </div>
 
@@ -2889,18 +2877,18 @@ const RunTemplates = () => {
             <div className="bg-muted/50 rounded-lg p-4 border space-y-2">
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">To</Label>
-                <p className="text-sm">{toEmails || '(No recipients)'}</p>
+                <p className="text-sm">{toUsers.length > 0 ? toUsers.map(u => u.email).join(', ') : '(No recipients)'}</p>
               </div>
-              {ccEmails && (
+              {ccUsers.length > 0 && (
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">CC</Label>
-                  <p className="text-sm">{ccEmails}</p>
+                  <p className="text-sm">{ccUsers.map(u => u.email).join(', ')}</p>
                 </div>
               )}
-              {bccEmails && (
+              {bccUsers.length > 0 && (
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">BCC</Label>
-                  <p className="text-sm">{bccEmails}</p>
+                  <p className="text-sm">{bccUsers.map(u => u.email).join(', ')}</p>
                 </div>
               )}
             </div>
