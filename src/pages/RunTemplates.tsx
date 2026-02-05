@@ -26,6 +26,7 @@ import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobalTable } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
+import { EmailAutocomplete } from "@/components/templates/EmailAutocomplete";
 import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
 
 const RunTemplates = () => {
@@ -1388,33 +1389,30 @@ const RunTemplates = () => {
               {/* To Field */}
               <div className={styles.emailFieldRow}>
                 <label>To:</label>
-                <input
-                  type="text"
-                  placeholder="Enter email addresses (comma separated)"
+                <EmailAutocomplete
                   value={toEmails}
-                  onChange={(e) => setToEmails(e.target.value)}
+                  onChange={setToEmails}
+                  placeholder="Search and select recipients"
                 />
               </div>
 
               {/* CC Field */}
               <div className={styles.emailFieldRow}>
                 <label>CC:</label>
-                <input
-                  type="text"
-                  placeholder="Enter CC addresses (optional)"
+                <EmailAutocomplete
                   value={ccEmails}
-                  onChange={(e) => setCcEmails(e.target.value)}
+                  onChange={setCcEmails}
+                  placeholder="Add CC recipients (optional)"
                 />
               </div>
 
               {/* BCC Field */}
               <div className={styles.emailFieldRow}>
                 <label>BCC:</label>
-                <input
-                  type="text"
-                  placeholder="Enter BCC addresses (optional)"
+                <EmailAutocomplete
                   value={bccEmails}
-                  onChange={(e) => setBccEmails(e.target.value)}
+                  onChange={setBccEmails}
+                  placeholder="Add BCC recipients (optional)"
                 />
               </div>
 
