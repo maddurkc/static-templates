@@ -349,7 +349,6 @@ const SortableSection = ({
             {(() => {
               const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
               return (section.variables?.[dateVarName] as string) || 
-                     (section.variables?.dateValue as string) || 
                      new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
             })()}
           </div>

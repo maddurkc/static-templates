@@ -489,6 +489,16 @@ const TemplateEditor = () => {
           dynamicContent = sectionDef.defaultContent.replace(staticVarPattern, `\${${textVariableName}}`);
         }
       }
+      
+      // For date sections, generate unique variable name and replace placeholder in content
+      if (sectionDef.type === 'date') {
+        const dateVarName = `dateValue_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        variables['dateVariableName'] = dateVarName;
+        // Set default date value
+        variables[dateVarName] = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+        // Replace SECTIONID placeholder in content with actual section ID variable name
+        dynamicContent = dynamicContent.replace('dateValue_SECTIONID', dateVarName);
+      }
 
       // Get default styles for heading sections - include Outlook font family for all sections
       const isHeadingSection = sectionDef.type.startsWith('heading');
