@@ -427,10 +427,10 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Date',
     icon: Calendar,
     description: 'Right-aligned date display (e.g., February 05, 2026)',
-    // Note: defaultContent uses placeholder that gets replaced with dateValue_{sectionId} at runtime
-    defaultContent: `<div style="text-align: right; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 21px; mso-line-height-rule: exactly;"><span th:utext="\${dateValue_SECTIONID}"/></div>`,
+    defaultContent: `<div style="text-align: right; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 21px; mso-line-height-rule: exactly;"><span th:utext="\${dateValue}"/></div>`,
     category: 'text',
-    // No default variables - dateVariableName is dynamically generated as dateValue_{sectionId}
-    variables: []
+    variables: [
+      { name: 'dateValue', label: 'Date Value', type: 'text', defaultValue: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' }) }
+    ]
   }
 ];

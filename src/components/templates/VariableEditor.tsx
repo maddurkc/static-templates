@@ -390,12 +390,13 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
   
   // For date sections - date input with format preview
   if (section.type === 'date') {
-    // Generate unique variable name based on section id
+    // Generate unique variable name on first render if not present
     const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
     const currentDate = (section.variables?.[dateVarName] as string) || 
+                        (section.variables?.dateValue as string) || 
                         new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
     
-    // Ensure dateVariableName is stored (only use dateValue_{sectionId}, not dateValue)
+    // Ensure dateVariableName is stored
     if (!section.variables?.dateVariableName) {
       onUpdate({
         ...section,
@@ -423,7 +424,8 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 variables: { 
                   ...section.variables, 
                   dateVariableName: dateVarName,
-                  [dateVarName]: e.target.value
+                  [dateVarName]: e.target.value,
+                  dateValue: e.target.value
                 }
               });
             }}
