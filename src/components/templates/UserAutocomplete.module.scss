@@ -50,32 +50,14 @@
   }
 }
 
-/* User chip */
-.userChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.125rem 0.25rem 0.125rem 0.5rem;
-  background: #e8f0fe;
-  border: 1px solid #c2d7f5;
-  border-radius: 0.875rem;
-  font-size: 0.75rem;
-  color: #1a3a5c;
-  max-width: 220px;
-  transition: all 0.15s ease;
-  line-height: 1.2;
-
-  &:hover {
-    background: #d4e4fc;
-    border-color: #a8c8f0;
-  }
-}
-
-.chipEmail {
+/* Selected emails text */
+.selectedEmails {
+  font-size: 0.8125rem;
+  color: #1f2937;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
+  max-width: 100%;
 }
 
 .removeChip {
