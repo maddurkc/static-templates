@@ -27,6 +27,7 @@ import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobal
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { EmailAutocomplete } from "@/components/templates/EmailAutocomplete";
+import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
 import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
 
 const RunTemplates = () => {
@@ -44,6 +45,7 @@ const RunTemplates = () => {
   const [toEmails, setToEmails] = useState("");
   const [ccEmails, setCcEmails] = useState("");
   const [bccEmails, setBccEmails] = useState("");
+  const [assignedUsers, setAssignedUsers] = useState<User[]>([]);
   const [viewMode, setViewMode] = useState<'template' | 'execution'>('template'); // New: toggle between template view and execution view
   const [executedOn, setExecutedOn] = useState<string>("");
   const [emailSubject, setEmailSubject] = useState<string>("");
@@ -1413,6 +1415,16 @@ const RunTemplates = () => {
                   value={bccEmails}
                   onChange={setBccEmails}
                   placeholder="Add BCC recipients (optional)"
+                />
+              </div>
+
+              {/* Assigned Users Field - Demo of UserAutocomplete */}
+              <div className={styles.emailFieldRow}>
+                <label>Users:</label>
+                <UserAutocomplete
+                  value={assignedUsers}
+                  onChange={setAssignedUsers}
+                  placeholder="Search and assign users"
                 />
               </div>
 
