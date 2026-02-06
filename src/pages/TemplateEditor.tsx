@@ -920,7 +920,17 @@ const TemplateEditor = () => {
           newVariables.tableData = section.variables?.tableData || { headers: ['Column 1', 'Column 2'], rows: [['Cell 1', 'Cell 2']] };
         }
         
-        const newContent = `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 0;"><div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;"><span th:utext="\${${newLabelVar}}"/></div><div><span th:utext="\${${newContentVar}}"/></div></td></tr></table>`;
+        // Generate content with proper Thymeleaf tags for both label and content
+        let contentHtml = '';
+        if (contentType === 'text') {
+          contentHtml = `<span th:utext="\${${newContentVar}}"/>`;
+        } else if (contentType === 'list') {
+          contentHtml = `<span th:utext="\${${newItemsVar}}"/>`;
+        } else if (contentType === 'table') {
+          contentHtml = `<span th:utext="\${tableData}"/>`;
+        }
+        
+        const newContent = `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 0;"><div style="font-weight: bold; margin-bottom: 10px; font-size: 18px; color: #D71E28; line-height: 27px;"><span th:utext="\${${newLabelVar}}"/></div><div style="margin-left: 20px; font-size: 14px; color: #141414; line-height: 21px;">${contentHtml}</div></td></tr></table>`;
         
         return {
           ...section,
