@@ -869,6 +869,7 @@ const TemplateEditor = () => {
       }
       
       // LABELED-CONTENT SECTIONS
+      // Match the exact pattern used when creating via drag-and-drop from SectionLibrary
       if (section.type === 'labeled-content') {
         const newLabelVar = `label_${cleanId}`;
         const newContentVar = `content_${cleanId}`;
@@ -887,33 +888,32 @@ const TemplateEditor = () => {
         
         // Copy contentType and listStyle from original
         const contentType = section.variables?.contentType || 'text';
+        const listStyle = section.variables?.listStyle || 'circle';
         newVariables.contentType = contentType;
-        
-        // Copy listStyle if present
-        if (section.variables?.listStyle) {
-          newVariables.listStyle = section.variables.listStyle;
-        }
+        newVariables.listStyle = listStyle;
         
         // Get the label value - try the stored variable name first, then fallback options
-        let labelValue = 'Title';
+        let rawLabelValue = 'Title';
         if (oldLabelVar && section.variables?.[oldLabelVar] !== undefined) {
-          labelValue = section.variables[oldLabelVar];
-        } else if (section.variables?.label !== undefined) {
-          labelValue = section.variables.label;
+          rawLabelValue = section.variables[oldLabelVar];
         }
-        newVariables[newLabelVar] = labelValue;
+        // Store the label value under the new variable name (match drag-drop pattern)
+        newVariables[newLabelVar] = rawLabelValue;
         newVariables.labelVariableName = newLabelVar;
+        // Set 'label' key to Thymeleaf tag referencing the new variable (exactly like drag-drop)
+        newVariables['label'] = `<span th:utext="\${${newLabelVar}}"/>`;
         
         // Map content based on content type with new unique variable names
         if (contentType === 'text') {
           let contentValue = 'text content goes here';
           if (oldContentVar && section.variables?.[oldContentVar] !== undefined) {
             contentValue = section.variables[oldContentVar];
-          } else if (section.variables?.content !== undefined) {
-            contentValue = section.variables.content;
           }
+          // Store content value under new variable name
           newVariables[newContentVar] = contentValue;
           newVariables.textVariableName = newContentVar;
+          // Set 'content' key to Thymeleaf tag referencing the new variable
+          newVariables['content'] = `<span th:utext="\${${newContentVar}}"/>`;
         } else if (contentType === 'list') {
           let itemsValue = [{ text: 'Item 1', children: [] }, { text: 'Item 2', children: [] }];
           if (oldItemsVar && section.variables?.[oldItemsVar] !== undefined) {
@@ -923,31 +923,22 @@ const TemplateEditor = () => {
           }
           newVariables[newItemsVar] = itemsValue;
           newVariables.listVariableName = newItemsVar;
+          // Generate list HTML with Thymeleaf th:each (match drag-drop pattern)
+          newVariables['listHtml'] = generateThymeleafListHtml(newItemsVar, listStyle);
         } else if (contentType === 'table') {
           newVariables.tableData = section.variables?.tableData || { headers: ['Column 1', 'Column 2'], rows: [['Cell 1', 'Cell 2']] };
         }
         
-        // Generate content with proper Thymeleaf tags for both label and content
-        let contentHtml = '';
-        const listStyle = newVariables.listStyle || 'circle';
-        
-        if (contentType === 'text') {
-          contentHtml = `<span th:utext="\${${newContentVar}}"/>`;
-        } else if (contentType === 'list') {
-          // Use proper list HTML structure with th:each
-          contentHtml = generateThymeleafNestedListHtml(newItemsVar, listStyle);
-        } else if (contentType === 'table') {
-          // Table will be rendered by the component, just use a placeholder
-          contentHtml = `<!-- table content -->`;
-        }
-        
-        const newContent = `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 0;"><div style="font-weight: bold; margin-bottom: 10px; font-size: 18px; color: #D71E28; line-height: 27px;"><span th:utext="\${${newLabelVar}}"/></div><div style="margin-left: 20px; font-size: 14px; color: #141414; line-height: 21px;">${contentHtml}</div></td></tr></table>`;
+        // Use the sectionDef defaultContent as base - this matches what drag-drop uses
+        // The content structure matches exactly what's defined in sectionTypes.tsx for labeled-content
+        const newContent = `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 0;"><div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;"><span th:utext="\${${newLabelVar}}"/></div><div><span th:utext="\${${contentType === 'text' ? newContentVar : contentType === 'list' ? newItemsVar : 'tableData'}}"/></div></td></tr></table>`;
         
         return {
           ...section,
           id: newId,
           content: newContent,
-          variables: newVariables
+          variables: newVariables,
+          isLabelEditable: true
         };
       }
       
