@@ -785,10 +785,7 @@ const TemplateEditor = () => {
     
     // Helper to regenerate section content with unique variables and proper styling
     const regenerateSectionContent = (section: Section, newId: string): Section => {
-      const { isTextBasedSection, generateTextSectionVariableName } = require('@/lib/textThymeleafUtils');
-      const { generateListVariableName } = require('@/lib/listThymeleafUtils');
-      const { sectionTypes, OUTLOOK_FONT_FAMILY } = require('@/data/sectionTypes');
-      
+      // Use already imported functions from module scope (require() doesn't work with Vite)
       const sectionDef = sectionTypes.find((s: any) => s.type === section.type);
       const cleanId = newId.replace(/[^a-zA-Z0-9]/g, '_');
       
