@@ -1,6 +1,5 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { Section } from "@/types/section";
 import { GlobalApiConfig } from "@/types/global-api-config";
 import { Button } from "@/components/ui/button";
@@ -61,14 +60,13 @@ const SortableSection = ({
     attributes,
     listeners,
     setNodeRef,
-    transform,
-    transition,
     isDragging,
   } = useSortable({ id: section.id });
 
+  // Don't apply transform - we use drop indicators for visual feedback instead
+  // This prevents the automatic "swap" animation that makes positioning confusing
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   const isContainer = section.type === 'container';
@@ -509,8 +507,10 @@ export const EditorView = ({
   onHoverSection,
   dropIndicator,
 }: EditorViewProps) => {
+  // Only use droppable for empty state - when sections exist, SortableContext handles drops
   const { setNodeRef, isOver } = useDroppable({
     id: 'editor-drop-zone',
+    disabled: sections.length > 0, // Disable when sections exist
   });
 
   const renderNestedChildren = (section: Section) => {
