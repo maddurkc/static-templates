@@ -543,6 +543,25 @@ const TemplateEditor = () => {
         }
       }
       
+      // For labeled-content sections, generate proper HTML with dynamic variable names
+      if (sectionDef.type === 'labeled-content') {
+        const labelVar = variables['labelVariableName'] as string;
+        const contentType = variables['contentType'] as string;
+        
+        let contentHtml = '';
+        if (contentType === 'text') {
+          const contentVar = variables['textVariableName'] as string;
+          contentHtml = `<span th:utext="\${${contentVar}}"/>`;
+        } else if (contentType === 'list') {
+          const listVar = variables['listVariableName'] as string;
+          contentHtml = `<span th:utext="\${${listVar}}"/>`;
+        } else if (contentType === 'table') {
+          contentHtml = `<span th:utext="\${tableData}"/>`;
+        }
+        
+        dynamicContent = `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 0;"><div style="font-weight: bold; margin-bottom: 10px; font-size: 18px; color: #D71E28; line-height: 27px;"><span th:utext="\${${labelVar}}"/></div><div style="margin-left: 20px; font-size: 14px; color: #141414; line-height: 21px;">${contentHtml}</div></td></tr></table>`;
+      }
+      
       // For date sections, generate unique variable name for the date value
       if (sectionDef.type === 'date') {
         const dateVariableName = `dateValue_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
