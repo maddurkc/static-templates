@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, closestCenter, PointerSensor, useSensor, useSensors, CollisionDetection } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
 import { TemplateVariable } from "@/types/template-variable";
@@ -272,8 +272,35 @@ const TemplateEditor = () => {
     })
   );
 
-  // Use closestCenter for sortable items - the standard algorithm for sortable lists
-  // No custom collision detection needed when editor-drop-zone is disabled
+  // Custom collision detection that combines closestCenter for sortable items
+  // and filters out editor-drop-zone when there are sortable collisions
+  const customCollisionDetection: CollisionDetection = useCallback((args) => {
+    const { active } = args;
+    const isFromLibrary = String(active.id).startsWith('library-');
+    
+    // Use closestCenter which works well with sortable lists
+    const closestCollisions = closestCenter(args);
+    
+    if (isFromLibrary) {
+      // For library items, filter out container-* droppables (they're for nested drops)
+      // and prioritize regular section droppables or editor-drop-zone
+      const filteredCollisions = closestCollisions.filter(
+        collision => !String(collision.id).startsWith('container-')
+      );
+      return filteredCollisions.length > 0 ? filteredCollisions : closestCollisions;
+    }
+    
+    // For section reordering, filter out editor-drop-zone and container-* droppables
+    // We only want section-to-section sorting
+    const sortableCollisions = closestCollisions.filter(
+      collision => {
+        const id = String(collision.id);
+        return id !== 'editor-drop-zone' && !id.startsWith('container-');
+      }
+    );
+    
+    return sortableCollisions.length > 0 ? sortableCollisions : closestCollisions;
+  }, []);
 
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id);
@@ -311,11 +338,11 @@ const TemplateEditor = () => {
     }
 
     const dropTargetId = String(over.id);
-    const activeId = String(active.id);
-    const isFromLibrary = activeId.startsWith('library-');
+    const activeIdStr = String(active.id);
+    const isFromLibrary = activeIdStr.startsWith('library-');
     
-    // Skip if dropping on the main drop zone
-    if (dropTargetId === 'editor-drop-zone') {
+    // Skip if dropping on the main drop zone or container droppables
+    if (dropTargetId === 'editor-drop-zone' || dropTargetId.startsWith('container-')) {
       setDropIndicator(null);
       return;
     }
@@ -328,23 +355,24 @@ const TemplateEditor = () => {
     }
 
     // Don't show indicator if dragging over itself
-    if (!isFromLibrary && activeId === dropTargetId) {
+    if (!isFromLibrary && activeIdStr === dropTargetId) {
       setDropIndicator(null);
       return;
     }
 
-    // Get the DOM element and cursor position to determine before/after
-    const sectionElement = document.querySelector(`[data-section-id="${dropTargetId}"]`);
-    if (!sectionElement) {
+    // Get the DOM element and use the over rect from dnd-kit
+    const overRect = over.rect;
+    if (!overRect) {
       setDropIndicator(null);
       return;
     }
 
-    const rect = sectionElement.getBoundingClientRect();
-    const middleY = rect.top + rect.height / 2;
+    // Calculate position based on cursor relative to the over element
+    // Use the delta from dnd-kit to get cursor position
+    const cursorY = currentMouseY;
+    const middleY = overRect.top + overRect.height / 2;
     
-    // Use the tracked current mouse position for accurate placement
-    const position: 'before' | 'after' = currentMouseY < middleY ? 'before' : 'after';
+    const position: 'before' | 'after' = cursorY < middleY ? 'before' : 'after';
     
     setDropIndicator({ sectionId: dropTargetId, position });
   };

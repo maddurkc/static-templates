@@ -1,5 +1,7 @@
+import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { Section } from "@/types/section";
 import { GlobalApiConfig } from "@/types/global-api-config";
 import { Button } from "@/components/ui/button";
@@ -56,23 +58,30 @@ const SortableSection = ({
   onMouseEnter,
   onMouseLeave,
 }: SortableSectionProps) => {
+  // Use useSortable for drag and drop reordering
   const {
     attributes,
     listeners,
     setNodeRef,
+    transform,
+    transition,
     isDragging,
   } = useSortable({ id: section.id });
 
-  // Don't apply transform - we use drop indicators for visual feedback instead
-  // This prevents the automatic "swap" animation that makes positioning confusing
+  // Apply transform for smooth drag animation
   const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
     opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
   };
 
   const isContainer = section.type === 'container';
   
+  // Container sections can also receive drops
   const { setNodeRef: setDropRef, isOver: isDropOver } = useDroppable({
-    id: section.id,
+    id: `container-${section.id}`,
+    disabled: !isContainer,
   });
 
   return (
@@ -507,10 +516,9 @@ export const EditorView = ({
   onHoverSection,
   dropIndicator,
 }: EditorViewProps) => {
-  // Only use droppable for empty state - when sections exist, SortableContext handles drops
+  // Use droppable for the empty state drop zone
   const { setNodeRef, isOver } = useDroppable({
     id: 'editor-drop-zone',
-    disabled: sections.length > 0, // Disable when sections exist
   });
 
   const renderNestedChildren = (section: Section) => {
@@ -606,39 +614,41 @@ export const EditorView = ({
             </p>
           </div>
         ) : (
-          sections.map((section, index) => (
-            <div key={section.id}>
-              {/* Drop indicator before section */}
-              {dropIndicator?.sectionId === section.id && dropIndicator.position === 'before' && (
-                <div className={styles.dropIndicator} />
-              )}
-              <SortableSection
-                section={section}
-                isSelected={selectedSection?.id === section.id}
-                isHovered={hoveredSectionId === section.id}
-                hasError={sectionIdsWithErrors.has(section.id)}
-                onSelect={() => onSelectSection(section)}
-                onUpdate={onUpdateSection}
-                onDelete={() => onDeleteSection(section.id)}
-                onMoveUp={() => onMoveUp(section.id)}
-                onMoveDown={() => onMoveDown(section.id)}
-                isFirst={index === 0}
-                isLast={index === sections.length - 1}
-                onAddChild={onAddChildToContainer}
-                onDuplicate={onDuplicateSection}
-                onCopyStyles={onCopyStyles}
-                onPasteStyles={onPasteStyles}
-                renderChildren={renderNestedChildren}
-                globalApiConfig={globalApiConfig}
-                onMouseEnter={() => onHoverSection?.(section.id)}
-                onMouseLeave={() => onHoverSection?.(null)}
-              />
-              {/* Drop indicator after section */}
-              {dropIndicator?.sectionId === section.id && dropIndicator.position === 'after' && (
-                <div className={styles.dropIndicator} />
-              )}
-            </div>
-          ))
+          <>
+            {sections.map((section, index) => (
+              <React.Fragment key={section.id}>
+                {/* Drop indicator before section */}
+                {dropIndicator?.sectionId === section.id && dropIndicator.position === 'before' && (
+                  <div className={styles.dropIndicator} />
+                )}
+                <SortableSection
+                  section={section}
+                  isSelected={selectedSection?.id === section.id}
+                  isHovered={hoveredSectionId === section.id}
+                  hasError={sectionIdsWithErrors.has(section.id)}
+                  onSelect={() => onSelectSection(section)}
+                  onUpdate={onUpdateSection}
+                  onDelete={() => onDeleteSection(section.id)}
+                  onMoveUp={() => onMoveUp(section.id)}
+                  onMoveDown={() => onMoveDown(section.id)}
+                  isFirst={index === 0}
+                  isLast={index === sections.length - 1}
+                  onAddChild={onAddChildToContainer}
+                  onDuplicate={onDuplicateSection}
+                  onCopyStyles={onCopyStyles}
+                  onPasteStyles={onPasteStyles}
+                  renderChildren={renderNestedChildren}
+                  globalApiConfig={globalApiConfig}
+                  onMouseEnter={() => onHoverSection?.(section.id)}
+                  onMouseLeave={() => onHoverSection?.(null)}
+                />
+                {/* Drop indicator after section */}
+                {dropIndicator?.sectionId === section.id && dropIndicator.position === 'after' && (
+                  <div className={styles.dropIndicator} />
+                )}
+              </React.Fragment>
+            ))}
+          </>
         )}
         
         {/* Static Footer */}
