@@ -31,6 +31,8 @@ const isSystemVariable = (varName: string): boolean => {
     /^programNameText$/,
     /^text_/,
     /^paragraph_/,
+    /^paragraphContent_/,
+    /^textContent_/,
     /^companyName$/,
     /^tagline$/,
     /^year$/,
