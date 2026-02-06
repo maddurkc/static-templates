@@ -355,8 +355,35 @@ const TemplateEditor = () => {
     const activeIdStr = String(active.id);
     const isFromLibrary = activeIdStr.startsWith('library-');
     
-    // Skip if dropping on the main drop zone or container droppables
-    if (dropTargetId === 'editor-drop-zone' || dropTargetId.startsWith('container-')) {
+    // Handle dropping on the main drop zone (when list is empty or cursor is in the zone)
+    if (dropTargetId === 'editor-drop-zone') {
+      // If there are sections, determine if cursor is near top or bottom
+      if (sections.length > 0) {
+        // Check if cursor is above the first section or below the last
+        const firstSectionEl = document.querySelector(`[data-section-id="${sections[0].id}"]`);
+        const lastSectionEl = document.querySelector(`[data-section-id="${sections[sections.length - 1].id}"]`);
+        
+        if (firstSectionEl && lastSectionEl) {
+          const firstRect = firstSectionEl.getBoundingClientRect();
+          const lastRect = lastSectionEl.getBoundingClientRect();
+          
+          if (currentMouseY < firstRect.top) {
+            // Cursor is above the first section - show indicator before first
+            setDropIndicator({ sectionId: sections[0].id, position: 'before' });
+            return;
+          } else if (currentMouseY > lastRect.bottom) {
+            // Cursor is below the last section - show indicator after last
+            setDropIndicator({ sectionId: sections[sections.length - 1].id, position: 'after' });
+            return;
+          }
+        }
+      }
+      setDropIndicator(null);
+      return;
+    }
+    
+    // Skip container droppables
+    if (dropTargetId.startsWith('container-')) {
       setDropIndicator(null);
       return;
     }
