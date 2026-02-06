@@ -28,7 +28,7 @@ import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpda
 import { validateTemplate, validateTemplateName, validateSubject, ValidationError } from "@/lib/templateValidation";
 import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
 import { subjectPlaceholderToThymeleaf, subjectThymeleafToPlaceholder } from "@/lib/thymeleafUtils";
-import { generateListVariableName, generateThymeleafListHtml } from "@/lib/listThymeleafUtils";
+import { generateListVariableName, generateThymeleafListHtml, generateThymeleafNestedListHtml } from "@/lib/listThymeleafUtils";
 import { generateTextSectionVariableName, isTextBasedSection, generateThymeleafTextHtml } from "@/lib/textThymeleafUtils";
 import { useTemplateWalkthrough } from "@/hooks/useTemplateWalkthrough";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -929,12 +929,16 @@ const TemplateEditor = () => {
         
         // Generate content with proper Thymeleaf tags for both label and content
         let contentHtml = '';
+        const listStyle = newVariables.listStyle || 'circle';
+        
         if (contentType === 'text') {
           contentHtml = `<span th:utext="\${${newContentVar}}"/>`;
         } else if (contentType === 'list') {
-          contentHtml = `<span th:utext="\${${newItemsVar}}"/>`;
+          // Use proper list HTML structure with th:each
+          contentHtml = generateThymeleafNestedListHtml(newItemsVar, listStyle);
         } else if (contentType === 'table') {
-          contentHtml = `<span th:utext="\${tableData}"/>`;
+          // Table will be rendered by the component, just use a placeholder
+          contentHtml = `<!-- table content -->`;
         }
         
         const newContent = `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 0;"><div style="font-weight: bold; margin-bottom: 10px; font-size: 18px; color: #D71E28; line-height: 27px;"><span th:utext="\${${newLabelVar}}"/></div><div style="margin-left: 20px; font-size: 14px; color: #141414; line-height: 21px;">${contentHtml}</div></td></tr></table>`;
