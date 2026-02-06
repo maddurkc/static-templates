@@ -272,6 +272,9 @@ const TemplateEditor = () => {
     })
   );
 
+  // Use closestCenter for sortable items - the standard algorithm for sortable lists
+  // No custom collision detection needed when editor-drop-zone is disabled
+
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id);
     setActiveId(id);
@@ -568,25 +571,20 @@ const TemplateEditor = () => {
         
         // Use drop indicator for precise positioning
         if (currentDropIndicator && currentDropIndicator.sectionId === String(over.id)) {
-          // Calculate target index based on drop indicator position
           let targetIndex = currentDropIndicator.position === 'after' ? overIndex + 1 : overIndex;
           
-          // Adjust if moving from before the target position
           if (oldIndex < targetIndex) {
             targetIndex--;
           }
           
-          // Don't move if already in the right position
           if (oldIndex === targetIndex) return items;
           
-          // Remove from old position and insert at new position
           const newItems = [...items];
           const [removed] = newItems.splice(oldIndex, 1);
           newItems.splice(targetIndex, 0, removed);
           return newItems;
         }
         
-        // Fallback to simple swap if no indicator
         return arrayMove(items, oldIndex, overIndex);
       });
     }
