@@ -173,12 +173,70 @@ export const UserAutocomplete: React.FC<UserAutocompleteProps> = ({
       e.preventDefault();
       if (selectedIndex >= 0 && suggestions[selectedIndex]) {
         selectUser(suggestions[selectedIndex]);
+      } else if (inputValue.includes("@") && inputValue.trim()) {
+        // Allow manual entry of email as a user
+        const email = inputValue.trim();
+        const name = email.split("@")[0].replace(/[._-]/g, " ").split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        selectUser({ id: `manual-${Date.now()}`, email, name });
       }
     } else if (e.key === "Escape") {
       setShowSuggestions(false);
       setSuggestions([]);
     } else if (e.key === "Backspace" && !inputValue && value.length > 0) {
       removeUser(value[value.length - 1].id);
+    } else if (e.key === ";" || e.key === ",") {
+      // Accept semicolon or comma to add email
+      e.preventDefault();
+      if (inputValue.includes("@") && inputValue.trim()) {
+        const email = inputValue.trim();
+        const name = email.split("@")[0].replace(/[._-]/g, " ").split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        selectUser({ id: `manual-${Date.now()}`, email, name });
+      }
+    }
+  };
+
+  // Handle paste - parse multiple emails from clipboard
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData("text");
+
+    // Check if pasted text contains email separators
+    if (pastedText.includes(",") || pastedText.includes(";") || pastedText.includes("\n") || pastedText.includes(" ")) {
+      e.preventDefault();
+
+      // Split by common separators and clean up
+      const emails = pastedText
+        .split(/[,;\n\s]+/)
+        .map((email) => email.trim())
+        .filter((email) => email.includes("@") && email.length > 0);
+
+      if (emails.length > 0) {
+        const selectedIds = new Set(value.map((u) => u.email));
+        const newUsers = emails
+          .filter((email) => !selectedIds.has(email))
+          .map((email) => {
+            const name = email.split("@")[0].replace(/[._-]/g, " ").split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+            return { id: `manual-${Date.now()}-${Math.random()}`, email, name };
+          });
+
+        if (newUsers.length > 0) {
+          onChange([...value, ...newUsers]);
+          setInputValue("");
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      }
+    } else if (pastedText.includes("@")) {
+      // Single email pasted
+      e.preventDefault();
+      const email = pastedText.trim();
+      const selectedIds = new Set(value.map((u) => u.email));
+      if (!selectedIds.has(email)) {
+        const name = email.split("@")[0].replace(/[._-]/g, " ").split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        onChange([...value, { id: `manual-${Date.now()}`, email, name }]);
+        setInputValue("");
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
     }
   };
 
@@ -227,6 +285,7 @@ export const UserAutocomplete: React.FC<UserAutocompleteProps> = ({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onFocus={() => inputValue && setShowSuggestions(true)}
           placeholder={value.length === 0 ? placeholder : ""}
         />
