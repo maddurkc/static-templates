@@ -92,8 +92,6 @@
   cursor: grab;
   padding: 0.25rem;
   border-radius: 0.375rem;
-  touch-action: none; /* Prevents browser touch gestures from interfering with dnd-kit */
-  z-index: 5; /* Ensure drag handle is above other content */
 
   &:active {
     cursor: grabbing;

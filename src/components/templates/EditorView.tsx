@@ -1,4 +1,3 @@
-import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -79,44 +78,39 @@ const SortableSection = ({
   });
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      data-section-id={section.id}
-      data-walkthrough="editor-section"
-      className={cn(
-        "group relative",
-        styles.section,
-        isSelected && styles.selected,
-        isHovered && !isSelected && styles.hovered,
-        isDragging && styles.dragging,
-        isContainer && styles.container,
-        isContainer && isDropOver && styles.dropOver,
-        hasError && styles.hasError
-      )}
-      onClick={onSelect}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+    <SectionContextMenu
+      onDuplicate={() => onDuplicate(section.id)}
+      onCopyStyles={() => onCopyStyles(section.id)}
+      onPasteStyles={() => onPasteStyles(section.id)}
+      onDelete={() => onDelete()}
     >
-      {/* Drag Handle - positioned absolutely, OUTSIDE SectionContextMenu */}
+      <div
+        ref={setNodeRef}
+        style={style}
+        data-section-id={section.id}
+        data-walkthrough="editor-section"
+        className={cn(
+          "group relative",
+          styles.section,
+          isSelected && styles.selected,
+          isHovered && !isSelected && styles.hovered,
+          isDragging && styles.dragging,
+          isContainer && styles.container,
+          isContainer && isDropOver && styles.dropOver,
+          hasError && styles.hasError
+        )}
+        onClick={onSelect}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+      {/* Drag Handle */}
       <div
         {...attributes}
         {...listeners}
         className={styles.dragHandle}
-        onClick={(e) => e.stopPropagation()}
-        onContextMenu={(e) => e.stopPropagation()}
       >
         <GripVertical className={styles.icon} />
       </div>
-
-      <SectionContextMenu
-        onDuplicate={() => onDuplicate(section.id)}
-        onCopyStyles={() => onCopyStyles(section.id)}
-        onPasteStyles={() => onPasteStyles(section.id)}
-        onDelete={() => onDelete()}
-      >
-        {/* Context menu trigger - content area only */}
-        <div className="flex-1">
 
       {/* Container Header */}
       {isContainer && (
@@ -437,11 +431,8 @@ const SortableSection = ({
         )}
       </div>
 
-        </div>
-      </SectionContextMenu>
-
-      {/* Controls - positioned absolutely, OUTSIDE SectionContextMenu */}
-      <div className={styles.controlsWrapper}>
+      {/* Controls */}
+      <div className="absolute -top-8 right-2 flex items-center gap-1 z-10">
         {isContainer && onAddChild && (
           <Button
             size="sm"
@@ -473,6 +464,7 @@ const SortableSection = ({
         <div className={styles.selectedIndicator} />
       )}
     </div>
+    </SectionContextMenu>
   );
 };
 
@@ -615,7 +607,7 @@ export const EditorView = ({
           </div>
         ) : (
           sections.map((section, index) => (
-            <React.Fragment key={section.id}>
+            <div key={section.id}>
               {/* Drop indicator before section */}
               {dropIndicator?.sectionId === section.id && dropIndicator.position === 'before' && (
                 <div className={styles.dropIndicator} />
@@ -645,7 +637,7 @@ export const EditorView = ({
               {dropIndicator?.sectionId === section.id && dropIndicator.position === 'after' && (
                 <div className={styles.dropIndicator} />
               )}
-            </React.Fragment>
+            </div>
           ))
         )}
         
