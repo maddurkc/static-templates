@@ -775,14 +775,59 @@ const TemplateEditor = () => {
     if (sectionIndex === -1) return;
 
     const sectionToDuplicate = sections[sectionIndex];
-    const duplicatedSection: Section = {
-      ...sectionToDuplicate,
-      id: `section-${Date.now()}-${Math.random()}`,
-      children: sectionToDuplicate.children?.map(child => ({
-        ...child,
-        id: `child-${Date.now()}-${Math.random()}`
-      }))
+    const newSectionId = `section-${Date.now()}-${Math.random()}`;
+    
+    // Helper to regenerate Thymeleaf content for text-based sections
+    const regenerateTextSectionContent = (section: Section, newId: string): Section => {
+      const { isTextBasedSection, generateTextSectionVariableName, generateThymeleafTextHtml } = require('@/lib/textThymeleafUtils');
+      
+      if (!isTextBasedSection(section.type)) {
+        return { ...section, id: newId };
+      }
+      
+      // Generate new variable name based on new section ID
+      const newVariableName = generateTextSectionVariableName(section.type, newId);
+      const newContent = generateThymeleafTextHtml(newVariableName);
+      
+      // Get the old variable name to copy its value
+      const oldVariableName = Object.keys(section.variables || {}).find(key => 
+        key.startsWith('heading') || 
+        key.startsWith('textContent_') || 
+        key.startsWith('paragraphContent_') ||
+        key.startsWith('staticContent_') ||
+        key.startsWith('content_')
+      );
+      
+      // Copy the value from old variable to new variable
+      const newVariables: Record<string, any> = {};
+      if (oldVariableName && section.variables?.[oldVariableName]) {
+        newVariables[newVariableName] = section.variables[oldVariableName];
+      }
+      
+      return {
+        ...section,
+        id: newId,
+        content: newContent,
+        variables: {
+          ...section.variables,
+          ...newVariables,
+        }
+      };
     };
+    
+    // Process the main section
+    let duplicatedSection = regenerateTextSectionContent(sectionToDuplicate, newSectionId);
+    
+    // Process children if they exist
+    if (sectionToDuplicate.children?.length) {
+      duplicatedSection = {
+        ...duplicatedSection,
+        children: sectionToDuplicate.children.map(child => {
+          const newChildId = `child-${Date.now()}-${Math.random()}`;
+          return regenerateTextSectionContent(child, newChildId);
+        })
+      };
+    }
 
     const newSections = [...sections];
     newSections.splice(sectionIndex + 1, 0, duplicatedSection);
