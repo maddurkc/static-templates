@@ -777,9 +777,10 @@ const TemplateEditor = () => {
     const sectionToDuplicate = sections[sectionIndex];
     const newSectionId = `section-${Date.now()}-${Math.random()}`;
     
-    // Helper to regenerate Thymeleaf content for text-based sections
+    // Helper to regenerate Thymeleaf content for text-based sections with proper styling
     const regenerateTextSectionContent = (section: Section, newId: string): Section => {
-      const { isTextBasedSection, generateTextSectionVariableName, generateThymeleafTextHtml } = require('@/lib/textThymeleafUtils');
+      const { isTextBasedSection, generateTextSectionVariableName } = require('@/lib/textThymeleafUtils');
+      const { sectionTypes, OUTLOOK_FONT_FAMILY } = require('@/data/sectionTypes');
       
       if (!isTextBasedSection(section.type)) {
         return { ...section, id: newId };
@@ -787,7 +788,26 @@ const TemplateEditor = () => {
       
       // Generate new variable name based on new section ID
       const newVariableName = generateTextSectionVariableName(section.type, newId);
-      const newContent = generateThymeleafTextHtml(newVariableName);
+      
+      // Generate the full content with proper HTML tag and styles (like sectionTypes defaults)
+      let newContent: string;
+      const sectionDef = sectionTypes.find((s: any) => s.type === section.type);
+      
+      if (section.type.startsWith('heading')) {
+        const level = section.type.replace('heading', '');
+        const tag = `h${level}`;
+        // Use section's existing styles or get from sectionTypes default
+        const defaultStyles = sectionDef ? extractInlineStyles(sectionDef.defaultContent) : '';
+        newContent = `<${tag} style="${defaultStyles}"><span th:utext="\${${newVariableName}}"/></${tag}>`;
+      } else if (section.type === 'text') {
+        newContent = `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333;"><span th:utext="\${${newVariableName}}"/></span>`;
+      } else if (section.type === 'paragraph') {
+        newContent = `<p style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 1.5; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${${newVariableName}}"/></p>`;
+      } else if (section.type === 'static-text') {
+        newContent = `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333;"><span th:utext="\${${newVariableName}}"/></span>`;
+      } else {
+        newContent = `<span th:utext="\${${newVariableName}}"/>`;
+      }
       
       // Get the old variable name to copy its value
       const oldVariableName = Object.keys(section.variables || {}).find(key => 
@@ -813,6 +833,12 @@ const TemplateEditor = () => {
           ...newVariables,
         }
       };
+    };
+    
+    // Helper to extract inline styles from HTML content
+    const extractInlineStyles = (html: string): string => {
+      const match = html.match(/style="([^"]*)"/);
+      return match ? match[1] : '';
     };
     
     // Process the main section
