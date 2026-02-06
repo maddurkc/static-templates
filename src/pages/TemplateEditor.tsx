@@ -129,6 +129,19 @@ const TemplateEditor = () => {
     );
   }, [templateSubject, headerSection, sections, footerSection]);
 
+  // Count only custom body section variables for display
+  const customBodyVariablesCount = useMemo(() => {
+    const systemPatterns = [
+      /^label_/, /^content_/, /^heading\d?Text_/, /^dateValue_/,
+      /^items_/, /^ctaText_/, /^ctaUrl_/, /^programNameText$/,
+      /^text_/, /^paragraph_/, /^companyName$/, /^tagline$/,
+      /^year$/, /^contactEmail$/
+    ];
+    return extractedVariables.filter(v => 
+      v.source === 'section' && !systemPatterns.some(p => p.test(v.variableName))
+    ).length;
+  }, [extractedVariables]);
+
   // Compute section IDs with errors for highlighting
   const sectionIdsWithErrors = useMemo(() => {
     const ids = new Set<string>();
@@ -1442,7 +1455,7 @@ ${sectionRows}
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Variable className="h-4 w-4 mr-2" />
-                    Variables ({extractedVariables.length})
+                    Variables ({customBodyVariablesCount})
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-96 p-0 overflow-hidden">
@@ -1468,6 +1481,31 @@ ${sectionRows}
                     <VariablesPanel 
                       variables={extractedVariables}
                       readOnly={false}
+                      onVariableValueChange={(variableName, value) => {
+                        // Update sections that contain this variable
+                        setSections(prevSections => {
+                          const updateVariableInSection = (section: Section): Section => {
+                            if (section.variables && section.variables[variableName] !== undefined) {
+                              return {
+                                ...section,
+                                variables: {
+                                  ...section.variables,
+                                  [variableName]: value
+                                }
+                              };
+                            }
+                            // Check children for container sections
+                            if (section.children && section.children.length > 0) {
+                              return {
+                                ...section,
+                                children: section.children.map(updateVariableInSection)
+                              };
+                            }
+                            return section;
+                          };
+                          return prevSections.map(updateVariableInSection);
+                        });
+                      }}
                     />
                   </div>
                 </SheetContent>
