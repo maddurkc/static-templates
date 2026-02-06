@@ -915,12 +915,26 @@ const TemplateEditor = () => {
           // Set 'content' key to Thymeleaf tag referencing the new variable
           newVariables['content'] = `<span th:utext="\${${newContentVar}}"/>`;
         } else if (contentType === 'list') {
-          let itemsValue = [{ text: 'Item 1', children: [] }, { text: 'Item 2', children: [] }];
-          if (oldItemsVar && section.variables?.[oldItemsVar] !== undefined) {
-            itemsValue = section.variables[oldItemsVar];
-          } else if (section.variables?.items !== undefined) {
-            itemsValue = section.variables.items;
+          // Default list items
+          let itemsValue: any[] = [{ text: 'Item 1', children: [] }, { text: 'Item 2', children: [] }];
+          
+          // Try to get existing list items - check multiple possible locations
+          // Priority: 1) stored variable name 2) items_* key 3) 'items' key
+          if (oldItemsVar && section.variables?.[oldItemsVar] !== undefined && Array.isArray(section.variables[oldItemsVar])) {
+            // Deep clone to avoid reference issues
+            itemsValue = JSON.parse(JSON.stringify(section.variables[oldItemsVar]));
+          } else if (section.variables?.items !== undefined && Array.isArray(section.variables.items)) {
+            itemsValue = JSON.parse(JSON.stringify(section.variables.items));
+          } else {
+            // Search for any items_* key with array value
+            const itemsKey = Object.keys(section.variables || {}).find(k => 
+              k.startsWith('items_') && Array.isArray(section.variables?.[k])
+            );
+            if (itemsKey && section.variables?.[itemsKey]) {
+              itemsValue = JSON.parse(JSON.stringify(section.variables[itemsKey]));
+            }
           }
+          
           newVariables[newItemsVar] = itemsValue;
           newVariables.listVariableName = newItemsVar;
           // Generate list HTML with Thymeleaf th:each (match drag-drop pattern)
