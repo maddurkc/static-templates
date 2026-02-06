@@ -13,9 +13,10 @@ interface PreviewViewProps {
   selectedSectionId?: string | null;
   hoveredSectionId?: string | null;
   onHoverSection?: (id: string | null) => void;
+  highlightedVariableName?: string | null;
 }
 
-export const PreviewView = ({ headerSection, footerSection, sections, selectedSectionId, hoveredSectionId, onHoverSection }: PreviewViewProps) => {
+export const PreviewView = ({ headerSection, footerSection, sections, selectedSectionId, hoveredSectionId, onHoverSection, highlightedVariableName }: PreviewViewProps) => {
   const allSections = [headerSection, ...sections, footerSection];
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -34,6 +35,14 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
       }
     }
   }, [selectedSectionId]);
+  
+  // Helper to wrap a value with highlight styling if it matches the focused variable
+  const wrapWithHighlight = (value: string, varName: string): string => {
+    if (highlightedVariableName === varName) {
+      return `<span style="background-color: #fef08a; outline: 2px solid #eab308; outline-offset: 1px; border-radius: 2px; padding: 0 2px; animation: highlightPulse 1.5s ease-in-out infinite;">${value}</span>`;
+    }
+    return value;
+  };
   
   // Helper function to get HTML string for a section (used with wrapSectionInTable)
   const getSectionHtml = (section: Section): string => {
@@ -108,10 +117,11 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
       mixedContent = mixedContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
         // Check if we have a non-empty default value for this placeholder
         if (section.variables && !isEmptyValue(section.variables[varName])) {
-          return String(section.variables[varName]);
+          const value = String(section.variables[varName]);
+          return wrapWithHighlight(value, varName);
         }
-        // If no default value, keep as {{placeholder}}
-        return match;
+        // If no default value, keep as {{placeholder}} but still highlight if focused
+        return wrapWithHighlight(match, varName);
       });
       
       // Handle special control structures (if/each)

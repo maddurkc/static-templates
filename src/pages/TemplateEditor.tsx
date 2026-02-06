@@ -100,6 +100,7 @@ const TemplateEditor = () => {
   const [nameError, setNameError] = useState<string | null>(null);
   const [subjectError, setSubjectError] = useState<string | null>(null);
   const [showVariablesPanel, setShowVariablesPanel] = useState(false);
+  const [focusedVariableName, setFocusedVariableName] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<{ sectionId: string; position: 'before' | 'after' } | null>(null);
   const { toast } = useToast();
 
@@ -1481,6 +1482,7 @@ ${sectionRows}
                     <VariablesPanel 
                       variables={extractedVariables}
                       readOnly={false}
+                      onFocusVariable={setFocusedVariableName}
                       onVariableValueChange={(variableName, value) => {
                         // Update sections that contain this variable
                         setSections(prevSections => {
@@ -1680,6 +1682,7 @@ ${sectionRows}
                   selectedSectionId={selectedSection?.id}
                   hoveredSectionId={hoveredSectionId}
                   onHoverSection={setHoveredSectionId}
+                  highlightedVariableName={focusedVariableName}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
@@ -1723,6 +1726,7 @@ ${sectionRows}
                     selectedSectionId={selectedSection?.id}
                     hoveredSectionId={hoveredSectionId}
                     onHoverSection={setHoveredSectionId}
+                    highlightedVariableName={focusedVariableName}
                   />
                 </div>
               )}
