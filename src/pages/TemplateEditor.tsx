@@ -874,45 +874,55 @@ const TemplateEditor = () => {
         const newContentVar = `content_${cleanId}`;
         const newItemsVar = `items_${cleanId}`;
         
-        // Get old variable names
-        const oldLabelVar = section.variables?.labelVariableName as string || 
-          Object.keys(section.variables || {}).find(k => k.startsWith('label_'));
-        const oldContentVar = section.variables?.textVariableName as string ||
-          Object.keys(section.variables || {}).find(k => k.startsWith('content_') && !k.includes('Type'));
-        const oldItemsVar = section.variables?.listVariableName as string ||
-          Object.keys(section.variables || {}).find(k => k.startsWith('items_'));
+        // Get old variable names from stored metadata first, then fallback to finding keys
+        const oldLabelVar = (section.variables?.labelVariableName as string) || 
+          Object.keys(section.variables || {}).find(k => k.startsWith('label_') && !k.includes('VariableName'));
+        const oldContentVar = (section.variables?.textVariableName as string) ||
+          Object.keys(section.variables || {}).find(k => k.startsWith('content_') && !k.includes('Type') && !k.includes('VariableName'));
+        const oldItemsVar = (section.variables?.listVariableName as string) ||
+          Object.keys(section.variables || {}).find(k => k.startsWith('items_') && !k.includes('VariableName'));
         
         // Create fresh variables object - don't spread old variables to avoid duplicate keys
         const newVariables: Record<string, any> = {};
         
-        // Copy contentType
+        // Copy contentType and listStyle from original
         const contentType = section.variables?.contentType || 'text';
         newVariables.contentType = contentType;
         
-        // Map label with new unique variable name
-        if (oldLabelVar && section.variables?.[oldLabelVar]) {
-          newVariables[newLabelVar] = section.variables[oldLabelVar];
-        } else {
-          newVariables[newLabelVar] = section.variables?.label || 'Title';
+        // Copy listStyle if present
+        if (section.variables?.listStyle) {
+          newVariables.listStyle = section.variables.listStyle;
         }
+        
+        // Get the label value - try the stored variable name first, then fallback options
+        let labelValue = 'Title';
+        if (oldLabelVar && section.variables?.[oldLabelVar] !== undefined) {
+          labelValue = section.variables[oldLabelVar];
+        } else if (section.variables?.label !== undefined) {
+          labelValue = section.variables.label;
+        }
+        newVariables[newLabelVar] = labelValue;
         newVariables.labelVariableName = newLabelVar;
         
         // Map content based on content type with new unique variable names
         if (contentType === 'text') {
-          if (oldContentVar && section.variables?.[oldContentVar]) {
-            newVariables[newContentVar] = section.variables[oldContentVar];
-          } else {
-            newVariables[newContentVar] = section.variables?.content || 'text content goes here';
+          let contentValue = 'text content goes here';
+          if (oldContentVar && section.variables?.[oldContentVar] !== undefined) {
+            contentValue = section.variables[oldContentVar];
+          } else if (section.variables?.content !== undefined) {
+            contentValue = section.variables.content;
           }
+          newVariables[newContentVar] = contentValue;
           newVariables.textVariableName = newContentVar;
         } else if (contentType === 'list') {
-          if (oldItemsVar && section.variables?.[oldItemsVar]) {
-            newVariables[newItemsVar] = section.variables[oldItemsVar];
-          } else {
-            newVariables[newItemsVar] = section.variables?.items || [{ text: 'Item 1', children: [] }, { text: 'Item 2', children: [] }];
+          let itemsValue = [{ text: 'Item 1', children: [] }, { text: 'Item 2', children: [] }];
+          if (oldItemsVar && section.variables?.[oldItemsVar] !== undefined) {
+            itemsValue = section.variables[oldItemsVar];
+          } else if (section.variables?.items !== undefined) {
+            itemsValue = section.variables.items;
           }
+          newVariables[newItemsVar] = itemsValue;
           newVariables.listVariableName = newItemsVar;
-          newVariables.listStyle = section.variables?.listStyle || 'circle';
         } else if (contentType === 'table') {
           newVariables.tableData = section.variables?.tableData || { headers: ['Column 1', 'Column 2'], rows: [['Cell 1', 'Cell 2']] };
         }
