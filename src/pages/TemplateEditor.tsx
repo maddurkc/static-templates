@@ -777,80 +777,267 @@ const TemplateEditor = () => {
     const sectionToDuplicate = sections[sectionIndex];
     const newSectionId = `section-${Date.now()}-${Math.random()}`;
     
-    // Helper to regenerate Thymeleaf content for text-based sections with proper styling
-    const regenerateTextSectionContent = (section: Section, newId: string): Section => {
-      const { isTextBasedSection, generateTextSectionVariableName } = require('@/lib/textThymeleafUtils');
-      const { sectionTypes, OUTLOOK_FONT_FAMILY } = require('@/data/sectionTypes');
-      
-      if (!isTextBasedSection(section.type)) {
-        return { ...section, id: newId };
-      }
-      
-      // Generate new variable name based on new section ID
-      const newVariableName = generateTextSectionVariableName(section.type, newId);
-      
-      // Generate the full content with proper HTML tag and styles (like sectionTypes defaults)
-      let newContent: string;
-      const sectionDef = sectionTypes.find((s: any) => s.type === section.type);
-      
-      if (section.type.startsWith('heading')) {
-        const level = section.type.replace('heading', '');
-        const tag = `h${level}`;
-        // Use section's existing styles or get from sectionTypes default
-        const defaultStyles = sectionDef ? extractInlineStyles(sectionDef.defaultContent) : '';
-        newContent = `<${tag} style="${defaultStyles}"><span th:utext="\${${newVariableName}}"/></${tag}>`;
-      } else if (section.type === 'text') {
-        newContent = `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333;"><span th:utext="\${${newVariableName}}"/></span>`;
-      } else if (section.type === 'paragraph') {
-        newContent = `<p style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 1.5; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${${newVariableName}}"/></p>`;
-      } else if (section.type === 'static-text') {
-        newContent = `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333;"><span th:utext="\${${newVariableName}}"/></span>`;
-      } else {
-        newContent = `<span th:utext="\${${newVariableName}}"/>`;
-      }
-      
-      // Get the old variable name to copy its value
-      const oldVariableName = Object.keys(section.variables || {}).find(key => 
-        key.startsWith('heading') || 
-        key.startsWith('textContent_') || 
-        key.startsWith('paragraphContent_') ||
-        key.startsWith('staticContent_') ||
-        key.startsWith('content_')
-      );
-      
-      // Copy the value from old variable to new variable
-      const newVariables: Record<string, any> = {};
-      if (oldVariableName && section.variables?.[oldVariableName]) {
-        newVariables[newVariableName] = section.variables[oldVariableName];
-      }
-      
-      return {
-        ...section,
-        id: newId,
-        content: newContent,
-        variables: {
-          ...section.variables,
-          ...newVariables,
-        }
-      };
-    };
-    
     // Helper to extract inline styles from HTML content
     const extractInlineStyles = (html: string): string => {
       const match = html.match(/style="([^"]*)"/);
       return match ? match[1] : '';
     };
     
-    // Process the main section
-    let duplicatedSection = regenerateTextSectionContent(sectionToDuplicate, newSectionId);
+    // Helper to regenerate section content with unique variables and proper styling
+    const regenerateSectionContent = (section: Section, newId: string): Section => {
+      const { isTextBasedSection, generateTextSectionVariableName } = require('@/lib/textThymeleafUtils');
+      const { generateListVariableName } = require('@/lib/listThymeleafUtils');
+      const { sectionTypes, OUTLOOK_FONT_FAMILY } = require('@/data/sectionTypes');
+      
+      const sectionDef = sectionTypes.find((s: any) => s.type === section.type);
+      const cleanId = newId.replace(/[^a-zA-Z0-9]/g, '_');
+      
+      // TEXT-BASED SECTIONS (headings, text, paragraph, static-text)
+      if (isTextBasedSection(section.type)) {
+        const newVariableName = generateTextSectionVariableName(section.type, newId);
+        let newContent: string;
+        
+        if (section.type.startsWith('heading')) {
+          const level = section.type.replace('heading', '');
+          const tag = `h${level}`;
+          const defaultStyles = sectionDef ? extractInlineStyles(sectionDef.defaultContent) : '';
+          newContent = `<${tag} style="${defaultStyles}"><span th:utext="\${${newVariableName}}"/></${tag}>`;
+        } else if (section.type === 'text') {
+          newContent = `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333;"><span th:utext="\${${newVariableName}}"/></span>`;
+        } else if (section.type === 'paragraph') {
+          newContent = `<p style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 1.5; margin: 0; mso-line-height-rule: exactly;"><span th:utext="\${${newVariableName}}"/></p>`;
+        } else if (section.type === 'static-text') {
+          newContent = `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333;"><span th:utext="\${${newVariableName}}"/></span>`;
+        } else {
+          newContent = `<span th:utext="\${${newVariableName}}"/>`;
+        }
+        
+        // Get the old variable name to copy its value
+        const oldVariableName = Object.keys(section.variables || {}).find(key => 
+          key.startsWith('heading') || 
+          key.startsWith('textContent_') || 
+          key.startsWith('paragraphContent_') ||
+          key.startsWith('staticContent_') ||
+          key.startsWith('content_')
+        );
+        
+        const newVariables: Record<string, any> = {};
+        if (oldVariableName && section.variables?.[oldVariableName]) {
+          newVariables[newVariableName] = section.variables[oldVariableName];
+        }
+        
+        return {
+          ...section,
+          id: newId,
+          content: newContent,
+          variables: { ...section.variables, ...newVariables }
+        };
+      }
+      
+      // LIST SECTIONS (bullet-list-circle, bullet-list-disc, etc.)
+      if (section.type.startsWith('bullet-list-') || section.type.startsWith('number-list-')) {
+        const newListVarName = generateListVariableName(newId);
+        const oldListVarName = Object.keys(section.variables || {}).find(key => 
+          key === 'items' || key.startsWith('items_')
+        );
+        
+        // Get list style type for proper bullet/number
+        let bulletChar = '•';
+        if (section.type === 'bullet-list-circle') bulletChar = '○';
+        else if (section.type === 'bullet-list-square') bulletChar = '■';
+        else if (section.type === 'number-list-1') bulletChar = '1.';
+        else if (section.type === 'number-list-i') bulletChar = 'i.';
+        else if (section.type === 'number-list-a') bulletChar = 'a.';
+        
+        const newContent = `<table cellpadding="0" cellspacing="0" border="0" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="vertical-align: top; padding-right: 8px;">${bulletChar}</td><td style="vertical-align: top;">Item 1</td></tr></table>`;
+        
+        const newVariables: Record<string, any> = { ...section.variables };
+        if (oldListVarName && section.variables?.[oldListVarName]) {
+          newVariables[newListVarName] = section.variables[oldListVarName];
+          // Remove old variable to keep it clean
+          if (oldListVarName !== newListVarName) {
+            delete newVariables[oldListVarName];
+          }
+        } else {
+          newVariables[newListVarName] = ['Item 1', 'Item 2', 'Item 3'];
+        }
+        newVariables.listVariableName = newListVarName;
+        
+        return {
+          ...section,
+          id: newId,
+          content: newContent,
+          variables: newVariables
+        };
+      }
+      
+      // LABELED-CONTENT SECTIONS
+      if (section.type === 'labeled-content') {
+        const newLabelVar = `label_${cleanId}`;
+        const newContentVar = `content_${cleanId}`;
+        const newItemsVar = `items_${cleanId}`;
+        
+        // Get old variable names
+        const oldLabelVar = section.variables?.labelVariableName as string || 
+          Object.keys(section.variables || {}).find(k => k.startsWith('label_'));
+        const oldContentVar = section.variables?.textVariableName as string ||
+          Object.keys(section.variables || {}).find(k => k.startsWith('content_') && !k.includes('Type'));
+        const oldItemsVar = section.variables?.listVariableName as string ||
+          Object.keys(section.variables || {}).find(k => k.startsWith('items_'));
+        
+        const newVariables: Record<string, any> = { ...section.variables };
+        
+        // Map label
+        if (oldLabelVar && section.variables?.[oldLabelVar]) {
+          newVariables[newLabelVar] = section.variables[oldLabelVar];
+        } else {
+          newVariables[newLabelVar] = section.variables?.label || 'Title';
+        }
+        newVariables.labelVariableName = newLabelVar;
+        
+        // Map content based on content type
+        const contentType = section.variables?.contentType || 'text';
+        if (contentType === 'text') {
+          if (oldContentVar && section.variables?.[oldContentVar]) {
+            newVariables[newContentVar] = section.variables[oldContentVar];
+          } else {
+            newVariables[newContentVar] = section.variables?.content || 'text content goes here';
+          }
+          newVariables.textVariableName = newContentVar;
+        } else if (contentType === 'list') {
+          if (oldItemsVar && section.variables?.[oldItemsVar]) {
+            newVariables[newItemsVar] = section.variables[oldItemsVar];
+          } else {
+            newVariables[newItemsVar] = section.variables?.items || [{ text: 'Item 1', children: [] }, { text: 'Item 2', children: [] }];
+          }
+          newVariables.listVariableName = newItemsVar;
+        }
+        
+        const newContent = `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 0;"><div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;"><span th:utext="\${${newLabelVar}}"/></div><div><span th:utext="\${${newContentVar}}"/></div></td></tr></table>`;
+        
+        return {
+          ...section,
+          id: newId,
+          content: newContent,
+          variables: newVariables
+        };
+      }
+      
+      // CTA-TEXT SECTIONS
+      if (section.type === 'cta-text') {
+        const newCtaTextVar = `ctaText_${cleanId}`;
+        const newCtaUrlVar = `ctaUrl_${cleanId}`;
+        
+        const oldCtaTextVar = Object.keys(section.variables || {}).find(k => 
+          k === 'ctaText' || k.startsWith('ctaText_')
+        );
+        const oldCtaUrlVar = Object.keys(section.variables || {}).find(k => 
+          k === 'ctaUrl' || k.startsWith('ctaUrl_')
+        );
+        
+        const newVariables: Record<string, any> = {};
+        newVariables[newCtaTextVar] = oldCtaTextVar && section.variables?.[oldCtaTextVar] 
+          ? section.variables[oldCtaTextVar] 
+          : 'Call to action&nbsp;>';
+        newVariables[newCtaUrlVar] = oldCtaUrlVar && section.variables?.[oldCtaUrlVar]
+          ? section.variables[oldCtaUrlVar]
+          : '#';
+        newVariables.ctaTextVariableName = newCtaTextVar;
+        newVariables.ctaUrlVariableName = newCtaUrlVar;
+        
+        const newContent = `<p style="margin: 0; margin-bottom: 0px;"><a th:href="\${${newCtaUrlVar}}" href="#" style="font-size: 14px; color: #5A469B; font-family: ${OUTLOOK_FONT_FAMILY}; line-height: 24px; font-weight: bold; text-decoration: underline;"><span th:utext="\${${newCtaTextVar}}"/></a></p>`;
+        
+        return {
+          ...section,
+          id: newId,
+          content: newContent,
+          variables: newVariables
+        };
+      }
+      
+      // MIXED-CONTENT SECTIONS
+      if (section.type === 'mixed-content') {
+        const newContentVar = `content_${cleanId}`;
+        const oldContentVar = Object.keys(section.variables || {}).find(k => 
+          k === 'content' || k.startsWith('content_')
+        );
+        
+        const newVariables: Record<string, any> = {};
+        newVariables[newContentVar] = oldContentVar && section.variables?.[oldContentVar]
+          ? section.variables[oldContentVar]
+          : 'P3 Incident: {{label}} <a href="{{linkUrl}}">{{linkText}}</a>';
+        newVariables.contentVariableName = newContentVar;
+        
+        const newContent = `<span style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px;"><span th:utext="\${${newContentVar}}"/></span>`;
+        
+        return {
+          ...section,
+          id: newId,
+          content: newContent,
+          variables: newVariables
+        };
+      }
+      
+      // DATE SECTIONS
+      if (section.type === 'date') {
+        const newDateVar = `dateValue_${cleanId}`;
+        const oldDateVar = Object.keys(section.variables || {}).find(k => 
+          k === 'dateValue' || k.startsWith('dateValue_')
+        );
+        
+        const newVariables: Record<string, any> = {};
+        newVariables[newDateVar] = oldDateVar && section.variables?.[oldDateVar]
+          ? section.variables[oldDateVar]
+          : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+        newVariables.dateVariableName = newDateVar;
+        
+        const newContent = `<div style="text-align: right; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 21px; mso-line-height-rule: exactly;"><span th:utext="\${${newDateVar}}"/></div>`;
+        
+        return {
+          ...section,
+          id: newId,
+          content: newContent,
+          variables: newVariables
+        };
+      }
+      
+      // PROGRAM-NAME SECTIONS (uses dynamic var now for duplicates)
+      if (section.type === 'program-name') {
+        const newProgramVar = `programNameText_${cleanId}`;
+        const oldProgramVar = Object.keys(section.variables || {}).find(k => 
+          k === 'programNameText' || k.startsWith('programNameText_')
+        );
+        
+        const newVariables: Record<string, any> = {};
+        newVariables[newProgramVar] = oldProgramVar && section.variables?.[oldProgramVar]
+          ? section.variables[oldProgramVar]
+          : 'Program Name';
+        
+        const newContent = `<font style="font-size: 14px; line-height: 21px; color: #141414; font-weight: bold; font-family: ${OUTLOOK_FONT_FAMILY};"><span th:utext="\${${newProgramVar}}"/></font>`;
+        
+        return {
+          ...section,
+          id: newId,
+          content: newContent,
+          variables: newVariables
+        };
+      }
+      
+      // For all other sections (table, banner, image, link, button, container, etc.)
+      // Just update the ID but keep content/variables as-is
+      return { ...section, id: newId };
+    };
     
-    // Process children if they exist
+    // Process the main section
+    let duplicatedSection = regenerateSectionContent(sectionToDuplicate, newSectionId);
+    
+    // Process children recursively if they exist (for containers)
     if (sectionToDuplicate.children?.length) {
       duplicatedSection = {
         ...duplicatedSection,
         children: sectionToDuplicate.children.map(child => {
-          const newChildId = `child-${Date.now()}-${Math.random()}`;
-          return regenerateTextSectionContent(child, newChildId);
+          const newChildId = `child-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          return regenerateSectionContent(child, newChildId);
         })
       };
     }
