@@ -15,6 +15,7 @@ import styles from "./VariablesPanel.module.scss";
 interface VariablesPanelProps {
   variables: TemplateVariable[];
   onVariableValueChange?: (variableName: string, value: string) => void;
+  onFocusVariable?: (variableName: string | null) => void;
   readOnly?: boolean;
 }
 
@@ -44,6 +45,7 @@ const isSystemVariable = (varName: string): boolean => {
 export const VariablesPanel: React.FC<VariablesPanelProps> = ({
   variables,
   onVariableValueChange,
+  onFocusVariable,
   readOnly = false,
 }) => {
   // Track local edits for each variable
@@ -124,6 +126,8 @@ export const VariablesPanel: React.FC<VariablesPanelProps> = ({
                         id={`var-${variable.variableName}`}
                         value={getDisplayValue(variable)}
                         onChange={(e) => handleValueChange(variable.variableName, e.target.value)}
+                        onFocus={() => onFocusVariable?.(variable.variableName)}
+                        onBlur={() => onFocusVariable?.(null)}
                         placeholder={`Enter ${variable.variableLabel.toLowerCase()}`}
                         className={styles.variableInput}
                       />

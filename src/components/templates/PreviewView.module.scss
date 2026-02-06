@@ -162,3 +162,20 @@
     background-color: transparent;
   }
 }
+
+// Variable highlight animation for inline highlighting
+.previewContent {
+  // Inject animation keyframes into the preview content
+  :global {
+    @keyframes variableHighlightPulse {
+      0%, 100% {
+        background-color: #fef08a;
+        outline: 2px solid #eab308;
+      }
+      50% {
+        background-color: #fde047;
+        outline: 3px solid #ca8a04;
+      }
+    }
+  }
+}
