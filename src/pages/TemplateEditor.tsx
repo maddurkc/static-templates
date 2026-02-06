@@ -302,12 +302,14 @@ const TemplateEditor = () => {
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     
-    if (!over || !active.id.toString().startsWith('library-')) {
+    if (!over) {
       setDropIndicator(null);
       return;
     }
 
     const dropTargetId = String(over.id);
+    const activeId = String(active.id);
+    const isFromLibrary = activeId.startsWith('library-');
     
     // Skip if dropping on the main drop zone
     if (dropTargetId === 'editor-drop-zone') {
@@ -318,6 +320,12 @@ const TemplateEditor = () => {
     // Find the section being hovered over
     const overIndex = sections.findIndex(s => s.id === dropTargetId);
     if (overIndex === -1) {
+      setDropIndicator(null);
+      return;
+    }
+
+    // Don't show indicator if dragging over itself
+    if (!isFromLibrary && activeId === dropTargetId) {
       setDropIndicator(null);
       return;
     }
@@ -550,11 +558,36 @@ const TemplateEditor = () => {
       return;
     }
 
+    // Reordering existing sections
     if (active.id !== over.id) {
       setSections((items) => {
         const oldIndex = items.findIndex(item => item.id === active.id);
-        const newIndex = items.findIndex(item => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+        const overIndex = items.findIndex(item => item.id === over.id);
+        
+        if (oldIndex === -1 || overIndex === -1) return items;
+        
+        // Use drop indicator for precise positioning
+        if (currentDropIndicator && currentDropIndicator.sectionId === String(over.id)) {
+          // Calculate target index based on drop indicator position
+          let targetIndex = currentDropIndicator.position === 'after' ? overIndex + 1 : overIndex;
+          
+          // Adjust if moving from before the target position
+          if (oldIndex < targetIndex) {
+            targetIndex--;
+          }
+          
+          // Don't move if already in the right position
+          if (oldIndex === targetIndex) return items;
+          
+          // Remove from old position and insert at new position
+          const newItems = [...items];
+          const [removed] = newItems.splice(oldIndex, 1);
+          newItems.splice(targetIndex, 0, removed);
+          return newItems;
+        }
+        
+        // Fallback to simple swap if no indicator
+        return arrayMove(items, oldIndex, overIndex);
       });
     }
   };
