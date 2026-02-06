@@ -885,9 +885,14 @@ const TemplateEditor = () => {
         const oldItemsVar = section.variables?.listVariableName as string ||
           Object.keys(section.variables || {}).find(k => k.startsWith('items_'));
         
-        const newVariables: Record<string, any> = { ...section.variables };
+        // Create fresh variables object - don't spread old variables to avoid duplicate keys
+        const newVariables: Record<string, any> = {};
         
-        // Map label
+        // Copy contentType
+        const contentType = section.variables?.contentType || 'text';
+        newVariables.contentType = contentType;
+        
+        // Map label with new unique variable name
         if (oldLabelVar && section.variables?.[oldLabelVar]) {
           newVariables[newLabelVar] = section.variables[oldLabelVar];
         } else {
@@ -895,8 +900,7 @@ const TemplateEditor = () => {
         }
         newVariables.labelVariableName = newLabelVar;
         
-        // Map content based on content type
-        const contentType = section.variables?.contentType || 'text';
+        // Map content based on content type with new unique variable names
         if (contentType === 'text') {
           if (oldContentVar && section.variables?.[oldContentVar]) {
             newVariables[newContentVar] = section.variables[oldContentVar];
@@ -911,6 +915,9 @@ const TemplateEditor = () => {
             newVariables[newItemsVar] = section.variables?.items || [{ text: 'Item 1', children: [] }, { text: 'Item 2', children: [] }];
           }
           newVariables.listVariableName = newItemsVar;
+          newVariables.listStyle = section.variables?.listStyle || 'circle';
+        } else if (contentType === 'table') {
+          newVariables.tableData = section.variables?.tableData || { headers: ['Column 1', 'Column 2'], rows: [['Cell 1', 'Cell 2']] };
         }
         
         const newContent = `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family: ${OUTLOOK_FONT_FAMILY};"><tr><td style="padding: 0;"><div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;"><span th:utext="\${${newLabelVar}}"/></div><div><span th:utext="\${${newContentVar}}"/></div></td></tr></table>`;
