@@ -1,38 +1,55 @@
 /**
  * Variables Panel Styles
+ * Clean, modern design for custom placeholder management
  */
 
 .panel {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: hsl(var(--card));
-  border-radius: 8px;
-  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
 }
 
 .panelHeader {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
+  align-items: flex-start;
+  padding: 16px;
+  border-bottom: 1px solid hsl(var(--border));
   flex-shrink: 0;
 }
 
+.headerContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: hsl(var(--foreground));
   margin: 0;
 }
 
-.stats {
-  display: flex;
-  gap: 6px;
+.subtitle {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
 }
 
-.separator {
-  flex-shrink: 0;
+.countBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+  border-radius: 12px;
 }
 
 .scrollArea {
@@ -41,66 +58,30 @@
 }
 
 .content {
-  padding: 12px;
+  padding: 16px;
 }
 
-.group {
-  margin-bottom: 8px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.groupTrigger {
-  width: 100%;
+.variablesList {
   display: flex;
-  align-items: center;
-  padding: 8px 10px;
-  background: hsl(var(--muted) / 0.5);
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.variableCard {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  padding: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 
   &:hover {
-    background: hsl(var(--muted));
+    border-color: hsl(var(--primary) / 0.3);
+    box-shadow: 0 2px 8px hsl(var(--primary) / 0.08);
   }
-}
 
-.groupHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.groupTitle {
-  font-size: 13px;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  flex: 1;
-  text-align: left;
-}
-
-.countBadge {
-  font-size: 11px;
-  padding: 2px 6px;
-}
-
-.groupContent {
-  padding: 8px 0 0 0;
-}
-
-.variableItem {
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: 6px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-
-  &:last-child {
-    margin-bottom: 0;
+  &:focus-within {
+    border-color: hsl(var(--primary) / 0.5);
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
   }
 }
 
@@ -108,122 +89,109 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
-.variableName {
+.variableNameWrapper {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .variableCode {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-  font-size: 12px;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 13px;
+  font-weight: 500;
   color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
+  background: hsl(var(--primary) / 0.08);
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: -0.3px;
 }
 
-.typeBadge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  padding: 2px 8px;
-
-  span {
-    text-transform: capitalize;
-  }
+.editIcon {
+  width: 14px;
+  height: 14px;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.6;
 }
 
-.variableDetails {
+.variableBody {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .variableLabel {
   font-size: 12px;
+  font-weight: 500;
   color: hsl(var(--muted-foreground));
 }
 
-.variableControls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 6px;
-  border-top: 1px solid hsl(var(--border) / 0.5);
+.variableInput {
+  height: 38px;
+  font-size: 14px;
+  border-radius: 8px;
+  
+  &::placeholder {
+    color: hsl(var(--muted-foreground) / 0.5);
+  }
+  
+  &:focus {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+  }
 }
 
-.controlRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.checkboxWrapper {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.checkboxLabel {
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-}
-
-.inputLabel {
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-  min-width: 50px;
-}
-
-.defaultInput {
-  flex: 1;
-  height: 28px;
-  font-size: 12px;
-}
-
-.sectionLink {
+.variableValue {
+  font-size: 14px;
+  color: hsl(var(--foreground));
+  padding: 8px 12px;
+  background: hsl(var(--muted) / 0.3);
+  border-radius: 6px;
+  min-height: 38px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
 }
 
-.sectionLinkLabel {
-  color: hsl(var(--muted-foreground));
+.noValue {
+  color: hsl(var(--muted-foreground) / 0.5);
+  font-style: italic;
 }
 
-.sectionId {
-  font-family: monospace;
-  font-size: 10px;
-  color: hsl(var(--muted-foreground));
-  background: hsl(var(--muted) / 0.5);
-  padding: 1px 4px;
-  border-radius: 3px;
-}
-
+// Empty state
 .emptyState {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
+  padding: 48px 24px;
   text-align: center;
-  gap: 8px;
+  gap: 12px;
+}
 
-  p {
-    font-size: 13px;
-    color: hsl(var(--muted-foreground));
-    margin: 0;
-  }
+.emptyIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: hsl(var(--muted) / 0.5);
+  border-radius: 14px;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 4px;
+}
+
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 0;
 }
 
 .emptyHint {
-  font-size: 11px;
-  color: hsl(var(--muted-foreground) / 0.7);
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  max-width: 220px;
+  line-height: 1.5;
 }
