@@ -2854,16 +2854,75 @@ const RunTemplates = () => {
                               updatedVars[labelVarName] = labelVariables[labelVarName];
                             }
                             
-                            // For text content type, inject content from variables
-                            if (contentType === 'text' && variables[textVarName] !== undefined) {
-                              const textValue = typeof variables[textVarName] === 'object'
-                                ? (variables[textVarName] as any).text
-                                : variables[textVarName];
-                              updatedVars.content = textValue;
-                              updatedVars[textVarName] = textValue;
+                        // For text content type, inject content from variables and resolve placeholders
+                        if (contentType === 'text') {
+                          let textValue = '';
+                          if (variables[textVarName] !== undefined) {
+                            textValue = typeof variables[textVarName] === 'object'
+                              ? (variables[textVarName] as any).text
+                              : String(variables[textVarName]);
+                          } else if (s.variables?.[textVarName] !== undefined) {
+                            textValue = String(s.variables[textVarName]);
+                          } else if (s.variables?.content !== undefined) {
+                            textValue = String(s.variables.content);
+                          }
+                          
+                          // Resolve {{placeholder}} patterns in text content with runtime values
+                          textValue = textValue.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+                            if (variables[varName] !== undefined) {
+                              const val = variables[varName];
+                              return typeof val === 'object' ? (val as any).text : String(val);
                             }
-                            
-                            updated = { ...updated, variables: updatedVars };
+                            return match; // Keep placeholder if not found
+                          });
+                          
+                          updatedVars.content = textValue;
+                          updatedVars[textVarName] = textValue;
+                          
+                          // Also add resolved placeholder values to updatedVars for renderSectionContent
+                          Object.keys(variables).forEach(varKey => {
+                            if (varKey !== textVarName && varKey !== 'content') {
+                              const val = variables[varKey];
+                              updatedVars[varKey] = typeof val === 'object' ? (val as any).text : val;
+                            }
+                          });
+                        }
+                        
+                        // For list content type, inject items from listVariables and resolve placeholders
+                        if (contentType === 'list') {
+                          const listVarName = (s.variables?.listVariableName as string) || `items_${s.id}`;
+                          if (listVariables[listVarName] !== undefined) {
+                            const items = listVariables[listVarName] as (string | ListItemStyle)[];
+                            // Resolve {{placeholder}} patterns in list items
+                            const resolvedItems = items.map(item => {
+                              if (typeof item === 'string') {
+                                return item.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+                                  if (variables[varName] !== undefined) {
+                                    const val = variables[varName];
+                                    return typeof val === 'object' ? (val as any).text : String(val);
+                                  }
+                                  return match;
+                                });
+                              } else if (typeof item === 'object' && 'text' in item) {
+                                return {
+                                  ...item,
+                                  text: item.text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+                                    if (variables[varName] !== undefined) {
+                                      const val = variables[varName];
+                                      return typeof val === 'object' ? (val as any).text : String(val);
+                                    }
+                                    return match;
+                                  })
+                                };
+                              }
+                              return item;
+                            });
+                            updatedVars.items = resolvedItems;
+                            updatedVars[listVarName] = resolvedItems;
+                          }
+                        }
+                        
+                        updated = { ...updated, variables: updatedVars };
                           }
                           
                           // For heading/text/paragraph sections, inject edited content

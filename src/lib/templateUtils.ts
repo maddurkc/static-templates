@@ -338,11 +338,59 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         const listTag = getListTag(listStyle);
         const listStyleType = getListStyleType(listStyle);
         
+        // Resolve {{placeholder}} patterns in list items before rendering
+        const resolvedItems = runtimeValue.map((item: any) => {
+          if (typeof item === 'string') {
+            return item.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+              if (variables && variables[varName] !== undefined) {
+                const val = variables[varName];
+                return typeof val === 'object' && val !== null && 'text' in val 
+                  ? String(val.text) 
+                  : String(val);
+              }
+              if (section.variables && section.variables[varName] !== undefined) {
+                return String(section.variables[varName]);
+              }
+              return match;
+            });
+          } else if (typeof item === 'object' && item !== null && 'text' in item) {
+            return {
+              ...item,
+              text: item.text.replace(/\{\{(\w+)\}\}/g, (match: string, varName: string) => {
+                if (variables && variables[varName] !== undefined) {
+                  const val = variables[varName];
+                  return typeof val === 'object' && val !== null && 'text' in val 
+                    ? String(val.text) 
+                    : String(val);
+                }
+                if (section.variables && section.variables[varName] !== undefined) {
+                  return String(section.variables[varName]);
+                }
+                return match;
+              })
+            };
+          }
+          return item;
+        });
+        
         // Use Outlook-compatible table-based list rendering
-        contentHtml = `<div style="padding-left: 20px; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414;">${renderOutlookCompatibleListWithNesting(runtimeValue, listTag, listStyleType)}</div>`;
+        contentHtml = `<div style="padding-left: 20px; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414;">${renderOutlookCompatibleListWithNesting(resolvedItems, listTag, listStyleType)}</div>`;
       } else if (typeof runtimeValue === 'string') {
+        // Resolve any remaining {{placeholder}} patterns with runtime variables
+        let resolvedContent = runtimeValue.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+          if (variables && variables[varName] !== undefined) {
+            const val = variables[varName];
+            return typeof val === 'object' && val !== null && 'text' in val 
+              ? String(val.text) 
+              : String(val);
+          }
+          if (section.variables && section.variables[varName] !== undefined) {
+            return String(section.variables[varName]);
+          }
+          return match; // Keep placeholder if not resolved
+        });
         // Convert newlines to <br> tags for Outlook compatibility
-        const formattedContent = sanitizeInput(runtimeValue).replace(/\n/g, '<br/>');
+        const formattedContent = sanitizeInput(resolvedContent).replace(/\n/g, '<br/>');
         contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; padding-left: 20px;">${formattedContent}</div>`;
       } else if (typeof runtimeValue === 'object' && runtimeValue !== null && 'text' in runtimeValue) {
         // Handle TextStyle object with styling properties
