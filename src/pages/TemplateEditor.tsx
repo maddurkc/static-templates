@@ -1131,13 +1131,37 @@ const TemplateEditor = () => {
 
   const handleCopyStyles = (id: string) => {
     const section = sections.find(s => s.id === id);
-    if (section?.styles) {
-      setCopiedStyles(section.styles);
+    if (!section) {
       toast({
-        title: "Styles copied",
-        description: "Section styles have been copied to clipboard.",
+        title: "Section not found",
+        description: "Could not find the section to copy styles from.",
+        variant: "destructive",
       });
+      return;
     }
+
+    // Get styles - use explicit styles, or default styles for the section type
+    let stylesToCopy = section.styles;
+    
+    if (!stylesToCopy || Object.keys(stylesToCopy).length === 0) {
+      // Try to get default styles for headings
+      if (section.type.startsWith('heading') && headingDefaultStyles[section.type]) {
+        stylesToCopy = { ...headingDefaultStyles[section.type] };
+      } else {
+        // Use base default styles
+        stylesToCopy = { 
+          fontSize: '14px', 
+          color: '#333333', 
+          fontFamily: OUTLOOK_FONT_FAMILY 
+        };
+      }
+    }
+
+    setCopiedStyles({ ...stylesToCopy });
+    toast({
+      title: "Styles copied",
+      description: "Section styles have been copied to clipboard.",
+    });
   };
 
   const handlePasteStyles = (id: string) => {
@@ -1154,7 +1178,7 @@ const TemplateEditor = () => {
     if (section) {
       const updatedSection = {
         ...section,
-        styles: copiedStyles
+        styles: { ...copiedStyles }
       };
       handleUpdateSection(updatedSection);
       toast({
