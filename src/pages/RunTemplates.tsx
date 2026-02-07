@@ -1168,6 +1168,127 @@ const RunTemplates = () => {
             });
           }
         }
+        
+        // Add labeled-content section custom placeholders to payload
+        if (section.type === 'labeled-content') {
+          const contentType = section.variables?.contentType || 'text';
+          
+          // For text type - extract placeholders from text content
+          if (contentType === 'text') {
+            const textVarName = (section.variables?.textVariableName as string) || section.id;
+            let textContent = '';
+            
+            // Get the text content (from variables state or section.variables)
+            if (variables[textVarName] !== undefined) {
+              const val = variables[textVarName];
+              textContent = typeof val === 'object' && val !== null && 'text' in val 
+                ? (val as TextStyle).text 
+                : String(val);
+            } else if (section.variables?.[textVarName] !== undefined) {
+              textContent = String(section.variables[textVarName]);
+            }
+            
+            // Extract and add all placeholders from the text content
+            const placeholderMatches = textContent.match(/\{\{(\w+)\}\}/g) || [];
+            placeholderMatches.forEach(match => {
+              const varName = match.replace(/\{\{|\}\}/g, '');
+              if (variables[varName] !== undefined) {
+                bodyData[varName] = generateStyledHtml(variables[varName]);
+              }
+            });
+            
+            // Also add the main text variable with placeholders resolved
+            if (textContent) {
+              let resolvedContent = textContent;
+              placeholderMatches.forEach(match => {
+                const varName = match.replace(/\{\{|\}\}/g, '');
+                if (variables[varName] !== undefined) {
+                  const val = variables[varName];
+                  const resolvedVal = typeof val === 'object' && val !== null && 'text' in val 
+                    ? (val as TextStyle).text 
+                    : String(val);
+                  resolvedContent = resolvedContent.replace(match, resolvedVal);
+                }
+              });
+              bodyData[textVarName] = resolvedContent;
+            }
+          }
+          
+          // For list type - extract placeholders from list items
+          if (contentType === 'list') {
+            const listVarName = (section.variables?.listVariableName as string) || `items_${section.id}`;
+            const items = listVariables[listVarName] || section.variables?.items || [];
+            
+            if (Array.isArray(items)) {
+              items.forEach((item: any) => {
+                const itemText = typeof item === 'object' && 'text' in item ? item.text : String(item);
+                const placeholderMatches = itemText.match(/\{\{(\w+)\}\}/g) || [];
+                placeholderMatches.forEach((match: string) => {
+                  const varName = match.replace(/\{\{|\}\}/g, '');
+                  if (variables[varName] !== undefined) {
+                    bodyData[varName] = generateStyledHtml(variables[varName]);
+                  }
+                });
+              });
+              
+              // Also add the list items with placeholders resolved
+              const resolvedItems = items.map((item: any) => {
+                const itemText = typeof item === 'object' && 'text' in item ? item.text : String(item);
+                let resolvedText = itemText;
+                const placeholderMatches = itemText.match(/\{\{(\w+)\}\}/g) || [];
+                placeholderMatches.forEach((match: string) => {
+                  const varName = match.replace(/\{\{|\}\}/g, '');
+                  if (variables[varName] !== undefined) {
+                    const val = variables[varName];
+                    const resolvedVal = typeof val === 'object' && val !== null && 'text' in val 
+                      ? (val as TextStyle).text 
+                      : String(val);
+                    resolvedText = resolvedText.replace(match, resolvedVal);
+                  }
+                });
+                
+                // Preserve styling if present
+                if (typeof item === 'object' && 'text' in item) {
+                  return { ...item, text: resolvedText };
+                }
+                return resolvedText;
+              });
+              
+              bodyData[listVarName] = resolvedItems.map((item: any) => {
+                if (typeof item === 'object' && 'text' in item) {
+                  const itemStyle = item as ListItemStyle;
+                  const hasStyles = itemStyle.color || itemStyle.bold || itemStyle.italic || 
+                                    itemStyle.underline || itemStyle.backgroundColor || itemStyle.fontSize;
+                  if (hasStyles) {
+                    const styles = [];
+                    if (itemStyle.color) styles.push(`color: ${itemStyle.color}`);
+                    if (itemStyle.bold) styles.push('font-weight: bold');
+                    if (itemStyle.italic) styles.push('font-style: italic');
+                    if (itemStyle.underline) styles.push('text-decoration: underline');
+                    if (itemStyle.backgroundColor) styles.push(`background-color: ${itemStyle.backgroundColor}`);
+                    if (itemStyle.fontSize) styles.push(`font-size: ${itemStyle.fontSize}`);
+                    return `<span style="${styles.join('; ')}">${itemStyle.text}</span>`;
+                  }
+                  return itemStyle.text;
+                }
+                return item;
+              });
+            }
+          }
+          
+          // Extract placeholders from label as well
+          const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
+          const labelValue = labelVariables[labelVarName] || section.variables?.label || '';
+          if (typeof labelValue === 'string') {
+            const labelPlaceholders = labelValue.match(/\{\{(\w+)\}\}/g) || [];
+            labelPlaceholders.forEach(match => {
+              const varName = match.replace(/\{\{|\}\}/g, '');
+              if (variables[varName] !== undefined) {
+                bodyData[varName] = generateStyledHtml(variables[varName]);
+              }
+            });
+          }
+        }
       });
     }
 
