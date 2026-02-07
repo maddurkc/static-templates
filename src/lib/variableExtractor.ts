@@ -163,7 +163,7 @@ export const extractSectionVariables = (
       });
     }
 
-    // Check content field for placeholders (mixed-content)
+    // Check content field for placeholders (mixed-content and labeled-content text type)
     if (typeof section.variables.content === 'string') {
       const contentVars = [
         ...extractPlaceholders(section.variables.content),
@@ -180,6 +180,57 @@ export const extractSectionVariables = (
             isRequired: false,
             sectionId: section.id,
             source,
+          });
+        }
+      });
+    }
+    
+    // Check textVariableName content for placeholders (labeled-content text type)
+    const textVarName = section.variables.textVariableName as string;
+    if (textVarName && typeof section.variables[textVarName] === 'string') {
+      const textContent = section.variables[textVarName] as string;
+      const textVars = [
+        ...extractPlaceholders(textContent),
+        ...extractThymeleafVariables(textContent)
+      ];
+      textVars.forEach(varName => {
+        if (!processedVars.has(varName)) {
+          processedVars.add(varName);
+          variables.push({
+            variableName: varName,
+            variableLabel: createLabel(varName),
+            variableType: 'text',
+            defaultValue: getDefaultValue(varName, section),
+            isRequired: false,
+            sectionId: section.id,
+            source,
+          });
+        }
+      });
+    }
+    
+    // Check list items for placeholders (labeled-content list type)
+    if (Array.isArray(section.variables.items)) {
+      section.variables.items.forEach((item: any) => {
+        const itemText = typeof item === 'object' ? item.text : item;
+        if (typeof itemText === 'string') {
+          const itemVars = [
+            ...extractPlaceholders(itemText),
+            ...extractThymeleafVariables(itemText)
+          ];
+          itemVars.forEach(varName => {
+            if (!processedVars.has(varName)) {
+              processedVars.add(varName);
+              variables.push({
+                variableName: varName,
+                variableLabel: createLabel(varName),
+                variableType: 'text',
+                defaultValue: getDefaultValue(varName, section),
+                isRequired: false,
+                sectionId: section.id,
+                source,
+              });
+            }
           });
         }
       });

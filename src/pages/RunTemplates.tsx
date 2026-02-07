@@ -710,12 +710,46 @@ const RunTemplates = () => {
           if (section.variables?.contentType === 'list') {
             const listVarName = (section.variables.listVariableName as string) || section.id;
             varsFromSections.add(listVarName);
+            
+            // Extract placeholders from list items
+            const items = section.variables?.items as (string | ListItemStyle)[];
+            if (items && Array.isArray(items)) {
+              items.forEach(item => {
+                const itemText = typeof item === 'object' ? item.text : item;
+                if (itemText) {
+                  // Extract {{placeholder}} patterns
+                  const placeholderMatches = itemText.match(/\{\{(\w+)\}\}/g) || [];
+                  placeholderMatches.forEach((match: string) => {
+                    const varName = match.replace(/\{\{|\}\}/g, '');
+                    varsFromSections.add(varName);
+                  });
+                  // Also extract Thymeleaf variables
+                  const thymeleafVars = extractVariables(itemText);
+                  thymeleafVars.forEach(v => varsFromSections.add(v));
+                }
+              });
+            }
           } else if (section.variables?.contentType === 'table') {
             // For table content, use section ID as the variable key
             varsFromSections.add(section.id);
           } else {
-            // For text content, use section ID as the variable key
-            varsFromSections.add(section.id);
+            // For text content, use textVariableName or section ID as the variable key
+            const textVarName = (section.variables?.textVariableName as string) || section.id;
+            varsFromSections.add(textVarName);
+            
+            // Extract placeholders from text content
+            const textContent = section.variables?.[textVarName] as string || section.variables?.content as string || '';
+            if (textContent) {
+              // Extract {{placeholder}} patterns
+              const placeholderMatches = textContent.match(/\{\{(\w+)\}\}/g) || [];
+              placeholderMatches.forEach((match: string) => {
+                const varName = match.replace(/\{\{|\}\}/g, '');
+                varsFromSections.add(varName);
+              });
+              // Also extract Thymeleaf variables
+              const thymeleafVars = extractVariables(textContent);
+              thymeleafVars.forEach(v => varsFromSections.add(v));
+            }
           }
           
           // Extract any user-defined variables (not metadata)
@@ -1664,80 +1698,188 @@ const RunTemplates = () => {
                                         });
                                     }
                                     
+                                    // Extract placeholders from the text content
+                                    const textPlaceholders: string[] = [];
+                                    const placeholderMatches = textContent.match(/\{\{(\w+)\}\}/g) || [];
+                                    placeholderMatches.forEach((match: string) => {
+                                      const varName = match.replace(/\{\{|\}\}/g, '');
+                                      if (!textPlaceholders.includes(varName)) textPlaceholders.push(varName);
+                                    });
+                                    
+                                    // Also check the stored content for Thymeleaf patterns
+                                    const storedContent = section.variables?.[textVarName] as string || section.variables?.content as string || '';
+                                    const thymeleafMatches = storedContent.match(/<span\s+th:utext="\$\{(\w+)\}"\/>/g) || [];
+                                    thymeleafMatches.forEach((match: string) => {
+                                      const varNameMatch = match.match(/\$\{(\w+)\}/);
+                                      if (varNameMatch && !textPlaceholders.includes(varNameMatch[1])) {
+                                        textPlaceholders.push(varNameMatch[1]);
+                                      }
+                                    });
+                                    
                                     return (
-                                      <div className={styles.inputWrapper}>
-                                        <RichTextEditor
-                                          value={textContent}
-                                          onChange={(html) => setVariables(prev => ({
-                                            ...prev,
-                                            [textVarName]: html
-                                          }))}
-                                          onFocus={() => scrollToSection(section.id)}
-                                          rows={4}
-                                          placeholder="Enter content... (select text to apply styles)"
+                                      <>
+                                        {/* Main text content preview */}
+                                        <div 
+                                          className="px-3 py-2 bg-muted/30 rounded border border-border/50 text-sm mb-2"
+                                          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                                          dangerouslySetInnerHTML={{ __html: textContent || '<span class="text-muted-foreground">No content</span>' }}
                                         />
-                                      </div>
+                                        
+                                        {/* Individual placeholder inputs */}
+                                        {textPlaceholders.length > 0 && (
+                                          <div className="ml-4 pl-3 border-l-2 border-dashed border-border/50 space-y-2 mt-2">
+                                            {textPlaceholders.map(varName => (
+                                              <div key={varName} className={styles.formField}>
+                                                <Popover>
+                                                  <PopoverTrigger asChild>
+                                                    <Label htmlFor={`labeled-text-var-${section.id}-${varName}`} className="text-sm font-medium cursor-help mb-1 inline-block">
+                                                      {varName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                                    </Label>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent className="w-auto p-2" side="top" align="start">
+                                                    <span className="text-xs text-muted-foreground">{`{{${varName}}}`}</span>
+                                                  </PopoverContent>
+                                                </Popover>
+                                                <div className={styles.inputWrapper}>
+                                                  <RichTextEditor
+                                                    value={typeof variables[varName] === 'object' 
+                                                      ? (variables[varName] as TextStyle).text 
+                                                      : (variables[varName] as string) || ''
+                                                    }
+                                                    onChange={(html) => {
+                                                      setVariables(prev => ({
+                                                        ...prev,
+                                                        [varName]: html
+                                                      }));
+                                                    }}
+                                                    onFocus={() => scrollToSection(section.id)}
+                                                    placeholder={`Enter ${varName}...`}
+                                                    singleLine
+                                                  />
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
                                     );
                                   })()}
                                   
-                                  {contentType === 'list' && (
-                                    <div className="space-y-2">
-                                      {((listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[]).map((item: string | ListItemStyle, itemIdx: number) => (
-                                        <div key={itemIdx} className={styles.listItemRow}>
-                                          <span className="text-xs text-muted-foreground w-4">{itemIdx + 1}.</span>
-                                          <RichTextEditor
-                                            value={typeof item === 'object' ? item.text : item}
-                                            onChange={(html) => {
-                                              const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
-                                              const newItems = [...currentItems] as (string | ListItemStyle)[];
-                                              newItems[itemIdx] = html;
-                                              setListVariables(prev => ({
-                                                ...prev,
-                                                [listVarName]: newItems as string[] | ListItemStyle[]
-                                              }));
-                                            }}
-                                            onFocus={() => scrollToSection(section.id)}
-                                            placeholder="List item..."
-                                            singleLine
-                                            className="flex-1"
-                                          />
+                                  {contentType === 'list' && (() => {
+                                    const listItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                    
+                                    // Extract all placeholders from all list items
+                                    const listPlaceholders: string[] = [];
+                                    listItems.forEach((item: string | ListItemStyle) => {
+                                      const itemText = typeof item === 'object' ? item.text : item;
+                                      if (itemText) {
+                                        const placeholderMatches = itemText.match(/\{\{(\w+)\}\}/g) || [];
+                                        placeholderMatches.forEach((match: string) => {
+                                          const varName = match.replace(/\{\{|\}\}/g, '');
+                                          if (!listPlaceholders.includes(varName)) listPlaceholders.push(varName);
+                                        });
+                                      }
+                                    });
+                                    
+                                    return (
+                                      <>
+                                        <div className="space-y-2">
+                                          {listItems.map((item: string | ListItemStyle, itemIdx: number) => (
+                                            <div key={itemIdx} className={styles.listItemRow}>
+                                              <span className="text-xs text-muted-foreground w-4">{itemIdx + 1}.</span>
+                                              <RichTextEditor
+                                                value={typeof item === 'object' ? item.text : item}
+                                                onChange={(html) => {
+                                                  const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                                  const newItems = [...currentItems] as (string | ListItemStyle)[];
+                                                  newItems[itemIdx] = html;
+                                                  setListVariables(prev => ({
+                                                    ...prev,
+                                                    [listVarName]: newItems as string[] | ListItemStyle[]
+                                                  }));
+                                                }}
+                                                onFocus={() => scrollToSection(section.id)}
+                                                placeholder="List item..."
+                                                singleLine
+                                                className="flex-1"
+                                              />
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => {
+                                                  const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
+                                                  if (currentItems.length > 1) {
+                                                    const newItems = currentItems.filter((_, i) => i !== itemIdx) as (string | ListItemStyle)[];
+                                                    setListVariables(prev => ({
+                                                      ...prev,
+                                                      [listVarName]: newItems as string[] | ListItemStyle[]
+                                                    }));
+                                                  }
+                                                }}
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+                                          ))}
                                           <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8"
+                                            variant="outline"
+                                            size="sm"
                                             onClick={() => {
                                               const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
-                                              if (currentItems.length > 1) {
-                                                const newItems = currentItems.filter((_, i) => i !== itemIdx) as (string | ListItemStyle)[];
-                                                setListVariables(prev => ({
-                                                  ...prev,
-                                                  [listVarName]: newItems as string[] | ListItemStyle[]
-                                                }));
-                                              }
+                                              setListVariables(prev => ({
+                                                ...prev,
+                                                [listVarName]: [...currentItems, ''] as string[] | ListItemStyle[]
+                                              }));
+                                              scrollToSection(section.id);
                                             }}
+                                            className="h-7"
                                           >
-                                            <Trash2 className="h-3 w-3" />
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Add Item
                                           </Button>
                                         </div>
-                                      ))}
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                          const currentItems = (listVariables[listVarName] || section.variables?.items || ['']) as (string | ListItemStyle)[];
-                                          setListVariables(prev => ({
-                                            ...prev,
-                                            [listVarName]: [...currentItems, ''] as string[] | ListItemStyle[]
-                                          }));
-                                          scrollToSection(section.id);
-                                        }}
-                                        className="h-7"
-                                      >
-                                        <Plus className="h-3 w-3 mr-1" />
-                                        Add Item
-                                      </Button>
-                                    </div>
-                                  )}
+                                        
+                                        {/* Individual placeholder inputs for list items */}
+                                        {listPlaceholders.length > 0 && (
+                                          <div className="ml-4 pl-3 border-l-2 border-dashed border-border/50 space-y-2 mt-3">
+                                            <div className="text-xs text-muted-foreground mb-1">Placeholders in list items:</div>
+                                            {listPlaceholders.map(varName => (
+                                              <div key={varName} className={styles.formField}>
+                                                <Popover>
+                                                  <PopoverTrigger asChild>
+                                                    <Label htmlFor={`labeled-list-var-${section.id}-${varName}`} className="text-sm font-medium cursor-help mb-1 inline-block">
+                                                      {varName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                                    </Label>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent className="w-auto p-2" side="top" align="start">
+                                                    <span className="text-xs text-muted-foreground">{`{{${varName}}}`}</span>
+                                                  </PopoverContent>
+                                                </Popover>
+                                                <div className={styles.inputWrapper}>
+                                                  <RichTextEditor
+                                                    value={typeof variables[varName] === 'object' 
+                                                      ? (variables[varName] as TextStyle).text 
+                                                      : (variables[varName] as string) || ''
+                                                    }
+                                                    onChange={(html) => {
+                                                      setVariables(prev => ({
+                                                        ...prev,
+                                                        [varName]: html
+                                                      }));
+                                                    }}
+                                                    onFocus={() => scrollToSection(section.id)}
+                                                    placeholder={`Enter ${varName}...`}
+                                                    singleLine
+                                                  />
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                   
                                   {contentType === 'table' && (() => {
                                     const tableData = tableVariables[section.id] || getTableData(section.id);
