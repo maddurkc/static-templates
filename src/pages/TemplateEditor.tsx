@@ -817,13 +817,32 @@ const TemplateEditor = () => {
       const cleanId = newId.replace(/[^a-zA-Z0-9]/g, '_');
       
       // TEXT-BASED SECTIONS (headings, text, paragraph, static-text)
+      // Match the exact pattern used when creating via drag-and-drop from SectionLibrary
       if (isTextBasedSection(section.type)) {
         const newVariableName = generateTextSectionVariableName(section.type, newId);
-        let newContent: string;
         
+        // Get the old variable name from stored metadata first, then fallback to finding keys
+        const storedOldVarName = section.variables?.textVariableName as string;
+        const oldVariableName = storedOldVarName || Object.keys(section.variables || {}).find(key => 
+          key.startsWith('heading') || 
+          key.startsWith('textContent_') || 
+          key.startsWith('paragraphContent_') ||
+          key.startsWith('staticContent_') ||
+          key.startsWith('content_')
+        );
+        
+        // Copy the content value from the original section
+        let contentValue = sectionDef?.variables?.[0]?.defaultValue || 'Your text here';
+        if (oldVariableName && section.variables?.[oldVariableName] !== undefined) {
+          contentValue = section.variables[oldVariableName];
+        }
+        
+        // Generate new content with the new variable name - match drag-drop pattern exactly
+        let newContent: string;
         if (section.type.startsWith('heading')) {
           const level = section.type.replace('heading', '');
           const tag = `h${level}`;
+          // Use inline styles from sectionDef defaultContent for consistency
           const defaultStyles = sectionDef ? extractInlineStyles(sectionDef.defaultContent) : '';
           newContent = `<${tag} style="${defaultStyles}"><span th:utext="\${${newVariableName}}"/></${tag}>`;
         } else if (section.type === 'text') {
@@ -836,25 +855,23 @@ const TemplateEditor = () => {
           newContent = `<span th:utext="\${${newVariableName}}"/>`;
         }
         
-        // Get the old variable name to copy its value
-        const oldVariableName = Object.keys(section.variables || {}).find(key => 
-          key.startsWith('heading') || 
-          key.startsWith('textContent_') || 
-          key.startsWith('paragraphContent_') ||
-          key.startsWith('staticContent_') ||
-          key.startsWith('content_')
-        );
-        
+        // Create fresh variables object - store the new variable name for tracking
         const newVariables: Record<string, any> = {};
-        if (oldVariableName && section.variables?.[oldVariableName]) {
-          newVariables[newVariableName] = section.variables[oldVariableName];
-        }
+        newVariables['textVariableName'] = newVariableName;
+        newVariables[newVariableName] = contentValue;
+        
+        // Copy the styles from the original section (match drag-drop pattern)
+        const copiedStyles = section.styles ? { ...section.styles } : 
+          (section.type.startsWith('heading') && headingDefaultStyles[section.type] 
+            ? { ...headingDefaultStyles[section.type] }
+            : { fontSize: '14px', color: '#333333', fontFamily: OUTLOOK_FONT_FAMILY });
         
         return {
           ...section,
           id: newId,
           content: newContent,
-          variables: { ...section.variables, ...newVariables }
+          variables: newVariables,
+          styles: copiedStyles
         };
       }
       
