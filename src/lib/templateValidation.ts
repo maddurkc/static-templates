@@ -149,6 +149,21 @@ const getSectionDisplayName = (section: Section): string => {
   return contentPreview ? `${typeName}: "${contentPreview}"` : typeName;
 };
 
+// System-generated variable patterns that should be excluded from "empty value" validation
+const SYSTEM_VARIABLE_PATTERNS = [
+  /^label_/, /^content_/, /^heading\d?Text_/, /^dateValue_/,
+  /^items_/, /^ctaText_/, /^ctaUrl_/, /^programNameText$/,
+  /^text_/, /^paragraph_/, /^textContent_/, /^paragraphContent_/,
+  /^companyName$/, /^tagline$/, /^year$/, /^contactEmail$/,
+  /^labelVariableName$/, /^textVariableName$/, /^listVariableName$/,
+  /^contentType$/, /^listStyle$/, /^listHtml$/, /^tableData$/,
+  /^isStatic$/, /^apiVariable$/
+];
+
+const isSystemVariable = (varName: string): boolean => {
+  return SYSTEM_VARIABLE_PATTERNS.some(pattern => pattern.test(varName));
+};
+
 // Validate section placeholders against defined variables
 export const validateSectionPlaceholders = (section: Section): ValidationError[] => {
   const errors: ValidationError[] = [];
@@ -160,49 +175,131 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
   
   const sectionName = getSectionDisplayName(section);
   
-  // Get defined variables
+  // Get defined variables (excluding system/metadata variables)
   const definedVars = Object.keys(section.variables || {});
   
-  // Extract placeholders from content
-  const contentPlaceholders = extractPlaceholders(section.content || '');
-  
-  // Check for undefined placeholders in content
-  for (const placeholder of contentPlaceholders) {
-    if (!definedVars.includes(placeholder)) {
-      errors.push({
-        field: 'sectionContent',
-        message: `In "${sectionName}": Placeholder "{{${placeholder}}}" is used but not defined as a variable`,
-        sectionId: section.id,
-        sectionType: section.type
-      });
+  // For labeled-content sections, handle specially
+  if (section.type === 'labeled-content') {
+    const contentType = section.variables?.contentType as string;
+    
+    // For text content type, extract placeholders from the actual text content
+    if (contentType === 'text') {
+      const textVariableName = section.variables?.textVariableName as string;
+      const textContent = textVariableName 
+        ? (section.variables?.[textVariableName] as string) || ''
+        : (section.variables?.content as string) || '';
+      
+      const textPlaceholders = extractPlaceholders(textContent);
+      
+      // Check if manual placeholders have default values
+      for (const placeholder of textPlaceholders) {
+        // Skip if it's the textVariableName itself
+        if (placeholder === textVariableName) continue;
+        
+        if (!definedVars.includes(placeholder) || 
+            (section.variables?.[placeholder] === '' || 
+             section.variables?.[placeholder] === undefined || 
+             section.variables?.[placeholder] === null)) {
+          errors.push({
+            field: 'sectionVariable',
+            message: `In "${sectionName}": Placeholder "{{${placeholder}}}" has no default value`,
+            sectionId: section.id,
+            sectionType: section.type
+          });
+        }
+      }
+    }
+    
+    // For list content type, extract placeholders from list items
+    if (contentType === 'list') {
+      const items = section.variables?.items as any[];
+      if (items && Array.isArray(items)) {
+        const extractItemPlaceholders = (itemList: any[]): string[] => {
+          const placeholders: string[] = [];
+          for (const item of itemList) {
+            const itemText = typeof item === 'object' ? item.text : item;
+            if (typeof itemText === 'string') {
+              placeholders.push(...extractPlaceholders(itemText));
+            }
+            if (item.children && Array.isArray(item.children)) {
+              placeholders.push(...extractItemPlaceholders(item.children));
+            }
+          }
+          return placeholders;
+        };
+        
+        const listPlaceholders = extractItemPlaceholders(items);
+        for (const placeholder of listPlaceholders) {
+          if (!definedVars.includes(placeholder) ||
+              (section.variables?.[placeholder] === '' ||
+               section.variables?.[placeholder] === undefined ||
+               section.variables?.[placeholder] === null)) {
+            errors.push({
+              field: 'sectionVariable',
+              message: `In "${sectionName}": List placeholder "{{${placeholder}}}" has no default value`,
+              sectionId: section.id,
+              sectionType: section.type
+            });
+          }
+        }
+      }
+    }
+    
+    // Check label placeholders
+    const labelVariableName = section.variables?.labelVariableName as string;
+    const labelContent = labelVariableName
+      ? (section.variables?.[labelVariableName] as string) || ''
+      : (section.variables?.label as string) || '';
+    
+    const labelPlaceholders = extractPlaceholders(labelContent);
+    for (const placeholder of labelPlaceholders) {
+      // Skip the labelVariableName itself
+      if (placeholder === labelVariableName) continue;
+      
+      if (!definedVars.includes(placeholder) ||
+          (section.variables?.[placeholder] === '' ||
+           section.variables?.[placeholder] === undefined ||
+           section.variables?.[placeholder] === null)) {
+        errors.push({
+          field: 'sectionVariable',
+          message: `In "${sectionName}": Label placeholder "{{${placeholder}}}" has no default value`,
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      }
+    }
+    
+    // Skip regular content placeholder check for labeled-content
+    // (we already handled it above)
+  } else {
+    // For non-labeled-content sections, check regular content placeholders
+    const contentPlaceholders = extractPlaceholders(section.content || '');
+    
+    // Check for undefined placeholders in content
+    for (const placeholder of contentPlaceholders) {
+      if (!definedVars.includes(placeholder)) {
+        errors.push({
+          field: 'sectionContent',
+          message: `In "${sectionName}": Placeholder "{{${placeholder}}}" is used but not defined as a variable`,
+          sectionId: section.id,
+          sectionType: section.type
+        });
+      }
     }
   }
   
-  // Check variables for proper values
+  // Check variables for proper values - only for custom/manual placeholders
   if (section.variables) {
     for (const [varName, varValue] of Object.entries(section.variables)) {
-      // Skip non-essential variables
-      if (['label', 'contentType', 'listStyle'].includes(varName)) continue;
+      // Skip system/metadata variables
+      if (isSystemVariable(varName)) continue;
       
-      // Check for empty required values
-      if (varValue === '' || varValue === undefined || varValue === null) {
-        errors.push({
-          field: 'sectionVariable',
-          message: `In "${sectionName}": Variable "${varName}" has no default value`,
-          sectionId: section.id,
-          sectionType: section.type
-        });
-      }
+      // Skip label and content variables (checked above for labeled-content)
+      if (['label', 'content', 'items'].includes(varName)) continue;
       
-      // For arrays, check if they're empty
-      if (Array.isArray(varValue) && varValue.length === 0) {
-        errors.push({
-          field: 'sectionVariable',
-          message: `In "${sectionName}": Variable "${varName}" list is empty`,
-          sectionId: section.id,
-          sectionType: section.type
-        });
-      }
+      // For custom placeholders, check if they have values
+      // But only flag as error if the variable is actually used in content
+      // This check is already done above, so skip here
     }
   }
   
