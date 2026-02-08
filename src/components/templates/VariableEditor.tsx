@@ -36,18 +36,6 @@ const normalizeListItems = (items: any[]): ListItemStyle[] => {
   });
 };
 
-// Helper function to resolve {{placeholder}} with actual values for display
-const resolvePlaceholdersInText = (content: string, variables: Record<string, any>): string => {
-  if (!content || !variables) return content;
-  return content.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-    const value = variables[varName];
-    if (value !== undefined && value !== null && value !== '') {
-      return String(value);
-    }
-    return match; // Keep {{placeholder}} if no value
-  });
-};
-
 // Single list item component with proper hook usage
 interface ListItemEditorProps {
   item: ListItemStyle;
@@ -57,7 +45,6 @@ interface ListItemEditorProps {
   updateItemAtPath: (path: number[], updater: (item: ListItemStyle) => ListItemStyle) => void;
   deleteItemAtPath: (path: number[]) => void;
   addSubItem: (path: number[]) => void;
-  sectionVariables?: Record<string, any>;
 }
 
 const ListItemEditor = ({ 
@@ -67,15 +54,10 @@ const ListItemEditor = ({
   itemPath, 
   updateItemAtPath, 
   deleteItemAtPath, 
-  addSubItem,
-  sectionVariables = {}
+  addSubItem 
 }: ListItemEditorProps) => {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = item.children && item.children.length > 0;
-  
-  // KEEP {{placeholder}} visible in editor - do NOT resolve
-  // The raw placeholder syntax should be visible so users know what variables exist
-  const displayText = item.text;
 
   return (
     <div className="space-y-1">
@@ -99,7 +81,7 @@ const ListItemEditor = ({
         
         <div className="flex-1">
           <RichTextEditor
-            value={displayText}
+            value={item.text}
             onChange={(html) => {
               updateItemAtPath(itemPath, (i) => ({ ...i, text: html }));
             }}
@@ -236,7 +218,6 @@ const ListItemEditor = ({
               updateItemAtPath={updateItemAtPath}
               deleteItemAtPath={deleteItemAtPath}
               addSubItem={addSubItem}
-              sectionVariables={sectionVariables}
             />
           ))}
         </div>
@@ -319,7 +300,6 @@ const ListItemsEditor = ({ section, onUpdate }: ListItemsEditorProps) => {
           updateItemAtPath={updateItemAtPath}
           deleteItemAtPath={deleteItemAtPath}
           addSubItem={addSubItem}
-          sectionVariables={section.variables as Record<string, any> || {}}
         />
       ))}
     </div>
@@ -757,7 +737,6 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     );
   }
 
-
   // For labeled-content sections - static label + dynamic content
   if (section.type === 'labeled-content') {
     // Get the stored variable names
@@ -768,22 +747,20 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     const defaultLabelStyle = `<span style="font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 18px; line-height: 27px; font-weight: bold; color: #D71E28;">Title</span>`;
     
     // Get the actual values (from the dynamic variable keys)
-    // IMPORTANT: Keep {{placeholder}} visible in editor - do NOT resolve for editing
-    // Placeholders should remain as {{varName}} so users can see/edit them
     const rawLabelValue = labelVariableName 
       ? (section.variables?.[labelVariableName] as string)
       : (section.variables?.label as string);
     // Apply default styled label if no value or plain text "Title"
-    const labelValue = rawLabelValue || defaultLabelStyle;
+    const labelValue = rawLabelValue 
+      ? rawLabelValue 
+      : defaultLabelStyle;
     
     const contentType = (section.variables?.contentType as string) || 'text';
     
     // Get content value for text type
-    // IMPORTANT: Keep {{placeholder}} visible in editor for text content too
-    const rawContentValue = textVariableName
+    const contentValue = textVariableName
       ? (section.variables?.[textVariableName] as string) || 'text content goes here'
       : (section.variables?.content as string) || 'text content goes here';
-    const contentValue = rawContentValue;
     
     // Extract manual placeholders from label (both {{placeholder}} and Thymeleaf formats)
     // Exclude the auto-generated labelVariableName
@@ -814,9 +791,8 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     
     // Extract manual placeholders from content text
     // Exclude the auto-generated textVariableName
-    // IMPORTANT: Use rawContentValue (not contentValue) to detect placeholders before resolution
     const extractManualContentPlaceholders = (): string[] => {
-      const content = rawContentValue || '';
+      const content = contentValue || '';
       const placeholders: string[] = [];
       
       const placeholderMatches = content.match(/\{\{(\w+)\}\}/g) || [];
