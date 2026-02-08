@@ -36,6 +36,18 @@ const normalizeListItems = (items: any[]): ListItemStyle[] => {
   });
 };
 
+// Helper function to resolve {{placeholder}} with actual values for display
+const resolvePlaceholdersInText = (content: string, variables: Record<string, any>): string => {
+  if (!content || !variables) return content;
+  return content.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+    const value = variables[varName];
+    if (value !== undefined && value !== null && value !== '') {
+      return String(value);
+    }
+    return match; // Keep {{placeholder}} if no value
+  });
+};
+
 // Single list item component with proper hook usage
 interface ListItemEditorProps {
   item: ListItemStyle;
@@ -45,6 +57,7 @@ interface ListItemEditorProps {
   updateItemAtPath: (path: number[], updater: (item: ListItemStyle) => ListItemStyle) => void;
   deleteItemAtPath: (path: number[]) => void;
   addSubItem: (path: number[]) => void;
+  sectionVariables?: Record<string, any>;
 }
 
 const ListItemEditor = ({ 
@@ -54,10 +67,14 @@ const ListItemEditor = ({
   itemPath, 
   updateItemAtPath, 
   deleteItemAtPath, 
-  addSubItem 
+  addSubItem,
+  sectionVariables = {}
 }: ListItemEditorProps) => {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = item.children && item.children.length > 0;
+  
+  // Resolve placeholders in item text for display
+  const displayText = resolvePlaceholdersInText(item.text, sectionVariables);
 
   return (
     <div className="space-y-1">
@@ -81,7 +98,7 @@ const ListItemEditor = ({
         
         <div className="flex-1">
           <RichTextEditor
-            value={item.text}
+            value={displayText}
             onChange={(html) => {
               updateItemAtPath(itemPath, (i) => ({ ...i, text: html }));
             }}
@@ -218,6 +235,7 @@ const ListItemEditor = ({
               updateItemAtPath={updateItemAtPath}
               deleteItemAtPath={deleteItemAtPath}
               addSubItem={addSubItem}
+              sectionVariables={sectionVariables}
             />
           ))}
         </div>
@@ -300,6 +318,7 @@ const ListItemsEditor = ({ section, onUpdate }: ListItemsEditorProps) => {
           updateItemAtPath={updateItemAtPath}
           deleteItemAtPath={deleteItemAtPath}
           addSubItem={addSubItem}
+          sectionVariables={section.variables as Record<string, any> || {}}
         />
       ))}
     </div>
@@ -737,6 +756,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     );
   }
 
+
   // For labeled-content sections - static label + dynamic content
   if (section.type === 'labeled-content') {
     // Get the stored variable names
@@ -752,15 +772,16 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
       : (section.variables?.label as string);
     // Apply default styled label if no value or plain text "Title"
     const labelValue = rawLabelValue 
-      ? rawLabelValue 
+      ? resolvePlaceholdersInText(rawLabelValue, section.variables || {})
       : defaultLabelStyle;
     
     const contentType = (section.variables?.contentType as string) || 'text';
     
-    // Get content value for text type
-    const contentValue = textVariableName
+    // Get content value for text type - resolve placeholders for display
+    const rawContentValue = textVariableName
       ? (section.variables?.[textVariableName] as string) || 'text content goes here'
       : (section.variables?.content as string) || 'text content goes here';
+    const contentValue = resolvePlaceholdersInText(rawContentValue, section.variables || {});
     
     // Extract manual placeholders from label (both {{placeholder}} and Thymeleaf formats)
     // Exclude the auto-generated labelVariableName
