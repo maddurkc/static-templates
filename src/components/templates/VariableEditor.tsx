@@ -73,8 +73,9 @@ const ListItemEditor = ({
   const [expanded, setExpanded] = useState(true);
   const hasChildren = item.children && item.children.length > 0;
   
-  // Resolve placeholders in item text for display
-  const displayText = resolvePlaceholdersInText(item.text, sectionVariables);
+  // KEEP {{placeholder}} visible in editor - do NOT resolve
+  // The raw placeholder syntax should be visible so users know what variables exist
+  const displayText = item.text;
 
   return (
     <div className="space-y-1">
@@ -767,21 +768,22 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     const defaultLabelStyle = `<span style="font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 18px; line-height: 27px; font-weight: bold; color: #D71E28;">Title</span>`;
     
     // Get the actual values (from the dynamic variable keys)
+    // IMPORTANT: Keep {{placeholder}} visible in editor - do NOT resolve for editing
+    // Placeholders should remain as {{varName}} so users can see/edit them
     const rawLabelValue = labelVariableName 
       ? (section.variables?.[labelVariableName] as string)
       : (section.variables?.label as string);
     // Apply default styled label if no value or plain text "Title"
-    const labelValue = rawLabelValue 
-      ? resolvePlaceholdersInText(rawLabelValue, section.variables || {})
-      : defaultLabelStyle;
+    const labelValue = rawLabelValue || defaultLabelStyle;
     
     const contentType = (section.variables?.contentType as string) || 'text';
     
-    // Get content value for text type - resolve placeholders for display
+    // Get content value for text type
+    // IMPORTANT: Keep {{placeholder}} visible in editor for text content too
     const rawContentValue = textVariableName
       ? (section.variables?.[textVariableName] as string) || 'text content goes here'
       : (section.variables?.content as string) || 'text content goes here';
-    const contentValue = resolvePlaceholdersInText(rawContentValue, section.variables || {});
+    const contentValue = rawContentValue;
     
     // Extract manual placeholders from label (both {{placeholder}} and Thymeleaf formats)
     // Exclude the auto-generated labelVariableName
@@ -812,8 +814,9 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
     
     // Extract manual placeholders from content text
     // Exclude the auto-generated textVariableName
+    // IMPORTANT: Use rawContentValue (not contentValue) to detect placeholders before resolution
     const extractManualContentPlaceholders = (): string[] => {
-      const content = contentValue || '';
+      const content = rawContentValue || '';
       const placeholders: string[] = [];
       
       const placeholderMatches = content.match(/\{\{(\w+)\}\}/g) || [];
