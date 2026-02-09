@@ -910,7 +910,8 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 // Store empty string if no value provided, actual value if provided
                 newPlaceholders.forEach(match => {
                   const varName = match.replace(/\{\{|\}\}/g, '');
-                  if (!updatedVariables[varName]) {
+                  // Use undefined check - empty string is a valid value
+                  if (updatedVariables[varName] === undefined) {
                     // Store empty string as default value
                     updatedVariables[varName] = '';
                   }
