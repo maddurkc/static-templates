@@ -132,15 +132,13 @@ const isEmptyValue = (value: any): boolean => {
  * This function extracts variable names FROM the content first, then looks them up
  * in the variables object to ensure proper matching.
  */
-export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }> | Record<string, any>): string => {
+export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }> | Record<string, any>, highlightedVariableName?: string | null): string => {
   if (!variables) {
-    // No variables provided, convert Thymeleaf to {{placeholder}} format
     return thymeleafToPlaceholder(content);
   }
 
   let result = content;
 
-  // Helper to get value from variables (handles both array and object formats)
   const getVariableValue = (varName: string): any => {
     if (Array.isArray(variables)) {
       const found = variables.find(v => v.name === varName);
@@ -150,41 +148,47 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
     }
   };
 
-  // Extract all Thymeleaf variable names from content and replace them
+  const wrapHighlight = (text: string, varName: string): string => {
+    if (highlightedVariableName === varName) {
+      return `<span style="background-color: #fef08a; outline: 2px solid #eab308; outline-offset: 1px; border-radius: 2px; padding: 0 2px; animation: highlightPulse 1.5s ease-in-out infinite;">${text}</span>`;
+    }
+    return text;
+  };
+
   // Pattern 1: <span th:utext="${varName}"/>
   result = result.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
     const value = getVariableValue(varName);
     if (isEmptyValue(value)) {
-      return `{{${varName}}}`;
+      return wrapHighlight(`{{${varName}}}`, varName);
     }
     if (Array.isArray(value)) {
       return value.map(item => `<li>${item}</li>`).join('');
     }
-    return String(value);
+    return wrapHighlight(String(value), varName);
   });
 
   // Pattern 2: <th:utext="${varName}">
   result = result.replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
     const value = getVariableValue(varName);
     if (isEmptyValue(value)) {
-      return `{{${varName}}}`;
+      return wrapHighlight(`{{${varName}}}`, varName);
     }
     if (Array.isArray(value)) {
       return value.map(item => `<li>${item}</li>`).join('');
     }
-    return String(value);
+    return wrapHighlight(String(value), varName);
   });
 
   // Pattern 3: {{varName}} placeholders
   result = result.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
     const value = getVariableValue(varName);
     if (isEmptyValue(value)) {
-      return match; // Keep {{placeholder}} as-is
+      return wrapHighlight(match, varName);
     }
     if (Array.isArray(value)) {
       return value.map(item => `<li>${item}</li>`).join('');
     }
-    return String(value);
+    return wrapHighlight(String(value), varName);
   });
 
   return result;
