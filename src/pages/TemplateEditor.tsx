@@ -44,11 +44,8 @@ const TemplateEditor = () => {
   const [headerSection, setHeaderSection] = useState<Section>({
     id: 'static-header',
     type: 'header',
-    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-bottom: 2px solid #dee2e6;"><h1><th:utext="${companyName}"></h1><p><th:utext="${tagline}"></p></div>',
-    variables: {
-      companyName: 'Your Company Name',
-      tagline: 'Your Company Tagline'
-    },
+    content: '',
+    variables: {},
     styles: {}
   });
 
@@ -56,12 +53,8 @@ const TemplateEditor = () => {
   const [footerSection, setFooterSection] = useState<Section>({
     id: 'static-footer',
     type: 'footer',
-    content: '<div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 2px solid #dee2e6; margin-top: 40px;"><p>&copy; <th:utext="${year}"> <th:utext="${companyName}">. All rights reserved.</p><p><th:utext="${contactEmail}"></p></div>',
-    variables: {
-      year: new Date().getFullYear().toString(),
-      companyName: 'Your Company Name',
-      contactEmail: 'contact@example.com'
-    },
+    content: '',
+    variables: {},
     styles: {}
   });
 
