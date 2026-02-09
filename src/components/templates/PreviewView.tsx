@@ -165,7 +165,7 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
     let displayContent = section.content;
     if (isInlinePlaceholder && section.variables && Object.keys(section.variables).length > 0) {
       // Replace Thymeleaf tags with actual default values for display, or {{placeholder}} if empty
-      displayContent = replaceWithDefaults(section.content, section.variables);
+      displayContent = replaceWithDefaults(section.content, section.variables, highlightedVariableName);
     } else {
       // For other sections, convert Thymeleaf to {{placeholder}} format
       displayContent = thymeleafToPlaceholder(section.content);
