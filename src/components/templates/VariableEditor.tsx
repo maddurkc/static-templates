@@ -232,8 +232,79 @@ interface ListItemsEditorProps {
   onUpdate: (section: Section) => void;
 }
 
+// Helper to extract all placeholders from list items recursively
+const extractPlaceholdersFromItems = (items: ListItemStyle[]): string[] => {
+  const placeholders: string[] = [];
+  
+  const processItem = (item: ListItemStyle) => {
+    // Extract {{placeholder}} from item text (strip HTML for detection)
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = item.text || '';
+    const plainText = tempDiv.textContent || '';
+    
+    const matches = plainText.match(/\{\{(\w+)\}\}/g) || [];
+    matches.forEach(m => {
+      const match = m.match(/\{\{(\w+)\}\}/);
+      if (match && !placeholders.includes(match[1])) {
+        placeholders.push(match[1]);
+      }
+    });
+    
+    // Process children recursively
+    if (item.children && item.children.length > 0) {
+      item.children.forEach(processItem);
+    }
+  };
+  
+  items.forEach(processItem);
+  return placeholders;
+};
+
 const ListItemsEditor = ({ section, onUpdate }: ListItemsEditorProps) => {
   const items = normalizeListItems((section.variables?.items as any[]) || []);
+  
+  // Helper to update section with placeholder extraction
+  const updateSectionWithPlaceholders = (newItems: ListItemStyle[]) => {
+    // Extract all placeholders from all items
+    const detectedPlaceholders = extractPlaceholdersFromItems(newItems);
+    
+    const updatedVariables = { ...section.variables, items: newItems };
+    
+    // Add entries for any detected placeholders
+    detectedPlaceholders.forEach(varName => {
+      // Only add if not already present - preserve existing values
+      if (updatedVariables[varName] === undefined) {
+        updatedVariables[varName] = '';
+      }
+    });
+    
+    // Clean up old placeholders that are no longer in list items
+    const currentPlaceholderNames = new Set(detectedPlaceholders);
+    Object.keys(updatedVariables).forEach(key => {
+      // Skip system variables
+      if (['label', 'content', 'contentType', 'listStyle', 'items', 'tableData', 
+           'labelVariableName', 'textVariableName', 'listVariableName', 'listHtml',
+           'apiVariable', 'isLabelEditable'].includes(key)) {
+        return;
+      }
+      // Skip if this is a label placeholder (check if it exists in label)
+      const labelText = (section.variables?.label as string) || '';
+      const labelVarName = section.variables?.labelVariableName as string;
+      if (key === labelVarName) return;
+      if (labelText.includes(`{{${key}}}`) || labelText.includes(`\${${key}}`)) {
+        return;
+      }
+      // Remove if no longer in list item placeholders
+      if (!currentPlaceholderNames.has(key)) {
+        delete updatedVariables[key];
+      }
+    });
+    
+    onUpdate({
+      ...section,
+      variables: updatedVariables
+    });
+  };
   
   const updateItemAtPath = (path: number[], updater: (item: ListItemStyle) => ListItemStyle) => {
     const updateRecursive = (items: ListItemStyle[], currentPath: number[]): ListItemStyle[] => {
@@ -251,10 +322,7 @@ const ListItemsEditor = ({ section, onUpdate }: ListItemsEditorProps) => {
     };
     
     const newItems = updateRecursive(items, path);
-    onUpdate({
-      ...section,
-      variables: { ...section.variables, items: newItems }
-    });
+    updateSectionWithPlaceholders(newItems);
   };
   
   const deleteItemAtPath = (path: number[]) => {
@@ -275,10 +343,7 @@ const ListItemsEditor = ({ section, onUpdate }: ListItemsEditorProps) => {
     };
     
     const newItems = deleteRecursive(items, path);
-    onUpdate({
-      ...section,
-      variables: { ...section.variables, items: newItems }
-    });
+    updateSectionWithPlaceholders(newItems);
   };
   
   const addSubItem = (path: number[]) => {
@@ -1036,7 +1101,13 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = html;
                 const plainText = tempDiv.textContent || '';
-                const newPlaceholders = plainText.match(/\{\{(\w+)\}\}/g) || [];
+                const placeholderMatches = plainText.match(/\{\{(\w+)\}\}/g) || [];
+                
+                // Get unique placeholder names
+                const newPlaceholders = [...new Set(placeholderMatches.map(m => {
+                  const match = m.match(/\{\{(\w+)\}\}/);
+                  return match ? match[1] : '';
+                }).filter(Boolean))];
                 
                 const updatedVariables = { ...section.variables };
                 
@@ -1048,11 +1119,37 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                   updatedVariables['content'] = html;
                 }
                 
-                // Add entries for any manual placeholders
-                newPlaceholders.forEach(match => {
-                  const varName = match.replace(/\{\{|\}\}/g, '');
-                  if (!updatedVariables[varName]) {
+                // ALWAYS add/preserve entries for manual placeholders
+                // This ensures placeholders are stored even with empty values
+                newPlaceholders.forEach(varName => {
+                  // Only add if not already present - preserve existing values
+                  if (updatedVariables[varName] === undefined) {
                     updatedVariables[varName] = '';
+                  }
+                });
+                
+                // Clean up old placeholders that are no longer in content
+                // Get the list of current placeholder names
+                const currentPlaceholderNames = new Set(newPlaceholders);
+                Object.keys(updatedVariables).forEach(key => {
+                  // Skip system variables
+                  if (['label', 'content', 'contentType', 'listStyle', 'items', 'tableData', 
+                       'labelVariableName', 'textVariableName', 'listVariableName', 'listHtml',
+                       'apiVariable', 'isLabelEditable'].includes(key)) {
+                    return;
+                  }
+                  // Skip the main variable names
+                  if (key === textVariableName || key === labelVariableName) {
+                    return;
+                  }
+                  // Skip if this is a label placeholder (check if it exists in label)
+                  const labelText = (section.variables?.label as string) || '';
+                  if (labelText.includes(`{{${key}}}`) || labelText.includes(`\${${key}}`)) {
+                    return;
+                  }
+                  // Remove if no longer in content placeholders
+                  if (!currentPlaceholderNames.has(key)) {
+                    delete updatedVariables[key];
                   }
                 });
                 
@@ -1249,8 +1346,44 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
             <ListItemsEditor section={section} onUpdate={onUpdate} />
             
             <p className="text-xs text-muted-foreground">
-              Add list items with formatting (bold, italic, colors) and create nested sub-items.
+              Add list items with formatting (bold, italic, colors) and create nested sub-items. Use {`{{`}variableName{`}}`} for dynamic values.
             </p>
+            
+            {/* Show placeholder inputs for list items */}
+            {(() => {
+              // Extract placeholders from all list items
+              const items = (section.variables?.items as ListItemStyle[]) || [];
+              const listPlaceholders = extractPlaceholdersFromItems(items);
+              
+              if (listPlaceholders.length === 0) return null;
+              
+              return (
+                <div className="space-y-2 mt-4 pt-4 border-t">
+                  <Label className="text-sm font-medium">List Variables - Default Values</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Set default values for placeholders in your list items:
+                  </p>
+                  {listPlaceholders.map(placeholder => (
+                    <div key={placeholder} className="flex items-center gap-2">
+                      <Label className="text-xs font-mono min-w-[120px]">
+                        {`{{${placeholder}}}`}
+                      </Label>
+                      <Input
+                        value={(section.variables?.[placeholder] as string) || ''}
+                        onChange={(e) => {
+                          onUpdate({
+                            ...section,
+                            variables: { ...section.variables, [placeholder]: e.target.value }
+                          });
+                        }}
+                        placeholder={`Default value for ${placeholder}`}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
