@@ -460,7 +460,14 @@ const TemplateEditor = () => {
       
       // Determine insertion index using the tracked drop indicator
       let insertIndex = sections.length; // Default to end
-      if (dropTargetId !== 'editor-drop-zone' && !targetContainer) {
+      
+      // Handle drop on editor-drop-zone with drop indicator for first/last position
+      if (dropTargetId === 'editor-drop-zone' && currentDropIndicator && sections.length > 0) {
+        const indicatorIndex = sections.findIndex(s => s.id === currentDropIndicator.sectionId);
+        if (indicatorIndex !== -1) {
+          insertIndex = currentDropIndicator.position === 'after' ? indicatorIndex + 1 : indicatorIndex;
+        }
+      } else if (dropTargetId !== 'editor-drop-zone' && !targetContainer) {
         const overIndex = sections.findIndex(s => s.id === dropTargetId);
         if (overIndex !== -1) {
           // Use the drop indicator to determine position
