@@ -26,7 +26,6 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
       const element = containerRef.current.querySelector(`[data-preview-section-id="${selectedSectionId}"]`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Add highlight animation
         element.classList.add(styles.highlighted);
         const timeout = setTimeout(() => {
           element.classList.remove(styles.highlighted);
@@ -35,6 +34,32 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
       }
     }
   }, [selectedSectionId]);
+
+  // Auto-scroll to the section containing the highlighted variable
+  useEffect(() => {
+    if (!highlightedVariableName || !containerRef.current) return;
+    
+    // Find which section contains this variable and scroll to it
+    const sectionWithVar = allSections.find(section => {
+      if (!section.variables) return false;
+      // Check if variable name exists directly in variables
+      if (highlightedVariableName in section.variables) return true;
+      // Check labelVariableName / textVariableName indirection
+      if (section.variables.labelVariableName === highlightedVariableName) return true;
+      if (section.variables.textVariableName === highlightedVariableName) return true;
+      // Check if content contains a Thymeleaf reference to this variable
+      if (section.content?.includes(highlightedVariableName)) return true;
+      if (typeof section.variables.content === 'string' && section.variables.content.includes(highlightedVariableName)) return true;
+      return false;
+    });
+    
+    if (sectionWithVar) {
+      const element = containerRef.current.querySelector(`[data-preview-section-id="${sectionWithVar.id}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [highlightedVariableName]);
   
   // Helper to wrap a value with highlight styling if it matches the focused variable
   const wrapWithHighlight = (value: string, varName: string): string => {
