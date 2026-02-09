@@ -6,9 +6,9 @@
 
 import React, { useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Type, Edit3 } from "lucide-react";
+import { RichTextEditor } from "./RichTextEditor";
 import { TemplateVariable } from "@/types/template-variable";
 import styles from "./VariablesPanel.module.scss";
 
@@ -122,13 +122,12 @@ export const VariablesPanel: React.FC<VariablesPanelProps> = ({
                     </Label>
                     
                     {!readOnly ? (
-                      <Input
-                        id={`var-${variable.variableName}`}
+                      <RichTextEditor
                         value={getDisplayValue(variable)}
-                        onChange={(e) => handleValueChange(variable.variableName, e.target.value)}
+                        onChange={(html) => handleValueChange(variable.variableName, html)}
                         onFocus={() => onFocusVariable?.(variable.variableName)}
-                        onBlur={() => onFocusVariable?.(null)}
                         placeholder={`Enter ${variable.variableLabel.toLowerCase()}`}
+                        singleLine
                         className={styles.variableInput}
                       />
                     ) : (
