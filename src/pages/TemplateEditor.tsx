@@ -357,25 +357,38 @@ const TemplateEditor = () => {
     
     // Handle dropping on the main drop zone (when list is empty or cursor is in the zone)
     if (dropTargetId === 'editor-drop-zone') {
-      // If there are sections, determine if cursor is near top or bottom
       if (sections.length > 0) {
-        // Check if cursor is above the first section or below the last
-        const firstSectionEl = document.querySelector(`[data-section-id="${sections[0].id}"]`);
-        const lastSectionEl = document.querySelector(`[data-section-id="${sections[sections.length - 1].id}"]`);
-        
-        if (firstSectionEl && lastSectionEl) {
-          const firstRect = firstSectionEl.getBoundingClientRect();
-          const lastRect = lastSectionEl.getBoundingClientRect();
+        // Find the closest section to the cursor and determine before/after
+        let closestSection: string | null = null;
+        let closestPosition: 'before' | 'after' = 'before';
+        let closestDistance = Infinity;
+
+        for (const s of sections) {
+          const el = document.querySelector(`[data-section-id="${s.id}"]`);
+          if (!el) continue;
+          const rect = el.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
           
-          if (currentMouseY < firstRect.top) {
-            // Cursor is above the first section - show indicator before first
-            setDropIndicator({ sectionId: sections[0].id, position: 'before' });
-            return;
-          } else if (currentMouseY > lastRect.bottom) {
-            // Cursor is below the last section - show indicator after last
-            setDropIndicator({ sectionId: sections[sections.length - 1].id, position: 'after' });
-            return;
+          // Distance to top edge
+          const distTop = Math.abs(currentMouseY - rect.top);
+          // Distance to bottom edge
+          const distBottom = Math.abs(currentMouseY - rect.bottom);
+          
+          if (distTop < closestDistance) {
+            closestDistance = distTop;
+            closestSection = s.id;
+            closestPosition = 'before';
           }
+          if (distBottom < closestDistance) {
+            closestDistance = distBottom;
+            closestSection = s.id;
+            closestPosition = 'after';
+          }
+        }
+
+        if (closestSection) {
+          setDropIndicator({ sectionId: closestSection, position: closestPosition });
+          return;
         }
       }
       setDropIndicator(null);
