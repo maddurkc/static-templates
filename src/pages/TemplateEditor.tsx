@@ -1846,7 +1846,34 @@ ${sectionRows}
                         // Update sections that contain this variable
                         setSections(prevSections => {
                           const updateVariableInSection = (section: Section): Section => {
-                            if (section.variables && section.variables[variableName] !== undefined) {
+                            // Check if variable exists in section.variables
+                            const hasVariableInVariables = section.variables && section.variables[variableName] !== undefined;
+                            
+                            // Check if {{variableName}} appears in the section content or variable values
+                            const placeholderPattern = `{{${variableName}}}`;
+                            const contentHasPlaceholder = section.content?.includes(placeholderPattern);
+                            
+                            // Also check for placeholder in variable values (e.g., labeled-content text/list content)
+                            let variableValuesHavePlaceholder = false;
+                            if (section.variables) {
+                              Object.values(section.variables).forEach(val => {
+                                if (typeof val === 'string' && val.includes(placeholderPattern)) {
+                                  variableValuesHavePlaceholder = true;
+                                }
+                                // Check list items for placeholders
+                                if (Array.isArray(val)) {
+                                  val.forEach(item => {
+                                    if (typeof item === 'string' && item.includes(placeholderPattern)) {
+                                      variableValuesHavePlaceholder = true;
+                                    } else if (item && typeof item === 'object' && item.text && item.text.includes(placeholderPattern)) {
+                                      variableValuesHavePlaceholder = true;
+                                    }
+                                  });
+                                }
+                              });
+                            }
+                            
+                            if (hasVariableInVariables || contentHasPlaceholder || variableValuesHavePlaceholder) {
                               return {
                                 ...section,
                                 variables: {
