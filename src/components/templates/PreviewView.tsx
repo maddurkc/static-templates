@@ -195,14 +195,14 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
     // Replace Thymeleaf in label with default values or {{placeholder}}
     label = label.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
       if (section.variables && !isEmptyValue(section.variables[varName])) {
-        return String(section.variables[varName]);
+        return wrapWithHighlight(String(section.variables[varName]), varName);
       }
-      return `{{${varName}}}`;
+      return wrapWithHighlight(`{{${varName}}}`, varName);
     }).replace(/<th:utext="\$\{(\w+)\}">/g, (match, varName) => {
       if (section.variables && !isEmptyValue(section.variables[varName])) {
-        return String(section.variables[varName]);
+        return wrapWithHighlight(String(section.variables[varName]), varName);
       }
-      return `{{${varName}}}`;
+      return wrapWithHighlight(`{{${varName}}}`, varName);
     });
     
     const contentType = (section.variables?.contentType as string) || 'text';
@@ -220,18 +220,18 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
         // Replace Thymeleaf <span th:utext="${varName}"/> with actual values or {{placeholder}}
         textContent = textContent.replace(/<span\s+th:utext="\$\{(\w+)\}"\/>/g, (match, varName) => {
           if (section.variables && !isEmptyValue(section.variables[varName])) {
-            return String(section.variables[varName]);
+            return wrapWithHighlight(String(section.variables[varName]), varName);
           }
-          return `{{${varName}}}`;
+          return wrapWithHighlight(`{{${varName}}}`, varName);
         });
       }
       
-      // Support {{variable}} placeholders in text content - show {{placeholder}} if no value
+      // Support {{variable}} placeholders in text content
       textContent = textContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
         if (section.variables && !isEmptyValue(section.variables[varName])) {
-          return String(section.variables[varName]);
+          return wrapWithHighlight(String(section.variables[varName]), varName);
         }
-        return match; // Keep {{placeholder}} as-is when no value
+        return wrapWithHighlight(match, varName);
       });
       contentHtml = `<div style="white-space: pre-wrap; padding-left: 20px; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 21px; color: #141414;">${textContent}</div>`;
     } else if (contentType === 'list') {
