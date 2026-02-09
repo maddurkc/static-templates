@@ -271,10 +271,12 @@ const ListItemsEditor = ({ section, onUpdate }: ListItemsEditorProps) => {
     const updatedVariables = { ...section.variables, items: newItems };
     
     // Add entries for any detected placeholders
+    // Store {{placeholder}} as value if no value provided, otherwise keep actual value
     detectedPlaceholders.forEach(varName => {
       // Only add if not already present - preserve existing values
       if (updatedVariables[varName] === undefined) {
-        updatedVariables[varName] = '';
+        // Store the placeholder pattern itself as default value
+        updatedVariables[varName] = `{{${varName}}}`;
       }
     });
     
@@ -905,10 +907,12 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 }
                 
                 // Add entries for any manual placeholders
+                // Store {{placeholder}} as value if no value provided, otherwise keep actual value
                 newPlaceholders.forEach(match => {
                   const varName = match.replace(/\{\{|\}\}/g, '');
                   if (!updatedVariables[varName]) {
-                    updatedVariables[varName] = '';
+                    // Store the placeholder pattern itself as default value
+                    updatedVariables[varName] = `{{${varName}}}`;
                   }
                 });
                 
@@ -1120,11 +1124,12 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 }
                 
                 // ALWAYS add/preserve entries for manual placeholders
-                // This ensures placeholders are stored even with empty values
+                // Store {{placeholder}} as value if no value provided, otherwise keep actual value
                 newPlaceholders.forEach(varName => {
                   // Only add if not already present - preserve existing values
                   if (updatedVariables[varName] === undefined) {
-                    updatedVariables[varName] = '';
+                    // Store the placeholder pattern itself as default value
+                    updatedVariables[varName] = `{{${varName}}}`;
                   }
                 });
                 
