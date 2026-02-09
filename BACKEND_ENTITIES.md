@@ -12,6 +12,7 @@ This document provides comprehensive Spring Boot entity classes, DTOs, repositor
    - [SectionVariable Entity](#sectionvariable-entity)
    - [Template Entity](#template-entity)
    - [TemplateSection Entity](#templatesection-entity)
+   - [TemplateSectionVariable Entity](#templatesectionvariable-entity)
    - [TemplateRun Entity](#templaterun-entity)
    - [TemplateVariable Entity](#templatevariable-entity)
    - [ApiTemplate Entity](#apitemplate-entity)
@@ -51,6 +52,13 @@ This document provides comprehensive Spring Boot entity classes, DTOs, repositor
 │  template_runs  │                         ┌────────────────────┐
 │ (Execution Log) │                         │  (Nested Sections) │
 └─────────────────┘                         └────────────────────┘
+                                                      │
+                                                      │ FK: section_id
+                                                      ▼
+                                            ┌─────────────────────────────┐
+                                            │template_config_section_vars │
+                                            │  (Section Variable Rows)    │
+                                            └─────────────────────────────┘
 
 ┌─────────────────┐      FK: template_id    ┌────────────────────┐
 │   templates     │◄────────────────────────│template_api_configs│
@@ -78,7 +86,8 @@ This document provides comprehensive Spring Boot entity classes, DTOs, repositor
 | sections | Master catalog of section types (building blocks) | Parent to section_variables |
 | section_variables | Configurable properties for each section type | FK to sections.type |
 | templates | User-created templates (main documents) | Parent to template_sections, template_runs, template_variables, template_api_configs |
-| template_sections | Section instances within templates | FK to templates, self-reference for nesting |
+| template_sections | Section instances within templates | FK to templates, self-reference for nesting, parent to template_config_section_variables |
+| template_config_section_variables | Individual variable key-value pairs per section instance | FK to template_sections |
 | template_runs | Audit log of template executions | FK to templates |
 | template_variables | Available variables per template | FK to templates |
 | api_templates | Pre-configured API endpoint templates | Parent to api_template_params |
@@ -639,6 +648,14 @@ public class TemplateSection {
     private List<TemplateSection> childSections = new ArrayList<>();
 
     /**
+     * Section-level variables stored as individual rows
+     * CASCADE ALL: Variables are deleted when section is deleted
+     */
+    @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<TemplateSectionVariable> sectionVariables = new ArrayList<>();
+
+    /**
      * API mappings for this section (data from external APIs)
      */
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -661,6 +678,115 @@ public class TemplateSection {
     public void removeChildSection(TemplateSection child) {
         childSections.remove(child);
         child.setParentSection(null);
+    }
+
+    public void addSectionVariable(TemplateSectionVariable variable) {
+        sectionVariables.add(variable);
+        variable.setSection(this);
+    }
+
+    public void removeSectionVariable(TemplateSectionVariable variable) {
+        sectionVariables.remove(variable);
+        variable.setSection(null);
+    }
+}
+```
+
+### TemplateSectionVariable Entity
+
+```java
+package com.example.pagebuilder.entity;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.GenericGenerator;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+/**
+ * Entity representing an individual variable key-value pair for a section instance.
+ * 
+ * TABLE: template_config_section_variables
+ * PURPOSE: Normalizes section variables from JSON blob into individual rows.
+ * Each row stores a single variable key, its value, label, and type.
+ * 
+ * RELATIONSHIPS:
+ * - FOREIGN KEY: section_id → template_sections.id (CASCADE DELETE)
+ * - UNIQUE CONSTRAINT: (section_id, variable_key) prevents duplicate keys per section
+ * 
+ * VARIABLE VALUE STORAGE:
+ * variable_value stores the value as a string. For complex types:
+ * - text: "Plain text value"
+ * - list: '[{"text":"Item 1","bold":true,"children":[]}]' (JSON string)
+ * - table: '{"rows":[["H1","H2"],["D1","D2"]]}' (JSON string)
+ * - metadata: "disc" (for listStyle), "list" (for contentType)
+ */
+@Entity
+@Table(name = "template_config_section_variables", indexes = {
+    @Index(name = "idx_config_section_variables_section_id", columnList = "section_id"),
+    @Index(name = "idx_config_section_variables_key", columnList = "variable_key")
+}, uniqueConstraints = {
+    @UniqueConstraint(name = "uk_config_section_variables_key", columnNames = {"section_id", "variable_key"})
+})
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class TemplateSectionVariable {
+
+    @Id
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "UNIQUEIDENTIFIER")
+    private UUID id;
+
+    /**
+     * Foreign key to template_sections.id
+     * CASCADE DELETE: Remove variable when section is deleted
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "section_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_config_section_variables_section"))
+    @JsonBackReference
+    private TemplateSection section;
+
+    /**
+     * Variable key name
+     * Examples: 'label', 'content', 'contentType', 'items', 'listStyle',
+     *           'tableData', 'textVariableName', 'labelVariableName'
+     */
+    @Column(name = "variable_key", nullable = false, length = 255)
+    private String variableKey;
+
+    /**
+     * Display label for this variable (human-readable)
+     * Examples: "Field Label", "Content", "List Items", "Content Type"
+     */
+    @Column(name = "variable_label", length = 255)
+    private String variableLabel;
+
+    /**
+     * Variable value stored as string (JSON for complex types like lists/tables)
+     */
+    @Column(name = "variable_value", columnDefinition = "NVARCHAR(MAX)")
+    private String variableValue;
+
+    /**
+     * Data type hint: 'text', 'list', 'table', 'metadata'
+     * Helps the frontend determine which editor to render
+     */
+    @Column(name = "variable_type", nullable = false, length = 50)
+    @Builder.Default
+    private String variableType = "text";
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
     }
 }
 ```
@@ -1589,7 +1715,7 @@ public class TemplateSectionRequestDTO {
     @Schema(description = "Content with Thymeleaf variables")
     private String content;
 
-    @Schema(description = "Section variables (JSON)")
+    @Schema(description = "Section variables (JSON) - kept for backward compatibility")
     private JsonNode variables;
 
     @Schema(description = "Custom styles (JSON)")
@@ -1608,6 +1734,33 @@ public class TemplateSectionRequestDTO {
 
     @Schema(description = "Child sections")
     private List<TemplateSectionRequestDTO> childSections;
+
+    @Schema(description = "Section variables as individual key-value pairs (normalized)")
+    private List<TemplateSectionVariableRequestDTO> sectionVariables;
+}
+
+// === TemplateSectionVariableRequestDTO ===
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "Request payload for a section variable key-value pair")
+public class TemplateSectionVariableRequestDTO {
+
+    @NotBlank(message = "Variable key is required")
+    @Size(max = 255, message = "Variable key must not exceed 255 characters")
+    @Schema(description = "Variable key name", example = "label")
+    private String variableKey;
+
+    @Size(max = 255, message = "Variable label must not exceed 255 characters")
+    @Schema(description = "Display label", example = "Field Label")
+    private String variableLabel;
+
+    @Schema(description = "Variable value (string or JSON string for complex types)")
+    private String variableValue;
+
+    @Size(max = 50, message = "Variable type must not exceed 50 characters")
+    @Schema(description = "Data type hint", example = "text")
+    private String variableType = "text";
 }
 
 // === TemplateRunRequestDTO ===
@@ -1837,6 +1990,22 @@ public class TemplateSectionResponseDTO {
     private Integer orderIndex;
     private UUID parentSectionId;
     private List<TemplateSectionResponseDTO> childSections;
+    private List<TemplateSectionVariableResponseDTO> sectionVariables;
+    private LocalDateTime createdAt;
+}
+
+// === TemplateSectionVariableResponseDTO ===
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "Section variable key-value pair details")
+public class TemplateSectionVariableResponseDTO {
+    private UUID id;
+    private UUID sectionId;
+    private String variableKey;
+    private String variableLabel;
+    private String variableValue;
+    private String variableType;
     private LocalDateTime createdAt;
 }
 
@@ -2158,6 +2327,40 @@ public interface ApiMappingRepository extends JpaRepository<ApiMapping, UUID> {
     
     void deleteBySectionId(UUID sectionId);
 }
+
+// === TemplateSectionVariableRepository ===
+/**
+ * Repository for template section variables.
+ * 
+ * PURPOSE: Data access layer for section-level variable key-value pairs.
+ * Provides queries to retrieve, create, and delete variables for specific sections.
+ */
+@Repository
+public interface TemplateSectionVariableRepository extends JpaRepository<TemplateSectionVariable, UUID> {
+    
+    /**
+     * Find all variables for a specific section, ordered by key.
+     */
+    List<TemplateSectionVariable> findBySectionIdOrderByVariableKey(UUID sectionId);
+    
+    /**
+     * Find a specific variable by section and key.
+     */
+    Optional<TemplateSectionVariable> findBySectionIdAndVariableKey(UUID sectionId, String variableKey);
+    
+    /**
+     * Delete all variables for a section.
+     * Called during section update to replace with new variables.
+     */
+    @Modifying
+    @Query("DELETE FROM TemplateSectionVariable v WHERE v.section.id = :sectionId")
+    void deleteBySectionId(@Param("sectionId") UUID sectionId);
+    
+    /**
+     * Count variables for a section.
+     */
+    long countBySectionId(UUID sectionId);
+}
 ```
 
 ---
@@ -2267,6 +2470,9 @@ public class TemplateService {
                 TemplateSection section = sectionMapper.toEntity(sectionDto);
                 template.addSection(section);
                 
+                // Persist section variables as individual rows
+                addSectionVariables(section, sectionDto);
+                
                 // Handle nested children
                 if (sectionDto.getChildSections() != null) {
                     addChildSections(section, sectionDto.getChildSections());
@@ -2275,7 +2481,89 @@ public class TemplateService {
         }
         
         Template saved = templateRepository.save(template);
+        log.info("Created template '{}' with {} sections", saved.getName(), 
+                saved.getSections() != null ? saved.getSections().size() : 0);
         return templateMapper.toResponseDTO(saved);
+    }
+
+    /**
+     * Extract variables from section DTO and persist as individual rows
+     * in template_config_section_variables table.
+     * 
+     * Priority: Uses sectionVariables list if provided (normalized format).
+     * Falls back to extracting from variables JSON blob for backward compatibility.
+     */
+    private void addSectionVariables(TemplateSection section, TemplateSectionRequestDTO sectionDto) {
+        if (sectionDto.getSectionVariables() != null && !sectionDto.getSectionVariables().isEmpty()) {
+            // Use explicitly provided section variables (normalized format)
+            for (TemplateSectionVariableRequestDTO varDto : sectionDto.getSectionVariables()) {
+                TemplateSectionVariable variable = TemplateSectionVariable.builder()
+                        .variableKey(varDto.getVariableKey())
+                        .variableLabel(varDto.getVariableLabel())
+                        .variableValue(varDto.getVariableValue())
+                        .variableType(varDto.getVariableType() != null ? varDto.getVariableType() : "text")
+                        .build();
+                section.addSectionVariable(variable);
+            }
+        } else if (sectionDto.getVariables() != null && !sectionDto.getVariables().isNull()) {
+            // Fallback: Extract from JSON blob for backward compatibility
+            extractVariablesFromJson(section, sectionDto.getVariables());
+        }
+    }
+
+    /**
+     * Extract individual key-value pairs from the variables JSON blob
+     * and create TemplateSectionVariable entities for each.
+     */
+    private void extractVariablesFromJson(TemplateSection section, JsonNode variablesJson) {
+        if (variablesJson == null || variablesJson.isNull()) return;
+        
+        variablesJson.fields().forEachRemaining(entry -> {
+            String key = entry.getKey();
+            JsonNode value = entry.getValue();
+            
+            String variableType = inferVariableType(key, value);
+            String variableValue;
+            
+            if (value.isTextual()) {
+                variableValue = value.asText();
+            } else {
+                variableValue = value.toString(); // JSON string for arrays/objects
+            }
+            
+            TemplateSectionVariable variable = TemplateSectionVariable.builder()
+                    .variableKey(key)
+                    .variableLabel(createLabel(key))
+                    .variableValue(variableValue)
+                    .variableType(variableType)
+                    .build();
+            section.addSectionVariable(variable);
+        });
+    }
+
+    /**
+     * Infer variable type from key name and JSON value structure.
+     */
+    private String inferVariableType(String key, JsonNode value) {
+        if ("items".equals(key) && value.isArray()) return "list";
+        if ("tableData".equals(key) && value.isObject()) return "table";
+        if ("contentType".equals(key) || "listStyle".equals(key) || "textVariableName".equals(key) 
+                || "labelVariableName".equals(key)) return "metadata";
+        return "text";
+    }
+
+    /**
+     * Create a human-readable label from variable key.
+     */
+    private String createLabel(String key) {
+        return key.replaceAll("([A-Z])", " $1")
+                   .replaceAll("[-_]", " ")
+                   .trim()
+                   .substring(0, 1).toUpperCase() + 
+               key.replaceAll("([A-Z])", " $1")
+                   .replaceAll("[-_]", " ")
+                   .trim()
+                   .substring(1);
     }
 
     private void addChildSections(TemplateSection parent, List<TemplateSectionRequestDTO> children) {
@@ -2285,6 +2573,9 @@ public class TemplateService {
             TemplateSection child = sectionMapper.toEntity(childDto);
             parent.addChildSection(child);
             child.setTemplate(parent.getTemplate());
+            
+            // Persist section variables for child sections
+            addSectionVariables(child, childDto);
             
             if (childDto.getChildSections() != null) {
                 addChildSections(child, childDto.getChildSections());
@@ -2299,7 +2590,7 @@ public class TemplateService {
         existing.setName(request.getName());
         existing.setHtml(request.getHtml());
         
-        // Update sections
+        // Update sections (clears old sections + their variables via CASCADE)
         if (request.getSections() != null) {
             existing.getSections().clear();
             for (int i = 0; i < request.getSections().size(); i++) {
@@ -2308,6 +2599,9 @@ public class TemplateService {
                 TemplateSection section = sectionMapper.toEntity(sectionDto);
                 existing.addSection(section);
                 
+                // Persist section variables as individual rows
+                addSectionVariables(section, sectionDto);
+                
                 if (sectionDto.getChildSections() != null) {
                     addChildSections(section, sectionDto.getChildSections());
                 }
@@ -2315,6 +2609,8 @@ public class TemplateService {
         }
         
         Template updated = templateRepository.save(existing);
+        log.info("Updated template '{}' (id: {}) with {} sections", updated.getName(), id,
+                updated.getSections() != null ? updated.getSections().size() : 0);
         return templateMapper.toResponseDTO(updated);
     }
 
@@ -2363,6 +2659,9 @@ public class TemplateSectionService {
             section.setParentSection(parent);
         }
         
+        // Persist section variables as individual rows
+        addSectionVariables(section, request);
+        
         TemplateSection saved = sectionRepository.save(section);
         return sectionMapper.toResponseDTO(saved);
     }
@@ -2378,8 +2677,50 @@ public class TemplateSectionService {
         existing.setIsLabelEditable(request.getIsLabelEditable());
         existing.setOrderIndex(request.getOrderIndex());
         
+        // Clear and re-add section variables
+        existing.getSectionVariables().clear();
+        addSectionVariables(existing, request);
+        
         TemplateSection updated = sectionRepository.save(existing);
         return sectionMapper.toResponseDTO(updated);
+    }
+
+    /**
+     * Extract variables from section DTO and persist as individual rows.
+     * Uses sectionVariables list if provided, otherwise extracts from variables JSON.
+     */
+    private void addSectionVariables(TemplateSection section, TemplateSectionRequestDTO sectionDto) {
+        if (sectionDto.getSectionVariables() != null && !sectionDto.getSectionVariables().isEmpty()) {
+            for (TemplateSectionVariableRequestDTO varDto : sectionDto.getSectionVariables()) {
+                TemplateSectionVariable variable = TemplateSectionVariable.builder()
+                        .variableKey(varDto.getVariableKey())
+                        .variableLabel(varDto.getVariableLabel())
+                        .variableValue(varDto.getVariableValue())
+                        .variableType(varDto.getVariableType() != null ? varDto.getVariableType() : "text")
+                        .build();
+                section.addSectionVariable(variable);
+            }
+        } else if (sectionDto.getVariables() != null && !sectionDto.getVariables().isNull()) {
+            sectionDto.getVariables().fields().forEachRemaining(entry -> {
+                String key = entry.getKey();
+                JsonNode value = entry.getValue();
+                TemplateSectionVariable variable = TemplateSectionVariable.builder()
+                        .variableKey(key)
+                        .variableLabel(key.replaceAll("([A-Z])", " $1").trim())
+                        .variableValue(value.isTextual() ? value.asText() : value.toString())
+                        .variableType(inferVariableType(key, value))
+                        .build();
+                section.addSectionVariable(variable);
+            });
+        }
+    }
+
+    private String inferVariableType(String key, JsonNode value) {
+        if ("items".equals(key) && value.isArray()) return "list";
+        if ("tableData".equals(key) && value.isObject()) return "table";
+        if ("contentType".equals(key) || "listStyle".equals(key) || "textVariableName".equals(key) 
+                || "labelVariableName".equals(key)) return "metadata";
+        return "text";
     }
 
     public void deleteSection(UUID sectionId) {
@@ -2898,17 +3239,28 @@ public interface TemplateSectionMapper {
     @Mapping(source = "template.id", target = "templateId")
     @Mapping(source = "parentSection.id", target = "parentSectionId")
     @Mapping(source = "childSections", target = "childSections")
+    @Mapping(source = "sectionVariables", target = "sectionVariables")
     TemplateSectionResponseDTO toResponseDTO(TemplateSection entity);
     
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "template", ignore = true)
     @Mapping(target = "parentSection", ignore = true)
     @Mapping(target = "childSections", ignore = true)
+    @Mapping(target = "sectionVariables", ignore = true)
     @Mapping(target = "apiMappings", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     TemplateSection toEntity(TemplateSectionRequestDTO dto);
     
     List<TemplateSectionResponseDTO> toResponseDTOList(List<TemplateSection> entities);
+}
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface TemplateSectionVariableMapper {
+    
+    @Mapping(source = "section.id", target = "sectionId")
+    TemplateSectionVariableResponseDTO toResponseDTO(TemplateSectionVariable entity);
+    
+    List<TemplateSectionVariableResponseDTO> toResponseDTOList(List<TemplateSectionVariable> entities);
 }
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
