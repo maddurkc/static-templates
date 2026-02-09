@@ -11,7 +11,8 @@ This database schema supports a flexible page builder system where users can cre
 | `sections` | Master list of available section types | Defines what building blocks users can add to templates (headings, paragraphs, tables, etc.) |
 | `section_variables` | Variable definitions | Defines what variables are available for each section type (name, type, default value) |
 | `templates` | User-created templates | Stores complete templates built by users, containing the final HTML output |
-| `template_sections` | Sections within templates | Links sections to templates with specific content, styles, variables, and ordering for each instance |
+| `template_sections` | Sections within templates | Links sections to templates with specific content, styles, and ordering for each instance |
+| `template_config_section_variables` | Section instance variables | Stores individual variable key-value pairs for each section instance (normalized from JSON) |
 | `template_runs` | Execution history | Records every time a template is run/sent, with the variables used and recipients |
 | `template_variables` | Template-level variables | Stores variables that can be used across the entire template |
 | `api_templates` | Reusable API configs | Pre-configured API endpoints (Jira, GitHub, etc.) that templates can use |
@@ -40,6 +41,13 @@ This database schema supports a flexible page builder system where users can cre
 │  template_runs  │                         ┌────────────────────┐
 │ (Execution Log) │                         │  (Nested Sections) │
 └─────────────────┘                         └────────────────────┘
+                                                      │
+                                                      │ FK: section_id
+                                                      ▼
+                                            ┌─────────────────────────────┐
+                                            │template_config_section_vars │
+                                            │  (Section Variable Rows)    │
+                                            └─────────────────────────────┘
 
 ┌─────────────────┐      FK: template_id    ┌────────────────────┐
 │   templates     │◄────────────────────────│template_api_configs│
@@ -300,6 +308,64 @@ CREATE TABLE template_sections (
 CREATE INDEX idx_template_sections_template_id ON template_sections(template_id);
 CREATE INDEX idx_template_sections_order ON template_sections(template_id, order_index);
 CREATE INDEX idx_template_sections_parent ON template_sections(parent_section_id);
+
+
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ TABLE 4B: template_config_section_variables                                   ║
+-- ║ PURPOSE: Stores individual variable key-value pairs for each section instance ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+--
+-- DESCRIPTION:
+--   Normalizes the variables JSON from template_sections into individual rows.
+--   Each row represents a single variable (key-value pair) belonging to a section.
+--   This enables querying, indexing, and managing section variables individually
+--   rather than parsing a JSON blob.
+--
+-- RELATIONSHIPS:
+--   • FOREIGN KEY: section_id → template_sections.id (CASCADE DELETE)
+--   • UNIQUE CONSTRAINT: (section_id, variable_key) prevents duplicate keys per section
+--
+-- VARIABLE VALUE STORAGE:
+--   variable_value stores the value as a string. For complex types:
+--   - text: "Plain text value"
+--   - list: '[{"text":"Item 1","bold":true,"children":[]}]' (JSON string)
+--   - table: '{"rows":[["H1","H2"],["D1","D2"]]}' (JSON string)
+--   - metadata: "disc" (for listStyle), "list" (for contentType)
+-- ============================================================================
+CREATE TABLE template_config_section_variables (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  
+  -- Foreign key to template_sections.id (CASCADE DELETE)
+  section_id UNIQUEIDENTIFIER NOT NULL,
+  
+  -- Variable key name
+  -- Examples: 'label', 'content', 'contentType', 'items', 'listStyle', 
+  --           'tableData', 'textVariableName', 'labelVariableName'
+  variable_key NVARCHAR(255) NOT NULL,
+  
+  -- Display label for this variable (human-readable)
+  -- Examples: "Field Label", "Content", "List Items", "Content Type"
+  variable_label NVARCHAR(255),
+  
+  -- Variable value stored as string (JSON for complex types)
+  variable_value NVARCHAR(MAX),
+  
+  -- Data type hint: 'text', 'list', 'table', 'metadata'
+  -- Helps the frontend determine which editor to render
+  variable_type NVARCHAR(50) NOT NULL DEFAULT 'text',
+  
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  
+  -- Unique constraint: No duplicate variable keys per section
+  CONSTRAINT uk_config_section_variables_key UNIQUE(section_id, variable_key),
+  
+  CONSTRAINT fk_config_section_variables_section 
+    FOREIGN KEY (section_id) REFERENCES template_sections(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_config_section_variables_section_id ON template_config_section_variables(section_id);
+CREATE INDEX idx_config_section_variables_key ON template_config_section_variables(variable_key);
+
 
 
 -- ╔══════════════════════════════════════════════════════════════════════════════╗
