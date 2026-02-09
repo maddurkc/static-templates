@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, closestCenter, PointerSensor, useSensor, useSensors, CollisionDetection } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Section } from "@/types/section";
@@ -101,7 +101,12 @@ const TemplateEditor = () => {
   const [subjectError, setSubjectError] = useState<string | null>(null);
   const [showVariablesPanel, setShowVariablesPanel] = useState(false);
   const [focusedVariableName, setFocusedVariableName] = useState<string | null>(null);
-  const [dropIndicator, setDropIndicator] = useState<{ sectionId: string; position: 'before' | 'after' } | null>(null);
+  const [dropIndicator, setDropIndicatorState] = useState<{ sectionId: string; position: 'before' | 'after' } | null>(null);
+  const dropIndicatorRef = useRef<{ sectionId: string; position: 'before' | 'after' } | null>(null);
+  const setDropIndicator = useCallback((value: { sectionId: string; position: 'before' | 'after' } | null) => {
+    dropIndicatorRef.current = value;
+    setDropIndicatorState(value);
+  }, []);
   const { toast } = useToast();
 
   // Walkthrough hook
@@ -345,53 +350,75 @@ const TemplateEditor = () => {
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
+    const activeIdStr = String(active.id);
+    const isFromLibrary = activeIdStr.startsWith('library-');
+
+    // Helper: compute drop indicator from mouse position relative to all sections
+    const computeIndicatorFromMouse = (): { sectionId: string; position: 'before' | 'after' } | null => {
+      if (sections.length === 0) return null;
+      
+      // Check if cursor is clearly above first or below last section
+      const firstEl = document.querySelector(`[data-section-id="${sections[0].id}"]`);
+      const lastEl = document.querySelector(`[data-section-id="${sections[sections.length - 1].id}"]`);
+      
+      if (firstEl) {
+        const firstRect = firstEl.getBoundingClientRect();
+        if (currentMouseY <= firstRect.top + firstRect.height * 0.25) {
+          return { sectionId: sections[0].id, position: 'before' };
+        }
+      }
+      
+      if (lastEl) {
+        const lastRect = lastEl.getBoundingClientRect();
+        if (currentMouseY >= lastRect.top + lastRect.height * 0.75) {
+          return { sectionId: sections[sections.length - 1].id, position: 'after' };
+        }
+      }
+      
+      // Find closest edge
+      let closestSection: string | null = null;
+      let closestPosition: 'before' | 'after' = 'before';
+      let closestDistance = Infinity;
+
+      for (const s of sections) {
+        const el = document.querySelector(`[data-section-id="${s.id}"]`);
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const position: 'before' | 'after' = currentMouseY < midY ? 'before' : 'after';
+        const dist = Math.abs(currentMouseY - midY);
+        
+        if (dist < closestDistance) {
+          closestDistance = dist;
+          closestSection = s.id;
+          closestPosition = position;
+        }
+      }
+
+      return closestSection ? { sectionId: closestSection, position: closestPosition } : null;
+    };
     
     if (!over) {
-      setDropIndicator(null);
+      // Even with no collision target, if dragging from library try to compute from mouse
+      if (isFromLibrary && sections.length > 0) {
+        const indicator = computeIndicatorFromMouse();
+        setDropIndicator(indicator);
+      } else {
+        setDropIndicator(null);
+      }
       return;
     }
 
     const dropTargetId = String(over.id);
-    const activeIdStr = String(active.id);
-    const isFromLibrary = activeIdStr.startsWith('library-');
     
-    // Handle dropping on the main drop zone (when list is empty or cursor is in the zone)
+    // Handle dropping on the main drop zone
     if (dropTargetId === 'editor-drop-zone') {
       if (sections.length > 0) {
-        // Find the closest section to the cursor and determine before/after
-        let closestSection: string | null = null;
-        let closestPosition: 'before' | 'after' = 'before';
-        let closestDistance = Infinity;
-
-        for (const s of sections) {
-          const el = document.querySelector(`[data-section-id="${s.id}"]`);
-          if (!el) continue;
-          const rect = el.getBoundingClientRect();
-          const midY = rect.top + rect.height / 2;
-          
-          // Distance to top edge
-          const distTop = Math.abs(currentMouseY - rect.top);
-          // Distance to bottom edge
-          const distBottom = Math.abs(currentMouseY - rect.bottom);
-          
-          if (distTop < closestDistance) {
-            closestDistance = distTop;
-            closestSection = s.id;
-            closestPosition = 'before';
-          }
-          if (distBottom < closestDistance) {
-            closestDistance = distBottom;
-            closestSection = s.id;
-            closestPosition = 'after';
-          }
-        }
-
-        if (closestSection) {
-          setDropIndicator({ sectionId: closestSection, position: closestPosition });
-          return;
-        }
+        const indicator = computeIndicatorFromMouse();
+        setDropIndicator(indicator);
+      } else {
+        setDropIndicator(null);
       }
-      setDropIndicator(null);
       return;
     }
     
@@ -414,19 +441,15 @@ const TemplateEditor = () => {
       return;
     }
 
-    // Get the DOM element and use the over rect from dnd-kit
-    const overRect = over.rect;
-    if (!overRect) {
+    // Calculate position based on cursor relative to the over element's midpoint
+    const overEl = document.querySelector(`[data-section-id="${dropTargetId}"]`);
+    if (!overEl) {
       setDropIndicator(null);
       return;
     }
-
-    // Calculate position based on cursor relative to the over element
-    // Use the delta from dnd-kit to get cursor position
-    const cursorY = currentMouseY;
+    const overRect = overEl.getBoundingClientRect();
     const middleY = overRect.top + overRect.height / 2;
-    
-    const position: 'before' | 'after' = cursorY < middleY ? 'before' : 'after';
+    const position: 'before' | 'after' = currentMouseY < middleY ? 'before' : 'after';
     
     setDropIndicator({ sectionId: dropTargetId, position });
   };
@@ -434,13 +457,19 @@ const TemplateEditor = () => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
-    const currentDropIndicator = dropIndicator;
+    const currentDropIndicator = dropIndicatorRef.current;
     setDropIndicator(null);
 
-    if (!over) return;
+    // Allow drop even if over is null, as long as we have a valid drop indicator from library
+    if (!over && !currentDropIndicator) return;
+    if (!over && currentDropIndicator && active.id.toString().startsWith('library-')) {
+      // Treat as a drop using the indicator position
+    } else if (!over) {
+      return;
+    }
 
     if (active.id.toString().startsWith('library-')) {
-      const dropTargetId = String(over.id);
+      const dropTargetId = over ? String(over.id) : 'editor-drop-zone';
       const sectionType = active.id.toString().replace('library-', '');
       const sectionDef = sectionTypes.find(s => s.type === sectionType);
       
@@ -474,8 +503,8 @@ const TemplateEditor = () => {
       // Determine insertion index using the tracked drop indicator
       let insertIndex = sections.length; // Default to end
       
-      // Handle drop on editor-drop-zone with drop indicator for first/last position
-      if (dropTargetId === 'editor-drop-zone' && currentDropIndicator && sections.length > 0) {
+      // Always prefer the drop indicator if available (most reliable)
+      if (currentDropIndicator && sections.length > 0) {
         const indicatorIndex = sections.findIndex(s => s.id === currentDropIndicator.sectionId);
         if (indicatorIndex !== -1) {
           insertIndex = currentDropIndicator.position === 'after' ? indicatorIndex + 1 : indicatorIndex;
