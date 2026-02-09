@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Section, ListItemStyle } from "@/types/section";
 import { GlobalApiConfig } from "@/types/global-api-config";
 import { sectionTypes } from "@/data/sectionTypes";
@@ -364,78 +364,6 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
   const isInlinePlaceholderSection = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(section.type);
   const placeholders = isInlinePlaceholderSection ? extractPlaceholders(section.content) : [];
   const hasPlaceholders = placeholders.length > 0;
-  
-  // Initialize placeholder variables for labeled-content text sections
-  // This ensures placeholders in content are always registered in section.variables
-  useEffect(() => {
-    if (section.type === 'labeled-content') {
-      const contentType = (section.variables?.contentType as string) || 'text';
-      const textVariableName = section.variables?.textVariableName as string;
-      const labelVariableName = section.variables?.labelVariableName as string;
-      
-      // Get content to check for placeholders
-      let contentToCheck = '';
-      if (contentType === 'text' && textVariableName) {
-        contentToCheck = (section.variables?.[textVariableName] as string) || '';
-      }
-      
-      // Also check label for placeholders
-      const labelContent = labelVariableName 
-        ? (section.variables?.[labelVariableName] as string) || ''
-        : (section.variables?.label as string) || '';
-      
-      // Extract all placeholders from content and label
-      const allPlaceholders: string[] = [];
-      const placeholderRegex = /\{\{(\w+)\}\}/g;
-      
-      // From text content
-      let match;
-      while ((match = placeholderRegex.exec(contentToCheck)) !== null) {
-        if (!allPlaceholders.includes(match[1]) && match[1] !== textVariableName) {
-          allPlaceholders.push(match[1]);
-        }
-      }
-      
-      // From label
-      placeholderRegex.lastIndex = 0;
-      while ((match = placeholderRegex.exec(labelContent)) !== null) {
-        if (!allPlaceholders.includes(match[1]) && match[1] !== labelVariableName) {
-          allPlaceholders.push(match[1]);
-        }
-      }
-      
-      // Check list items for placeholders
-      if (contentType === 'list' && Array.isArray(section.variables?.items)) {
-        (section.variables.items as any[]).forEach(item => {
-          const itemText = typeof item === 'object' ? item.text : item;
-          if (typeof itemText === 'string') {
-            placeholderRegex.lastIndex = 0;
-            while ((match = placeholderRegex.exec(itemText)) !== null) {
-              if (!allPlaceholders.includes(match[1])) {
-                allPlaceholders.push(match[1]);
-              }
-            }
-          }
-        });
-      }
-      
-      // Initialize any missing placeholder variables
-      const missingPlaceholders = allPlaceholders.filter(
-        p => section.variables?.[p] === undefined
-      );
-      
-      if (missingPlaceholders.length > 0) {
-        const updatedVariables = { ...section.variables };
-        missingPlaceholders.forEach(p => {
-          updatedVariables[p] = '';
-        });
-        onUpdate({
-          ...section,
-          variables: updatedVariables
-        });
-      }
-    }
-  }, [section.id, section.type, section.variables]);
   
   // Show TableEditor for table sections
   if (section.type === 'table') {
@@ -911,11 +839,10 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                   updatedVariables['label'] = html;
                 }
                 
-                // Add entries for any manual placeholders (only if not already defined)
+                // Add entries for any manual placeholders
                 newPlaceholders.forEach(match => {
                   const varName = match.replace(/\{\{|\}\}/g, '');
-                  // Use undefined check to preserve empty string values
-                  if (updatedVariables[varName] === undefined) {
+                  if (!updatedVariables[varName]) {
                     updatedVariables[varName] = '';
                   }
                 });
@@ -1121,11 +1048,10 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                   updatedVariables['content'] = html;
                 }
                 
-                // Add entries for any manual placeholders (only if not already defined)
+                // Add entries for any manual placeholders
                 newPlaceholders.forEach(match => {
                   const varName = match.replace(/\{\{|\}\}/g, '');
-                  // Use undefined check to preserve empty string values
-                  if (updatedVariables[varName] === undefined) {
+                  if (!updatedVariables[varName]) {
                     updatedVariables[varName] = '';
                   }
                 });
