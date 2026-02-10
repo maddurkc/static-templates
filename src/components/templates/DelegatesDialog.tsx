@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { UserAutocomplete, User } from "./UserAutocomplete";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UserAutocomplete, User, DelegateType } from "./UserAutocomplete";
 import { Users, X, UserPlus } from "lucide-react";
 import styles from "./DelegatesDialog.module.scss";
 
@@ -32,9 +33,10 @@ export const DelegatesDialog = ({ delegates, onChange, trigger }: DelegatesDialo
   };
 
   const handleAddDelegates = () => {
-    // Merge pending into existing, avoiding duplicates by email
     const existingEmails = new Set(delegates.map((d) => d.email));
-    const newDelegates = pendingDelegates.filter((d) => !existingEmails.has(d.email));
+    const newDelegates = pendingDelegates
+      .filter((d) => !existingEmails.has(d.email))
+      .map((d) => ({ ...d, delegateType: 'extended' as DelegateType }));
     if (newDelegates.length > 0) {
       onChange([...delegates, ...newDelegates]);
     }
@@ -43,6 +45,10 @@ export const DelegatesDialog = ({ delegates, onChange, trigger }: DelegatesDialo
 
   const handleRemoveDelegate = (userId: string) => {
     onChange(delegates.filter((d) => d.id !== userId));
+  };
+
+  const handleTypeChange = (userId: string, type: DelegateType) => {
+    onChange(delegates.map((d) => (d.id === userId ? { ...d, delegateType: type } : d)));
   };
 
   return (
@@ -110,6 +116,18 @@ export const DelegatesDialog = ({ delegates, onChange, trigger }: DelegatesDialo
                         {delegate.department && ` · ${delegate.department}`}
                       </span>
                     </div>
+                    <Select
+                      value={delegate.delegateType || "extended"}
+                      onValueChange={(val) => handleTypeChange(delegate.id, val as DelegateType)}
+                    >
+                      <SelectTrigger className={styles.typeSelect}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="extended">Extended</SelectItem>
+                        <SelectItem value="exclusive">Exclusive</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       variant="ghost"
                       size="icon"

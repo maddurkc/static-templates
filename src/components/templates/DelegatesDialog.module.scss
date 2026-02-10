@@ -111,6 +111,13 @@
   }
 }
 
+.typeSelect {
+  width: 120px;
+  height: 30px;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
 .emptyState {
   display: flex;
   flex-direction: column;

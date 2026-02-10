@@ -2,12 +2,15 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 
 import styles from "./UserAutocomplete.module.scss";
 
+export type DelegateType = 'extended' | 'exclusive';
+
 export interface User {
   id: string;
   email: string;
   name: string;
   avatar?: string;
   department?: string;
+  delegateType?: DelegateType;
 }
 
 interface UserAutocompleteProps {
