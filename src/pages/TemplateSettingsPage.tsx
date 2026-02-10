@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, Share2, Bell, Wrench, Shield, Palette, ArrowLeft, X, UserPlus, Users } from "lucide-react";
+import { Settings, Share2, Bell, Wrench, Shield, Palette, ArrowLeft, X, UserPlus, Users, Check } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,8 +32,25 @@ const GROUPS = ["Sharing", "Advanced"];
 const getInitials = (name: string) =>
   name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2);
 
+// ─── Save Footer per category ───
+const CategorySaveFooter = ({ categoryId, onSave }: { categoryId: string; onSave: (id: string) => void }) => {
+  const [saved, setSaved] = useState(false);
+  const handleSave = () => {
+    onSave(categoryId);
+    setSaved(true);
+    toast.success("Settings saved");
+    setTimeout(() => setSaved(false), 2000);
+  };
+  return (
+    <div className={styles.categorySaveFooter}>
+      {saved && <span className={styles.savedIndicator}><Check className="h-3.5 w-3.5" /> Saved</span>}
+      <Button size="sm" onClick={handleSave}>Save</Button>
+    </div>
+  );
+};
+
 // ─── Delegates ───
-const DelegatesContent = ({ delegates, onChange }: { delegates: User[]; onChange: (d: User[]) => void }) => {
+const DelegatesContent = ({ delegates, onChange, onSave }: { delegates: User[]; onChange: (d: User[]) => void; onSave: (id: string) => void }) => {
   const [pending, setPending] = useState<User[]>([]);
 
   const handleAdd = () => {
@@ -92,12 +110,13 @@ const DelegatesContent = ({ delegates, onChange }: { delegates: User[]; onChange
           </div>
         )}
       </div>
+      <CategorySaveFooter categoryId="delegates" onSave={onSave} />
     </div>
   );
 };
 
 // ─── Subscribers ───
-const SubscribersContent = () => (
+const SubscribersContent = ({ onSave }: { onSave: (id: string) => void }) => (
   <div>
     <div className={styles.settingGroup}>
       <div className={styles.settingGroupLabel}>Notifications</div>
@@ -122,11 +141,12 @@ const SubscribersContent = () => (
         <p className={styles.emptyHint}>Subscribers will receive updates about this template</p>
       </div>
     </div>
+    <CategorySaveFooter categoryId="subscribers" onSave={onSave} />
   </div>
 );
 
 // ─── Permissions ───
-const PermissionsContent = () => (
+const PermissionsContent = ({ onSave }: { onSave: (id: string) => void }) => (
   <div>
     <div className={styles.settingGroup}>
       <div className={styles.settingGroupLabel}>Access control</div>
@@ -150,11 +170,12 @@ const PermissionsContent = () => (
         <div className={styles.settingControl}><Switch /></div>
       </div>
     </div>
+    <CategorySaveFooter categoryId="permissions" onSave={onSave} />
   </div>
 );
 
 // ─── Config ───
-const ConfigContent = () => (
+const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => (
   <div>
     <div className={styles.settingGroup}>
       <div className={styles.settingGroupLabel}>General</div>
@@ -182,11 +203,12 @@ const ConfigContent = () => (
         <div className={styles.settingControl}><Input type="number" defaultValue={30} className={styles.configInput} style={{ width: 70 }} /></div>
       </div>
     </div>
+    <CategorySaveFooter categoryId="config" onSave={onSave} />
   </div>
 );
 
 // ─── Appearance ───
-const AppearanceContent = () => (
+const AppearanceContent = ({ onSave }: { onSave: (id: string) => void }) => (
   <div>
     <div className={styles.settingGroup}>
       <div className={styles.settingGroupLabel}>Email layout</div>
@@ -220,15 +242,16 @@ const AppearanceContent = () => (
         <div className={styles.settingControl}><Switch /></div>
       </div>
     </div>
+    <CategorySaveFooter categoryId="appearance" onSave={onSave} />
   </div>
 );
 
-const CONTENT_MAP: Record<string, (props: { delegates: User[]; onChange: (d: User[]) => void }) => React.ReactNode> = {
-  delegates: ({ delegates, onChange }) => <DelegatesContent delegates={delegates} onChange={onChange} />,
-  subscribers: () => <SubscribersContent />,
-  permissions: () => <PermissionsContent />,
-  config: () => <ConfigContent />,
-  appearance: () => <AppearanceContent />,
+const CONTENT_MAP: Record<string, (props: { delegates: User[]; onChange: (d: User[]) => void; onSave: (id: string) => void }) => React.ReactNode> = {
+  delegates: ({ delegates, onChange, onSave }) => <DelegatesContent delegates={delegates} onChange={onChange} onSave={onSave} />,
+  subscribers: ({ onSave }) => <SubscribersContent onSave={onSave} />,
+  permissions: ({ onSave }) => <PermissionsContent onSave={onSave} />,
+  config: ({ onSave }) => <ConfigContent onSave={onSave} />,
+  appearance: ({ onSave }) => <AppearanceContent onSave={onSave} />,
 };
 
 // ─── Page component ───
@@ -237,6 +260,11 @@ export default function TemplateSettingsPage() {
   const [activeCategory, setActiveCategory] = useState("delegates");
   const [delegates, setDelegates] = useState<User[]>([]);
   const active = CATEGORIES.find((c) => c.id === activeCategory)!;
+
+  const handleSaveCategory = useCallback((categoryId: string) => {
+    console.log(`Saving settings for category: ${categoryId}`);
+    // TODO: integrate with backend API
+  }, []);
 
   return (
     <div className={styles.pageRoot}>
@@ -279,7 +307,7 @@ export default function TemplateSettingsPage() {
           <div className={styles.contentDesc}>{active.description}</div>
         </div>
         <div className={styles.contentBody}>
-          {CONTENT_MAP[activeCategory]({ delegates, onChange: setDelegates })}
+          {CONTENT_MAP[activeCategory]({ delegates, onChange: setDelegates, onSave: handleSaveCategory })}
         </div>
       </div>
     </div>

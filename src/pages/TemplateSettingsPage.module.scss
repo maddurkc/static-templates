@@ -301,3 +301,28 @@
   height: 34px;
   font-size: 0.85rem;
 }
+
+/* ─── Category save footer ─── */
+.categorySaveFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1.5rem;
+  margin-top: 1rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.savedIndicator {
+  font-size: 0.8rem;
+  color: hsl(142 71% 45%);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
