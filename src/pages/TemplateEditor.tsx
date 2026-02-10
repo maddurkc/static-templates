@@ -1963,6 +1963,12 @@ ${sectionRows}
                 </SheetContent>
               </Sheet>
 
+              {/* Settings1 - Full Page */}
+              <Button variant="outline" size="sm" onClick={() => navigate('/templates/settings')}>
+                <Settings className="h-4 w-4 mr-2" />
+                Settings1
+              </Button>
+
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">

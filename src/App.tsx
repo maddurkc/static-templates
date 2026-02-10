@@ -14,6 +14,7 @@ import DatabaseSchema from "./pages/DatabaseSchema";
 import ERDiagram from "./pages/ERDiagram";
 import MigrationGenerator from "./pages/MigrationGenerator";
 import SettingsLayoutDemo from "./pages/SettingsLayoutDemo";
+import TemplateSettingsPage from "./pages/TemplateSettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
                   <Route path="/er-diagram" element={<ERDiagram />} />
                   <Route path="/migrations" element={<MigrationGenerator />} />
                   <Route path="/settings-demo" element={<SettingsLayoutDemo />} />
+                  <Route path="/templates/settings" element={<TemplateSettingsPage />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
