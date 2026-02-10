@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database, HelpCircle } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database, HelpCircle, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
@@ -33,6 +33,7 @@ import { generateTextSectionVariableName, isTextBasedSection, generateThymeleafT
 import { useTemplateWalkthrough } from "@/hooks/useTemplateWalkthrough";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DelegatesDialog } from "@/components/templates/DelegatesDialog";
+import { TemplateSettingsPanel } from "@/components/templates/TemplateSettingsPanel";
 import { User } from "@/components/templates/UserAutocomplete";
 import styles from "./TemplateEditor.module.scss";
 const TemplateEditor = () => {
@@ -97,6 +98,7 @@ const TemplateEditor = () => {
   const [showVariablesPanel, setShowVariablesPanel] = useState(false);
   const [focusedVariableName, setFocusedVariableName] = useState<string | null>(null);
   const [delegates, setDelegates] = useState<User[]>([]);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [dropIndicator, setDropIndicatorState] = useState<{ sectionId: string; position: 'before' | 'after' } | null>(null);
   const dropIndicatorRef = useRef<{ sectionId: string; position: 'before' | 'after' } | null>(null);
   const setDropIndicator = useCallback((value: { sectionId: string; position: 'before' | 'after' } | null) => {
@@ -1944,11 +1946,22 @@ ${sectionRows}
                 </SheetContent>
               </Sheet>
               
-              {/* Delegates Dialog */}
-              <DelegatesDialog
-                delegates={delegates}
-                onChange={setDelegates}
-              />
+              {/* Settings Panel */}
+              <Sheet open={showSettingsPanel} onOpenChange={setShowSettingsPanel}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-[580px] p-0 overflow-hidden [&>button]:hidden">
+                  <TemplateSettingsPanel
+                    delegates={delegates}
+                    onDelegatesChange={setDelegates}
+                    onClose={() => setShowSettingsPanel(false)}
+                  />
+                </SheetContent>
+              </Sheet>
 
               <Dialog>
                 <DialogTrigger asChild>
