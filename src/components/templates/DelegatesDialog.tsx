@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserAutocomplete, User, DelegateType } from "./UserAutocomplete";
-import { Users, X, UserPlus } from "lucide-react";
+import { Share2, X, Users, UserPlus } from "lucide-react";
 import styles from "./DelegatesDialog.module.scss";
 
 interface DelegatesDialogProps {
@@ -22,15 +22,7 @@ const getInitials = (name: string): string => {
 };
 
 export const DelegatesDialog = ({ delegates, onChange, trigger }: DelegatesDialogProps) => {
-  const [open, setOpen] = useState(false);
   const [pendingDelegates, setPendingDelegates] = useState<User[]>([]);
-
-  const handleOpen = (isOpen: boolean) => {
-    if (isOpen) {
-      setPendingDelegates([]);
-    }
-    setOpen(isOpen);
-  };
 
   const handleAddDelegates = () => {
     const existingEmails = new Set(delegates.map((d) => d.email));
@@ -52,97 +44,100 @@ export const DelegatesDialog = ({ delegates, onChange, trigger }: DelegatesDialo
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm">
-            <Users className="h-4 w-4 mr-2" />
-            Delegates ({delegates.length})
+          <Button variant="outline" size="sm" className={styles.shareTrigger}>
+            <Share2 className="h-4 w-4" />
+            Share
+            {delegates.length > 0 && (
+              <span className={styles.shareCount}>{delegates.length}</span>
+            )}
           </Button>
         )}
-      </DialogTrigger>
-      <DialogContent className={styles.dialogContent}>
-        <DialogHeader>
-          <div className={styles.header}>
-            <DialogTitle>Manage Delegates</DialogTitle>
-            <p className={styles.subtitle}>
-              Add users who can edit and run this template
-            </p>
-          </div>
-        </DialogHeader>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} className={styles.popoverContent}>
+        {/* Header */}
+        <div className={styles.popoverHeader}>
+          <span className={styles.popoverTitle}>
+            <Share2 className={styles.popoverTitleIcon} />
+            Share Template
+          </span>
+        </div>
 
-        <div className={styles.body}>
-          {/* Add delegates */}
-          <div className={styles.fieldGroup}>
-            <span className={styles.fieldLabel}>Add delegates</span>
-            <UserAutocomplete
-              value={pendingDelegates}
-              onChange={setPendingDelegates}
-              placeholder="Search by name or email..."
-            />
+        {/* Search */}
+        <div className={styles.searchArea}>
+          <div className={styles.searchRow}>
+            <div className={styles.searchInputWrapper}>
+              <UserAutocomplete
+                value={pendingDelegates}
+                onChange={setPendingDelegates}
+                placeholder="Add people by name or email..."
+              />
+            </div>
             {pendingDelegates.length > 0 && (
-              <Button size="sm" onClick={handleAddDelegates} className="self-end mt-1">
-                <UserPlus className="h-4 w-4 mr-1" />
-                Add {pendingDelegates.length} delegate{pendingDelegates.length > 1 ? "s" : ""}
+              <Button size="sm" onClick={handleAddDelegates} className={styles.addButton}>
+                <UserPlus className="h-3.5 w-3.5 mr-1" />
+                Add
               </Button>
             )}
           </div>
-
-          {/* Current delegates list */}
-          <div className={styles.fieldGroup}>
-            <div className="flex items-center justify-between">
-              <span className={styles.fieldLabel}>Current delegates</span>
-              <span className={styles.delegateCount}>{delegates.length} total</span>
-            </div>
-
-            {delegates.length === 0 ? (
-              <div className={styles.emptyState}>
-                <div className={styles.emptyIcon}>
-                  <Users />
-                </div>
-                <p className={styles.emptyText}>No delegates added yet</p>
-              </div>
-            ) : (
-              <div className={styles.delegateList}>
-                {delegates.map((delegate) => (
-                  <div key={delegate.id} className={styles.delegateItem}>
-                    <div className={styles.delegateAvatar}>
-                      {getInitials(delegate.name)}
-                    </div>
-                    <div className={styles.delegateInfo}>
-                      <span className={styles.delegateName}>{delegate.name}</span>
-                      <span className={styles.delegateEmail}>
-                        {delegate.email}
-                        {delegate.department && ` · ${delegate.department}`}
-                      </span>
-                    </div>
-                    <Select
-                      value={delegate.delegateType || "extended"}
-                      onValueChange={(val) => handleTypeChange(delegate.id, val as DelegateType)}
-                    >
-                      <SelectTrigger className={styles.typeSelect}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="extended">Extended</SelectItem>
-                        <SelectItem value="exclusive">Exclusive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={styles.removeButton}
-                      onClick={() => handleRemoveDelegate(delegate.id)}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {/* People list */}
+        <div className={styles.peopleSection}>
+          {delegates.length > 0 && (
+            <div className={styles.peopleSectionLabel}>
+              People with access · {delegates.length}
+            </div>
+          )}
+
+          {delegates.length === 0 ? (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>
+                <Users />
+              </div>
+              <p className={styles.emptyText}>No one has access yet</p>
+              <p className={styles.emptySubtext}>Search for people above to share this template</p>
+            </div>
+          ) : (
+            delegates.map((delegate) => (
+              <div key={delegate.id} className={styles.delegateItem}>
+                <div className={styles.delegateAvatar}>
+                  {getInitials(delegate.name)}
+                </div>
+                <div className={styles.delegateInfo}>
+                  <span className={styles.delegateName}>{delegate.name}</span>
+                  <span className={styles.delegateEmail}>{delegate.email}</span>
+                </div>
+                <Select
+                  value={delegate.delegateType || "extended"}
+                  onValueChange={(val) => handleTypeChange(delegate.id, val as DelegateType)}
+                >
+                  <SelectTrigger
+                    className={styles.typeSelect}
+                    data-type={delegate.delegateType || "extended"}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="extended">Extended</SelectItem>
+                    <SelectItem value="exclusive">Exclusive</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={styles.removeButton}
+                  onClick={() => handleRemoveDelegate(delegate.id)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };
