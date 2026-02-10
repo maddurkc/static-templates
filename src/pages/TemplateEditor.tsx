@@ -32,6 +32,8 @@ import { generateListVariableName, generateThymeleafListHtml, generateThymeleafN
 import { generateTextSectionVariableName, isTextBasedSection, generateThymeleafTextHtml } from "@/lib/textThymeleafUtils";
 import { useTemplateWalkthrough } from "@/hooks/useTemplateWalkthrough";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DelegatesDialog } from "@/components/templates/DelegatesDialog";
+import { User } from "@/components/templates/UserAutocomplete";
 import styles from "./TemplateEditor.module.scss";
 const TemplateEditor = () => {
   const navigate = useNavigate();
@@ -94,6 +96,7 @@ const TemplateEditor = () => {
   const [subjectError, setSubjectError] = useState<string | null>(null);
   const [showVariablesPanel, setShowVariablesPanel] = useState(false);
   const [focusedVariableName, setFocusedVariableName] = useState<string | null>(null);
+  const [delegates, setDelegates] = useState<User[]>([]);
   const [dropIndicator, setDropIndicatorState] = useState<{ sectionId: string; position: 'before' | 'after' } | null>(null);
   const dropIndicatorRef = useRef<{ sectionId: string; position: 'before' | 'after' } | null>(null);
   const setDropIndicator = useCallback((value: { sectionId: string; position: 'before' | 'after' } | null) => {
@@ -1941,6 +1944,12 @@ ${sectionRows}
                 </SheetContent>
               </Sheet>
               
+              {/* Delegates Dialog */}
+              <DelegatesDialog
+                delegates={delegates}
+                onChange={setDelegates}
+              />
+
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
