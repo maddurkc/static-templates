@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import * as React from "react";
 import styles from "./RunTemplates.module.scss";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RotateCcw } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import {
   Dialog,
@@ -32,6 +32,8 @@ import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
 const RunTemplates = () => {
   const navigate = useNavigate();
   const { id: templateId } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const resendMode = searchParams.get('resend') === 'true';
   
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1320,6 +1322,29 @@ const RunTemplates = () => {
 
     console.log("Email Payload:", JSON.stringify(payload, null, 2));
 
+    // Save last-sent payload to localStorage for resend feature
+    const lastSentData = {
+      templateId: selectedTemplate.id,
+      toUsers,
+      ccUsers,
+      bccUsers,
+      variables,
+      listVariables,
+      tableVariables,
+      labelVariables,
+      subjectVariables,
+      emailSubject: finalSubject,
+      editedSectionContent,
+      sentAt: new Date().toISOString(),
+    };
+    try {
+      const allSent: Record<string, any> = JSON.parse(localStorage.getItem('lastSentPayloads') || '{}');
+      allSent[selectedTemplate.id] = lastSentData;
+      localStorage.setItem('lastSentPayloads', JSON.stringify(allSent));
+    } catch (e) {
+      console.warn('Failed to save last-sent payload:', e);
+    }
+
     toast({
       title: "Template Sent",
       description: `"${finalSubject}" sent successfully to ${payload.toEmails.length} recipient(s).`,
@@ -1340,6 +1365,40 @@ const RunTemplates = () => {
     setSubjectVariables({});
     setEmailSubject("");
   };
+
+  // Load last-sent payload for resend mode
+  const getLastSentPayload = (tplId: string) => {
+    try {
+      const allSent = JSON.parse(localStorage.getItem('lastSentPayloads') || '{}');
+      return allSent[tplId] || null;
+    } catch { return null; }
+  };
+
+  const hasLastSentPayload = (tplId: string): boolean => !!getLastSentPayload(tplId);
+
+  // Effect to restore last-sent payload when resend mode is active
+  useEffect(() => {
+    if (!resendMode || !selectedTemplate) return;
+    const saved = getLastSentPayload(selectedTemplate.id);
+    if (!saved) return;
+
+    // Restore all form state from saved payload
+    if (saved.toUsers) setToUsers(saved.toUsers);
+    if (saved.ccUsers) setCcUsers(saved.ccUsers);
+    if (saved.bccUsers) setBccUsers(saved.bccUsers);
+    if (saved.variables) setVariables(saved.variables);
+    if (saved.listVariables) setListVariables(saved.listVariables);
+    if (saved.tableVariables) setTableVariables(saved.tableVariables);
+    if (saved.labelVariables) setLabelVariables(saved.labelVariables);
+    if (saved.subjectVariables) setSubjectVariables(saved.subjectVariables);
+    if (saved.emailSubject) setEmailSubject(saved.emailSubject);
+    if (saved.editedSectionContent) setEditedSectionContent(saved.editedSectionContent);
+
+    toast({
+      title: "Last Sent Loaded",
+      description: `Restored payload from ${new Date(saved.sentAt).toLocaleString()}. Edit and resend.`,
+    });
+  }, [resendMode, selectedTemplate]);
 
   const previewHtml = React.useMemo(() => {
     if (!selectedTemplate) return "";
@@ -1483,13 +1542,25 @@ const RunTemplates = () => {
                       </Badge>
                     </div>
 
-                    <Button
-                      onClick={() => navigate(`/run-templates/${template.id}`)}
-                      className="w-full shadow-lg shadow-primary/20"
-                    >
-                      <PlayCircle className="h-4 w-4 mr-2" />
-                      Run Template
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => navigate(`/run-templates/${template.id}`)}
+                        className="flex-1 shadow-lg shadow-primary/20"
+                      >
+                        <PlayCircle className="h-4 w-4 mr-2" />
+                        Run
+                      </Button>
+                      {hasLastSentPayload(template.id) && (
+                        <Button
+                          variant="outline"
+                          onClick={() => navigate(`/run-templates/${template.id}?resend=true`)}
+                          title="Edit & resend last sent"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Resend
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </Card>
               ))

@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit, Loader2 } from "lucide-react";
+import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit, Loader2, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, updateTemplate, resetTemplatesToDefault, Template } from "@/lib/templateStorage";
 import { fetchTemplates } from "@/lib/templateApi";
@@ -46,7 +46,18 @@ const Templates = () => {
   }, []);
 
   const handleRunTemplate = (template: Template) => {
-    navigate('/run-templates', { state: { template } });
+    navigate(`/run-templates/${template.id}`);
+  };
+
+  const hasLastSentPayload = (tplId: string): boolean => {
+    try {
+      const allSent = JSON.parse(localStorage.getItem('lastSentPayloads') || '{}');
+      return !!allSent[tplId];
+    } catch { return false; }
+  };
+
+  const handleResendTemplate = (template: Template) => {
+    navigate(`/run-templates/${template.id}?resend=true`);
   };
 
   const handleCopyHTML = async (html: string, templateName: string) => {
@@ -207,6 +218,17 @@ const Templates = () => {
                       <PlayCircle />
                       Run
                     </Button>
+                    {hasLastSentPayload(template.id) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResendTemplate(template)}
+                        title="Edit & resend last sent"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        Resend
+                      </Button>
+                    )}
                     <div className={styles.iconActions}>
                       <Button
                         variant="ghost"
