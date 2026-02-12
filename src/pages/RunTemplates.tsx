@@ -57,6 +57,7 @@ const RunTemplates = () => {
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editedSectionContent, setEditedSectionContent] = useState<Record<string, string>>({});
   const [resendMode, setResendMode] = useState(false); // Flag to skip default init when loading last sent
+  const skipVariableInitRef = React.useRef(false); // Ref to prevent useEffect from overwriting restored variables
   const { toast } = useToast();
 
   // Scroll to section in preview when editing
@@ -141,6 +142,11 @@ const RunTemplates = () => {
   // Initialize variables when template is selected
   React.useEffect(() => {
     if (selectedTemplate) {
+      // Skip variable initialization if we just restored from last sent payload
+      if (skipVariableInitRef.current) {
+        skipVariableInitRef.current = false;
+        return;
+      }
       const vars = extractAllVariables(selectedTemplate);
       const initialVars: Record<string, string | TextStyle> = {};
       const initialListVars: Record<string, string[] | ListItemStyle[]> = {};
@@ -1386,6 +1392,8 @@ const RunTemplates = () => {
       const data = JSON.parse(stored);
       
       // Set the template first
+      // Prevent the useEffect from overwriting restored variables
+      skipVariableInitRef.current = true;
       setSelectedTemplate(template);
       setEmailTitle(template.name);
       setExecutedOn(new Date().toLocaleString());
