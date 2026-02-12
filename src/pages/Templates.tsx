@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit, Loader2 } from "lucide-react";
+import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit, Loader2, RotateCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, updateTemplate, resetTemplatesToDefault, Template } from "@/lib/templateStorage";
 import { fetchTemplates } from "@/lib/templateApi";
@@ -93,6 +93,14 @@ const Templates = () => {
 
   const handleEditTemplate = (template: Template) => {
     navigate('/templates/editor', { state: { template } });
+  };
+
+  const handleResendTemplate = (template: Template) => {
+    navigate('/run-templates', { state: { template, resend: true } });
+  };
+
+  const hasLastSent = (templateId: string) => {
+    return localStorage.getItem(`last_sent_${templateId}`) !== null;
   };
 
   // Generate preview HTML from sections or html field
@@ -216,6 +224,17 @@ const Templates = () => {
                       >
                         <Edit />
                       </Button>
+                      {hasLastSent(template.id) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleResendTemplate(template)}
+                          className={styles.iconButton}
+                          title="Resend from last sent"
+                        >
+                          <RotateCw />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
