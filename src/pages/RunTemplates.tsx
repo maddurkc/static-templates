@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import {
   Dialog,
@@ -56,6 +56,7 @@ const RunTemplates = () => {
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editedSectionContent, setEditedSectionContent] = useState<Record<string, string>>({});
+  const [resendMode, setResendMode] = useState(false); // Flag to skip default init when loading last sent
   const { toast } = useToast();
 
   // Scroll to section in preview when editing
@@ -78,7 +79,13 @@ const RunTemplates = () => {
       try {
         const template = await fetchTemplateById(templateId);
         if (template) {
-          handleRunTemplate(template);
+          if (resendMode) {
+            // Resend mode: load last sent payload instead of defaults
+            loadLastSentPayload(template);
+            setResendMode(false);
+          } else {
+            handleRunTemplate(template);
+          }
         } else {
           toast({
             title: "Template not found",
@@ -1320,6 +1327,20 @@ const RunTemplates = () => {
 
     console.log("Email Payload:", JSON.stringify(payload, null, 2));
 
+    // Save last sent payload to localStorage for resend feature
+    const lastSentData = {
+      templateId: selectedTemplate.id,
+      templateName: selectedTemplate.name,
+      toEmails: toUsers.map(u => u.email),
+      ccEmails: ccUsers.map(u => u.email),
+      bccEmails: bccUsers.map(u => u.email),
+      subjectData: { ...subjectVariables },
+      bodyData: bodyData,
+      emailSubject: finalSubject,
+      sentAt: new Date().toISOString(),
+    };
+    localStorage.setItem(`last_sent_${selectedTemplate.id}`, JSON.stringify(lastSentData));
+
     toast({
       title: "Template Sent",
       description: `"${finalSubject}" sent successfully to ${payload.toEmails.length} recipient(s).`,
@@ -1339,6 +1360,136 @@ const RunTemplates = () => {
     setLabelVariables({});
     setSubjectVariables({});
     setEmailSubject("");
+  };
+
+  // Check if a template has a last sent payload
+  const hasLastSentPayload = (tplId: string): boolean => {
+    return localStorage.getItem(`last_sent_${tplId}`) !== null;
+  };
+
+  // Get last sent date for display
+  const getLastSentDate = (tplId: string): string | null => {
+    const stored = localStorage.getItem(`last_sent_${tplId}`);
+    if (!stored) return null;
+    try {
+      const data = JSON.parse(stored);
+      return data.sentAt ? new Date(data.sentAt).toLocaleString() : null;
+    } catch { return null; }
+  };
+
+  // Load last sent payload into the form
+  const loadLastSentPayload = (template: Template) => {
+    const stored = localStorage.getItem(`last_sent_${template.id}`);
+    if (!stored) return;
+
+    try {
+      const data = JSON.parse(stored);
+      
+      // Set the template first
+      setSelectedTemplate(template);
+      setEmailTitle(template.name);
+      setExecutedOn(new Date().toLocaleString());
+
+      // Restore recipients
+      if (data.toEmails?.length) {
+        setToUsers(data.toEmails.map((email: string) => ({ id: email, name: email, email })));
+      }
+      if (data.ccEmails?.length) {
+        setCcUsers(data.ccEmails.map((email: string) => ({ id: email, name: email, email })));
+      }
+      if (data.bccEmails?.length) {
+        setBccUsers(data.bccEmails.map((email: string) => ({ id: email, name: email, email })));
+      }
+
+      // Restore subject
+      if (data.subjectData && Object.keys(data.subjectData).length > 0) {
+        setSubjectVariables(data.subjectData);
+        if (template.subject) {
+          setEmailSubject(subjectThymeleafToPlaceholder(template.subject));
+        }
+      } else if (data.emailSubject) {
+        setEmailSubject(data.emailSubject);
+      }
+
+      // Restore body variables from the saved bodyData
+      if (data.bodyData) {
+        const bodyData = data.bodyData;
+        const restoredVars: Record<string, string | TextStyle> = {};
+        const restoredListVars: Record<string, string[] | ListItemStyle[]> = {};
+        const restoredTableVars: Record<string, any> = {};
+        const restoredLabelVars: Record<string, string> = {};
+
+        // Categorize bodyData keys based on section metadata
+        Object.entries(bodyData).forEach(([key, value]) => {
+          // Label variables
+          if (key.startsWith('label_')) {
+            restoredLabelVars[key] = String(value);
+            return;
+          }
+
+          // Check if this is a list variable (items_*)
+          if (key.startsWith('items_') && Array.isArray(value)) {
+            restoredListVars[key] = value as string[];
+            return;
+          }
+
+          // Check against sections for proper categorization
+          if (template.sections) {
+            const matchingSection = template.sections.find(s => {
+              if (s.type === 'labeled-content') {
+                const listVarName = s.variables?.listVariableName as string;
+                if (listVarName === key && s.variables?.contentType === 'list') return true;
+                if (s.id === key && s.variables?.contentType === 'table') return true;
+              }
+              if (s.type === 'table' && s.id === key) return true;
+              return false;
+            });
+
+            if (matchingSection) {
+              if (matchingSection.variables?.contentType === 'list' || 
+                  (Array.isArray(value) && matchingSection.type !== 'table')) {
+                restoredListVars[key] = value as string[];
+                return;
+              }
+              if (matchingSection.variables?.contentType === 'table' || matchingSection.type === 'table') {
+                restoredTableVars[key] = value;
+                return;
+              }
+            }
+          }
+
+          // Default: treat as text variable
+          restoredVars[key] = String(value);
+        });
+
+        setVariables(restoredVars);
+        setListVariables(restoredListVars);
+        setTableVariables(restoredTableVars);
+        setLabelVariables(restoredLabelVars);
+      }
+
+      // Initialize subject from template
+      if (template.subject) {
+        const subjectVars = extractSubjectVariables(template.subject);
+        if (subjectVars.length > 0 && !data.subjectData) {
+          const initialSubjectVars: Record<string, string> = {};
+          subjectVars.forEach(v => { initialSubjectVars[v] = ''; });
+          setSubjectVariables(initialSubjectVars);
+        }
+      }
+
+      toast({
+        title: "Last Sent Loaded",
+        description: `Restored data from ${data.sentAt ? new Date(data.sentAt).toLocaleString() : 'last send'}.`,
+      });
+    } catch (e) {
+      console.error('Failed to load last sent payload:', e);
+      toast({
+        title: "Error",
+        description: "Failed to load last sent data.",
+        variant: "destructive",
+      });
+    }
   };
 
   const previewHtml = React.useMemo(() => {
@@ -1483,13 +1634,28 @@ const RunTemplates = () => {
                       </Badge>
                     </div>
 
-                    <Button
-                      onClick={() => navigate(`/run-templates/${template.id}`)}
-                      className="w-full shadow-lg shadow-primary/20"
-                    >
-                      <PlayCircle className="h-4 w-4 mr-2" />
-                      Run Template
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => navigate(`/run-templates/${template.id}`)}
+                        className="flex-1 shadow-lg shadow-primary/20"
+                      >
+                        <PlayCircle className="h-4 w-4 mr-2" />
+                        Run Template
+                      </Button>
+                      {hasLastSentPayload(template.id) && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          title={`Resend - Last sent: ${getLastSentDate(template.id) || 'unknown'}`}
+                          onClick={() => {
+                            setResendMode(true);
+                            navigate(`/run-templates/${template.id}`);
+                          }}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </Card>
               ))
