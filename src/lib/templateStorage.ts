@@ -266,6 +266,153 @@ export const getTemplates = (): Template[] => {
             styles: { fontSize: '14px', color: '#718096' }
           }
         ]
+      },
+      {
+        id: "tpl-labeled-heavy",
+        name: "Client Onboarding Brief",
+        subject: "Onboarding: {{clientName}} - {{projectType}}",
+        html: "",
+        createdAt: new Date().toISOString(),
+        sectionCount: 10,
+        archived: false,
+        sections: [
+          {
+            id: "sec-lb-h1",
+            type: "heading1",
+            content: "<h1>{{clientName}} Onboarding</h1>",
+            order: 0,
+            isLabelEditable: true,
+            variables: { textVariableName: "onboardingTitle", onboardingTitle: "{{clientName}} Onboarding" },
+            styles: { fontSize: '32px', color: '#1a365d' }
+          },
+          {
+            id: "sec-lb-intro",
+            type: "paragraph",
+            content: "<p>{{introText}}</p>",
+            order: 1,
+            isLabelEditable: true,
+            variables: { textVariableName: "introText", introText: "Welcome aboard! Below you'll find all the details for getting started with our platform and services." },
+            styles: { fontSize: '16px', color: '#4a5568' }
+          },
+          {
+            id: "sec-lb-overview",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 2,
+            isLabelEditable: true,
+            variables: {
+              label: "Project Overview",
+              labelVariableName: "label_sec-lb-overview",
+              "label_sec-lb-overview": "Project Overview",
+              contentType: "text",
+              textVariableName: "overviewText",
+              overviewText: "This engagement covers a full platform migration including data transfer, user training, and go-live support over a 12-week timeline.",
+              content: "This engagement covers a full platform migration including data transfer, user training, and go-live support over a 12-week timeline."
+            },
+            styles: {}
+          },
+          {
+            id: "sec-lb-h2",
+            type: "heading2",
+            content: "<h2>Key Contacts</h2>",
+            order: 3,
+            isLabelEditable: false,
+            variables: { textVariableName: "contactsHeading", contactsHeading: "Key Contacts" },
+            styles: { fontSize: '24px', color: '#2d3748' }
+          },
+          {
+            id: "sec-lb-pm",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 4,
+            isLabelEditable: true,
+            variables: {
+              label: "Project Manager",
+              labelVariableName: "label_sec-lb-pm",
+              "label_sec-lb-pm": "Project Manager",
+              contentType: "text",
+              textVariableName: "pmName",
+              pmName: "Jessica Huang — jessica.huang@company.com — ext. 4021",
+              content: "Jessica Huang — jessica.huang@company.com — ext. 4021"
+            },
+            styles: {}
+          },
+          {
+            id: "sec-lb-tech",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 5,
+            isLabelEditable: true,
+            variables: {
+              label: "Technical Lead",
+              labelVariableName: "label_sec-lb-tech",
+              "label_sec-lb-tech": "Technical Lead",
+              contentType: "text",
+              textVariableName: "techLead",
+              techLead: "Marcus Rivera — marcus.r@company.com — ext. 4055",
+              content: "Marcus Rivera — marcus.r@company.com — ext. 4055"
+            },
+            styles: {}
+          },
+          {
+            id: "sec-lb-h3",
+            type: "heading3",
+            content: "<h3>Deliverables & Timeline</h3>",
+            order: 6,
+            isLabelEditable: false,
+            variables: { textVariableName: "deliverablesHeading", deliverablesHeading: "Deliverables & Timeline" },
+            styles: { fontSize: '20px', color: '#2d3748' }
+          },
+          {
+            id: "sec-lb-milestones",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 7,
+            isLabelEditable: true,
+            variables: {
+              label: "Milestones",
+              labelVariableName: "label_sec-lb-milestones",
+              "label_sec-lb-milestones": "Milestones",
+              contentType: "list",
+              listStyle: "disc",
+              listVariableName: "milestones",
+              items: [
+                { text: "Week 1-2: Discovery & requirements gathering", bold: true, children: [] },
+                { text: "Week 3-5: Data migration & integration setup", children: [] },
+                { text: "Week 6-8: User acceptance testing", children: [] },
+                { text: "Week 9-10: Training sessions", italic: true, children: [] },
+                { text: "Week 11-12: Go-live & hypercare support", bold: true, children: [] }
+              ]
+            },
+            styles: {}
+          },
+          {
+            id: "sec-lb-notes",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 8,
+            isLabelEditable: true,
+            variables: {
+              label: "Special Notes",
+              labelVariableName: "label_sec-lb-notes",
+              "label_sec-lb-notes": "Special Notes",
+              contentType: "text",
+              textVariableName: "specialNotes",
+              specialNotes: "Client requires all communications to be encrypted. VPN access will be provisioned by Week 1. NDA signed on file.",
+              content: "Client requires all communications to be encrypted. VPN access will be provisioned by Week 1. NDA signed on file."
+            },
+            styles: {}
+          },
+          {
+            id: "sec-lb-closing",
+            type: "paragraph",
+            content: "<p>{{closingMessage}}</p>",
+            order: 9,
+            isLabelEditable: true,
+            variables: { textVariableName: "closingMessage", closingMessage: "Please review the above and confirm readiness by end of week. Looking forward to a successful partnership!" },
+            styles: { fontSize: '14px', color: '#718096', fontStyle: 'italic' }
+          }
+        ]
       }
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mockTemplates));
@@ -334,6 +481,42 @@ export const getTemplates = (): Template[] => {
         emailSubject: "Update: Weekend Maintenance",
         editedSectionContent: {},
         sentAt: new Date(Date.now() - 7200000).toISOString()
+      },
+      "tpl-labeled-heavy": {
+        templateId: "tpl-labeled-heavy",
+        toUsers: [{ id: "u5", name: "Elena Voss", email: "elena.voss@client.com" }],
+        ccUsers: [{ id: "u6", name: "Jessica Huang", email: "jessica.huang@company.com" }],
+        bccUsers: [],
+        variables: {
+          onboardingTitle: "Acme Corp Onboarding",
+          introText: "Welcome aboard! Below you'll find all the details for getting started.",
+          overviewText: "Full platform migration over a 12-week timeline.",
+          contactsHeading: "Key Contacts",
+          pmName: "Jessica Huang — jessica.huang@company.com — ext. 4021",
+          techLead: "Marcus Rivera — marcus.r@company.com — ext. 4055",
+          deliverablesHeading: "Deliverables & Timeline",
+          specialNotes: "Client requires all communications to be encrypted.",
+          closingMessage: "Please review and confirm readiness by end of week."
+        },
+        listVariables: {
+          milestones: [
+            { text: "Week 1-2: Discovery & requirements gathering", bold: true, children: [] },
+            { text: "Week 3-5: Data migration & integration setup", children: [] },
+            { text: "Week 6-8: User acceptance testing", children: [] }
+          ]
+        },
+        tableVariables: {},
+        labelVariables: {
+          "label_sec-lb-overview": "Project Overview",
+          "label_sec-lb-pm": "Project Manager",
+          "label_sec-lb-tech": "Technical Lead",
+          "label_sec-lb-milestones": "Milestones",
+          "label_sec-lb-notes": "Special Notes"
+        },
+        subjectVariables: { clientName: "Acme Corp", projectType: "Platform Migration" },
+        emailSubject: "Onboarding: Acme Corp - Platform Migration",
+        editedSectionContent: {},
+        sentAt: new Date(Date.now() - 1800000).toISOString()
       }
     };
     localStorage.setItem('lastSentPayloads', JSON.stringify(lastSentPayloads));
