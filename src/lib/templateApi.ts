@@ -515,3 +515,53 @@ export const fetchTemplateById = async (id: string): Promise<Template | null> =>
     return templates.find(t => t.id === id) || null;
   }
 };
+
+/**
+ * Convert resend API data (messageDetails + templateConfigData) into a Template object.
+ * Used when loading a previously sent template for re-sending.
+ */
+export const resendDataToTemplate = (data: any): { template: Template; bodyData: Record<string, any>; subjectData: Record<string, any>; recipients: string[]; ccEmails: string[]; bccEmails: string[]; subject: string } => {
+  const config = data.templateConfigData;
+  const message = data.messageDetails?.messageRequestData;
+
+  // Convert templateConfigData sections to local Section format
+  const sections: Section[] = (config?.content?.sections || []).map((s: any, index: number) => ({
+    id: s.templateConfigSectionId || s.templateConfigId || `section_${index}_${Date.now()}`,
+    type: (s.sectionType as SectionType) || inferSectionType(s.content || '', s.templateConfigSectionId || '', s.variables),
+    content: s.content || '',
+    variables: s.variables || {},
+    styles: s.styles || {},
+    isLabelEditable: s.isLabelEditable ?? true,
+    children: (s.childSections || []).map((child: any, ci: number) => ({
+      id: child.templateConfigSectionId || child.templateConfigId || `child_${ci}_${Date.now()}`,
+      type: (child.sectionType as SectionType) || 'text',
+      content: child.content || '',
+      variables: child.variables || {},
+      styles: child.styles || {},
+      isLabelEditable: child.isLabelEditable ?? true,
+      children: [],
+    })),
+    order: s.orderIndex || index,
+  }));
+
+  const template: Template = {
+    id: config?.templateId || `resend_${Date.now()}`,
+    name: config?.templateConfigName || 'Resent Template',
+    subject: config?.content?.subjectContent || '',
+    html: '',
+    createdAt: new Date().toISOString(),
+    sectionCount: sections.length,
+    archived: false,
+    sections,
+  };
+
+  return {
+    template,
+    bodyData: message?.contentData?.body_data || {},
+    subjectData: message?.contentData?.subject_data || {},
+    recipients: message?.recipients || [],
+    ccEmails: message?.ccEmails || [],
+    bccEmails: message?.bccEmails || [],
+    subject: config?.content?.subjectContent || '',
+  };
+};

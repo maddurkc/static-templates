@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
-import { fetchTemplates, fetchTemplateById } from "@/lib/templateApi";
+import { fetchTemplates, fetchTemplateById, resendDataToTemplate } from "@/lib/templateApi";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobalTable } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -1333,19 +1333,48 @@ const RunTemplates = () => {
 
     console.log("Email Payload:", JSON.stringify(payload, null, 2));
 
-    // Save last sent payload to localStorage for resend feature
-    const lastSentData = {
-      templateId: selectedTemplate.id,
-      templateName: selectedTemplate.name,
-      toEmails: toUsers.map(u => u.email),
-      ccEmails: ccUsers.map(u => u.email),
-      bccEmails: bccUsers.map(u => u.email),
-      subjectData: { ...subjectVariables },
-      bodyData: bodyData,
-      emailSubject: finalSubject,
-      sentAt: new Date().toISOString(),
+    // Save last sent payload in resend format (messageDetails + templateConfigData)
+    const resendPayload = {
+      messageDetails: {
+        messageRequestData: {
+          recipients: toUsers.map(u => u.email),
+          ccEmails: ccUsers.map(u => u.email),
+          bccEmails: bccUsers.map(u => u.email),
+          contentData: {
+            subject_data: { ...subjectVariables },
+            body_data: bodyData,
+          },
+        },
+        sentAt: new Date().toISOString(),
+      },
+      templateConfigData: {
+        templateConfigName: selectedTemplate.name,
+        templateId: selectedTemplate.id,
+        content: {
+          subjectContent: finalSubject,
+          sections: (selectedTemplate.sections || []).map((s, idx) => ({
+            templateConfigSectionId: s.id,
+            sectionType: s.type,
+            content: s.content,
+            variables: s.variables || {},
+            styles: s.styles || {},
+            isLabelEditable: s.isLabelEditable ?? true,
+            orderIndex: s.order ?? idx,
+            childSections: (s.children || []).map((child, ci) => ({
+              templateConfigSectionId: child.id,
+              sectionType: child.type,
+              content: child.content,
+              variables: child.variables || {},
+              styles: child.styles || {},
+              isLabelEditable: child.isLabelEditable ?? true,
+              orderIndex: ci,
+              childSections: [],
+            })),
+          })),
+        },
+      },
     };
-    localStorage.setItem(`last_sent_${selectedTemplate.id}`, JSON.stringify(lastSentData));
+    localStorage.setItem(`last_sent_${selectedTemplate.id}`, JSON.stringify(resendPayload));
 
     toast({
       title: "Template Sent",
@@ -1379,55 +1408,55 @@ const RunTemplates = () => {
     if (!stored) return null;
     try {
       const data = JSON.parse(stored);
-      return data.sentAt ? new Date(data.sentAt).toLocaleString() : null;
+      // Support new format (messageDetails.sentAt) and legacy format (sentAt)
+      const sentAt = data.messageDetails?.sentAt || data.sentAt;
+      return sentAt ? new Date(sentAt).toLocaleString() : null;
     } catch { return null; }
   };
 
-  // Load last sent payload into the form
-  const loadLastSentPayload = (template: Template) => {
-    const stored = localStorage.getItem(`last_sent_${template.id}`);
+  // Load last sent payload into the form using resend data format
+  const loadLastSentPayload = (fallbackTemplate: Template) => {
+    const stored = localStorage.getItem(`last_sent_${fallbackTemplate.id}`);
     if (!stored) return;
 
     try {
-      const data = JSON.parse(stored);
+      const rawData = JSON.parse(stored);
       
-      // Set the template first
-      // Prevent the useEffect from overwriting restored variables
-      skipVariableInitRef.current = true;
-      setSelectedTemplate(template);
-      setEmailTitle(template.name);
-      setExecutedOn(new Date().toLocaleString());
+      // Check if data is in new resend format (messageDetails + templateConfigData)
+      if (rawData.templateConfigData && rawData.messageDetails) {
+        const { template, bodyData, subjectData, recipients, ccEmails, bccEmails, subject } = resendDataToTemplate(rawData);
+        
+        // Prevent the useEffect from overwriting restored variables
+        skipVariableInitRef.current = true;
+        setSelectedTemplate(template);
+        setEmailTitle(template.name);
+        setExecutedOn(new Date().toLocaleString());
 
-      // Restore recipients
-      if (data.toEmails?.length) {
-        setToUsers(data.toEmails.map((email: string) => ({ id: email, name: email, email })));
-      }
-      if (data.ccEmails?.length) {
-        setCcUsers(data.ccEmails.map((email: string) => ({ id: email, name: email, email })));
-      }
-      if (data.bccEmails?.length) {
-        setBccUsers(data.bccEmails.map((email: string) => ({ id: email, name: email, email })));
-      }
-
-      // Restore subject
-      if (data.subjectData && Object.keys(data.subjectData).length > 0) {
-        setSubjectVariables(data.subjectData);
-        if (template.subject) {
-          setEmailSubject(subjectThymeleafToPlaceholder(template.subject));
+        // Restore recipients
+        if (recipients.length) {
+          setToUsers(recipients.map((email: string) => ({ id: email, name: email, email })));
         }
-      } else if (data.emailSubject) {
-        setEmailSubject(data.emailSubject);
-      }
+        if (ccEmails.length) {
+          setCcUsers(ccEmails.map((email: string) => ({ id: email, name: email, email })));
+        }
+        if (bccEmails.length) {
+          setBccUsers(bccEmails.map((email: string) => ({ id: email, name: email, email })));
+        }
 
-      // Restore body variables from the saved bodyData
-      if (data.bodyData) {
-        const bodyData = data.bodyData;
+        // Restore subject
+        if (subject) {
+          setEmailSubject(subject);
+        }
+        if (subjectData && Object.keys(subjectData).length > 0) {
+          setSubjectVariables(subjectData);
+        }
+
+        // Categorize body_data into variables, listVariables, labelVariables, tableVariables
         const restoredVars: Record<string, string | TextStyle> = {};
         const restoredListVars: Record<string, string[] | ListItemStyle[]> = {};
         const restoredTableVars: Record<string, any> = {};
         const restoredLabelVars: Record<string, string> = {};
 
-        // Categorize bodyData keys based on section metadata
         Object.entries(bodyData).forEach(([key, value]) => {
           // Label variables
           if (key.startsWith('label_')) {
@@ -1435,13 +1464,13 @@ const RunTemplates = () => {
             return;
           }
 
-          // Check if this is a list variable (items_*)
+          // List variables (items_*)
           if (key.startsWith('items_') && Array.isArray(value)) {
             restoredListVars[key] = value as string[];
             return;
           }
 
-          // Check against sections for proper categorization
+          // Check against template sections for proper categorization
           if (template.sections) {
             const matchingSection = template.sections.find(s => {
               if (s.type === 'labeled-content') {
@@ -1474,22 +1503,83 @@ const RunTemplates = () => {
         setListVariables(restoredListVars);
         setTableVariables(restoredTableVars);
         setLabelVariables(restoredLabelVars);
-      }
 
-      // Initialize subject from template
-      if (template.subject) {
-        const subjectVars = extractSubjectVariables(template.subject);
-        if (subjectVars.length > 0 && !data.subjectData) {
-          const initialSubjectVars: Record<string, string> = {};
-          subjectVars.forEach(v => { initialSubjectVars[v] = ''; });
-          setSubjectVariables(initialSubjectVars);
+        const sentAt = rawData.messageDetails?.sentAt;
+        toast({
+          title: "Last Sent Loaded",
+          description: `Restored data from ${sentAt ? new Date(sentAt).toLocaleString() : 'last send'}.`,
+        });
+      } else {
+        // Legacy format fallback - old localStorage format
+        const data = rawData;
+        skipVariableInitRef.current = true;
+        setSelectedTemplate(fallbackTemplate);
+        setEmailTitle(fallbackTemplate.name);
+        setExecutedOn(new Date().toLocaleString());
+
+        if (data.toEmails?.length) {
+          setToUsers(data.toEmails.map((email: string) => ({ id: email, name: email, email })));
         }
-      }
+        if (data.ccEmails?.length) {
+          setCcUsers(data.ccEmails.map((email: string) => ({ id: email, name: email, email })));
+        }
+        if (data.bccEmails?.length) {
+          setBccUsers(data.bccEmails.map((email: string) => ({ id: email, name: email, email })));
+        }
 
-      toast({
-        title: "Last Sent Loaded",
-        description: `Restored data from ${data.sentAt ? new Date(data.sentAt).toLocaleString() : 'last send'}.`,
-      });
+        if (data.subjectData && Object.keys(data.subjectData).length > 0) {
+          setSubjectVariables(data.subjectData);
+          if (fallbackTemplate.subject) {
+            setEmailSubject(subjectThymeleafToPlaceholder(fallbackTemplate.subject));
+          }
+        } else if (data.emailSubject) {
+          setEmailSubject(data.emailSubject);
+        }
+
+        if (data.bodyData) {
+          const restoredVars: Record<string, string | TextStyle> = {};
+          const restoredListVars: Record<string, string[] | ListItemStyle[]> = {};
+          const restoredTableVars: Record<string, any> = {};
+          const restoredLabelVars: Record<string, string> = {};
+
+          Object.entries(data.bodyData).forEach(([key, value]) => {
+            if (key.startsWith('label_')) { restoredLabelVars[key] = String(value); return; }
+            if (key.startsWith('items_') && Array.isArray(value)) { restoredListVars[key] = value as string[]; return; }
+            if (fallbackTemplate.sections) {
+              const matchingSection = fallbackTemplate.sections.find(s => {
+                if (s.type === 'labeled-content') {
+                  const listVarName = s.variables?.listVariableName as string;
+                  if (listVarName === key && s.variables?.contentType === 'list') return true;
+                  if (s.id === key && s.variables?.contentType === 'table') return true;
+                }
+                if (s.type === 'table' && s.id === key) return true;
+                return false;
+              });
+              if (matchingSection) {
+                if (matchingSection.variables?.contentType === 'list' || (Array.isArray(value) && matchingSection.type !== 'table')) {
+                  restoredListVars[key] = value as string[];
+                  return;
+                }
+                if (matchingSection.variables?.contentType === 'table' || matchingSection.type === 'table') {
+                  restoredTableVars[key] = value;
+                  return;
+                }
+              }
+            }
+            restoredVars[key] = String(value);
+          });
+
+          setVariables(restoredVars);
+          setListVariables(restoredListVars);
+          setTableVariables(restoredTableVars);
+          setLabelVariables(restoredLabelVars);
+        }
+
+        toast({
+          title: "Last Sent Loaded",
+          description: `Restored data from ${data.sentAt ? new Date(data.sentAt).toLocaleString() : 'last send'}.`,
+        });
+      }
     } catch (e) {
       console.error('Failed to load last sent payload:', e);
       toast({
