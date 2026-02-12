@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RotateCcw } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RotateCcw, Upload } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import {
   Dialog,
@@ -58,6 +58,8 @@ const RunTemplates = () => {
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editedSectionContent, setEditedSectionContent] = useState<Record<string, string>>({});
+  const [payloadImportOpen, setPayloadImportOpen] = useState(false);
+  const [payloadImportValue, setPayloadImportValue] = useState('');
   const { toast } = useToast();
 
   // Scroll to section in preview when editing
@@ -1366,6 +1368,110 @@ const RunTemplates = () => {
     setEmailSubject("");
   };
 
+  // Import API payload JSON into form state
+  const handleImportPayload = () => {
+    if (!selectedTemplate || !payloadImportValue.trim()) return;
+    
+    try {
+      const parsed = JSON.parse(payloadImportValue);
+      
+      // Support both { subject_data, body_data } and { contentData: { subject_data, body_data } } formats
+      const subjectData = parsed.subject_data || parsed.contentData?.subject_data || {};
+      const bodyData = parsed.body_data || parsed.contentData?.body_data || {};
+      
+      const importedVars: Record<string, string | TextStyle> = {};
+      const importedListVars: Record<string, string[] | ListItemStyle[]> = {};
+      const importedTableVars: Record<string, any> = {};
+      const importedLabelVars: Record<string, string> = {};
+      
+      // Classify body_data keys into the correct state buckets
+      Object.entries(bodyData).forEach(([key, value]: [string, any]) => {
+        if (key.startsWith('label_')) {
+          // Label variables
+          importedLabelVars[key] = String(value);
+        } else if (key.startsWith('items_')) {
+          // List variables by naming convention
+          importedListVars[key] = Array.isArray(value) ? value : [String(value)];
+        } else if (Array.isArray(value)) {
+          // Any array value → list variable
+          importedListVars[key] = value;
+        } else if (typeof value === 'object' && value !== null && (value.headers || value.rows)) {
+          // Table variable
+          importedTableVars[key] = value;
+        } else {
+          // Regular text variable
+          importedVars[key] = String(value);
+        }
+      });
+      
+      // Also check template sections for additional classification
+      if (selectedTemplate.sections) {
+        selectedTemplate.sections.forEach(section => {
+          if (section.type === 'labeled-content') {
+            const labelVarName = (section.variables?.labelVariableName as string) || `label_${section.id}`;
+            // If bodyData has this key but it wasn't caught by prefix check, move it
+            if (bodyData[labelVarName] !== undefined && !importedLabelVars[labelVarName]) {
+              importedLabelVars[labelVarName] = String(bodyData[labelVarName]);
+              delete importedVars[labelVarName];
+            }
+            
+            // Check for list variables by listVariableName
+            if (section.variables?.contentType === 'list') {
+              const listVarName = (section.variables?.listVariableName as string) || `items_${section.id}`;
+              if (bodyData[listVarName] !== undefined && !importedListVars[listVarName]) {
+                const val = bodyData[listVarName];
+                importedListVars[listVarName] = Array.isArray(val) ? val : [String(val)];
+                delete importedVars[listVarName];
+              }
+            }
+            
+            // Check for text content variable
+            if (section.variables?.contentType === 'text') {
+              const textVarName = (section.variables?.textVariableName as string) || `content_${section.id}`;
+              if (bodyData[textVarName] !== undefined && !importedVars[textVarName]) {
+                importedVars[textVarName] = String(bodyData[textVarName]);
+              }
+            }
+          }
+        });
+      }
+      
+      // Import recipients if provided
+      if (parsed.toEmails && Array.isArray(parsed.toEmails)) {
+        setToUsers(parsed.toEmails.map((email: string, i: number) => ({ id: `imported-to-${i}`, name: email, email })));
+      }
+      if (parsed.ccEmails && Array.isArray(parsed.ccEmails)) {
+        setCcUsers(parsed.ccEmails.map((email: string, i: number) => ({ id: `imported-cc-${i}`, name: email, email })));
+      }
+      if (parsed.bccEmails && Array.isArray(parsed.bccEmails)) {
+        setBccUsers(parsed.bccEmails.map((email: string, i: number) => ({ id: `imported-bcc-${i}`, name: email, email })));
+      }
+      
+      // Apply imported data to state
+      setVariables(prev => ({ ...prev, ...importedVars }));
+      setListVariables(prev => ({ ...prev, ...importedListVars }));
+      setTableVariables(prev => ({ ...prev, ...importedTableVars }));
+      setLabelVariables(prev => ({ ...prev, ...importedLabelVars }));
+      if (Object.keys(subjectData).length > 0) {
+        setSubjectVariables(prev => ({ ...prev, ...subjectData }));
+      }
+      
+      setPayloadImportOpen(false);
+      setPayloadImportValue('');
+      
+      toast({
+        title: "Payload Imported",
+        description: `Imported ${Object.keys(importedVars).length} text, ${Object.keys(importedListVars).length} list, ${Object.keys(importedLabelVars).length} label, and ${Object.keys(importedTableVars).length} table variables.`,
+      });
+    } catch (e) {
+      toast({
+        title: "Invalid JSON",
+        description: "Please check your JSON format and try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Load last-sent payload for resend mode
   const getLastSentPayload = (tplId: string) => {
     try {
@@ -1586,6 +1692,15 @@ const RunTemplates = () => {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPayloadImportOpen(true)}
+                title="Import API payload JSON"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import Payload
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -3402,6 +3517,45 @@ const RunTemplates = () => {
             }}>
               <FileJson className="h-4 w-4 mr-2" />
               Import Data
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Payload Dialog */}
+      <Dialog open={payloadImportOpen} onOpenChange={setPayloadImportOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import API Payload</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Paste your API payload JSON below. Supports both <code>{"{ subject_data, body_data }"}</code> and <code>{"{ contentData: { subject_data, body_data } }"}</code> formats. Variables will be auto-mapped to text, list, label, and table fields.
+            </p>
+            <Textarea
+              value={payloadImportValue}
+              onChange={(e) => setPayloadImportValue(e.target.value)}
+              placeholder={'{\n  "subject_data": { "priority": "HIGH" },\n  "body_data": {\n    "heading": "My Title",\n    "label_section1": "Label Text",\n    "items_section1": ["Item 1", "Item 2"]\n  }\n}'}
+              className="font-mono text-xs min-h-[300px]"
+            />
+            <div className="text-xs text-muted-foreground">
+              <p className="font-medium mb-1">Auto-classification rules:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li><code>label_*</code> keys → Label variables</li>
+                <li><code>items_*</code> keys or array values → List variables</li>
+                <li>Objects with <code>headers</code>/<code>rows</code> → Table variables</li>
+                <li>Everything else → Text variables</li>
+                <li><code>toEmails</code>, <code>ccEmails</code>, <code>bccEmails</code> → Recipients</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPayloadImportOpen(false); setPayloadImportValue(''); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleImportPayload} disabled={!payloadImportValue.trim()}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import
             </Button>
           </DialogFooter>
         </DialogContent>
