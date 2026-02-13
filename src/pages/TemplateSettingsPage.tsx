@@ -175,37 +175,65 @@ const PermissionsContent = ({ onSave }: { onSave: (id: string) => void }) => (
 );
 
 // ─── Config ───
-const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => (
-  <div>
-    <div className={styles.settingGroup}>
-      <div className={styles.settingGroupLabel}>General</div>
-      <div className={styles.settingRow}>
-        <div className={styles.settingInfo}><div className={styles.settingLabel}>Auto-save drafts</div><div className={styles.settingHint}>Automatically save changes as you edit</div></div>
-        <div className={styles.settingControl}><Switch defaultChecked /></div>
+const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => {
+  const [editing, setEditing] = useState(false);
+
+  const handleCancel = () => setEditing(false);
+  const handleSubmit = () => {
+    onSave("config");
+    setEditing(false);
+    toast.success("Configuration saved");
+  };
+
+  return (
+    <div>
+      {!editing && (
+        <div className={styles.editBar}>
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            <Wrench className="h-3.5 w-3.5 mr-1.5" /> Edit
+          </Button>
+        </div>
+      )}
+      {editing && (
+        <div className={styles.editBar}>
+          <Button variant="ghost" size="sm" onClick={handleCancel}>
+            <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+          </Button>
+          <Button size="sm" onClick={handleSubmit}>
+            <Check className="h-3.5 w-3.5 mr-1.5" /> Submit
+          </Button>
+        </div>
+      )}
+
+      <div className={styles.settingGroup}>
+        <div className={styles.settingGroupLabel}>General</div>
+        <div className={styles.settingRow}>
+          <div className={styles.settingInfo}><div className={styles.settingLabel}>Auto-save drafts</div><div className={styles.settingHint}>Automatically save changes as you edit</div></div>
+          <div className={styles.settingControl}><Switch defaultChecked disabled={!editing} /></div>
+        </div>
+        <div className={styles.settingRow}>
+          <div className={styles.settingInfo}><div className={styles.settingLabel}>Version history</div><div className={styles.settingHint}>Keep track of all template revisions</div></div>
+          <div className={styles.settingControl}><Switch defaultChecked disabled={!editing} /></div>
+        </div>
       </div>
-      <div className={styles.settingRow}>
-        <div className={styles.settingInfo}><div className={styles.settingLabel}>Version history</div><div className={styles.settingHint}>Keep track of all template revisions</div></div>
-        <div className={styles.settingControl}><Switch defaultChecked /></div>
+      <div className={styles.settingGroup}>
+        <div className={styles.settingGroupLabel}>Execution</div>
+        <div className={styles.settingRow}>
+          <div className={styles.settingInfo}><div className={styles.settingLabel}>API integration</div><div className={styles.settingHint}>Enable external API data fetching</div></div>
+          <div className={styles.settingControl}><Switch disabled={!editing} /></div>
+        </div>
+        <div className={styles.settingRow}>
+          <div className={styles.settingInfo}><div className={styles.settingLabel}>Max concurrent runs</div><div className={styles.settingHint}>Limit simultaneous template executions</div></div>
+          <div className={styles.settingControl}><Input type="number" defaultValue={5} className={styles.configInput} style={{ width: 70 }} disabled={!editing} /></div>
+        </div>
+        <div className={styles.settingRow}>
+          <div className={styles.settingInfo}><div className={styles.settingLabel}>Timeout (seconds)</div><div className={styles.settingHint}>Maximum execution time per run</div></div>
+          <div className={styles.settingControl}><Input type="number" defaultValue={30} className={styles.configInput} style={{ width: 70 }} disabled={!editing} /></div>
+        </div>
       </div>
     </div>
-    <div className={styles.settingGroup}>
-      <div className={styles.settingGroupLabel}>Execution</div>
-      <div className={styles.settingRow}>
-        <div className={styles.settingInfo}><div className={styles.settingLabel}>API integration</div><div className={styles.settingHint}>Enable external API data fetching</div></div>
-        <div className={styles.settingControl}><Switch /></div>
-      </div>
-      <div className={styles.settingRow}>
-        <div className={styles.settingInfo}><div className={styles.settingLabel}>Max concurrent runs</div><div className={styles.settingHint}>Limit simultaneous template executions</div></div>
-        <div className={styles.settingControl}><Input type="number" defaultValue={5} className={styles.configInput} style={{ width: 70 }} /></div>
-      </div>
-      <div className={styles.settingRow}>
-        <div className={styles.settingInfo}><div className={styles.settingLabel}>Timeout (seconds)</div><div className={styles.settingHint}>Maximum execution time per run</div></div>
-        <div className={styles.settingControl}><Input type="number" defaultValue={30} className={styles.configInput} style={{ width: 70 }} /></div>
-      </div>
-    </div>
-    <CategorySaveFooter categoryId="config" onSave={onSave} />
-  </div>
-);
+  );
+};
 
 // ─── Appearance ───
 const AppearanceContent = ({ onSave }: { onSave: (id: string) => void }) => (
