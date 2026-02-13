@@ -175,15 +175,47 @@ const PermissionsContent = ({ onSave }: { onSave: (id: string) => void }) => (
 );
 
 // ─── Config ───
+interface ConfigState {
+  autoSave: boolean;
+  versionHistory: boolean;
+  apiIntegration: boolean;
+  maxConcurrentRuns: number;
+  timeout: number;
+}
+
+const INITIAL_CONFIG: ConfigState = {
+  autoSave: true,
+  versionHistory: true,
+  apiIntegration: false,
+  maxConcurrentRuns: 5,
+  timeout: 30,
+};
+
 const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => {
   const [editing, setEditing] = useState(false);
+  const [config, setConfig] = useState<ConfigState>({ ...INITIAL_CONFIG });
+  const [savedConfig, setSavedConfig] = useState<ConfigState>({ ...INITIAL_CONFIG });
 
-  const handleCancel = () => setEditing(false);
+  const isDirty = JSON.stringify(config) !== JSON.stringify(savedConfig);
+
+  const handleCancel = () => {
+    setConfig({ ...savedConfig });
+    setEditing(false);
+  };
+
   const handleSubmit = () => {
+    if (!isDirty) {
+      toast.info("No changes to save — configuration is unchanged");
+      return;
+    }
     onSave("config");
+    setSavedConfig({ ...config });
     setEditing(false);
     toast.success("Configuration saved");
   };
+
+  const update = <K extends keyof ConfigState>(key: K, value: ConfigState[K]) =>
+    setConfig((prev) => ({ ...prev, [key]: value }));
 
   return (
     <div>
@@ -209,26 +241,26 @@ const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => {
         <div className={styles.settingGroupLabel}>General</div>
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}><div className={styles.settingLabel}>Auto-save drafts</div><div className={styles.settingHint}>Automatically save changes as you edit</div></div>
-          <div className={styles.settingControl}><Switch defaultChecked disabled={!editing} /></div>
+          <div className={styles.settingControl}><Switch checked={config.autoSave} onCheckedChange={(v) => update("autoSave", v)} disabled={!editing} /></div>
         </div>
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}><div className={styles.settingLabel}>Version history</div><div className={styles.settingHint}>Keep track of all template revisions</div></div>
-          <div className={styles.settingControl}><Switch defaultChecked disabled={!editing} /></div>
+          <div className={styles.settingControl}><Switch checked={config.versionHistory} onCheckedChange={(v) => update("versionHistory", v)} disabled={!editing} /></div>
         </div>
       </div>
       <div className={styles.settingGroup}>
         <div className={styles.settingGroupLabel}>Execution</div>
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}><div className={styles.settingLabel}>API integration</div><div className={styles.settingHint}>Enable external API data fetching</div></div>
-          <div className={styles.settingControl}><Switch disabled={!editing} /></div>
+          <div className={styles.settingControl}><Switch checked={config.apiIntegration} onCheckedChange={(v) => update("apiIntegration", v)} disabled={!editing} /></div>
         </div>
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}><div className={styles.settingLabel}>Max concurrent runs</div><div className={styles.settingHint}>Limit simultaneous template executions</div></div>
-          <div className={styles.settingControl}><Input type="number" defaultValue={5} className={styles.configInput} style={{ width: 70 }} disabled={!editing} /></div>
+          <div className={styles.settingControl}><Input type="number" value={config.maxConcurrentRuns} onChange={(e) => update("maxConcurrentRuns", Number(e.target.value))} className={styles.configInput} style={{ width: 70 }} disabled={!editing} /></div>
         </div>
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}><div className={styles.settingLabel}>Timeout (seconds)</div><div className={styles.settingHint}>Maximum execution time per run</div></div>
-          <div className={styles.settingControl}><Input type="number" defaultValue={30} className={styles.configInput} style={{ width: 70 }} disabled={!editing} /></div>
+          <div className={styles.settingControl}><Input type="number" value={config.timeout} onChange={(e) => update("timeout", Number(e.target.value))} className={styles.configInput} style={{ width: 70 }} disabled={!editing} /></div>
         </div>
       </div>
     </div>
