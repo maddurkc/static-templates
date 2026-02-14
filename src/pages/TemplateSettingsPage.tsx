@@ -1,12 +1,13 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, Share2, Bell, Wrench, Shield, Palette, ArrowLeft, X, UserPlus, Users, Check } from "lucide-react";
+import { Settings, Share2, Bell, Wrench, Shield, Palette, ArrowLeft, X, UserPlus, Users, Check, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { UserAutocomplete, User, DelegateType } from "@/components/templates/UserAutocomplete";
 import styles from "./TemplateSettingsPage.module.scss";
 
@@ -116,34 +117,193 @@ const DelegatesContent = ({ delegates, onChange, onSave }: { delegates: User[]; 
 };
 
 // ─── Subscribers ───
-const SubscribersContent = ({ onSave }: { onSave: (id: string) => void }) => (
-  <div>
-    <div className={styles.settingGroup}>
-      <div className={styles.settingGroupLabel}>Notifications</div>
-      <div className={styles.settingRow}>
-        <div className={styles.settingInfo}><div className={styles.settingLabel}>Email on template change</div><div className={styles.settingHint}>Notify subscribers when the template is modified</div></div>
-        <div className={styles.settingControl}><Switch defaultChecked /></div>
+interface Subscriber {
+  id: string;
+  isDL: boolean;
+  dlEmail?: string;
+  user?: User;
+  subscribeDraft: boolean;
+  subscribePublish: boolean;
+}
+
+const SubscribersContent = ({ onSave }: { onSave: (id: string) => void }) => {
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [isDL, setIsDL] = useState(false);
+  const [dlEmail, setDlEmail] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
+  const [subDraft, setSubDraft] = useState(true);
+  const [subPublish, setSubPublish] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setIsDL(false);
+    setDlEmail("");
+    setSelectedUsers([]);
+    setSubDraft(true);
+    setSubPublish(true);
+    setEditingId(null);
+  };
+
+  const canAdd = (isDL ? dlEmail.includes("@") : selectedUsers.length > 0) && (subDraft || subPublish);
+
+  const handleAdd = () => {
+    if (!canAdd) return;
+    if (isDL) {
+      const sub: Subscriber = { id: `sub-${Date.now()}`, isDL: true, dlEmail, subscribeDraft: subDraft, subscribePublish: subPublish };
+      setSubscribers((prev) => [...prev, sub]);
+    } else {
+      const newSubs = selectedUsers.map((u) => ({
+        id: `sub-${u.id}-${Date.now()}`,
+        isDL: false,
+        user: u,
+        subscribeDraft: subDraft,
+        subscribePublish: subPublish,
+      }));
+      setSubscribers((prev) => [...prev, ...newSubs]);
+    }
+    resetForm();
+    toast.success("Subscriber added");
+  };
+
+  const handleDelete = (id: string) => {
+    setSubscribers((prev) => prev.filter((s) => s.id !== id));
+    toast.success("Subscriber removed");
+  };
+
+  const toggleSubField = (id: string, field: "subscribeDraft" | "subscribePublish") => {
+    setSubscribers((prev) =>
+      prev.map((s) => {
+        if (s.id !== id) return s;
+        const updated = { ...s, [field]: !s[field] };
+        if (!updated.subscribeDraft && !updated.subscribePublish) {
+          toast.error("At least one subscription type is required");
+          return s;
+        }
+        return updated;
+      })
+    );
+  };
+
+  return (
+    <div>
+      {/* Add subscriber form */}
+      <div className={styles.settingGroup}>
+        <div className={styles.settingGroupLabel}>Add Subscriber</div>
+
+        {/* DL toggle */}
+        <div className={styles.settingRow}>
+          <div className={styles.settingInfo}>
+            <div className={styles.settingLabel}>Distribution List (DL) Email</div>
+            <div className={styles.settingHint}>Toggle on to subscribe a distribution list instead of an individual user</div>
+          </div>
+          <div className={styles.settingControl}><Switch checked={isDL} onCheckedChange={setIsDL} /></div>
+        </div>
+
+        {/* Conditional: DL email or User autocomplete */}
+        <div className={styles.subFormField}>
+          {isDL ? (
+            <div className={styles.dlInputWrapper}>
+              <Input
+                type="email"
+                placeholder="Enter DL email address, e.g. team@company.com"
+                value={dlEmail}
+                onChange={(e) => setDlEmail(e.target.value)}
+                className={styles.dlInput}
+              />
+              <p className={styles.dlHint}>
+                <Mail className="h-3 w-3" />
+                All members of this distribution list will receive notifications
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div className={styles.subFieldLabel}>Select User</div>
+              <UserAutocomplete value={selectedUsers} onChange={setSelectedUsers} placeholder="Search by name or email..." />
+            </div>
+          )}
+        </div>
+
+        {/* Subscribe For */}
+        <div className={styles.subFormField}>
+          <div className={styles.subFieldLabel}>Subscribe For</div>
+          <div className={styles.checkboxRow}>
+            <label className={styles.checkboxLabel}>
+              <Checkbox checked={subDraft} onCheckedChange={(v) => setSubDraft(!!v)} />
+              <span>Draft</span>
+            </label>
+            <label className={styles.checkboxLabel}>
+              <Checkbox checked={subPublish} onCheckedChange={(v) => setSubPublish(!!v)} />
+              <span>Publish</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Add button */}
+        <div className={styles.addSubBtn}>
+          <Button size="sm" disabled={!canAdd} onClick={handleAdd}>
+            <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Add Subscriber
+          </Button>
+        </div>
       </div>
-      <div className={styles.settingRow}>
-        <div className={styles.settingInfo}><div className={styles.settingLabel}>Run completion alerts</div><div className={styles.settingHint}>Alert when a template run finishes</div></div>
-        <div className={styles.settingControl}><Switch /></div>
+
+      <Separator className="mb-5" />
+
+      {/* Subscriber list */}
+      <div className={styles.settingGroup}>
+        <div className={styles.settingGroupLabel}>
+          Subscribers{subscribers.length > 0 && ` · ${subscribers.length}`}
+        </div>
+        {subscribers.length === 0 ? (
+          <div className={styles.emptyState}>
+            <Bell style={{ width: "2rem", height: "2rem" }} />
+            <p className={styles.emptyText}>No subscribers yet</p>
+            <p className={styles.emptyHint}>Add users or distribution lists to receive template notifications</p>
+          </div>
+        ) : (
+          <div className={styles.subscriberList}>
+            {/* Header */}
+            <div className={styles.subListHeader}>
+              <div className={styles.subListHeaderCell} style={{ flex: 1 }}>Subscriber</div>
+              <div className={styles.subListHeaderCell}>Draft</div>
+              <div className={styles.subListHeaderCell}>Publish</div>
+              <div className={styles.subListHeaderCell} style={{ width: 40 }}></div>
+            </div>
+            {subscribers.map((sub) => (
+              <div key={sub.id} className={styles.subRow}>
+                <div className={styles.subRowInfo}>
+                  <div className={styles.subRowAvatar} data-dl={sub.isDL}>
+                    {sub.isDL ? <Mail className="h-3.5 w-3.5" /> : getInitials(sub.user?.name || "")}
+                  </div>
+                  <div className={styles.subRowDetails}>
+                    <div className={styles.subRowName}>
+                      {sub.isDL ? sub.dlEmail : sub.user?.name}
+                      {sub.isDL && <span className={styles.dlBadge}>DL</span>}
+                    </div>
+                    <div className={styles.subRowEmail}>
+                      {sub.isDL ? "Distribution List" : sub.user?.email}
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.subRowCheck}>
+                  <Checkbox checked={sub.subscribeDraft} onCheckedChange={() => toggleSubField(sub.id, "subscribeDraft")} />
+                </div>
+                <div className={styles.subRowCheck}>
+                  <Checkbox checked={sub.subscribePublish} onCheckedChange={() => toggleSubField(sub.id, "subscribePublish")} />
+                </div>
+                <div className={styles.subRowActions}>
+                  <Button variant="ghost" size="icon" className={styles.removeBtn} onClick={() => handleDelete(sub.id)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <div className={styles.settingRow}>
-        <div className={styles.settingInfo}><div className={styles.settingLabel}>Weekly usage digest</div><div className={styles.settingHint}>Send a weekly summary of template runs and stats</div></div>
-        <div className={styles.settingControl}><Switch /></div>
-      </div>
+      <CategorySaveFooter categoryId="subscribers" onSave={onSave} />
     </div>
-    <div className={styles.settingGroup}>
-      <div className={styles.settingGroupLabel}>Subscriber list</div>
-      <div className={styles.emptyState}>
-        <Bell style={{ width: "2rem", height: "2rem" }} />
-        <p className={styles.emptyText}>No subscribers yet</p>
-        <p className={styles.emptyHint}>Subscribers will receive updates about this template</p>
-      </div>
-    </div>
-    <CategorySaveFooter categoryId="subscribers" onSave={onSave} />
-  </div>
-);
+  );
+};
 
 // ─── Permissions ───
 const PermissionsContent = ({ onSave }: { onSave: (id: string) => void }) => (
