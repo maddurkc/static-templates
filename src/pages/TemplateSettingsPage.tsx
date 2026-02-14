@@ -348,6 +348,7 @@ interface ConfigState {
   recipientBcc: boolean;
   onBehalfOfLob: string;
   onBehalfOfCioDirect: string;
+  templateAccess: "public" | "exclusive";
 }
 
 const LOB_OPTIONS = ["Global Markets", "Investment Banking", "Wealth Management", "Commercial Banking", "Asset Management"];
@@ -366,6 +367,7 @@ const INITIAL_CONFIG: ConfigState = {
   recipientBcc: false,
   onBehalfOfLob: "Global Markets",
   onBehalfOfCioDirect: "John Mitchell",
+  templateAccess: "public",
 };
 
 const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => {
@@ -563,6 +565,37 @@ const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => {
               {CIO_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
             </SelectContent>
           </Select>
+        </div>
+      </div>
+
+      {/* Access & Visibility */}
+      <div className={styles.settingGroup}>
+        <div className={styles.settingGroupLabel}>Access & Visibility</div>
+
+        <div className={styles.configField}>
+          <label className={styles.configFieldLabel}>Template Access</label>
+          <div className={styles.configFieldHint}>Control who can discover and use this template</div>
+          <div className={styles.accessOptionsRow}>
+            {([
+              { value: "public" as const, label: "Public", desc: "Visible to all users across the organisation" },
+              { value: "exclusive" as const, label: "Exclusive", desc: "Only delegates and subscribers can access" },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={styles.accessOptionCard}
+                data-selected={config.templateAccess === opt.value}
+                disabled={!editing}
+                onClick={() => update("templateAccess", opt.value)}
+              >
+                <span className={styles.accessOptionRadio} data-selected={config.templateAccess === opt.value} />
+                <div>
+                  <div className={styles.accessOptionLabel}>{opt.label}</div>
+                  <div className={styles.accessOptionDesc}>{opt.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
