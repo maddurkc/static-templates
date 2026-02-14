@@ -336,19 +336,36 @@ const PermissionsContent = ({ onSave }: { onSave: (id: string) => void }) => (
 
 // ─── Config ───
 interface ConfigState {
-  autoSave: boolean;
-  versionHistory: boolean;
-  apiIntegration: boolean;
-  maxConcurrentRuns: number;
-  timeout: number;
+  templateId: string;
+  templateName: string;
+  templateDescription: string;
+  customEmailEnabled: boolean;
+  customEmail: string;
+  selfSubscriptionEnabled: boolean;
+  selfSubscriptionLink: string;
+  recipientTo: boolean;
+  recipientCc: boolean;
+  recipientBcc: boolean;
+  onBehalfOfLob: string;
+  onBehalfOfCioDirect: string;
 }
 
+const LOB_OPTIONS = ["Global Markets", "Investment Banking", "Wealth Management", "Commercial Banking", "Asset Management"];
+const CIO_OPTIONS = ["John Mitchell", "Sarah Chen", "David Park", "Maria Garcia", "Robert Kim"];
+
 const INITIAL_CONFIG: ConfigState = {
-  autoSave: true,
-  versionHistory: true,
-  apiIntegration: false,
-  maxConcurrentRuns: 5,
-  timeout: 30,
+  templateId: "TPL-2024-00847",
+  templateName: "Monthly Portfolio Summary",
+  templateDescription: "Generates a monthly portfolio performance summary report for clients including asset allocation, returns, and market commentary.",
+  customEmailEnabled: false,
+  customEmail: "",
+  selfSubscriptionEnabled: false,
+  selfSubscriptionLink: "https://notifications.company.com/subscribe/tpl-2024-00847",
+  recipientTo: true,
+  recipientCc: false,
+  recipientBcc: false,
+  onBehalfOfLob: "Global Markets",
+  onBehalfOfCioDirect: "John Mitchell",
 };
 
 const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => {
@@ -379,48 +396,173 @@ const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => {
 
   return (
     <div>
-      {!editing && (
-        <div className={styles.editBar}>
+      <div className={styles.editBar}>
+        {!editing ? (
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-            <Wrench className="h-3.5 w-3.5 mr-1.5" /> Edit
+            <Wrench className="h-3.5 w-3.5 mr-1.5" /> Edit Configuration
           </Button>
-        </div>
-      )}
-      {editing && (
-        <div className={styles.editBar}>
-          <Button variant="ghost" size="sm" onClick={handleCancel}>
-            <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
-          </Button>
-          <Button size="sm" onClick={handleSubmit}>
-            <Check className="h-3.5 w-3.5 mr-1.5" /> Submit
-          </Button>
-        </div>
-      )}
+        ) : (
+          <>
+            <Button variant="ghost" size="sm" onClick={handleCancel}>
+              <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+            </Button>
+            <Button size="sm" onClick={handleSubmit}>
+              <Check className="h-3.5 w-3.5 mr-1.5" /> Save Changes
+            </Button>
+          </>
+        )}
+      </div>
 
+      {/* Identity */}
       <div className={styles.settingGroup}>
-        <div className={styles.settingGroupLabel}>General</div>
-        <div className={styles.settingRow}>
-          <div className={styles.settingInfo}><div className={styles.settingLabel}>Auto-save drafts</div><div className={styles.settingHint}>Automatically save changes as you edit</div></div>
-          <div className={styles.settingControl}><Switch checked={config.autoSave} onCheckedChange={(v) => update("autoSave", v)} disabled={!editing} /></div>
+        <div className={styles.settingGroupLabel}>Template Identity</div>
+
+        <div className={styles.configField}>
+          <label className={styles.configFieldLabel}>Template ID</label>
+          <div className={styles.configFieldHint}>Unique system identifier — cannot be modified</div>
+          <Input value={config.templateId} readOnly disabled className={styles.configFieldInput} />
         </div>
-        <div className={styles.settingRow}>
-          <div className={styles.settingInfo}><div className={styles.settingLabel}>Version history</div><div className={styles.settingHint}>Keep track of all template revisions</div></div>
-          <div className={styles.settingControl}><Switch checked={config.versionHistory} onCheckedChange={(v) => update("versionHistory", v)} disabled={!editing} /></div>
+
+        <div className={styles.configField}>
+          <label className={styles.configFieldLabel}>Template Name</label>
+          <div className={styles.configFieldHint}>Display name shown across the platform</div>
+          <Input
+            value={config.templateName}
+            onChange={(e) => update("templateName", e.target.value)}
+            readOnly={!editing}
+            disabled={!editing}
+            className={styles.configFieldInput}
+          />
+        </div>
+
+        <div className={styles.configField}>
+          <label className={styles.configFieldLabel}>Template Description</label>
+          <div className={styles.configFieldHint}>Brief summary of the template's purpose</div>
+          <textarea
+            value={config.templateDescription}
+            onChange={(e) => update("templateDescription", e.target.value)}
+            readOnly={!editing}
+            disabled={!editing}
+            className={styles.configTextarea}
+            rows={3}
+          />
         </div>
       </div>
+
+      {/* Email & Notifications */}
       <div className={styles.settingGroup}>
-        <div className={styles.settingGroupLabel}>Execution</div>
+        <div className={styles.settingGroupLabel}>Email & Notifications</div>
+
         <div className={styles.settingRow}>
-          <div className={styles.settingInfo}><div className={styles.settingLabel}>API integration</div><div className={styles.settingHint}>Enable external API data fetching</div></div>
-          <div className={styles.settingControl}><Switch checked={config.apiIntegration} onCheckedChange={(v) => update("apiIntegration", v)} disabled={!editing} /></div>
+          <div className={styles.settingInfo}>
+            <div className={styles.settingLabel}>Send from custom email ID</div>
+            <div className={styles.settingHint}>Use a custom sender address instead of the default system email</div>
+          </div>
+          <div className={styles.settingControl}>
+            <Switch checked={config.customEmailEnabled} onCheckedChange={(v) => update("customEmailEnabled", v)} disabled={!editing} />
+          </div>
         </div>
+        {config.customEmailEnabled && (
+          <div className={styles.configConditionalField}>
+            <Input
+              type="email"
+              placeholder="e.g. notifications@yourcompany.com"
+              value={config.customEmail}
+              onChange={(e) => update("customEmail", e.target.value)}
+              readOnly={!editing}
+              disabled={!editing}
+              className={styles.configFieldInput}
+            />
+            <p className={styles.conditionalHint}>
+              <Mail className="h-3 w-3" />
+              Emails will be sent from this address. Ensure the domain is verified.
+            </p>
+          </div>
+        )}
+
         <div className={styles.settingRow}>
-          <div className={styles.settingInfo}><div className={styles.settingLabel}>Max concurrent runs</div><div className={styles.settingHint}>Limit simultaneous template executions</div></div>
-          <div className={styles.settingControl}><Input type="number" value={config.maxConcurrentRuns} onChange={(e) => update("maxConcurrentRuns", Number(e.target.value))} className={styles.configInput} style={{ width: 70 }} disabled={!editing} /></div>
+          <div className={styles.settingInfo}>
+            <div className={styles.settingLabel}>Allow user self-subscription</div>
+            <div className={styles.settingHint}>Let users subscribe themselves for template notifications via a public link</div>
+          </div>
+          <div className={styles.settingControl}>
+            <Switch checked={config.selfSubscriptionEnabled} onCheckedChange={(v) => update("selfSubscriptionEnabled", v)} disabled={!editing} />
+          </div>
         </div>
-        <div className={styles.settingRow}>
-          <div className={styles.settingInfo}><div className={styles.settingLabel}>Timeout (seconds)</div><div className={styles.settingHint}>Maximum execution time per run</div></div>
-          <div className={styles.settingControl}><Input type="number" value={config.timeout} onChange={(e) => update("timeout", Number(e.target.value))} className={styles.configInput} style={{ width: 70 }} disabled={!editing} /></div>
+        {config.selfSubscriptionEnabled && (
+          <div className={styles.configConditionalField}>
+            <div className={styles.subscriptionLinkBox}>
+              <span className={styles.subscriptionLinkLabel}>Subscription Link</span>
+              <a href={config.selfSubscriptionLink} target="_blank" rel="noopener noreferrer" className={styles.subscriptionLink}>
+                {config.selfSubscriptionLink}
+              </a>
+            </div>
+            <p className={styles.conditionalHint}>
+              <Bell className="h-3 w-3" />
+              Share this link so users can opt-in to notifications for this template
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Recipient Fields */}
+      <div className={styles.settingGroup}>
+        <div className={styles.settingGroupLabel}>Recipient Field Options</div>
+        <div className={styles.configFieldHint} style={{ marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+          Choose which recipient fields are available when composing emails from this template
+        </div>
+        <div className={styles.recipientFieldsRow}>
+          {(["To", "Cc", "Bcc"] as const).map((field) => {
+            const key = `recipient${field}` as keyof ConfigState;
+            return (
+              <div key={field} className={styles.recipientFieldCard} data-active={config[key]}>
+                <div className={styles.recipientFieldHeader}>
+                  <span className={styles.recipientFieldName}>{field.toUpperCase()}</span>
+                  <Switch
+                    checked={config[key] as boolean}
+                    onCheckedChange={(v) => update(key, v)}
+                    disabled={!editing}
+                  />
+                </div>
+                <div className={styles.recipientFieldDesc}>
+                  {field === "To" && "Primary recipients of the email"}
+                  {field === "Cc" && "Carbon copy — visible to all recipients"}
+                  {field === "Bcc" && "Blind carbon copy — hidden from others"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Ownership */}
+      <div className={styles.settingGroup}>
+        <div className={styles.settingGroupLabel}>Ownership</div>
+
+        <div className={styles.configField}>
+          <label className={styles.configFieldLabel}>On Behalf of LOB</label>
+          <div className={styles.configFieldHint}>Line of Business this template is associated with</div>
+          <Select value={config.onBehalfOfLob} onValueChange={(v) => update("onBehalfOfLob", v)} disabled={!editing}>
+            <SelectTrigger className={styles.configSelectTrigger}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LOB_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className={styles.configField}>
+          <label className={styles.configFieldLabel}>On Behalf of CIO Direct</label>
+          <div className={styles.configFieldHint}>CIO Direct responsible for this template</div>
+          <Select value={config.onBehalfOfCioDirect} onValueChange={(v) => update("onBehalfOfCioDirect", v)} disabled={!editing}>
+            <SelectTrigger className={styles.configSelectTrigger}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CIO_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>
