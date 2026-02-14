@@ -466,6 +466,81 @@
   }
 }
 
+/* ─── Access option cards ─── */
+.accessOptionsRow {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.accessOptionCard {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--background));
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+
+  &[data-selected="true"] {
+    border-color: hsl(var(--primary) / 0.5);
+    background: hsl(var(--primary) / 0.04);
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.15);
+  }
+
+  &:not(:disabled):hover {
+    border-color: hsl(var(--primary) / 0.3);
+  }
+}
+
+.accessOptionRadio {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--border));
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  position: relative;
+  transition: all 0.15s ease;
+
+  &[data-selected="true"] {
+    border-color: hsl(var(--primary));
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      right: 2px;
+      bottom: 2px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+    }
+  }
+}
+
+.accessOptionLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.accessOptionDesc {
+  font-size: 0.72rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+  margin-top: 0.125rem;
+}
+
 /* ─── Subscriber form ─── */
 .subFormField {
   padding: 0.75rem 0;
