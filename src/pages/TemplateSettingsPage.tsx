@@ -509,32 +509,24 @@ const ConfigContent = ({ onSave }: { onSave: (id: string) => void }) => {
 
       {/* Recipient Fields */}
       <div className={styles.settingGroup}>
-        <div className={styles.settingGroupLabel}>Recipient Field Options</div>
-        <div className={styles.configFieldHint} style={{ marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
-          Choose which recipient fields are available when composing emails from this template
-        </div>
-        <div className={styles.recipientFieldsRow}>
-          {(["To", "Cc", "Bcc"] as const).map((field) => {
-            const key = `recipient${field}` as keyof ConfigState;
-            return (
-              <div key={field} className={styles.recipientFieldCard} data-active={config[key]}>
-                <div className={styles.recipientFieldHeader}>
-                  <span className={styles.recipientFieldName}>{field.toUpperCase()}</span>
-                  <Switch
-                    checked={config[key] as boolean}
-                    onCheckedChange={(v) => update(key, v)}
-                    disabled={!editing}
-                  />
-                </div>
-                <div className={styles.recipientFieldDesc}>
-                  {field === "To" && "Primary recipients of the email"}
-                  {field === "Cc" && "Carbon copy — visible to all recipients"}
-                  {field === "Bcc" && "Blind carbon copy — hidden from others"}
-                </div>
+        <div className={styles.settingGroupLabel}>Recipient Fields</div>
+        {(["To", "Cc", "Bcc"] as const).map((field) => {
+          const key = `recipient${field}` as keyof ConfigState;
+          return (
+            <div key={field} className={styles.settingRow}>
+              <div className={styles.settingInfo}>
+                <div className={styles.settingLabel}>{field.toUpperCase()}</div>
               </div>
-            );
-          })}
-        </div>
+              <div className={styles.settingControl}>
+                <Switch
+                  checked={config[key] as boolean}
+                  onCheckedChange={(v) => update(key, v)}
+                  disabled={!editing}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Ownership */}
