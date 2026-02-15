@@ -1477,9 +1477,9 @@ const TemplateEditor = () => {
       // Handle heading/text sections with inline placeholders
       const inlinePlaceholderTypes = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'];
       if (inlinePlaceholderTypes.includes(section.type) && section.content) {
+        // Convert any remaining {{placeholder}} to Thymeleaf syntax
         const contentWithThymeleaf = section.content.replace(/\{\{(\w+)\}\}/g, '<span th:utext="${$1}"/>');
         
-        // Wrap in appropriate HTML tag
         const tagMap: Record<string, string> = {
           'heading1': 'h1',
           'heading2': 'h2',
@@ -1492,6 +1492,15 @@ const TemplateEditor = () => {
         };
         const tag = tagMap[section.type] || 'div';
         
+        // Check if content already has the correct outer tag (from defaultContent)
+        // to avoid nesting like <h2><h2>...</h2></h2>
+        const outerTagRegex = new RegExp(`^\\s*<${tag}[\\s>]`, 'i');
+        if (outerTagRegex.test(contentWithThymeleaf)) {
+          // Content already wrapped — return as-is (just add indent)
+          return `${indent}${contentWithThymeleaf.trim()}`;
+        }
+        
+        // Content is raw (no outer tag) — wrap it
         return `${indent}<${tag} style="${styleString}">${contentWithThymeleaf}</${tag}>`;
       }
       
