@@ -306,6 +306,122 @@ export const getTemplates = (): Template[] => {
           }
         ]
       },
+      {
+        id: "demo-table-showcase",
+        name: "Table Showcase - Static & Dynamic",
+        subject: "{{reportTitle}} - Data Report",
+        html: "",
+        createdAt: new Date().toISOString(),
+        sectionCount: 7,
+        archived: false,
+        sections: [
+          {
+            id: "section-table-title",
+            type: "heading1",
+            content: "<h1>{{reportTitle}} Data Report</h1>",
+            order: 0,
+            isLabelEditable: true,
+            variables: { reportTitle: "Monthly" },
+            styles: { fontSize: '32px', color: '#1a365d' }
+          },
+          {
+            id: "section-static-heading",
+            type: "heading3",
+            content: "<h3>Static Table Example</h3>",
+            order: 1,
+            isLabelEditable: false,
+            variables: {},
+            styles: { fontSize: '20px', color: '#2d3748' }
+          },
+          {
+            id: "section-static-desc",
+            type: "paragraph",
+            content: "<p>This table contains manually entered data. Each cell is editable directly in the template editor.</p>",
+            order: 2,
+            variables: {},
+            styles: { fontSize: '14px', color: '#4a5568' }
+          },
+          {
+            id: "section-static-table",
+            type: "table",
+            content: "",
+            order: 3,
+            variables: {
+              tableData: {
+                rows: [
+                  ["Region", "Q1 Revenue", "Q2 Revenue", "Growth"],
+                  ["North America", "$1,250,000", "$1,480,000", "+18.4%"],
+                  ["Europe", "$890,000", "$1,020,000", "+14.6%"],
+                  ["Asia Pacific", "$650,000", "$810,000", "+24.6%"],
+                  ["Latin America", "$320,000", "$385,000", "+20.3%"]
+                ],
+                showBorder: true,
+                borderColor: "#dee2e6",
+                mergedCells: {},
+                cellStyles: {},
+                headerStyle: { backgroundColor: "#1a365d", textColor: "#ffffff", bold: true },
+                columnWidths: ["25%", "25%", "25%", "25%"],
+                cellPadding: "medium" as const,
+                isStatic: true,
+                jsonMapping: { enabled: false, columnMappings: [] }
+              }
+            },
+            styles: {}
+          },
+          {
+            id: "section-dynamic-heading",
+            type: "heading3",
+            content: "<h3>Dynamic Table Example</h3>",
+            order: 4,
+            isLabelEditable: false,
+            variables: {},
+            styles: { fontSize: '20px', color: '#2d3748' }
+          },
+          {
+            id: "section-dynamic-desc",
+            type: "paragraph",
+            content: "<p>This table uses th:each to loop over a JSON array. Rows are auto-generated from the data provided at runtime.</p>",
+            order: 5,
+            variables: {},
+            styles: { fontSize: '14px', color: '#4a5568' }
+          },
+          {
+            id: "section-dynamic-table",
+            type: "table",
+            content: "",
+            order: 6,
+            variables: {
+              tableData: {
+                rows: [
+                  ["Employee Name", "Department", "Status", "Start Date"],
+                  ["John Smith", "Engineering", "Active", "2024-01-15"],
+                  ["Jane Doe", "Marketing", "Active", "2024-03-01"],
+                  ["Bob Johnson", "Sales", "On Leave", "2023-11-20"]
+                ],
+                showBorder: true,
+                borderColor: "#dee2e6",
+                mergedCells: {},
+                cellStyles: {},
+                headerStyle: { backgroundColor: "#2d6a4f", textColor: "#ffffff", bold: true },
+                columnWidths: ["30%", "25%", "20%", "25%"],
+                cellPadding: "medium" as const,
+                isStatic: false,
+                tableVariableName: "tableRows_section_dynamic_table",
+                jsonMapping: {
+                  enabled: true,
+                  columnMappings: [
+                    { header: "Employee Name", jsonPath: "name" },
+                    { header: "Department", jsonPath: "department" },
+                    { header: "Status", jsonPath: "status" },
+                    { header: "Start Date", jsonPath: "startDate" }
+                  ]
+                }
+              }
+            },
+            styles: {}
+          }
+        ]
+      },
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mockTemplates));
     return mockTemplates;
