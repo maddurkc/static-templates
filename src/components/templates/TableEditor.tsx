@@ -396,7 +396,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
             <TooltipTrigger asChild>
               <button
                 className={`${styles.modeChip} ${isDynamic ? styles.dynamic : styles.static}`}
-                onClick={() => toggleStaticMode(!isDynamic)}
+                onClick={() => toggleStaticMode(isDynamic)}
               >
                 {isDynamic ? <><Zap size={10} /> Dynamic</> : <><Database size={10} /> Static</>}
               </button>
