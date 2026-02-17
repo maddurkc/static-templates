@@ -312,7 +312,7 @@ export const getTemplates = (): Template[] => {
         subject: "{{reportTitle}} - Data Report",
         html: "",
         createdAt: new Date().toISOString(),
-        sectionCount: 7,
+        sectionCount: 13,
         archived: false,
         sections: [
           {
@@ -324,28 +324,21 @@ export const getTemplates = (): Template[] => {
             variables: { reportTitle: "Monthly" },
             styles: { fontSize: '32px', color: '#1a365d' }
           },
+          // ── Static Table 1 ──
           {
-            id: "section-static-heading",
+            id: "section-static1-heading",
             type: "heading3",
-            content: "<h3>Static Table Example</h3>",
+            content: "<h3>Regional Revenue (Static)</h3>",
             order: 1,
             isLabelEditable: false,
             variables: {},
             styles: { fontSize: '20px', color: '#2d3748' }
           },
           {
-            id: "section-static-desc",
-            type: "paragraph",
-            content: "<p>This table contains manually entered data. Each cell is editable directly in the template editor.</p>",
-            order: 2,
-            variables: {},
-            styles: { fontSize: '14px', color: '#4a5568' }
-          },
-          {
-            id: "section-static-table",
+            id: "section-static1-table",
             type: "table",
             content: "",
-            order: 3,
+            order: 2,
             variables: {
               tableData: {
                 rows: [
@@ -368,28 +361,29 @@ export const getTemplates = (): Template[] => {
             },
             styles: {}
           },
+          // ── Dynamic Table 1 ──
           {
-            id: "section-dynamic-heading",
+            id: "section-dynamic1-heading",
             type: "heading3",
-            content: "<h3>Dynamic Table Example</h3>",
-            order: 4,
+            content: "<h3>Employee Directory (Dynamic)</h3>",
+            order: 3,
             isLabelEditable: false,
             variables: {},
             styles: { fontSize: '20px', color: '#2d3748' }
           },
           {
-            id: "section-dynamic-desc",
+            id: "section-dynamic1-desc",
             type: "paragraph",
-            content: "<p>This table uses th:each to loop over a JSON array. Rows are auto-generated from the data provided at runtime.</p>",
-            order: 5,
+            content: "<p>Rows auto-generated via <code>th:each</code> from JSON array at runtime.</p>",
+            order: 4,
             variables: {},
             styles: { fontSize: '14px', color: '#4a5568' }
           },
           {
-            id: "section-dynamic-table",
+            id: "section-dynamic1-table",
             type: "table",
             content: "",
-            order: 6,
+            order: 5,
             variables: {
               tableData: {
                 rows: [
@@ -406,7 +400,7 @@ export const getTemplates = (): Template[] => {
                 columnWidths: ["30%", "25%", "20%", "25%"],
                 cellPadding: "medium" as const,
                 isStatic: false,
-                tableVariableName: "tableRows_section_dynamic_table",
+                tableVariableName: "employeeRows",
                 jsonMapping: {
                   enabled: true,
                   columnMappings: [
@@ -414,6 +408,97 @@ export const getTemplates = (): Template[] => {
                     { header: "Department", jsonPath: "department" },
                     { header: "Status", jsonPath: "status" },
                     { header: "Start Date", jsonPath: "startDate" }
+                  ]
+                }
+              }
+            },
+            styles: {}
+          },
+          // ── Static Table 2 ──
+          {
+            id: "section-static2-heading",
+            type: "heading3",
+            content: "<h3>Server Health Summary (Static)</h3>",
+            order: 6,
+            isLabelEditable: false,
+            variables: {},
+            styles: { fontSize: '20px', color: '#2d3748' }
+          },
+          {
+            id: "section-static2-table",
+            type: "table",
+            content: "",
+            order: 7,
+            variables: {
+              tableData: {
+                rows: [
+                  ["Server", "CPU %", "Memory %", "Disk %", "Status"],
+                  ["prod-web-01", "45%", "62%", "38%", "Healthy"],
+                  ["prod-web-02", "78%", "81%", "55%", "Warning"],
+                  ["prod-db-01", "32%", "70%", "42%", "Healthy"],
+                  ["prod-cache-01", "15%", "45%", "20%", "Healthy"]
+                ],
+                showBorder: true,
+                borderColor: "#dee2e6",
+                mergedCells: {},
+                cellStyles: {},
+                headerStyle: { backgroundColor: "#6c3483", textColor: "#ffffff", bold: true },
+                columnWidths: ["25%", "15%", "15%", "15%", "15%"],
+                cellPadding: "medium" as const,
+                isStatic: true,
+                jsonMapping: { enabled: false, columnMappings: [] }
+              }
+            },
+            styles: {}
+          },
+          // ── Dynamic Table 2 ──
+          {
+            id: "section-dynamic2-heading",
+            type: "heading3",
+            content: "<h3>Recent Transactions (Dynamic)</h3>",
+            order: 8,
+            isLabelEditable: false,
+            variables: {},
+            styles: { fontSize: '20px', color: '#2d3748' }
+          },
+          {
+            id: "section-dynamic2-desc",
+            type: "paragraph",
+            content: "<p>Transaction rows populated dynamically from API response data.</p>",
+            order: 9,
+            variables: {},
+            styles: { fontSize: '14px', color: '#4a5568' }
+          },
+          {
+            id: "section-dynamic2-table",
+            type: "table",
+            content: "",
+            order: 10,
+            variables: {
+              tableData: {
+                rows: [
+                  ["Transaction ID", "Customer", "Amount", "Date", "Type"],
+                  ["TXN-001", "Acme Corp", "$5,200.00", "2024-12-01", "Invoice"],
+                  ["TXN-002", "GlobalTech", "$3,750.00", "2024-12-02", "Payment"],
+                  ["TXN-003", "StartupXYZ", "$1,100.00", "2024-12-03", "Refund"]
+                ],
+                showBorder: true,
+                borderColor: "#dee2e6",
+                mergedCells: {},
+                cellStyles: {},
+                headerStyle: { backgroundColor: "#c0392b", textColor: "#ffffff", bold: true },
+                columnWidths: ["20%", "20%", "20%", "20%", "20%"],
+                cellPadding: "medium" as const,
+                isStatic: false,
+                tableVariableName: "transactionRows",
+                jsonMapping: {
+                  enabled: true,
+                  columnMappings: [
+                    { header: "Transaction ID", jsonPath: "txnId" },
+                    { header: "Customer", jsonPath: "customer" },
+                    { header: "Amount", jsonPath: "amount" },
+                    { header: "Date", jsonPath: "date" },
+                    { header: "Type", jsonPath: "type" }
                   ]
                 }
               }
