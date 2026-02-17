@@ -309,11 +309,14 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
 
           {/* Table properties popover */}
           <Popover>
-            <PopoverTrigger asChild>
-              <Tooltip><TooltipTrigger asChild>
-                <button className={styles.toolbarBtn}><Settings2 size={14} /></button>
-              </TooltipTrigger><TooltipContent side="bottom">Table properties</TooltipContent></Tooltip>
-            </PopoverTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <button className={styles.toolbarBtn}><Settings2 size={14} /></button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Table properties</TooltipContent>
+            </Tooltip>
             <PopoverContent className="p-3 bg-popover border shadow-lg z-50" align="start" side="bottom">
               <div className={styles.propsPanel}>
                 <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: 'hsl(var(--foreground))' }}>Table Properties</h4>
