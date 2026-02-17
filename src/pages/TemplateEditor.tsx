@@ -92,6 +92,7 @@ const TemplateEditor = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const savedSnapshotRef = useRef<string>("");
   const [showValidationPanel, setShowValidationPanel] = useState(true);
   const [nameError, setNameError] = useState<string | null>(null);
   const [subjectError, setSubjectError] = useState<string | null>(null);
@@ -170,15 +171,24 @@ const TemplateEditor = () => {
     }
   }, [sections]);
 
+  // Build a fingerprint of current template state for dirty-checking
+  const buildTemplateSnapshot = useCallback((name: string, subject: string, header: Section, body: Section[], footer: Section, apiConfig: GlobalApiConfig) => {
+    return JSON.stringify({ name, subject, sections: [header, ...body, footer], apiConfig });
+  }, []);
+
   // Helper function to load template data into state
   const loadTemplateIntoEditor = (template: any) => {
     setIsEditMode(true);
     setEditingTemplateId(template.id);
     setTemplateName(template.name);
     // Convert Thymeleaf tags back to placeholders for editing display
-    setTemplateSubject(template.subject ? subjectThymeleafToPlaceholder(template.subject) : "");
+    const subjectForEdit = template.subject ? subjectThymeleafToPlaceholder(template.subject) : "";
+    setTemplateSubject(subjectForEdit);
     
     // Load sections
+    let loadedHeader = headerSection;
+    let loadedFooter = footerSection;
+    let loadedUserSections: Section[] = [];
     if (template.sections && template.sections.length > 0) {
       const loadedSections = template.sections;
       
@@ -189,15 +199,20 @@ const TemplateEditor = () => {
         s.id !== 'static-header' && s.id !== 'static-footer'
       );
       
-      if (header) setHeaderSection(header);
-      if (footer) setFooterSection(footer);
+      if (header) { setHeaderSection(header); loadedHeader = header; }
+      if (footer) { setFooterSection(footer); loadedFooter = footer; }
       setSections(userSections);
+      loadedUserSections = userSections;
     }
     
     // Load Global API config
+    const loadedApiConfig = template.globalApiConfig || globalApiConfig;
     if (template.globalApiConfig) {
       setGlobalApiConfig(template.globalApiConfig);
     }
+
+    // Snapshot for dirty-checking
+    savedSnapshotRef.current = buildTemplateSnapshot(template.name, subjectForEdit, loadedHeader, loadedUserSections, loadedFooter, loadedApiConfig);
     
     toast({
       title: "Template loaded",
@@ -1249,6 +1264,18 @@ const TemplateEditor = () => {
   };
 
   const handleSaveTemplate = async () => {
+    // Dirty check — skip save if nothing changed (only for edit mode)
+    if (isEditMode && savedSnapshotRef.current) {
+      const currentSnapshot = buildTemplateSnapshot(templateName, templateSubject, headerSection, sections, footerSection, globalApiConfig);
+      if (currentSnapshot === savedSnapshotRef.current) {
+        toast({
+          title: "No changes detected",
+          description: "The template has not been modified since last save.",
+        });
+        return;
+      }
+    }
+
     // Run comprehensive validation
     const allSections = [headerSection, ...sections, footerSection];
     const validation = validateTemplate(templateName, templateSubject, allSections);
@@ -1357,6 +1384,9 @@ const TemplateEditor = () => {
           globalApiConfig: globalApiConfigRequest,
           sections: allSections,
         });
+
+        // Update snapshot after successful save
+        savedSnapshotRef.current = buildTemplateSnapshot(templateName, templateSubject, headerSection, sections, footerSection, globalApiConfig);
 
         toast({
           title: "Template updated",
