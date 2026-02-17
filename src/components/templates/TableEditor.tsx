@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Merge, Palette, Bold, Italic, Underline, Database, FileJson } from "lucide-react";
 import { Section } from "@/types/section";
-import { TableData, CellStyle, HeaderStyle, CellPadding, mapJsonToTableData } from "@/lib/tableUtils";
+import { TableData, CellStyle, HeaderStyle, CellPadding, mapJsonToTableData, generateTableVariableName } from "@/lib/tableUtils";
 import { toast } from "sonner";
 import styles from "./TableEditor.module.scss";
 
@@ -267,10 +267,24 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
   };
 
   const toggleStaticMode = (isStatic: boolean) => {
-    updateTableData({
-      ...tableData,
-      isStatic
-    });
+    const updates: Partial<TableData> = { isStatic };
+    
+    if (!isStatic) {
+      // Switching to dynamic: auto-generate variable name and initial mappings from headers
+      const varName = tableData.tableVariableName || generateTableVariableName(section.id);
+      updates.tableVariableName = varName;
+      
+      // Auto-create column mappings from existing header row if none exist
+      if (!tableData.jsonMapping?.columnMappings?.length && tableData.rows[0]?.length) {
+        const columnMappings = tableData.rows[0].map(header => ({
+          header: header || 'Column',
+          jsonPath: header ? header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') : 'field'
+        }));
+        updates.jsonMapping = { enabled: true, columnMappings };
+      }
+    }
+    
+    updateTableData({ ...tableData, ...updates });
   };
 
   const updateJsonMapping = (columnMappings: { header: string; jsonPath: string }[]) => {
@@ -316,7 +330,8 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
         rows,
         columnWidths: new Array(columnMappings.length).fill('auto'),
         jsonMapping: { enabled: true, columnMappings },
-        isStatic: false
+        isStatic: false,
+        tableVariableName: tableData.tableVariableName || generateTableVariableName(section.id)
       });
 
       setJsonInput('');
@@ -474,7 +489,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
       {tableData.isStatic === false && (
         <div className={styles.jsonSection}>
           <div className={styles.jsonHeader}>
-            <Label className={styles.toggleLabel}>JSON Data Mapping</Label>
+            <Label className={styles.toggleLabel}>Dynamic Table (th:each)</Label>
             <Button 
               size="sm" 
               variant="outline" 
@@ -485,6 +500,19 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
               {showJsonImport ? 'Hide' : 'Import JSON'}
             </Button>
           </div>
+
+          {/* Variable name display */}
+          <div className="flex items-center gap-2">
+            <Label className={styles.smallLabel}>Collection Variable</Label>
+            <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono">
+              {tableData.tableVariableName || generateTableVariableName(section.id)}
+            </code>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Rows loop via <code className="bg-muted px-1 rounded">th:each="row : ${'{'}
+            {tableData.tableVariableName || generateTableVariableName(section.id)}
+            {'}'}"</code>. Each cell maps to a JSON key.
+          </p>
 
           {showJsonImport && (
             <div className={styles.jsonImportArea}>

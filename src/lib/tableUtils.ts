@@ -25,11 +25,72 @@ export interface TableData {
   columnWidths?: string[]; // e.g., ['100px', '200px', 'auto']
   cellPadding?: CellPadding; // small: 4px, medium: 8px, large: 12px
   isStatic?: boolean; // If true, table is static (manual data). If false, can be populated from JSON/API
+  tableVariableName?: string; // Variable name for dynamic th:each collection (e.g., "tableRows_abc123")
   jsonMapping?: {
     enabled: boolean;
     columnMappings: { header: string; jsonPath: string }[];
   };
 }
+
+// Generate a unique variable name for a table's collection
+export const generateTableVariableName = (sectionId: string): string => {
+  const cleanId = sectionId.replace(/[^a-zA-Z0-9]/g, '_');
+  return `tableRows_${cleanId}`;
+};
+
+// Generate Thymeleaf-compatible table HTML with th:each for dynamic tables
+export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionId: string): string => {
+  if (!tableData || !tableData.jsonMapping?.columnMappings?.length) {
+    return '<table><tr><td>No column mappings defined</td></tr></table>';
+  }
+
+  const variableName = tableData.tableVariableName || generateTableVariableName(sectionId);
+  const mappings = tableData.jsonMapping.columnMappings;
+  const borderColor = tableData.borderColor || '#ddd';
+  const showBorder = tableData.showBorder;
+  const borderStyle = showBorder ? `border: 1px solid ${borderColor};` : '';
+  const paddingValue = getPaddingValue(tableData.cellPadding);
+
+  // Header styling
+  const hs = tableData.headerStyle;
+  const bgColor = hs?.backgroundColor || '#f5f5f5';
+  const textColor = hs?.textColor || 'inherit';
+  const fontWeight = hs?.bold !== false ? 'bold' : 'normal';
+  const headerCellStyle = `padding: ${paddingValue}; ${borderStyle} background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;
+  const bodyCellStyle = `padding: ${paddingValue}; ${borderStyle}`;
+
+  let html = `<table style="width: 100%; border-collapse: collapse; ${borderStyle}">`;
+
+  // Colgroup for widths
+  if (tableData.columnWidths && tableData.columnWidths.length > 0) {
+    html += '<colgroup>';
+    tableData.columnWidths.forEach((width) => {
+      html += `<col style="width: ${width};">`;
+    });
+    html += '</colgroup>';
+  }
+
+  // Static header row from column mappings
+  html += '<thead><tr>';
+  mappings.forEach((mapping) => {
+    html += `<th style="${headerCellStyle}">${mapping.header}</th>`;
+  });
+  html += '</tr></thead>';
+
+  // Dynamic body rows with th:each
+  html += '<tbody>';
+  html += `<tr th:each="row : \${${variableName}}">`;
+  mappings.forEach((mapping) => {
+    const jsonPath = mapping.jsonPath;
+    // Use dot notation for nested paths: row.user.name -> ${row.user.name}
+    html += `<td style="${bodyCellStyle}"><span th:utext="\${row.${jsonPath}}"/></td>`;
+  });
+  html += '</tr>';
+  html += '</tbody>';
+
+  html += '</table>';
+  return html;
+};
 
 const getPaddingValue = (padding?: CellPadding): string => {
   switch (padding) {
