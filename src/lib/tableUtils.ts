@@ -5,6 +5,9 @@ export interface CellStyle {
   underline?: boolean;
   backgroundColor?: string;
   fontSize?: string;
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
+  verticalAlign?: 'top' | 'middle' | 'bottom';
+  cellPadding?: string;
 }
 
 export interface HeaderStyle {
@@ -111,6 +114,9 @@ export const generateCellStyleString = (style?: CellStyle): string => {
   if (style.underline) styles.push('text-decoration: underline');
   if (style.backgroundColor) styles.push(`background-color: ${style.backgroundColor}`);
   if (style.fontSize) styles.push(`font-size: ${style.fontSize}`);
+  if (style.textAlign) styles.push(`text-align: ${style.textAlign}`);
+  if (style.verticalAlign) styles.push(`vertical-align: ${style.verticalAlign}`);
+  if (style.cellPadding) styles.push(`padding: ${style.cellPadding}`);
   
   return styles.join('; ');
 };
