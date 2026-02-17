@@ -30,6 +30,7 @@ import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableEx
 import { subjectPlaceholderToThymeleaf, subjectThymeleafToPlaceholder } from "@/lib/thymeleafUtils";
 import { generateListVariableName, generateThymeleafListHtml, generateThymeleafNestedListHtml } from "@/lib/listThymeleafUtils";
 import { generateTextSectionVariableName, isTextBasedSection, generateThymeleafTextHtml } from "@/lib/textThymeleafUtils";
+import { generateThymeleafDynamicTableHTML as generateThymeleafDynamicTableHTMLUtil, generateTableHTML as generateStaticTableHTMLUtil, TableData } from "@/lib/tableUtils";
 import { useTemplateWalkthrough } from "@/hooks/useTemplateWalkthrough";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DelegatesDialog } from "@/components/templates/DelegatesDialog";
@@ -1541,7 +1542,7 @@ const TemplateEditor = () => {
       
       // Handle table sections
       if (section.type === 'table') {
-        return generateTableHTML(section, indent, styleString);
+        return generateTableSectionHTML(section, indent, styleString);
       }
       
       // Handle list sections (bullet-list-*, number-list-*)
@@ -1609,7 +1610,7 @@ const TemplateEditor = () => {
         contentHtml = generateThymeleafListHtml(listVariableName, listStyle);
       } else if (contentType === 'table') {
         const tableData = variables['tableData'];
-        contentHtml = generateThymeleafTableHTML(tableData);
+        contentHtml = generateThymeleafTableHTML(tableData, section.id);
       }
       
       return `${indent}<div style="${styleString}">
@@ -1619,53 +1620,23 @@ ${indent}</div>`;
     };
     
     // Generate HTML for table sections
-    const generateTableHTML = (section: Section, indent: string, styleString: string): string => {
+    const generateTableSectionHTML = (section: Section, indent: string, styleString: string): string => {
       const tableData = section.variables?.['tableData'];
-      const tableHtml = generateThymeleafTableHTML(tableData);
+      const tableHtml = generateThymeleafTableHTML(tableData, section.id);
       return `${indent}<div style="${styleString}">\n${indent}  ${tableHtml}\n${indent}</div>`;
     };
     
     // Generate Thymeleaf-compatible table HTML
-    const generateThymeleafTableHTML = (tableData: any): string => {
+    const generateThymeleafTableHTML = (tableData: any, sectionId?: string): string => {
       if (!tableData) return '<table><tr><td>No data</td></tr></table>';
       
-      const { rows, headers, showBorder = true } = tableData;
-      const borderStyle = showBorder ? 'border: 1px solid #dee2e6;' : '';
-      
-      let html = `<table style="width: 100%; border-collapse: collapse; ${borderStyle}">`;
-      
-      if (headers && headers.length > 0) {
-        html += '<thead><tr>';
-        headers.forEach((header: string) => {
-          html += `<th style="padding: 8px; ${borderStyle} background: #f8f9fa; text-align: left;">${header}</th>`;
-        });
-        html += '</tr></thead>';
+      // Dynamic mode: use th:each for row looping
+      if (tableData.isStatic === false && tableData.jsonMapping?.columnMappings?.length > 0) {
+        return generateThymeleafDynamicTableHTMLUtil(tableData as TableData, sectionId || '');
       }
       
-      if (rows && rows.length > 0) {
-        html += '<tbody>';
-        const dataRows = headers ? rows : rows.slice(1);
-        
-        if (!headers && rows.length > 0) {
-          html += '<tr>';
-          rows[0].forEach((cell: string) => {
-            html += `<th style="padding: 8px; ${borderStyle} background: #f8f9fa; text-align: left;">${cell}</th>`;
-          });
-          html += '</tr>';
-        }
-        
-        dataRows.forEach((row: string[]) => {
-          html += '<tr>';
-          row.forEach((cell: string) => {
-            html += `<td style="padding: 8px; ${borderStyle}">${cell}</td>`;
-          });
-          html += '</tr>';
-        });
-        html += '</tbody>';
-      }
-      
-      html += '</table>';
-      return html;
+      // Static mode: render rows inline
+      return generateStaticTableHTMLUtil(tableData as TableData);
     };
     
     // Generate HTML for standalone list sections
