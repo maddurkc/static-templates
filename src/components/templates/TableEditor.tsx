@@ -10,7 +10,9 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import {
   Plus, Trash2, Merge, Bold, Italic, Underline, Database, FileJson,
   Settings2, Rows3, Columns3, ArrowUpFromLine, ArrowDownFromLine,
-  ArrowLeftFromLine, ArrowRightFromLine, Palette, Grid3X3, Zap
+  ArrowLeftFromLine, ArrowRightFromLine, Palette, Grid3X3, Zap,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  ArrowUpToLine, ArrowDownToLine, Minus, Type
 } from "lucide-react";
 import { Section } from "@/types/section";
 import { TableData, CellStyle, HeaderStyle, CellPadding, mapJsonToTableData, generateTableVariableName } from "@/lib/tableUtils";
@@ -307,6 +309,116 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
             </button>
           </TooltipTrigger><TooltipContent side="bottom">Toggle borders</TooltipContent></Tooltip>
 
+          {/* Cell properties popover */}
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <button className={styles.toolbarBtn} disabled={!selectedCell}><Type size={14} /></button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Cell properties</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="p-3 bg-popover border shadow-lg z-50 w-72" align="start" side="bottom">
+              {selectedCell && (
+                <div className={styles.propsPanel}>
+                  <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: 'hsl(var(--foreground))' }}>
+                    Cell Properties
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'hsl(var(--muted-foreground))', marginLeft: '0.5rem' }}>
+                      R{selectedCell.row + 1}:C{selectedCell.col + 1}
+                    </span>
+                  </h4>
+
+                  {/* Text formatting */}
+                  <div className={styles.propGroup}>
+                    <span className={styles.propSmallLabel}>Text Format</span>
+                    <div style={{ display: 'flex', gap: '0.125rem' }}>
+                      <button className={`${styles.toolbarBtn} ${selectedCellStyle.bold ? styles.active : ''}`}
+                        onClick={() => toggleCellStyle(selectedCell.row, selectedCell.col, 'bold')}><Bold size={13} /></button>
+                      <button className={`${styles.toolbarBtn} ${selectedCellStyle.italic ? styles.active : ''}`}
+                        onClick={() => toggleCellStyle(selectedCell.row, selectedCell.col, 'italic')}><Italic size={13} /></button>
+                      <button className={`${styles.toolbarBtn} ${selectedCellStyle.underline ? styles.active : ''}`}
+                        onClick={() => toggleCellStyle(selectedCell.row, selectedCell.col, 'underline')}><Underline size={13} /></button>
+                    </div>
+                  </div>
+
+                  {/* Text Color */}
+                  <div className={styles.propGroup}>
+                    <span className={styles.propSmallLabel}>Text Color</span>
+                    <div className={styles.propColorRow}>
+                      <input type="color" value={selectedCellStyle.color || '#000000'}
+                        onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { color: e.target.value })} className={styles.colorInput} />
+                      <Input value={selectedCellStyle.color || ''} onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { color: e.target.value })}
+                        placeholder="#000000" className="h-7 text-xs flex-1" />
+                    </div>
+                  </div>
+
+                  {/* Background Color */}
+                  <div className={styles.propGroup}>
+                    <span className={styles.propSmallLabel}>Background</span>
+                    <div className={styles.propColorRow}>
+                      <input type="color" value={selectedCellStyle.backgroundColor || '#ffffff'}
+                        onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { backgroundColor: e.target.value })} className={styles.colorInput} />
+                      <Input value={selectedCellStyle.backgroundColor || ''} onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { backgroundColor: e.target.value })}
+                        placeholder="#ffffff" className="h-7 text-xs flex-1" />
+                    </div>
+                  </div>
+
+                  {/* Font Size */}
+                  <div className={styles.propRow}>
+                    <span className={styles.propLabel}>Font Size</span>
+                    <Select value={selectedCellStyle.fontSize || 'default'}
+                      onValueChange={(v) => updateCellStyle(selectedCell.row, selectedCell.col, { fontSize: v === 'default' ? undefined : v })}>
+                      <SelectTrigger className="h-7 text-xs w-24"><SelectValue placeholder="Default" /></SelectTrigger>
+                      <SelectContent className="bg-popover border shadow-lg z-50">
+                        <SelectItem value="default">Default</SelectItem>
+                        <SelectItem value="10px">10px</SelectItem>
+                        <SelectItem value="12px">12px</SelectItem>
+                        <SelectItem value="14px">14px</SelectItem>
+                        <SelectItem value="16px">16px</SelectItem>
+                        <SelectItem value="18px">18px</SelectItem>
+                        <SelectItem value="20px">20px</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Text Alignment */}
+                  <div className={styles.propGroup}>
+                    <span className={styles.propSmallLabel}>Text Alignment</span>
+                    <div style={{ display: 'flex', gap: '0.125rem' }}>
+                      <button className={`${styles.toolbarBtn} ${selectedCellStyle.textAlign === 'left' || !selectedCellStyle.textAlign ? styles.active : ''}`}
+                        onClick={() => updateCellStyle(selectedCell.row, selectedCell.col, { textAlign: 'left' })}><AlignLeft size={13} /></button>
+                      <button className={`${styles.toolbarBtn} ${selectedCellStyle.textAlign === 'center' ? styles.active : ''}`}
+                        onClick={() => updateCellStyle(selectedCell.row, selectedCell.col, { textAlign: 'center' })}><AlignCenter size={13} /></button>
+                      <button className={`${styles.toolbarBtn} ${selectedCellStyle.textAlign === 'right' ? styles.active : ''}`}
+                        onClick={() => updateCellStyle(selectedCell.row, selectedCell.col, { textAlign: 'right' })}><AlignRight size={13} /></button>
+                      <button className={`${styles.toolbarBtn} ${selectedCellStyle.textAlign === 'justify' ? styles.active : ''}`}
+                        onClick={() => updateCellStyle(selectedCell.row, selectedCell.col, { textAlign: 'justify' })}><AlignJustify size={13} /></button>
+                      <div className={styles.toolbarDivider} />
+                      <button className={`${styles.toolbarBtn} ${selectedCellStyle.verticalAlign === 'top' ? styles.active : ''}`}
+                        onClick={() => updateCellStyle(selectedCell.row, selectedCell.col, { verticalAlign: 'top' })}><ArrowUpToLine size={13} /></button>
+                      <button className={`${styles.toolbarBtn} ${!selectedCellStyle.verticalAlign || selectedCellStyle.verticalAlign === 'middle' ? styles.active : ''}`}
+                        onClick={() => updateCellStyle(selectedCell.row, selectedCell.col, { verticalAlign: 'middle' })}><Minus size={13} /></button>
+                      <button className={`${styles.toolbarBtn} ${selectedCellStyle.verticalAlign === 'bottom' ? styles.active : ''}`}
+                        onClick={() => updateCellStyle(selectedCell.row, selectedCell.col, { verticalAlign: 'bottom' })}><ArrowDownToLine size={13} /></button>
+                    </div>
+                  </div>
+
+                  {/* Cell Padding */}
+                  <div className={styles.propRow}>
+                    <span className={styles.propLabel}>Cell Padding</span>
+                    <Input
+                      value={selectedCellStyle.cellPadding || ''}
+                      onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { cellPadding: e.target.value || undefined })}
+                      placeholder="e.g. 8px"
+                      className="h-7 text-xs w-24"
+                    />
+                  </div>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+
           {/* Table properties popover */}
           <Popover>
             <Tooltip>
@@ -405,66 +517,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
           </Tooltip>
         </div>
 
-        {/* ── Cell Style Bar (when cell selected) ── */}
-        {selectedCell && (
-          <div className={styles.cellStyleBar}>
-            <span className={styles.cellStyleLabel}>
-              R{selectedCell.row + 1}:C{selectedCell.col + 1}
-            </span>
-            <button className={`${styles.toolbarBtn} ${selectedCellStyle.bold ? styles.active : ''}`}
-              onClick={() => toggleCellStyle(selectedCell.row, selectedCell.col, 'bold')}><Bold size={13} /></button>
-            <button className={`${styles.toolbarBtn} ${selectedCellStyle.italic ? styles.active : ''}`}
-              onClick={() => toggleCellStyle(selectedCell.row, selectedCell.col, 'italic')}><Italic size={13} /></button>
-            <button className={`${styles.toolbarBtn} ${selectedCellStyle.underline ? styles.active : ''}`}
-              onClick={() => toggleCellStyle(selectedCell.row, selectedCell.col, 'underline')}><Underline size={13} /></button>
 
-            <div className={styles.toolbarDivider} />
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className={styles.toolbarBtn}><Palette size={13} /></button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-3 bg-popover border shadow-lg z-50" align="start">
-                <div className="space-y-2">
-                  <div>
-                    <Label className="text-xs">Text Color</Label>
-                    <div className="flex gap-2 mt-1">
-                      <input type="color" value={selectedCellStyle.color || '#000000'}
-                        onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { color: e.target.value })} className={styles.colorInput} />
-                      <Input value={selectedCellStyle.color || ''} onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { color: e.target.value })}
-                        placeholder="#000000" className="h-7 text-xs flex-1" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Background</Label>
-                    <div className="flex gap-2 mt-1">
-                      <input type="color" value={selectedCellStyle.backgroundColor || '#ffffff'}
-                        onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { backgroundColor: e.target.value })} className={styles.colorInput} />
-                      <Input value={selectedCellStyle.backgroundColor || ''} onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { backgroundColor: e.target.value })}
-                        placeholder="#ffffff" className="h-7 text-xs flex-1" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Font Size</Label>
-                    <Select value={selectedCellStyle.fontSize || 'default'}
-                      onValueChange={(v) => updateCellStyle(selectedCell.row, selectedCell.col, { fontSize: v === 'default' ? undefined : v })}>
-                      <SelectTrigger className="h-7 text-xs mt-1"><SelectValue placeholder="Default" /></SelectTrigger>
-                      <SelectContent className="bg-popover border shadow-lg z-50">
-                        <SelectItem value="default">Default</SelectItem>
-                        <SelectItem value="10px">10px</SelectItem>
-                        <SelectItem value="12px">12px</SelectItem>
-                        <SelectItem value="14px">14px</SelectItem>
-                        <SelectItem value="16px">16px</SelectItem>
-                        <SelectItem value="18px">18px</SelectItem>
-                        <SelectItem value="20px">20px</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        )}
 
         {/* ── Table ── */}
         <div className={styles.tableWrapper}>
@@ -483,6 +536,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                       fontStyle: cellStyle.italic ? 'italic' : undefined,
                       textDecoration: cellStyle.underline ? 'underline' : undefined,
                       backgroundColor: cellStyle.backgroundColor, fontSize: cellStyle.fontSize,
+                      textAlign: cellStyle.textAlign, verticalAlign: cellStyle.verticalAlign,
                     };
 
                     return (
