@@ -531,22 +531,31 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                     const merge = getCellMerge(rowIndex, colIndex);
                     const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
                     const cellStyle = getCellStyle(rowIndex, colIndex);
+                    // For header row (row 0), apply headerStyle as base, then overlay individual cell styles
+                    const isHeader = rowIndex === 0;
+                    const hs = tableData.headerStyle;
                     const inputStyle: React.CSSProperties = {
-                      color: cellStyle.color, fontWeight: cellStyle.bold ? 'bold' : undefined,
+                      color: cellStyle.color || (isHeader ? (hs?.textColor || '#000000') : undefined),
+                      fontWeight: cellStyle.bold ? 'bold' : (isHeader && hs?.bold !== false ? 'bold' : undefined),
                       fontStyle: cellStyle.italic ? 'italic' : undefined,
                       textDecoration: cellStyle.underline ? 'underline' : undefined,
-                      backgroundColor: cellStyle.backgroundColor, fontSize: cellStyle.fontSize,
+                      backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#f5f5f5') : undefined),
+                      fontSize: cellStyle.fontSize,
                       textAlign: cellStyle.textAlign, verticalAlign: cellStyle.verticalAlign,
+                    };
+                    const tdStyle: React.CSSProperties = {
+                      borderColor: tableData.borderColor || '#ddd',
+                      backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#f5f5f5') : undefined),
                     };
 
                     return (
                       <td key={colIndex} rowSpan={merge?.rowSpan} colSpan={merge?.colSpan}
-                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''} ${rowIndex === 0 ? styles.headerCell : ''}`}
-                        style={{ borderColor: tableData.borderColor || '#ddd' }}
+                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
+                        style={tdStyle}
                         onClick={() => setSelectedCell({ row: rowIndex, col: colIndex })}>
                         <Input value={cell} onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
                           className={styles.cellInput} style={inputStyle}
-                          placeholder={rowIndex === 0 ? `Header ${colIndex + 1}` : ''} />
+                          placeholder={isHeader ? `Header ${colIndex + 1}` : ''} />
                       </td>
                     );
                   })}
