@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
+import { TableEditor } from "@/components/templates/TableEditor";
 import {
   Dialog,
   DialogContent,
@@ -2266,105 +2267,18 @@ const RunTemplates = () => {
                                     );
                                   })()}
                                   
-                                  {contentType === 'table' && (() => {
-                                    const tableData = tableVariables[section.id] || getTableData(section.id);
-                                    return (
-                                      <div className="space-y-2 border rounded-lg p-3 bg-background">
-                                        <div className="flex gap-2 mb-2">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                              setTableVariables(prev => ({
-                                                ...prev,
-                                                [section.id]: {
-                                                  ...tableData,
-                                                  headers: [...(tableData.headers || []), `Col ${(tableData.headers?.length || 0) + 1}`]
-                                                }
-                                              }));
-                                              scrollToSection(section.id);
-                                            }}
-                                            className="h-7 px-2"
-                                          >
-                                            <Plus className="h-3 w-3 mr-1" />
-                                            Column
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                              const newRow = new Array(tableData.headers?.length || 1).fill('');
-                                              setTableVariables(prev => ({
-                                                ...prev,
-                                                [section.id]: {
-                                                  ...tableData,
-                                                  rows: [...(tableData.rows || []), newRow]
-                                                }
-                                              }));
-                                              scrollToSection(section.id);
-                                            }}
-                                            className="h-7 px-2"
-                                          >
-                                            <Plus className="h-3 w-3 mr-1" />
-                                            Row
-                                          </Button>
-                                        </div>
-                                        {tableData.headers && tableData.headers.length > 0 && (
-                                          <div className="overflow-x-auto">
-                                            <table className="w-full border-collapse border text-sm">
-                                              <thead>
-                                                <tr>
-                                                  {tableData.headers.map((header: string, colIdx: number) => (
-                                                    <th key={colIdx} className="border p-1 bg-muted">
-                                                      <RichTextEditor
-                                                        value={header}
-                                                        onChange={(html) => {
-                                                          const newHeaders = [...tableData.headers];
-                                                          newHeaders[colIdx] = html;
-                                                          setTableVariables(prev => ({
-                                                            ...prev,
-                                                            [section.id]: { ...tableData, headers: newHeaders }
-                                                          }));
-                                                        }}
-                                                        onFocus={() => scrollToSection(section.id)}
-                                                        placeholder={`Header ${colIdx + 1}`}
-                                                        singleLine
-                                                        className="font-semibold"
-                                                      />
-                                                    </th>
-                                                  ))}
-                                                </tr>
-                                              </thead>
-                                              <tbody>
-                                                {(tableData.rows || []).map((row: string[], rowIdx: number) => (
-                                                  <tr key={rowIdx}>
-                                                    {row.map((cell: string, colIdx: number) => (
-                                                      <td key={colIdx} className="border p-1">
-                                                        <RichTextEditor
-                                                          value={cell}
-                                                          onChange={(html) => {
-                                                            const newRows = [...tableData.rows];
-                                                            newRows[rowIdx][colIdx] = html;
-                                                            setTableVariables(prev => ({
-                                                              ...prev,
-                                                              [section.id]: { ...tableData, rows: newRows }
-                                                            }));
-                                                          }}
-                                                          onFocus={() => scrollToSection(section.id)}
-                                                          placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
-                                                          singleLine
-                                                        />
-                                                      </td>
-                                                    ))}
-                                                  </tr>
-                                                ))}
-                                              </tbody>
-                                            </table>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
+                                  {contentType === 'table' && (
+                                    <TableEditor
+                                      section={section}
+                                      onUpdate={(updatedSection) => {
+                                        setTableVariables(prev => ({
+                                          ...prev,
+                                          [section.id]: updatedSection.variables?.tableData
+                                        }));
+                                        scrollToSection(section.id);
+                                      }}
+                                    />
+                                  )}
                                 </div>
                               </div>
                             );
@@ -2838,159 +2752,18 @@ const RunTemplates = () => {
                           
                           // Handle standalone table sections
                           if (section.type === 'table') {
-                            const editable = isLabelEditable(section.id);
-                            const tableData = tableVariables[section.id] || getTableData(section.id);
-                            
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
-                                <div className="space-y-2 border rounded-lg p-4 bg-background">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs text-muted-foreground">Table</p>
-                                    <div className="flex gap-2">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setJsonImportOpen(section.id);
-                                          setJsonImportValue('');
-                                        }}
-                                        className="h-7 px-2"
-                                        disabled={!editable}
-                                      >
-                                        <FileJson className="h-3 w-3 mr-1" />
-                                        JSON
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setTableVariables(prev => ({
-                                            ...prev,
-                                            [section.id]: {
-                                              ...tableData,
-                                              headers: [...(tableData.headers || []), `Column ${(tableData.headers?.length || 0) + 1}`]
-                                            }
-                                          }));
-                                        }}
-                                        className="h-7 px-2"
-                                        disabled={!editable}
-                                      >
-                                        <Plus className="h-3 w-3 mr-1" />
-                                        Column
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          const newRow = new Array(tableData.headers?.length || 1).fill('');
-                                          setTableVariables(prev => ({
-                                            ...prev,
-                                            [section.id]: {
-                                              ...tableData,
-                                              rows: [...(tableData.rows || []), newRow]
-                                            }
-                                          }));
-                                        }}
-                                        className="h-7 px-2"
-                                        disabled={!editable}
-                                      >
-                                        <Plus className="h-3 w-3 mr-1" />
-                                        Row
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  
-                                  {tableData.headers && tableData.headers.length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                      <table className="w-full border-collapse border text-sm">
-                                        <thead>
-                                          <tr>
-                                            {tableData.headers.map((header: string, colIdx: number) => (
-                                              <th key={colIdx} className="border p-1 bg-muted">
-                                                <div className="flex items-center gap-1">
-                                                  <RichTextEditor
-                                                    value={header}
-                                                    onChange={(html) => {
-                                                      const newHeaders = [...tableData.headers];
-                                                      newHeaders[colIdx] = html;
-                                                      setTableVariables(prev => ({
-                                                        ...prev,
-                                                        [section.id]: { ...tableData, headers: newHeaders }
-                                                      }));
-                                                    }}
-                                                    placeholder={`Header ${colIdx + 1}`}
-                                                    singleLine
-                                                    className="flex-1 font-semibold"
-                                                  />
-                                                  <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    onClick={() => {
-                                                      const newHeaders = tableData.headers.filter((_: any, i: number) => i !== colIdx);
-                                                      const newRows = tableData.rows.map((row: string[]) => 
-                                                        row.filter((_: any, i: number) => i !== colIdx)
-                                                      );
-                                                      setTableVariables(prev => ({
-                                                        ...prev,
-                                                        [section.id]: { headers: newHeaders, rows: newRows }
-                                                      }));
-                                                    }}
-                                                    className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
-                                                    disabled={!editable || tableData.headers.length <= 1}
-                                                  >
-                                                    <Trash2 className="h-3 w-3" />
-                                                  </Button>
-                                                </div>
-                                              </th>
-                                            ))}
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {(tableData.rows || []).map((row: string[], rowIdx: number) => (
-                                            <tr key={rowIdx}>
-                                              {row.map((cell: string, colIdx: number) => (
-                                                <td key={colIdx} className="border p-1">
-                                                  <RichTextEditor
-                                                    value={cell}
-                                                    onChange={(html) => {
-                                                      const newRows = [...tableData.rows];
-                                                      newRows[rowIdx][colIdx] = html;
-                                                      setTableVariables(prev => ({
-                                                        ...prev,
-                                                        [section.id]: { ...tableData, rows: newRows }
-                                                      }));
-                                                    }}
-                                                    placeholder={`R${rowIdx + 1}C${colIdx + 1}`}
-                                                    singleLine
-                                                  />
-                                                </td>
-                                              ))}
-                                              <td className="border p-1 w-8">
-                                                <Button
-                                                  size="icon"
-                                                  variant="ghost"
-                                                  onClick={() => {
-                                                    const newRows = tableData.rows.filter((_: any, i: number) => i !== rowIdx);
-                                                    setTableVariables(prev => ({
-                                                      ...prev,
-                                                      [section.id]: { ...tableData, rows: newRows }
-                                                    }));
-                                                  }}
-                                                  className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
-                                                  disabled={!editable}
-                                                >
-                                                  <Trash2 className="h-3 w-3" />
-                                                </Button>
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs text-muted-foreground text-center py-4">Click "Column" to start</p>
-                                  )}
-                                </div>
+                                <TableEditor
+                                  section={section}
+                                  onUpdate={(updatedSection) => {
+                                    setTableVariables(prev => ({
+                                      ...prev,
+                                      [section.id]: updatedSection.variables?.tableData
+                                    }));
+                                    scrollToSection(section.id);
+                                  }}
+                                />
                               </div>
                             );
                           }
