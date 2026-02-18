@@ -1332,7 +1332,8 @@ const RunTemplates = () => {
         
         // Standalone table sections - ensure table data is in payload even if not edited
         if (section.type === 'table') {
-          const tableData = tableVariables[section.id] || section.variables?.tableData;
+          const originalTableData = section.variables?.tableData;
+          const tableData = { ...originalTableData, ...tableVariables[section.id] };
           if (tableData && tableData.rows && Array.isArray(tableData.rows)) {
             const hasHeaders = tableData.headers && Array.isArray(tableData.headers);
             const headers = hasHeaders ? tableData.headers : (tableData.rows[0] || []);
@@ -1359,7 +1360,8 @@ const RunTemplates = () => {
         
         // Labeled-content table sections - ensure table data is in payload
         if (section.type === 'labeled-content' && section.variables?.contentType === 'table') {
-          const tableData = tableVariables[section.id] || section.variables?.tableData;
+          const originalTableData = section.variables?.tableData;
+          const tableData = { ...originalTableData, ...tableVariables[section.id] };
           if (tableData && tableData.rows && Array.isArray(tableData.rows)) {
             const hasHeaders = tableData.headers && Array.isArray(tableData.headers);
             const headers = hasHeaders ? tableData.headers : (tableData.rows[0] || []);
