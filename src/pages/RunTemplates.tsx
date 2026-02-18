@@ -1109,9 +1109,34 @@ const RunTemplates = () => {
       });
     });
     
-    // Add table variables
+    // Add table variables - convert TableData format to clean payload
     Object.entries(tableVariables).forEach(([key, value]) => {
-      bodyData[key] = value;
+      if (value && typeof value === 'object') {
+        if (value.rows && Array.isArray(value.rows) && !value.headers) {
+          // New TableData format from TableEditor (rows where first row is headers)
+          const headers = value.rows[0] || [];
+          const dataRows = value.rows.slice(1) || [];
+          
+          if (value.isStatic === false && value.jsonMapping?.columnMappings?.length) {
+            // Dynamic mode - send as array of objects using column mappings
+            bodyData[key] = dataRows.map((row: string[]) => {
+              const obj: Record<string, string> = {};
+              value.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                obj[mapping.jsonPath] = row[idx] || '';
+              });
+              return obj;
+            });
+          } else {
+            // Static mode - send structured headers + rows
+            bodyData[key] = { headers, rows: dataRows };
+          }
+        } else {
+          // Legacy format (already has headers/rows)
+          bodyData[key] = value;
+        }
+      } else {
+        bodyData[key] = value;
+      }
     });
     
     // Add label variables
@@ -1301,6 +1326,42 @@ const RunTemplates = () => {
                 bodyData[varName] = generateStyledHtml(variables[varName]);
               }
             });
+          }
+        }
+        
+        // Standalone table sections - ensure table data is in payload even if not edited
+        if (section.type === 'table') {
+          if (!bodyData[section.id]) {
+            // Not yet added from tableVariables - use section's original data
+            const tableData = section.variables?.tableData;
+            if (tableData && tableData.rows && Array.isArray(tableData.rows)) {
+              const headers = tableData.rows[0] || [];
+              const dataRows = tableData.rows.slice(1) || [];
+              
+              if (tableData.isStatic === false && tableData.jsonMapping?.columnMappings?.length) {
+                bodyData[section.id] = dataRows.map((row: string[]) => {
+                  const obj: Record<string, string> = {};
+                  tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                    obj[mapping.jsonPath] = row[idx] || '';
+                  });
+                  return obj;
+                });
+              } else {
+                bodyData[section.id] = { headers, rows: dataRows };
+              }
+            }
+          }
+        }
+        
+        // Labeled-content table sections - ensure table data is in payload
+        if (section.type === 'labeled-content' && section.variables?.contentType === 'table') {
+          if (!bodyData[section.id]) {
+            const tableData = section.variables?.tableData;
+            if (tableData && tableData.rows && Array.isArray(tableData.rows)) {
+              const headers = tableData.rows[0] || [];
+              const dataRows = tableData.rows.slice(1) || [];
+              bodyData[section.id] = { headers, rows: dataRows };
+            }
           }
         }
       });
