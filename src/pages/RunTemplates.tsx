@@ -1110,16 +1110,17 @@ const RunTemplates = () => {
     });
     
     // Add table variables - convert TableData format to clean payload
-    Object.entries(tableVariables).forEach(([key, value]) => {
+    Object.entries(tableVariables).forEach(([sectionId, value]) => {
       if (value && typeof value === 'object') {
-        if (value.rows && Array.isArray(value.rows) && !value.headers) {
-          // New TableData format from TableEditor (rows where first row is headers)
-          const headers = value.rows[0] || [];
-          const dataRows = value.rows.slice(1) || [];
+        if (value.rows && Array.isArray(value.rows)) {
+          const hasHeaders = value.headers && Array.isArray(value.headers);
+          const headers = hasHeaders ? value.headers : (value.rows[0] || []);
+          const dataRows = hasHeaders ? value.rows : (value.rows.slice(1) || []);
           
           if (value.isStatic === false && value.jsonMapping?.columnMappings?.length) {
-            // Dynamic mode - send as array of objects using column mappings
-            bodyData[key] = dataRows.map((row: string[]) => {
+            // Dynamic mode - use tableVariableName as key to match Thymeleaf th:each syntax
+            const payloadKey = value.tableVariableName || sectionId;
+            bodyData[payloadKey] = dataRows.map((row: string[]) => {
               const obj: Record<string, string> = {};
               value.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                 obj[mapping.jsonPath] = row[idx] || '';
@@ -1127,15 +1128,15 @@ const RunTemplates = () => {
               return obj;
             });
           } else {
-            // Static mode - send structured headers + rows
-            bodyData[key] = { headers, rows: dataRows };
+            // Static mode - send structured headers + rows using section ID as key
+            bodyData[sectionId] = { headers, rows: dataRows };
           }
         } else {
           // Legacy format (already has headers/rows)
-          bodyData[key] = value;
+          bodyData[sectionId] = value;
         }
       } else {
-        bodyData[key] = value;
+        bodyData[sectionId] = value;
       }
     });
     
@@ -1331,22 +1332,25 @@ const RunTemplates = () => {
         
         // Standalone table sections - ensure table data is in payload even if not edited
         if (section.type === 'table') {
-          if (!bodyData[section.id]) {
-            // Not yet added from tableVariables - use section's original data
-            const tableData = section.variables?.tableData;
-            if (tableData && tableData.rows && Array.isArray(tableData.rows)) {
-              const headers = tableData.rows[0] || [];
-              const dataRows = tableData.rows.slice(1) || [];
-              
-              if (tableData.isStatic === false && tableData.jsonMapping?.columnMappings?.length) {
-                bodyData[section.id] = dataRows.map((row: string[]) => {
+          const tableData = tableVariables[section.id] || section.variables?.tableData;
+          if (tableData && tableData.rows && Array.isArray(tableData.rows)) {
+            const hasHeaders = tableData.headers && Array.isArray(tableData.headers);
+            const headers = hasHeaders ? tableData.headers : (tableData.rows[0] || []);
+            const dataRows = hasHeaders ? tableData.rows : (tableData.rows.slice(1) || []);
+            
+            if (tableData.isStatic === false && tableData.jsonMapping?.columnMappings?.length) {
+              const payloadKey = tableData.tableVariableName || section.id;
+              if (!bodyData[payloadKey]) {
+                bodyData[payloadKey] = dataRows.map((row: string[]) => {
                   const obj: Record<string, string> = {};
                   tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                     obj[mapping.jsonPath] = row[idx] || '';
                   });
                   return obj;
                 });
-              } else {
+              }
+            } else {
+              if (!bodyData[section.id]) {
                 bodyData[section.id] = { headers, rows: dataRows };
               }
             }
@@ -1355,11 +1359,12 @@ const RunTemplates = () => {
         
         // Labeled-content table sections - ensure table data is in payload
         if (section.type === 'labeled-content' && section.variables?.contentType === 'table') {
-          if (!bodyData[section.id]) {
-            const tableData = section.variables?.tableData;
-            if (tableData && tableData.rows && Array.isArray(tableData.rows)) {
-              const headers = tableData.rows[0] || [];
-              const dataRows = tableData.rows.slice(1) || [];
+          const tableData = tableVariables[section.id] || section.variables?.tableData;
+          if (tableData && tableData.rows && Array.isArray(tableData.rows)) {
+            const hasHeaders = tableData.headers && Array.isArray(tableData.headers);
+            const headers = hasHeaders ? tableData.headers : (tableData.rows[0] || []);
+            const dataRows = hasHeaders ? tableData.rows : (tableData.rows.slice(1) || []);
+            if (!bodyData[section.id]) {
               bodyData[section.id] = { headers, rows: dataRows };
             }
           }
@@ -3175,6 +3180,28 @@ const RunTemplates = () => {
                             if (hasVarUpdates) {
                               updated = { ...updated, variables: updatedVars };
                             }
+                          }
+                          
+                          // For standalone table sections, inject updated tableData from tableVariables
+                          if (s.type === 'table' && tableVariables[s.id]) {
+                            updated = {
+                              ...updated,
+                              variables: {
+                                ...updated.variables,
+                                tableData: tableVariables[s.id]
+                              }
+                            };
+                          }
+                          
+                          // For labeled-content table sections, inject updated tableData
+                          if (s.type === 'labeled-content' && s.variables?.contentType === 'table' && tableVariables[s.id]) {
+                            updated = {
+                              ...updated,
+                              variables: {
+                                ...updated.variables,
+                                tableData: tableVariables[s.id]
+                              }
+                            };
                           }
                           
                           // For banner sections, inject updated text into tableData
