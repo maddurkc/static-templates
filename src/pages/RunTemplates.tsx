@@ -1364,8 +1364,22 @@ const RunTemplates = () => {
             const hasHeaders = tableData.headers && Array.isArray(tableData.headers);
             const headers = hasHeaders ? tableData.headers : (tableData.rows[0] || []);
             const dataRows = hasHeaders ? tableData.rows : (tableData.rows.slice(1) || []);
-            if (!bodyData[section.id]) {
-              bodyData[section.id] = { headers, rows: dataRows };
+            
+            if (tableData.isStatic === false && tableData.jsonMapping?.columnMappings?.length) {
+              const payloadKey = tableData.tableVariableName || section.id;
+              if (!bodyData[payloadKey]) {
+                bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                  const obj: Record<string, string> = {};
+                  tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                    obj[mapping.jsonPath] = row[idx] || '';
+                  });
+                  return obj;
+                });
+              }
+            } else {
+              if (!bodyData[section.id]) {
+                bodyData[section.id] = { headers, rows: dataRows };
+              }
             }
           }
         }
