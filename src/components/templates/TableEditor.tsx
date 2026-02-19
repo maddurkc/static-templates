@@ -25,9 +25,10 @@ const BG_COLORS = ['#FFFFFF', '#FFFF00', '#90EE90', '#ADD8E6', '#FFB6C1', '#E6E6
 interface TableEditorProps {
   section: Section;
   onUpdate: (section: Section) => void;
+  hideStructuralControls?: boolean;
 }
 
-export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
+export const TableEditor = ({ section, onUpdate, hideStructuralControls = false }: TableEditorProps) => {
   const [jsonInput, setJsonInput] = useState('');
   const [showJsonImport, setShowJsonImport] = useState(false);
 
@@ -283,34 +284,38 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
           <div className={styles.toolbarDivider} />
 
           {/* Column operations */}
-          <Tooltip><TooltipTrigger asChild>
-            <button className={styles.toolbarBtn} onClick={insertColumnLeft} disabled={!selectedCell}><ArrowLeftFromLine size={14} /></button>
-          </TooltipTrigger><TooltipContent side="bottom">Insert column left</TooltipContent></Tooltip>
+          {!hideStructuralControls && (
+            <>
+              <Tooltip><TooltipTrigger asChild>
+                <button className={styles.toolbarBtn} onClick={insertColumnLeft} disabled={!selectedCell}><ArrowLeftFromLine size={14} /></button>
+              </TooltipTrigger><TooltipContent side="bottom">Insert column left</TooltipContent></Tooltip>
 
-          <Tooltip><TooltipTrigger asChild>
-            <button className={styles.toolbarBtn} onClick={insertColumnRight}><ArrowRightFromLine size={14} /></button>
-          </TooltipTrigger><TooltipContent side="bottom">Insert column right</TooltipContent></Tooltip>
+              <Tooltip><TooltipTrigger asChild>
+                <button className={styles.toolbarBtn} onClick={insertColumnRight}><ArrowRightFromLine size={14} /></button>
+              </TooltipTrigger><TooltipContent side="bottom">Insert column right</TooltipContent></Tooltip>
 
-          <Tooltip><TooltipTrigger asChild>
-            <button className={styles.toolbarBtn} onClick={deleteColumn} disabled={!selectedCell || (tableData.rows[0]?.length || 0) <= 1}><Columns3 size={14} /></button>
-          </TooltipTrigger><TooltipContent side="bottom">Delete column</TooltipContent></Tooltip>
+              <Tooltip><TooltipTrigger asChild>
+                <button className={styles.toolbarBtn} onClick={deleteColumn} disabled={!selectedCell || (tableData.rows[0]?.length || 0) <= 1}><Columns3 size={14} /></button>
+              </TooltipTrigger><TooltipContent side="bottom">Delete column</TooltipContent></Tooltip>
 
-          <div className={styles.toolbarDivider} />
+              <div className={styles.toolbarDivider} />
 
-          {/* Merge */}
-          <Tooltip><TooltipTrigger asChild>
-            <button className={`${styles.toolbarBtn} ${selectedCell && getCellMerge(selectedCell.row, selectedCell.col) ? styles.active : ''}`}
-              onClick={mergeCells} disabled={!selectedCell}><Merge size={14} /></button>
-          </TooltipTrigger><TooltipContent side="bottom">Merge / Unmerge cells</TooltipContent></Tooltip>
+              {/* Merge */}
+              <Tooltip><TooltipTrigger asChild>
+                <button className={`${styles.toolbarBtn} ${selectedCell && getCellMerge(selectedCell.row, selectedCell.col) ? styles.active : ''}`}
+                  onClick={mergeCells} disabled={!selectedCell}><Merge size={14} /></button>
+              </TooltipTrigger><TooltipContent side="bottom">Merge / Unmerge cells</TooltipContent></Tooltip>
 
-          <div className={styles.toolbarDivider} />
+              <div className={styles.toolbarDivider} />
 
-          {/* Border toggle */}
-          <Tooltip><TooltipTrigger asChild>
-            <button className={`${styles.toolbarBtn} ${tableData.showBorder ? styles.active : ''}`} onClick={toggleBorder}>
-              <Grid3X3 size={14} />
-            </button>
-          </TooltipTrigger><TooltipContent side="bottom">Toggle borders</TooltipContent></Tooltip>
+              {/* Border toggle */}
+              <Tooltip><TooltipTrigger asChild>
+                <button className={`${styles.toolbarBtn} ${tableData.showBorder ? styles.active : ''}`} onClick={toggleBorder}>
+                  <Grid3X3 size={14} />
+                </button>
+              </TooltipTrigger><TooltipContent side="bottom">Toggle borders</TooltipContent></Tooltip>
+            </>
+          )}
 
           {/* Cell properties popover */}
           <Popover>
@@ -425,6 +430,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
           </Popover>
 
           {/* Table properties popover */}
+          {!hideStructuralControls && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -526,6 +532,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
               </div>
             </PopoverContent>
           </Popover>
+          )}
 
           {/* Mode chip */}
           <Tooltip>
