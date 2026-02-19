@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import { TableEditor } from "@/components/templates/TableEditor";
 import {
@@ -26,12 +26,9 @@ import { fetchTemplates, fetchTemplateById, resendDataToTemplate } from "@/lib/t
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
 import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobalTable } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
 import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
-import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
-import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-config";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -62,7 +59,6 @@ const RunTemplates = () => {
   const [editedSectionContent, setEditedSectionContent] = useState<Record<string, string>>({});
   const [resendMode, setResendMode] = useState(false); // Flag to skip default init when loading last sent
   const skipVariableInitRef = React.useRef(false); // Ref to prevent useEffect from overwriting restored variables
-  const [globalApiConfig, setGlobalApiConfig] = useState<GlobalApiConfig>(DEFAULT_GLOBAL_API_CONFIG);
   const { toast } = useToast();
 
   // Scroll to section in preview when editing
@@ -1017,94 +1013,7 @@ const RunTemplates = () => {
     }
     
     setEmailTitle(template.name);
-    
-    // Initialize global API config from template
-    if (template.globalApiConfig) {
-      setGlobalApiConfig(template.globalApiConfig);
-    } else {
-      setGlobalApiConfig(DEFAULT_GLOBAL_API_CONFIG);
-    }
   };
-
-  // Auto-update section variables when API data changes
-  React.useEffect(() => {
-    if (!selectedTemplate?.sections || !globalApiConfig.globalVariables) return;
-    
-    const updatedGlobalVars = globalApiConfig.globalVariables;
-    if (Object.keys(updatedGlobalVars).length === 0) return;
-    
-    let listUpdated = false;
-    let tableUpdated = false;
-    let varsUpdated = false;
-    const newListVars = { ...listVariables };
-    const newTableVars = { ...tableVariables };
-    const newVars = { ...variables };
-    
-    selectedTemplate.sections.forEach(section => {
-      const apiVariable = section.variables?.apiVariable as string;
-      if (!apiVariable || !updatedGlobalVars[apiVariable]) return;
-      
-      const apiData = updatedGlobalVars[apiVariable].data;
-      if (!apiData || !Array.isArray(apiData)) return;
-      
-      // Auto-update bullet list sections
-      if (section.type.includes('bullet-list') || section.type.includes('number-list')) {
-        const listVarName = (section.variables?.listVariableName as string) || section.id;
-        const fieldPath = section.variables?.apiFieldPath as string;
-        
-        if (fieldPath) {
-          // Extract specific field from each item
-          const items = apiData.map((item: any) => ({
-            text: String(getValueByPath(item, fieldPath) || ''),
-            children: []
-          }));
-          newListVars[listVarName] = items;
-          listUpdated = true;
-        } else {
-          // Use items as strings directly
-          const items = apiData.map((item: any) => ({
-            text: typeof item === 'string' ? item : JSON.stringify(item),
-            children: []
-          }));
-          newListVars[listVarName] = items;
-          listUpdated = true;
-        }
-      }
-      
-      // Auto-update table sections
-      if (section.type === 'table') {
-        const tableData = section.variables?.tableData as any;
-        if (tableData?.jsonMapping?.enabled && tableData.jsonMapping.columnMappings?.length > 0) {
-          const mappings = tableData.jsonMapping.columnMappings;
-          const headers = mappings.map((m: any) => m.header);
-          const dataRows = apiData.map((item: any) => 
-            mappings.map((m: any) => {
-              const val = getValueByPath(item, m.jsonPath);
-              return val !== undefined && val !== null ? String(val) : '';
-            })
-          );
-          
-          newTableVars[section.id] = {
-            ...tableData,
-            rows: [headers, ...dataRows]
-          };
-          tableUpdated = true;
-        }
-      }
-    });
-    
-    // Update totalUsers variable if present
-    Object.values(updatedGlobalVars).forEach(gv => {
-      if (Array.isArray(gv.data)) {
-        newVars['totalUsers'] = String(gv.data.length);
-        varsUpdated = true;
-      }
-    });
-    
-    if (listUpdated) setListVariables(newListVars);
-    if (tableUpdated) setTableVariables(newTableVars);
-    if (varsUpdated) setVariables(newVars);
-  }, [globalApiConfig.globalVariables]);
 
   const handleSendTemplate = () => {
     if (!selectedTemplate) return;
@@ -1558,7 +1467,6 @@ const RunTemplates = () => {
     setLabelVariables({});
     setSubjectVariables({});
     setEmailSubject("");
-    setGlobalApiConfig(DEFAULT_GLOBAL_API_CONFIG);
   };
 
   // Check if a template has a last sent payload
@@ -1943,28 +1851,6 @@ const RunTemplates = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              {/* API Integration Panel */}
-              {globalApiConfig.integrations.length > 0 && (
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Database className="h-4 w-4 mr-2" />
-                      API ({globalApiConfig.integrations.length})
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-[400px] p-0 overflow-hidden [&>button]:hidden">
-                    <GlobalApiPanel 
-                      config={globalApiConfig}
-                      onUpdate={setGlobalApiConfig}
-                      onClose={() => {
-                        // Close sheet by clicking the hidden close button
-                        const closeBtn = document.querySelector('[data-radix-collection-item]');
-                        if (closeBtn instanceof HTMLElement) closeBtn.click();
-                      }}
-                    />
-                  </SheetContent>
-                </Sheet>
-              )}
               <Button
                 variant="outline"
                 size="sm"
