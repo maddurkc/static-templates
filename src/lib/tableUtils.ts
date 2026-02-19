@@ -56,7 +56,7 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
 
   // Header styling
   const hs = tableData.headerStyle;
-  const bgColor = hs?.backgroundColor || '#f5f5f5';
+  const bgColor = hs?.backgroundColor || '#FFC000';
   const textColor = hs?.textColor || 'inherit';
   const fontWeight = hs?.bold !== false ? 'bold' : 'normal';
   const headerCellStyle = `padding: ${paddingValue}; ${borderStyle} background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;
@@ -218,7 +218,7 @@ export const generateTableHTML = (tableData: TableData): string => {
       let headerStyle = '';
       if (rowIndex === 0) {
         const hs = tableData.headerStyle;
-        const bgColor = hs?.backgroundColor || '#f5f5f5';
+        const bgColor = hs?.backgroundColor || '#FFC000';
         const textColor = hs?.textColor || 'inherit';
         const fontWeight = hs?.bold !== false ? 'bold' : 'normal';
         headerStyle = `background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;

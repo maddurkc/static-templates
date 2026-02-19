@@ -19,6 +19,9 @@ import { TableData, CellStyle, HeaderStyle, CellPadding, mapJsonToTableData, gen
 import { toast } from "sonner";
 import styles from "./TableEditor.module.scss";
 
+const TEXT_COLORS = ['#000000', '#FF0000', '#0066CC', '#008000', '#FF6600', '#800080', '#666666', '#003366'];
+const BG_COLORS = ['#FFFFFF', '#FFFF00', '#90EE90', '#ADD8E6', '#FFB6C1', '#E6E6FA', '#F5F5DC', '#F0F0F0'];
+
 interface TableEditorProps {
   section: Section;
   onUpdate: (section: Section) => void;
@@ -39,7 +42,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
           borderColor: data.borderColor || '#ddd',
           mergedCells: data.mergedCells || {},
           cellStyles: data.cellStyles || {},
-          headerStyle: data.headerStyle || { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
+          headerStyle: data.headerStyle || { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
           columnWidths: data.columnWidths || new Array(rows[0]?.length || 2).fill('auto'),
           cellPadding: data.cellPadding || 'medium',
           isStatic: data.isStatic !== false,
@@ -53,7 +56,7 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
     return {
       rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
       showBorder: true, borderColor: '#ddd', mergedCells: {}, cellStyles: {},
-      headerStyle: { backgroundColor: '#f5f5f5', textColor: '#000000', bold: true },
+      headerStyle: { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
       columnWidths: ['auto', 'auto'], cellPadding: 'medium', isStatic: true,
       jsonMapping: { enabled: false, columnMappings: [] }
     };
@@ -345,22 +348,24 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                   {/* Text Color */}
                   <div className={styles.propGroup}>
                     <span className={styles.propSmallLabel}>Text Color</span>
-                    <div className={styles.propColorRow}>
-                      <input type="color" value={selectedCellStyle.color || '#000000'}
-                        onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { color: e.target.value })} className={styles.colorInput} />
-                      <Input value={selectedCellStyle.color || ''} onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { color: e.target.value })}
-                        placeholder="#000000" className="h-7 text-xs flex-1" />
+                    <div className={styles.colorSwatches}>
+                      {TEXT_COLORS.map(color => (
+                        <button key={color} className={`${styles.colorSwatch} ${selectedCellStyle.color === color ? styles.activeSwatch : ''}`}
+                          style={{ backgroundColor: color }} onClick={() => updateCellStyle(selectedCell.row, selectedCell.col, { color })}
+                          title={color} />
+                      ))}
                     </div>
                   </div>
 
                   {/* Background Color */}
                   <div className={styles.propGroup}>
                     <span className={styles.propSmallLabel}>Background</span>
-                    <div className={styles.propColorRow}>
-                      <input type="color" value={selectedCellStyle.backgroundColor || '#ffffff'}
-                        onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { backgroundColor: e.target.value })} className={styles.colorInput} />
-                      <Input value={selectedCellStyle.backgroundColor || ''} onChange={(e) => updateCellStyle(selectedCell.row, selectedCell.col, { backgroundColor: e.target.value })}
-                        placeholder="#ffffff" className="h-7 text-xs flex-1" />
+                    <div className={styles.colorSwatches}>
+                      {BG_COLORS.map(color => (
+                        <button key={color} className={`${styles.colorSwatch} ${selectedCellStyle.backgroundColor === color ? styles.activeSwatch : ''}`}
+                          style={{ backgroundColor: color }} onClick={() => updateCellStyle(selectedCell.row, selectedCell.col, { backgroundColor: color })}
+                          title={color} />
+                      ))}
                     </div>
                   </div>
 
@@ -460,11 +465,30 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                 {/* Header styling */}
                 <div className={styles.propGroup}>
                   <span className={styles.propSmallLabel}>Header Row</span>
-                  <div className={styles.propColorRow}>
-                    <span style={{ fontSize: '0.6875rem', color: 'hsl(var(--muted-foreground))' }}>BG</span>
-                    <input type="color" value={tableData.headerStyle?.backgroundColor || '#f5f5f5'} onChange={(e) => updateHeaderStyle({ backgroundColor: e.target.value })} className={styles.colorInput} />
-                    <span style={{ fontSize: '0.6875rem', color: 'hsl(var(--muted-foreground))' }}>Text</span>
-                    <input type="color" value={tableData.headerStyle?.textColor || '#000000'} onChange={(e) => updateHeaderStyle({ textColor: e.target.value })} className={styles.colorInput} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div>
+                      <span style={{ fontSize: '0.6875rem', color: 'hsl(var(--muted-foreground))', display: 'block', marginBottom: '0.25rem' }}>BG Color</span>
+                      <div className={styles.colorSwatches}>
+                        {BG_COLORS.map(color => (
+                          <button key={color} className={`${styles.colorSwatch} ${tableData.headerStyle?.backgroundColor === color ? styles.activeSwatch : ''}`}
+                            style={{ backgroundColor: color }} onClick={() => updateHeaderStyle({ backgroundColor: color })} title={color} />
+                        ))}
+                        {/* Include #FFC000 as a header-specific option */}
+                        {!BG_COLORS.includes('#FFC000') && (
+                          <button className={`${styles.colorSwatch} ${tableData.headerStyle?.backgroundColor === '#FFC000' ? styles.activeSwatch : ''}`}
+                            style={{ backgroundColor: '#FFC000' }} onClick={() => updateHeaderStyle({ backgroundColor: '#FFC000' })} title="#FFC000" />
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.6875rem', color: 'hsl(var(--muted-foreground))', display: 'block', marginBottom: '0.25rem' }}>Text Color</span>
+                      <div className={styles.colorSwatches}>
+                        {TEXT_COLORS.map(color => (
+                          <button key={color} className={`${styles.colorSwatch} ${tableData.headerStyle?.textColor === color ? styles.activeSwatch : ''}`}
+                            style={{ backgroundColor: color }} onClick={() => updateHeaderStyle({ textColor: color })} title={color} />
+                        ))}
+                      </div>
+                    </div>
                     <Tooltip><TooltipTrigger asChild>
                       <button className={`${styles.toolbarBtn} ${tableData.headerStyle?.bold !== false ? styles.active : ''}`}
                         onClick={() => updateHeaderStyle({ bold: !(tableData.headerStyle?.bold !== false) })} style={{ width: '1.5rem', height: '1.5rem' }}>
@@ -539,13 +563,13 @@ export const TableEditor = ({ section, onUpdate }: TableEditorProps) => {
                       fontWeight: cellStyle.bold ? 'bold' : (isHeader && hs?.bold !== false ? 'bold' : undefined),
                       fontStyle: cellStyle.italic ? 'italic' : undefined,
                       textDecoration: cellStyle.underline ? 'underline' : undefined,
-                      backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#f5f5f5') : undefined),
+                      backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#FFC000') : undefined),
                       fontSize: cellStyle.fontSize,
                       textAlign: cellStyle.textAlign, verticalAlign: cellStyle.verticalAlign,
                     };
                     const tdStyle: React.CSSProperties = {
                       borderColor: tableData.borderColor || '#ddd',
-                      backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#f5f5f5') : undefined),
+                      backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#FFC000') : undefined),
                     };
 
                     return (
