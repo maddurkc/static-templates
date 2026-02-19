@@ -228,7 +228,8 @@ export const generateTableHTML = (tableData: TableData): string => {
       const columnWidth = tableData.columnWidths?.[colIndex];
       const widthStyle = columnWidth ? `width: ${columnWidth};` : '';
       
-      const fullStyle = `${baseCellStyle} ${headerStyle} ${customStyles} ${widthStyle}`.trim();
+      const allParts = [baseCellStyle, headerStyle, customStyles, widthStyle].filter(s => s.length > 0);
+      const fullStyle = allParts.map(s => s.endsWith(';') ? s : s + ';').join(' ').trim();
       
       html += `<${tag} style="${fullStyle}"${mergeAttrs}>${cell}</${tag}>`;
     });
