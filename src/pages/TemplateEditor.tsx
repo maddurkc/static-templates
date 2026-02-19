@@ -566,7 +566,7 @@ const TemplateEditor = () => {
       }
       
       // Generate a unique ID for the new section first, so we can use it for variable names
-      const newSectionId = `section_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const newSectionId = `section-${Date.now()}-${Math.random()}`;
       
       // For standalone list sections (bullet-list-*, number-list-*), store the unique list variable name
       if (sectionDef.type.includes('list') && sectionDef.type !== 'labeled-content') {
@@ -865,7 +865,7 @@ const TemplateEditor = () => {
     if (sectionIndex === -1) return;
 
     const sectionToDuplicate = sections[sectionIndex];
-    const newSectionId = `section_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const newSectionId = `section-${Date.now()}-${Math.random()}`;
     
     // Helper to extract inline styles from HTML content
     const extractInlineStyles = (html: string): string => {
