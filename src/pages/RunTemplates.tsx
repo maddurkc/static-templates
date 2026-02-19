@@ -2830,9 +2830,11 @@ const RunTemplates = () => {
                                   hideStructuralControls
                                   section={section}
                                   onUpdate={(updatedSection) => {
+                                    const td = updatedSection.variables?.tableData;
+                                    console.log('[RT TABLE onUpdate]', section.id, 'cellStyles:', JSON.stringify(td?.cellStyles), 'headerStyle:', JSON.stringify(td?.headerStyle));
                                     setTableVariables(prev => ({
                                       ...prev,
-                                      [section.id]: updatedSection.variables?.tableData
+                                      [section.id]: td
                                     }));
                                     scrollToSection(section.id);
                                   }}

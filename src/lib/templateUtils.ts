@@ -473,11 +473,25 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   }
   
   if (section.type === 'table') {
-    // Check for runtime variables first (from RunTemplates)
+    // Priority 1: Use section.variables.tableData (injected by applyEditedContent with latest runtime data)
+    if (section.variables?.tableData) {
+      const td = section.variables.tableData as any;
+      if (td.rows && Array.isArray(td.rows)) {
+        const tableDataWithDefaults: TableData = {
+          ...td,
+          showBorder: td.showBorder !== undefined ? td.showBorder : true,
+          mergedCells: td.mergedCells || {},
+          cellStyles: td.cellStyles || {},
+          headerStyle: td.headerStyle || { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
+        };
+        return wrapInOutlookTable(generateTableHTML(tableDataWithDefaults));
+      }
+    }
+    
+    // Priority 2: Check runtime variables (from RunTemplates)
     if (variables && variables[section.id] !== undefined) {
       const runtimeValue = variables[section.id];
       if (typeof runtimeValue === 'object' && runtimeValue.rows && Array.isArray(runtimeValue.rows)) {
-        // Always use generateTableHTML to preserve all styling (cellStyles, headerStyle, etc.)
         const tableDataWithDefaults: TableData = {
           ...runtimeValue,
           showBorder: runtimeValue.showBorder !== undefined ? runtimeValue.showBorder : true,
@@ -487,12 +501,6 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         };
         return wrapInOutlookTable(generateTableHTML(tableDataWithDefaults));
       }
-    }
-    
-    // Use default table data from section
-    if (section.variables?.tableData) {
-      const tableContent = generateTableHTML(section.variables.tableData as TableData);
-      return wrapInOutlookTable(tableContent);
     }
   }
   
