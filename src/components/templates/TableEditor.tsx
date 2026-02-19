@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +12,9 @@ import {
   Settings2, Rows3, Columns3, ArrowUpFromLine, ArrowDownFromLine,
   ArrowLeftFromLine, ArrowRightFromLine, Palette, Grid3X3, Zap,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  ArrowUpToLine, ArrowDownToLine, Minus, Type
+  ArrowUpToLine, ArrowDownToLine, Minus, Type, Upload
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Section } from "@/types/section";
 import { TableData, CellStyle, HeaderStyle, CellPadding, mapJsonToTableData, generateTableVariableName } from "@/lib/tableUtils";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ interface TableEditorProps {
 export const TableEditor = ({ section, onUpdate, hideStructuralControls = false }: TableEditorProps) => {
   const [jsonInput, setJsonInput] = useState('');
   const [showJsonImport, setShowJsonImport] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseTableData = useCallback((): TableData => {
     try {
@@ -243,6 +245,71 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
       setJsonInput(''); setShowJsonImport(false);
       toast.success(`Imported ${dataArray.length} rows with ${keys.length} columns`);
     } catch { toast.error('Invalid JSON format'); }
+  };
+
+  const importFileData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    const isCSV = file.name.toLowerCase().endsWith('.csv');
+
+    reader.onload = (evt) => {
+      try {
+        let rows: string[][] = [];
+        if (isCSV) {
+          const text = evt.target?.result as string;
+          rows = text.split(/\r?\n/).filter(line => line.trim()).map(line => {
+            // Simple CSV parse handling quoted fields
+            const result: string[] = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+              const ch = line[i];
+              if (ch === '"') { inQuotes = !inQuotes; }
+              else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+              else { current += ch; }
+            }
+            result.push(current.trim());
+            return result;
+          });
+        } else {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: '' })
+            .filter((row: string[]) => row.some(cell => String(cell).trim() !== ''));
+          rows = rows.map(row => row.map(cell => String(cell)));
+        }
+
+        if (rows.length < 1) { toast.error('File is empty'); return; }
+
+        const headers = rows[0];
+        const columnMappings = headers.map(h => ({
+          header: h || 'Column',
+          jsonPath: h ? h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') : 'field'
+        }));
+
+        updateTableData({
+          ...tableData,
+          rows,
+          columnWidths: new Array(headers.length).fill('auto'),
+          jsonMapping: { enabled: true, columnMappings },
+          isStatic: false,
+          tableVariableName: tableData.tableVariableName || generateTableVariableName(section.id)
+        });
+
+        toast.success(`Imported ${rows.length - 1} data rows with ${headers.length} columns from ${file.name}`);
+      } catch (err) {
+        console.error('File import error:', err);
+        toast.error('Failed to parse file. Ensure it is a valid CSV or Excel file.');
+      }
+    };
+
+    if (isCSV) { reader.readAsText(file); }
+    else { reader.readAsArrayBuffer(file); }
+
+    // Reset input so same file can be re-uploaded
+    e.target.value = '';
   };
 
   const addColumnMapping = () => {
@@ -604,10 +671,23 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                 <Zap size={12} />
                 Dynamic Data (th:each)
               </div>
-              <Button size="sm" variant="ghost" onClick={() => setShowJsonImport(!showJsonImport)} className="h-6 px-2 text-xs">
-                <FileJson size={12} className="mr-1" />
-                {showJsonImport ? 'Hide' : 'Import JSON'}
-              </Button>
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                <Button size="sm" variant="ghost" onClick={() => fileInputRef.current?.click()} className="h-6 px-2 text-xs">
+                  <Upload size={12} className="mr-1" />
+                  Upload CSV/Excel
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={importFileData}
+                  style={{ display: 'none' }}
+                />
+                <Button size="sm" variant="ghost" onClick={() => setShowJsonImport(!showJsonImport)} className="h-6 px-2 text-xs">
+                  <FileJson size={12} className="mr-1" />
+                  {showJsonImport ? 'Hide' : 'Import JSON'}
+                </Button>
+              </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
