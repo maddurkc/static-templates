@@ -285,56 +285,23 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         : section.id;
     
     // Check if we have runtime variables (from RunTemplates)
-    if (variables && variables[contentVarName] !== undefined) {
+    // For table content, prefer using section's tableData which gets updated via applyEditedContent
+    if (contentType === 'table') {
+      const tableData = section.variables?.tableData;
+      if (tableData && tableData.rows && Array.isArray(tableData.rows)) {
+        const tableDataWithDefaults: TableData = {
+          ...tableData,
+          showBorder: tableData.showBorder !== undefined ? tableData.showBorder : true,
+          mergedCells: tableData.mergedCells || {},
+          cellStyles: tableData.cellStyles || {},
+          headerStyle: tableData.headerStyle || { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
+        };
+        contentHtml = generateTableHTML(tableDataWithDefaults);
+      }
+    } else if (variables && variables[contentVarName] !== undefined) {
       const runtimeValue = variables[contentVarName];
-      if (contentType === 'table' && typeof runtimeValue === 'object') {
-        // Handle both formats: {headers, rows} for runtime editing and TableData format
-        if (runtimeValue.rows && Array.isArray(runtimeValue.rows)) {
-          // If runtimeValue has styling properties (headerStyle, cellStyles, etc.), use generateTableHTML
-          if (runtimeValue.headerStyle || runtimeValue.cellStyles || runtimeValue.mergedCells) {
-            contentHtml = generateTableHTML(runtimeValue as TableData);
-          } else if (runtimeValue.headers && Array.isArray(runtimeValue.headers)) {
-            // Runtime format with separate headers and rows (legacy simple format)
-            const headerStyle = section.variables?.tableData?.headerStyle || { backgroundColor: '#FFC000', textColor: '#000000', bold: true };
-            const showBorder = section.variables?.tableData?.showBorder !== false;
-            const borderColor = section.variables?.tableData?.borderColor || '#ddd';
-            const columnWidths = section.variables?.tableData?.columnWidths || [];
-            
-            let tableHtml = `<table style="border-collapse: collapse; width: 100%;${showBorder ? ` border: 1px solid ${borderColor};` : ''}">`;
-            
-            // Add colgroup for column widths
-            if (columnWidths.length > 0) {
-              tableHtml += '<colgroup>';
-              columnWidths.forEach((width: string) => {
-                tableHtml += `<col style="width: ${width};">`;
-              });
-              tableHtml += '</colgroup>';
-            }
-            
-            tableHtml += '<thead><tr>';
-            runtimeValue.headers.forEach((header: string, idx: number) => {
-              const widthStyle = columnWidths[idx] ? `width: ${columnWidths[idx]};` : '';
-              const bgColor = headerStyle.backgroundColor || '#FFC000';
-              const textColor = headerStyle.textColor || '#000000';
-              const fontWeight = headerStyle.bold !== false ? 'bold' : 'normal';
-              tableHtml += `<th style="${showBorder ? `border: 1px solid ${borderColor};` : ''} padding: 8px; background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight}; text-align: left; ${widthStyle}">${sanitizeInput(header)}</th>`;
-            });
-            tableHtml += '</tr></thead><tbody>';
-            (runtimeValue.rows || []).forEach((row: string[]) => {
-              tableHtml += '<tr>';
-              row.forEach((cell: string, idx: number) => {
-                const widthStyle = columnWidths[idx] ? `width: ${columnWidths[idx]};` : '';
-                tableHtml += `<td style="${showBorder ? `border: 1px solid ${borderColor};` : ''} padding: 8px; ${widthStyle}">${sanitizeInput(cell)}</td>`;
-              });
-              tableHtml += '</tr>';
-            });
-            tableHtml += '</tbody></table>';
-            contentHtml = tableHtml;
-          } else {
-            // TableData format - use generateTableHTML
-            contentHtml = generateTableHTML(runtimeValue as TableData);
-          }
-        }
+      if (false) {
+        // removed table branch - handled above
       } else if (contentType === 'list' && Array.isArray(runtimeValue)) {
         const listStyle = (section.variables?.listStyle as string) || 'circle';
         const listTag = getListTag(listStyle);
@@ -510,48 +477,15 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     if (variables && variables[section.id] !== undefined) {
       const runtimeValue = variables[section.id];
       if (typeof runtimeValue === 'object' && runtimeValue.rows && Array.isArray(runtimeValue.rows)) {
-        // If runtimeValue has styling properties, use generateTableHTML directly
-        if (runtimeValue.headerStyle || runtimeValue.cellStyles || runtimeValue.mergedCells) {
-          return wrapInOutlookTable(generateTableHTML(runtimeValue as TableData));
-        }
-        if (runtimeValue.headers && Array.isArray(runtimeValue.headers)) {
-          // Legacy simple format with separate headers and rows
-          const tableData = section.variables?.tableData || {};
-          const headerStyle = tableData.headerStyle || { backgroundColor: '#FFC000', textColor: '#000000', bold: true };
-          const showBorder = tableData.showBorder !== false;
-          const borderColor = tableData.borderColor || '#ddd';
-          const columnWidths = tableData.columnWidths || [];
-          
-          let tableHtml = `<table style="border-collapse: collapse; width: 100%;${showBorder ? ` border: 1px solid ${borderColor};` : ''}">`;
-          
-          if (columnWidths.length > 0) {
-            tableHtml += '<colgroup>';
-            columnWidths.forEach((width: string) => {
-              tableHtml += `<col style="width: ${width};">`;
-            });
-            tableHtml += '</colgroup>';
-          }
-          
-          tableHtml += '<thead><tr>';
-          runtimeValue.headers.forEach((header: string, idx: number) => {
-            const widthStyle = columnWidths[idx] ? `width: ${columnWidths[idx]};` : '';
-            const bgColor = headerStyle.backgroundColor || '#FFC000';
-            const textColor = headerStyle.textColor || '#000000';
-            const fontWeight = headerStyle.bold !== false ? 'bold' : 'normal';
-            tableHtml += `<th style="${showBorder ? `border: 1px solid ${borderColor};` : ''} padding: 8px; background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight}; text-align: left; ${widthStyle}">${sanitizeInput(header)}</th>`;
-          });
-          tableHtml += '</tr></thead><tbody>';
-          (runtimeValue.rows || []).forEach((row: string[]) => {
-            tableHtml += '<tr>';
-            row.forEach((cell: string, idx: number) => {
-              const widthStyle = columnWidths[idx] ? `width: ${columnWidths[idx]};` : '';
-              tableHtml += `<td style="${showBorder ? `border: 1px solid ${borderColor};` : ''} padding: 8px; ${widthStyle}">${sanitizeInput(cell)}</td>`;
-            });
-            tableHtml += '</tr>';
-          });
-          tableHtml += '</tbody></table>';
-          return wrapInOutlookTable(tableHtml);
-        }
+        // Always use generateTableHTML to preserve all styling (cellStyles, headerStyle, etc.)
+        const tableDataWithDefaults: TableData = {
+          ...runtimeValue,
+          showBorder: runtimeValue.showBorder !== undefined ? runtimeValue.showBorder : true,
+          mergedCells: runtimeValue.mergedCells || {},
+          cellStyles: runtimeValue.cellStyles || {},
+          headerStyle: runtimeValue.headerStyle || { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
+        };
+        return wrapInOutlookTable(generateTableHTML(tableDataWithDefaults));
       }
     }
     
