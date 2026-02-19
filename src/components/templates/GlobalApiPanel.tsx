@@ -57,7 +57,7 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection, onClose }: G
   const createSectionFromVariable = (variable: GlobalApiVariable) => {
     if (!onCreateSection) return;
 
-    const sectionId = `section-${Date.now()}-${Math.random()}`;
+    const sectionId = `section_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
     if (variable.dataType === 'stringList') {
       // Create bullet list section from string array
