@@ -141,7 +141,8 @@ export const sectionTypes: SectionDefinition[] = [
         defaultValue: {
           rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
           showBorder: true,
-          mergedCells: {}
+          mergedCells: {},
+          headerStyle: { backgroundColor: '#FFC000', textColor: '#000000', bold: true }
         } as any
       }
     ]
