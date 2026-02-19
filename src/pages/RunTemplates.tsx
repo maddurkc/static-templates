@@ -3287,18 +3287,11 @@ const RunTemplates = () => {
                         
                         const sectionToRender = applyEditedContent(section);
                         
-                        // For table sections, ensure tableVariables data is directly used in runtimeVars
-                        // This guarantees cell style updates are reflected in the preview
-                        const finalRuntimeVars = { ...runtimeVars };
-                        if (section.type === 'table' && tableVariables[section.id]) {
-                          finalRuntimeVars[section.id] = tableVariables[section.id];
-                        }
-                        
                         return (
                           <div 
-                            key={`${section.id}-${JSON.stringify(tableVariables[section.id]?.cellStyles || '')}`}
+                            key={section.id} 
                             id={`preview-section-${section.id}`}
-                            dangerouslySetInnerHTML={{ __html: wrapSectionInTable(renderSectionContent(sectionToRender, finalRuntimeVars), sectionIndex === 0) }}
+                            dangerouslySetInnerHTML={{ __html: wrapSectionInTable(renderSectionContent(sectionToRender, runtimeVars), sectionIndex === 0) }}
                           />
                         );
                       })}
