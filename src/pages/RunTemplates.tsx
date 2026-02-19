@@ -1340,8 +1340,17 @@ const RunTemplates = () => {
                 });
               }
             } else {
-              if (!bodyData[section.id]) {
-                bodyData[section.id] = { headers, rows: dataRows };
+            if (!bodyData[section.id]) {
+                bodyData[section.id] = { 
+                  headers, 
+                  rows: dataRows,
+                  ...(tableData.cellStyles && Object.keys(tableData.cellStyles).length > 0 && { cellStyles: tableData.cellStyles }),
+                  ...(tableData.headerStyle && { headerStyle: tableData.headerStyle }),
+                  ...(tableData.borderColor && { borderColor: tableData.borderColor }),
+                  ...(tableData.showBorder !== undefined && { showBorder: tableData.showBorder }),
+                  ...(tableData.columnWidths && { columnWidths: tableData.columnWidths }),
+                  ...(tableData.cellPadding && { cellPadding: tableData.cellPadding }),
+                };
               }
             }
           }
@@ -1369,7 +1378,16 @@ const RunTemplates = () => {
               }
             } else {
               if (!bodyData[section.id]) {
-                bodyData[section.id] = { headers, rows: dataRows };
+                bodyData[section.id] = { 
+                  headers, 
+                  rows: dataRows,
+                  ...(tableData.cellStyles && Object.keys(tableData.cellStyles).length > 0 && { cellStyles: tableData.cellStyles }),
+                  ...(tableData.headerStyle && { headerStyle: tableData.headerStyle }),
+                  ...(tableData.borderColor && { borderColor: tableData.borderColor }),
+                  ...(tableData.showBorder !== undefined && { showBorder: tableData.showBorder }),
+                  ...(tableData.columnWidths && { columnWidths: tableData.columnWidths }),
+                  ...(tableData.cellPadding && { cellPadding: tableData.cellPadding }),
+                };
               }
             }
           }
