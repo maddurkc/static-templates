@@ -1471,14 +1471,13 @@ const TemplateEditor = () => {
   };
 
   const generateHTMLWithPlaceholders = () => {
-    const allSections = [headerSection, ...sections, footerSection];
+    // Generate HTML with only body sections (no header/footer), Outlook-only format
     
     // Helper to wrap section content in a row with nested table (for Outlook compatibility - each section in its own <tr>)
     const wrapInSectionRow = (content: string, isFirst: boolean): string => {
       const paddingTop = isFirst ? '0' : '10px';
       return `<tr>
   <td style="padding-top: ${paddingTop};">
-    <!--[if mso]>
     <table cellpadding="0" cellspacing="0" border="0" width="100%" style="mso-table-lspace:0pt;mso-table-rspace:0pt;">
       <tr>
         <td style="padding:0;font-family:'Wells Fargo Sans',Arial,Helvetica,sans-serif;">
@@ -1486,16 +1485,6 @@ const TemplateEditor = () => {
         </td>
       </tr>
     </table>
-    <![endif]-->
-    <!--[if !mso]><!-->
-    <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 100%; border: none; word-wrap: break-word; table-layout: fixed; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif; mso-line-height-rule: exactly;">
-      <tr>
-        <td style="padding: 0; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Wells Fargo Sans', Arial, Helvetica, sans-serif;">
-    ${content}
-        </td>
-      </tr>
-    </table>
-    <!--<![endif]-->
   </td>
 </tr>`;
     };
@@ -1675,23 +1664,17 @@ ${indent}</div>`;
       return `${indent}<div style="${styleString}">\n${indent}  ${listHtml}\n${indent}</div>`;
     };
     
-    // Wrap all sections in a global table, with each section in its own <tr> row
-    const sectionRows = allSections.map((section, index) => {
+    // Wrap only body sections (exclude header and footer) in a global table
+    const bodySections = sections; // excludes headerSection and footerSection
+    const sectionRows = bodySections.map((section, index) => {
       const sectionContent = generateSectionHTML(section);
       return wrapInSectionRow(sectionContent, index === 0);
     }).join('\n');
     
-    // Return global wrapper table with each section in its own row
-    return `<!--[if mso]>
-<table cellpadding="0" cellspacing="0" border="0" width="800" align="center" style="mso-table-lspace:0pt;mso-table-rspace:0pt;">
+    // Return Outlook-only global wrapper table
+    return `<table cellpadding="0" cellspacing="0" border="0" width="800" align="center" style="mso-table-lspace:0pt;mso-table-rspace:0pt;">
 ${sectionRows}
-</table>
-<![endif]-->
-<!--[if !mso]><!-->
-<table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 800px; margin: 0 auto; border: none;">
-${sectionRows}
-</table>
-<!--<![endif]-->`;
+</table>`;
   };
 
   const generateHTML = () => {
