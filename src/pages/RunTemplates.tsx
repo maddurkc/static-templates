@@ -1338,6 +1338,16 @@ const RunTemplates = () => {
                   });
                   return obj;
                 });
+                // Include table styling metadata for dynamic tables
+                const styleMetaKey = `${payloadKey}__styles`;
+                const styleMeta: Record<string, any> = {};
+                if (tableData.cellStyles && Object.keys(tableData.cellStyles).length > 0) styleMeta.cellStyles = tableData.cellStyles;
+                if (tableData.headerStyle) styleMeta.headerStyle = tableData.headerStyle;
+                if (tableData.borderColor) styleMeta.borderColor = tableData.borderColor;
+                if (tableData.showBorder !== undefined) styleMeta.showBorder = tableData.showBorder;
+                if (tableData.columnWidths) styleMeta.columnWidths = tableData.columnWidths;
+                if (tableData.cellPadding) styleMeta.cellPadding = tableData.cellPadding;
+                if (Object.keys(styleMeta).length > 0) bodyData[styleMetaKey] = styleMeta;
               }
             } else {
             if (!bodyData[section.id]) {
@@ -1375,6 +1385,16 @@ const RunTemplates = () => {
                   });
                   return obj;
                 });
+                // Include table styling metadata for dynamic tables
+                const styleMetaKey = `${payloadKey}__styles`;
+                const styleMeta: Record<string, any> = {};
+                if (tableData.cellStyles && Object.keys(tableData.cellStyles).length > 0) styleMeta.cellStyles = tableData.cellStyles;
+                if (tableData.headerStyle) styleMeta.headerStyle = tableData.headerStyle;
+                if (tableData.borderColor) styleMeta.borderColor = tableData.borderColor;
+                if (tableData.showBorder !== undefined) styleMeta.showBorder = tableData.showBorder;
+                if (tableData.columnWidths) styleMeta.columnWidths = tableData.columnWidths;
+                if (tableData.cellPadding) styleMeta.cellPadding = tableData.cellPadding;
+                if (Object.keys(styleMeta).length > 0) bodyData[styleMetaKey] = styleMeta;
               }
             } else {
               if (!bodyData[section.id]) {
