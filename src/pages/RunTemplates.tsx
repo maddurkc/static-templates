@@ -2830,11 +2830,9 @@ const RunTemplates = () => {
                                   hideStructuralControls
                                   section={section}
                                   onUpdate={(updatedSection) => {
-                                    const td = updatedSection.variables?.tableData;
-                                    console.log('[RT TABLE onUpdate]', section.id, 'cellStyles:', JSON.stringify(td?.cellStyles), 'headerStyle:', JSON.stringify(td?.headerStyle));
                                     setTableVariables(prev => ({
                                       ...prev,
-                                      [section.id]: td
+                                      [section.id]: updatedSection.variables?.tableData
                                     }));
                                     scrollToSection(section.id);
                                   }}
@@ -3289,11 +3287,18 @@ const RunTemplates = () => {
                         
                         const sectionToRender = applyEditedContent(section);
                         
+                        // For table sections, ensure tableVariables data is directly used in runtimeVars
+                        // This guarantees cell style updates are reflected in the preview
+                        const finalRuntimeVars = { ...runtimeVars };
+                        if (section.type === 'table' && tableVariables[section.id]) {
+                          finalRuntimeVars[section.id] = tableVariables[section.id];
+                        }
+                        
                         return (
                           <div 
-                            key={section.id} 
+                            key={`${section.id}-${JSON.stringify(tableVariables[section.id]?.cellStyles || '')}`}
                             id={`preview-section-${section.id}`}
-                            dangerouslySetInnerHTML={{ __html: wrapSectionInTable(renderSectionContent(sectionToRender, runtimeVars), sectionIndex === 0) }}
+                            dangerouslySetInnerHTML={{ __html: wrapSectionInTable(renderSectionContent(sectionToRender, finalRuntimeVars), sectionIndex === 0) }}
                           />
                         );
                       })}
