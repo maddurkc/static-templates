@@ -1109,36 +1109,8 @@ const RunTemplates = () => {
       });
     });
     
-    // Add table variables - convert TableData format to clean payload
-    Object.entries(tableVariables).forEach(([sectionId, value]) => {
-      if (value && typeof value === 'object') {
-        if (value.rows && Array.isArray(value.rows)) {
-          const hasHeaders = value.headers && Array.isArray(value.headers);
-          const headers = hasHeaders ? value.headers : (value.rows[0] || []);
-          const dataRows = hasHeaders ? value.rows : (value.rows.slice(1) || []);
-          
-          if (value.isStatic === false && value.jsonMapping?.columnMappings?.length) {
-            // Dynamic mode - use tableVariableName as key to match Thymeleaf th:each syntax
-            const payloadKey = value.tableVariableName || sectionId;
-            bodyData[payloadKey] = dataRows.map((row: string[]) => {
-              const obj: Record<string, string> = {};
-              value.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
-                obj[mapping.jsonPath] = row[idx] || '';
-              });
-              return obj;
-            });
-          } else {
-            // Static mode - send structured headers + rows using section ID as key
-            bodyData[sectionId] = { headers, rows: dataRows };
-          }
-        } else {
-          // Legacy format (already has headers/rows)
-          bodyData[sectionId] = value;
-        }
-      } else {
-        bodyData[sectionId] = value;
-      }
-    });
+    // Table variables are handled below in the per-section loop (standalone table + labeled-content table blocks)
+    // to correctly merge runtime edits with original metadata (isStatic, jsonMapping, tableVariableName).
     
     // Add label variables
     Object.entries(labelVariables).forEach(([key, value]) => {
