@@ -157,8 +157,8 @@ const RunTemplates = () => {
       vars.forEach(v => {
         const defaultVal = getDefaultValue(v);
         if (isTableVariable(v)) {
-          // Use getTableData for proper format conversion
-          initialTableVars[v] = getTableData(v);
+          // Use full tableData (including headerStyle, cellStyles, etc.) for proper preview rendering
+          initialTableVars[v] = getFullTableData(v);
         } else if (Array.isArray(defaultVal)) {
           initialListVars[v] = defaultVal.length > 0 ? defaultVal : [''];
         } else {
@@ -401,6 +401,23 @@ const RunTemplates = () => {
             rows: tableData.headers ? (tableData.rows || []) : (tableData.rows?.slice(1) || [])
           };
         }
+      }
+    }
+    return { headers: ['Column 1'], rows: [['Data 1']] };
+  };
+
+  // Get full table data including styling properties (headerStyle, cellStyles, borderColor, etc.)
+  const getFullTableData = (varName: string): any => {
+    if (!selectedTemplate?.sections) return { headers: ['Column 1'], rows: [['Data 1']] };
+    
+    for (const section of selectedTemplate.sections) {
+      if (section.type === 'labeled-content' && section.id === varName && section.variables?.contentType === 'table') {
+        const tableData = section.variables.tableData;
+        if (tableData) return { ...tableData };
+      }
+      if (section.type === 'table' && section.id === varName) {
+        const tableData = section.variables?.tableData;
+        if (tableData) return { ...tableData };
       }
     }
     return { headers: ['Column 1'], rows: [['Data 1']] };
@@ -3424,7 +3441,7 @@ const RunTemplates = () => {
 
                 setTableVariables(prev => ({
                   ...prev,
-                  [jsonImportOpen]: { headers, rows }
+                  [jsonImportOpen]: { ...prev[jsonImportOpen], headers, rows }
                 }));
 
                 toast({
