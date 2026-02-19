@@ -2340,6 +2340,7 @@ const RunTemplates = () => {
                                   
                                   {contentType === 'table' && (
                                     <TableEditor
+                                      hideStructuralControls
                                       section={section}
                                       onUpdate={(updatedSection) => {
                                         setTableVariables(prev => ({
@@ -2826,6 +2827,7 @@ const RunTemplates = () => {
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
                                 <TableEditor
+                                  hideStructuralControls
                                   section={section}
                                   onUpdate={(updatedSection) => {
                                     setTableVariables(prev => ({
