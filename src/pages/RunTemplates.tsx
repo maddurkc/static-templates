@@ -1341,7 +1341,17 @@ const RunTemplates = () => {
               }
             } else {
               if (!bodyData[section.id]) {
-                bodyData[section.id] = { headers, rows: dataRows };
+                bodyData[section.id] = {
+                  headers,
+                  rows: dataRows,
+                  cellStyles: tableData.cellStyles || {},
+                  headerStyle: tableData.headerStyle || {},
+                  borderColor: tableData.borderColor,
+                  showBorder: tableData.showBorder,
+                  mergedCells: tableData.mergedCells || {},
+                  columnWidths: tableData.columnWidths,
+                  cellPadding: tableData.cellPadding,
+                };
               }
             }
           }
@@ -1369,7 +1379,17 @@ const RunTemplates = () => {
               }
             } else {
               if (!bodyData[section.id]) {
-                bodyData[section.id] = { headers, rows: dataRows };
+                bodyData[section.id] = {
+                  headers,
+                  rows: dataRows,
+                  cellStyles: tableData.cellStyles || {},
+                  headerStyle: tableData.headerStyle || {},
+                  borderColor: tableData.borderColor,
+                  showBorder: tableData.showBorder,
+                  mergedCells: tableData.mergedCells || {},
+                  columnWidths: tableData.columnWidths,
+                  cellPadding: tableData.cellPadding,
+                };
               }
             }
           }
