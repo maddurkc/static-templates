@@ -1,11 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Section } from "@/types/section";
-import { GlobalApiConfig } from "@/types/global-api-config";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
 import { generateTableHTML, TableData } from "@/lib/tableUtils";
 import { wrapSectionInTable } from "@/lib/templateUtils";
-import { resolveGlobalApiVariables } from "@/lib/globalApiVariableResolver";
 import styles from "./PreviewView.module.scss";
 
 interface PreviewViewProps {
@@ -16,12 +14,10 @@ interface PreviewViewProps {
   hoveredSectionId?: string | null;
   onHoverSection?: (id: string | null) => void;
   highlightedVariableName?: string | null;
-  globalApiConfig?: GlobalApiConfig;
 }
 
-export const PreviewView = ({ headerSection, footerSection, sections, selectedSectionId, hoveredSectionId, onHoverSection, highlightedVariableName, globalApiConfig }: PreviewViewProps) => {
+export const PreviewView = ({ headerSection, footerSection, sections, selectedSectionId, hoveredSectionId, onHoverSection, highlightedVariableName }: PreviewViewProps) => {
   const allSections = [headerSection, ...sections, footerSection];
-  const globalVars = globalApiConfig?.globalVariables || {};
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Scroll to selected section and highlight it
@@ -329,7 +325,7 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
                       key={section.id}
                       data-preview-section-id={section.id}
                       className={`${styles.previewSectionWrapper} ${selectedSectionId === section.id ? styles.selected : ''} ${hoveredSectionId === section.id && selectedSectionId !== section.id ? styles.hovered : ''}`}
-                      dangerouslySetInnerHTML={{ __html: resolveGlobalApiVariables(wrapSectionInTable(getSectionHtml(section), index === 0), globalVars) }}
+                      dangerouslySetInnerHTML={{ __html: wrapSectionInTable(getSectionHtml(section), index === 0) }}
                       onMouseEnter={() => onHoverSection?.(section.id)}
                       onMouseLeave={() => onHoverSection?.(null)}
                     />

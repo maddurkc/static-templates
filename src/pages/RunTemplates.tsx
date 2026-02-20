@@ -29,7 +29,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
 import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
-import { resolveGlobalApiVariables } from "@/lib/globalApiVariableResolver";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -1385,9 +1384,8 @@ const RunTemplates = () => {
       ...tableVariables,
       ...labelVariables
     };
-    const globalVars = selectedTemplate.globalApiConfig?.globalVariables || {};
     const sectionRows = selectedTemplate.sections
-      .map((section, index) => resolveGlobalApiVariables(wrapSectionInTable(renderSectionContent(section, allVars), index === 0), globalVars))
+      .map((section, index) => wrapSectionInTable(renderSectionContent(section, allVars), index === 0))
       .join('');
     const renderedBodyHtml = wrapInGlobalTable(sectionRows);
     const fullEmailHtml = wrapInEmailHtml(renderedBodyHtml);
@@ -1719,8 +1717,7 @@ const RunTemplates = () => {
               };
             }
           }
-          const globalVarsForPreview = selectedTemplate.globalApiConfig?.globalVariables || {};
-          return resolveGlobalApiVariables(wrapSectionInTable(renderSectionContent(sectionToRender, allVars), index === 0), globalVarsForPreview);
+          return wrapSectionInTable(renderSectionContent(sectionToRender, allVars), index === 0);
         })
         .join('');
       return wrapInGlobalTable(sectionRows);
@@ -3289,13 +3286,12 @@ const RunTemplates = () => {
                         };
                         
                         const sectionToRender = applyEditedContent(section);
-                        const globalVars = selectedTemplate.globalApiConfig?.globalVariables || {};
                         
                         return (
                           <div 
                             key={section.id} 
                             id={`preview-section-${section.id}`}
-                            dangerouslySetInnerHTML={{ __html: resolveGlobalApiVariables(wrapSectionInTable(renderSectionContent(sectionToRender, runtimeVars), sectionIndex === 0), globalVars) }}
+                            dangerouslySetInnerHTML={{ __html: wrapSectionInTable(renderSectionContent(sectionToRender, runtimeVars), sectionIndex === 0) }}
                           />
                         );
                       })}

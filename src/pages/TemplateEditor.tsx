@@ -2132,7 +2132,6 @@ ${sectionRows}
                   hoveredSectionId={hoveredSectionId}
                   onHoverSection={setHoveredSectionId}
                   highlightedVariableName={focusedVariableName}
-                  globalApiConfig={globalApiConfig}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
@@ -2177,7 +2176,6 @@ ${sectionRows}
                     hoveredSectionId={hoveredSectionId}
                     onHoverSection={setHoveredSectionId}
                     highlightedVariableName={focusedVariableName}
-                    globalApiConfig={globalApiConfig}
                   />
                 </div>
               )}
