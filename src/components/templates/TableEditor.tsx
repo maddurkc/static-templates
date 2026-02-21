@@ -277,9 +277,12 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
       const columnMappings = keys.map(key => ({
         header: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), jsonPath: key
       }));
-      const rows = mapJsonToTableData(dataArray, columnMappings);
+      const allRows = mapJsonToTableData(dataArray, columnMappings);
+      // mapJsonToTableData returns [headers, ...dataRows] — separate them
+      const headers = allRows[0];
+      const dataRows = allRows.slice(1);
       updateTableData({
-        ...tableData, rows, columnWidths: new Array(columnMappings.length).fill('auto'),
+        ...tableData, headers, rows: dataRows, columnWidths: new Array(columnMappings.length).fill('auto'),
         jsonMapping: { enabled: true, columnMappings }, isStatic: false,
         tableVariableName: tableData.tableVariableName || generateTableVariableName(section.id)
       });
@@ -326,16 +329,30 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
         const headerPos = tableData.headerPosition || 'first-row';
         let columnMappings: { header: string; jsonPath: string }[];
+        let importedHeaders: string[];
+        let dataRows: string[][];
         
         if (headerPos === 'first-row') {
-          // First row is headers
-          const headers = rows[0];
-          columnMappings = headers.map(h => ({
+          // First row is headers — extract and use as headers
+          importedHeaders = rows[0];
+          dataRows = rows.slice(1);
+          columnMappings = importedHeaders.map(h => ({
             header: h || 'Column',
             jsonPath: h ? h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') : 'field'
           }));
+        } else if (headerPos === 'first-column') {
+          // First column values become headers, rest is data
+          importedHeaders = rows.map(row => row[0] || '');
+          dataRows = rows.map(row => row.slice(1));
+          const colCount = dataRows[0]?.length || 1;
+          columnMappings = Array.from({ length: colCount }, (_, i) => ({
+            header: `Column ${i + 1}`,
+            jsonPath: `col_${i + 1}`
+          }));
         } else {
-          // No header row — generate generic column names
+          // No headers — all rows are data
+          importedHeaders = [];
+          dataRows = rows;
           const colCount = rows[0]?.length || 1;
           columnMappings = Array.from({ length: colCount }, (_, i) => ({
             header: `Column ${i + 1}`,
@@ -345,7 +362,8 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
         updateTableData({
           ...tableData,
-          rows,
+          headers: importedHeaders,
+          rows: dataRows,
           columnWidths: new Array(columnMappings.length).fill('auto'),
           jsonMapping: { enabled: true, columnMappings },
           isStatic: false,
