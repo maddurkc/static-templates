@@ -21,11 +21,12 @@ export type CellPadding = 'small' | 'medium' | 'large';
 export type HeaderPosition = 'first-row' | 'first-column' | 'none';
 
 export interface TableData {
+  headers?: string[]; // Separate header values (e.g., ['Header 1', 'Header 2'])
   rows: string[][];
   showBorder: boolean;
   borderColor?: string;
   mergedCells: Record<string, { rowSpan: number; colSpan: number }>;
-  cellStyles?: Record<string, CellStyle>; // key format: "rowIndex-colIndex"
+  cellStyles?: Record<string, CellStyle>; // key format: "h-colIndex" for headers, "rowIndex-colIndex" for data rows
   headerStyle?: HeaderStyle;
   columnWidths?: string[]; // e.g., ['100px', '200px', 'auto']
   cellPadding?: CellPadding; // small: 4px, medium: 8px, large: 12px
@@ -232,6 +233,21 @@ export const generateTableHTML = (tableData: TableData): string => {
     return `background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;
   };
 
+  // Render separate headers row if available
+  if (tableData.headers && headerPosition === 'first-row') {
+    html += '<tr>';
+    tableData.headers.forEach((header, colIndex) => {
+      const cellStyle = tableData.cellStyles?.[`h-${colIndex}`];
+      const customStyles = generateCellStyleString(cellStyle);
+      const columnWidth = tableData.columnWidths?.[colIndex];
+      const widthStyle = columnWidth ? `width: ${columnWidth};` : '';
+      const allParts = [baseCellStyle, buildHeaderStyleString(), customStyles, widthStyle].filter(s => s.length > 0);
+      const fullStyle = allParts.map(s => s.endsWith(';') ? s : s + ';').join(' ').trim();
+      html += `<th style="${fullStyle}">${header}</th>`;
+    });
+    html += '</tr>';
+  }
+
   tableData.rows.forEach((row, rowIndex) => {
     html += '<tr>';
     row.forEach((cell, colIndex) => {
@@ -244,10 +260,8 @@ export const generateTableHTML = (tableData: TableData): string => {
       
       const merge = tableData.mergedCells?.[cellKey];
       
-      // Determine if this cell is a header based on headerPosition
-      const isHeaderCell = 
-        (headerPosition === 'first-row' && rowIndex === 0) ||
-        (headerPosition === 'first-column' && colIndex === 0);
+      // Determine if this cell is a header based on headerPosition (only first-column now, first-row handled above)
+      const isHeaderCell = (headerPosition === 'first-column' && colIndex === 0);
       
       const tag = isHeaderCell ? 'th' : 'td';
       const mergeAttrs = merge 
