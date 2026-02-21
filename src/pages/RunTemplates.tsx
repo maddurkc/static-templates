@@ -1655,8 +1655,16 @@ const RunTemplates = () => {
                 const listVarName = s.variables?.listVariableName as string;
                 if (listVarName === key && s.variables?.contentType === 'list') return true;
                 if (s.id === key && s.variables?.contentType === 'table') return true;
+                // Match by tableVariableName for dynamic tables
+                const tableVarName = s.variables?.tableData?.tableVariableName as string;
+                if (tableVarName === key && s.variables?.contentType === 'table') return true;
               }
-              if (s.type === 'table' && s.id === key) return true;
+              if (s.type === 'table') {
+                if (s.id === key) return true;
+                // Match by tableVariableName for dynamic tables
+                const tableVarName = s.variables?.tableData?.tableVariableName as string;
+                if (tableVarName === key) return true;
+              }
               return false;
             });
 
@@ -1667,7 +1675,36 @@ const RunTemplates = () => {
                 return;
               }
               if (matchingSection.variables?.contentType === 'table' || matchingSection.type === 'table') {
-                restoredTableVars[key] = value;
+                // Reconstruct full tableData from section config + sent payload values
+                const originalTableData = matchingSection.variables?.tableData;
+                if (originalTableData) {
+                  const restored = { ...originalTableData };
+                  // Static table payload: { headers, rows }
+                  if (value && typeof value === 'object' && !Array.isArray(value) && value.headers) {
+                    restored.headers = value.headers;
+                    restored.rows = value.rows || [];
+                  }
+                  // Dynamic table payload: array of objects - reconstruct rows from mappings
+                  else if (Array.isArray(value) && restored.jsonMapping?.columnMappings?.length) {
+                    const mappings = restored.jsonMapping.columnMappings;
+                    const headerPosition = restored.headerPosition || 'first-row';
+                    const reconstructedRows = value.map((rowObj: any) => {
+                      if (headerPosition === 'first-column') {
+                        return mappings.map((_: any, idx: number) => {
+                          if (idx === 0) return rowObj['header'] || '';
+                          return rowObj['value'] || '';
+                        });
+                      }
+                      return mappings.map((m: any) => rowObj[m.jsonPath] || '');
+                    });
+                    restored.rows = reconstructedRows;
+                    // Restore headers from columnMappings
+                    restored.headers = mappings.map((m: any) => m.header);
+                  }
+                  restoredTableVars[matchingSection.id] = restored;
+                } else {
+                  restoredTableVars[matchingSection.id] = value;
+                }
                 return;
               }
             }
@@ -1729,8 +1766,14 @@ const RunTemplates = () => {
                   const listVarName = s.variables?.listVariableName as string;
                   if (listVarName === key && s.variables?.contentType === 'list') return true;
                   if (s.id === key && s.variables?.contentType === 'table') return true;
+                  const tableVarName = s.variables?.tableData?.tableVariableName as string;
+                  if (tableVarName === key && s.variables?.contentType === 'table') return true;
                 }
-                if (s.type === 'table' && s.id === key) return true;
+                if (s.type === 'table') {
+                  if (s.id === key) return true;
+                  const tableVarName = s.variables?.tableData?.tableVariableName as string;
+                  if (tableVarName === key) return true;
+                }
                 return false;
               });
               if (matchingSection) {
@@ -1739,7 +1782,32 @@ const RunTemplates = () => {
                   return;
                 }
                 if (matchingSection.variables?.contentType === 'table' || matchingSection.type === 'table') {
-                  restoredTableVars[key] = value;
+                  // Reconstruct full tableData from section config + sent payload values
+                  const originalTableData = matchingSection.variables?.tableData;
+                  if (originalTableData) {
+                    const restored = { ...originalTableData };
+                    if (value && typeof value === 'object' && !Array.isArray(value) && (value as any).headers) {
+                      restored.headers = (value as any).headers;
+                      restored.rows = (value as any).rows || [];
+                    } else if (Array.isArray(value) && restored.jsonMapping?.columnMappings?.length) {
+                      const mappings = restored.jsonMapping.columnMappings;
+                      const headerPosition = restored.headerPosition || 'first-row';
+                      const reconstructedRows = value.map((rowObj: any) => {
+                        if (headerPosition === 'first-column') {
+                          return mappings.map((_: any, idx: number) => {
+                            if (idx === 0) return rowObj['header'] || '';
+                            return rowObj['value'] || '';
+                          });
+                        }
+                        return mappings.map((m: any) => rowObj[m.jsonPath] || '');
+                      });
+                      restored.rows = reconstructedRows;
+                      restored.headers = mappings.map((m: any) => m.header);
+                    }
+                    restoredTableVars[matchingSection.id] = restored;
+                  } else {
+                    restoredTableVars[matchingSection.id] = value;
+                  }
                   return;
                 }
               }
