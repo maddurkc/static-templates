@@ -1015,18 +1015,18 @@ const RunTemplates = () => {
     setEmailTitle(template.name);
   };
 
-  // Wrap a cell value with inline styles from cellStyles if present
-  const wrapCellValueWithStyle = (value: string, cellStyle?: any): string => {
-    if (!cellStyle) return value;
+  // Build a CSS style string for a cell to apply on <td> element
+  const buildCellStyleString = (cellStyle?: any, baseCellStyle?: string): string => {
     const parts: string[] = [];
+    if (baseCellStyle) parts.push(baseCellStyle);
+    if (!cellStyle) return parts.join('; ');
     if (cellStyle.color) parts.push(`color: ${cellStyle.color}`);
     if (cellStyle.bold) parts.push('font-weight: bold');
     if (cellStyle.italic) parts.push('font-style: italic');
     if (cellStyle.underline) parts.push('text-decoration: underline');
     if (cellStyle.backgroundColor) parts.push(`background-color: ${cellStyle.backgroundColor}`);
     if (cellStyle.fontSize) parts.push(`font-size: ${cellStyle.fontSize}`);
-    if (parts.length === 0) return value;
-    return `<span style="${parts.join('; ')}">${value}</span>`;
+    return parts.join('; ');
   };
 
   const handleSendTemplate = () => {
@@ -1356,28 +1356,30 @@ const RunTemplates = () => {
               
               if (!bodyData[payloadKey]) {
                 if (headerPosition === 'first-column') {
-                  // First-column: send as array of { header, value } objects with cell styles
                   bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
-                      const cellStyleKey = `${rowIdx + 1}-${idx}`; // +1 because row 0 is headers
+                      const cellStyleKey = `${rowIdx + 1}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
-                      const styledValue = wrapCellValueWithStyle(cellValue, cellStyle);
-                      if (idx === 0) obj['header'] = styledValue;
-                      else obj['value'] = styledValue;
+                      if (idx === 0) {
+                        obj['header'] = cellValue;
+                      } else {
+                        obj['value'] = cellValue;
+                        obj['value_style'] = buildCellStyleString(cellStyle);
+                      }
                     });
                     return obj;
                   });
                 } else {
-                  // first-row or none: send as array of objects mapped to jsonPath with cell styles
                   bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
-                      const cellStyleKey = `${rowIdx + 1}-${idx}`; // +1 because row 0 is headers
+                      const cellStyleKey = `${rowIdx + 1}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
-                      obj[mapping.jsonPath] = wrapCellValueWithStyle(cellValue, cellStyle);
+                      obj[mapping.jsonPath] = cellValue;
+                      obj[`${mapping.jsonPath}_style`] = buildCellStyleString(cellStyle);
                     });
                     return obj;
                   });
@@ -1420,9 +1422,12 @@ const RunTemplates = () => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx + 1}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
-                      const styledValue = wrapCellValueWithStyle(cellValue, cellStyle);
-                      if (idx === 0) obj['header'] = styledValue;
-                      else obj['value'] = styledValue;
+                      if (idx === 0) {
+                        obj['header'] = cellValue;
+                      } else {
+                        obj['value'] = cellValue;
+                        obj['value_style'] = buildCellStyleString(cellStyle);
+                      }
                     });
                     return obj;
                   });
@@ -1433,7 +1438,8 @@ const RunTemplates = () => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx + 1}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
-                      obj[mapping.jsonPath] = wrapCellValueWithStyle(cellValue, cellStyle);
+                      obj[mapping.jsonPath] = cellValue;
+                      obj[`${mapping.jsonPath}_style`] = buildCellStyleString(cellStyle);
                     });
                     return obj;
                   });
