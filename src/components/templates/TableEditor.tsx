@@ -550,9 +550,26 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                   </Select>
                 </div>
 
-                {/* Header styling */}
+                {/* Header Position */}
+                <div className={styles.propRow}>
+                  <span className={styles.propLabel}>Header Position</span>
+                  <Select
+                    value={tableData.headerPosition || 'first-row'}
+                    onValueChange={(v: HeaderPosition) => updateTableData({ ...tableData, headerPosition: v })}
+                  >
+                    <SelectTrigger className="h-7 text-xs w-28"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-popover border shadow-lg z-50">
+                      <SelectItem value="first-row">1st Row</SelectItem>
+                      <SelectItem value="first-column">1st Column</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Header styling - only show when headers exist */}
+                {(tableData.headerPosition || 'first-row') !== 'none' && (
                 <div className={styles.propGroup}>
-                  <span className={styles.propSmallLabel}>Header Style ({tableData.headerPosition === 'first-column' ? 'Column' : 'Row'})</span>
+                  <span className={styles.propSmallLabel}>Header Style</span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div>
                       <span style={{ fontSize: '0.6875rem', color: 'hsl(var(--muted-foreground))', display: 'block', marginBottom: '0.25rem' }}>BG Color</span>
@@ -561,7 +578,6 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                           <button key={color} className={`${styles.colorSwatch} ${tableData.headerStyle?.backgroundColor === color ? styles.activeSwatch : ''}`}
                             style={{ backgroundColor: color }} onClick={() => updateHeaderStyle({ backgroundColor: color })} title={color} />
                         ))}
-                        {/* Include #FFC000 as a header-specific option */}
                         {!BG_COLORS.includes('#FFC000') && (
                           <button className={`${styles.colorSwatch} ${tableData.headerStyle?.backgroundColor === '#FFC000' ? styles.activeSwatch : ''}`}
                             style={{ backgroundColor: '#FFC000' }} onClick={() => updateHeaderStyle({ backgroundColor: '#FFC000' })} title="#FFC000" />
@@ -585,6 +601,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                     </TooltipTrigger><TooltipContent side="top">Header bold</TooltipContent></Tooltip>
                   </div>
                 </div>
+                )}
 
                 {/* Column Widths */}
                 <div className={styles.propGroup}>
@@ -678,19 +695,6 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                 Dynamic Data (th:each)
               </div>
               <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                <Select
-                  value={tableData.headerPosition || 'first-row'}
-                  onValueChange={(v: HeaderPosition) => updateTableData({ ...tableData, headerPosition: v })}
-                >
-                  <SelectTrigger className="h-6 text-xs w-[130px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover border shadow-lg z-50">
-                    <SelectItem value="first-row">Header: 1st Row</SelectItem>
-                    <SelectItem value="first-column">Header: 1st Column</SelectItem>
-                    <SelectItem value="none">No Headers</SelectItem>
-                  </SelectContent>
-                </Select>
                 <Button size="sm" variant="ghost" onClick={() => fileInputRef.current?.click()} className="h-6 px-2 text-xs">
                   <Upload size={12} className="mr-1" />
                   Upload CSV/Excel
