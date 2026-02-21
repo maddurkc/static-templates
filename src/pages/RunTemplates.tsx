@@ -1015,6 +1015,20 @@ const RunTemplates = () => {
     setEmailTitle(template.name);
   };
 
+  // Wrap a cell value with inline styles from cellStyles if present
+  const wrapCellValueWithStyle = (value: string, cellStyle?: any): string => {
+    if (!cellStyle) return value;
+    const parts: string[] = [];
+    if (cellStyle.color) parts.push(`color: ${cellStyle.color}`);
+    if (cellStyle.bold) parts.push('font-weight: bold');
+    if (cellStyle.italic) parts.push('font-style: italic');
+    if (cellStyle.underline) parts.push('text-decoration: underline');
+    if (cellStyle.backgroundColor) parts.push(`background-color: ${cellStyle.backgroundColor}`);
+    if (cellStyle.fontSize) parts.push(`font-size: ${cellStyle.fontSize}`);
+    if (parts.length === 0) return value;
+    return `<span style="${parts.join('; ')}">${value}</span>`;
+  };
+
   const handleSendTemplate = () => {
     if (!selectedTemplate) return;
 
@@ -1342,20 +1356,28 @@ const RunTemplates = () => {
               
               if (!bodyData[payloadKey]) {
                 if (headerPosition === 'first-column') {
-                  // First-column: send as array of { header, value } objects
-                  bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                  // First-column: send as array of { header, value } objects with cell styles
+                  bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
-                      if (idx === 0) obj['header'] = row[idx] || '';
-                      else obj['value'] = row[idx] || '';
+                      const cellValue = row[idx] || '';
+                      const cellStyleKey = `${rowIdx + 1}-${idx}`; // +1 because row 0 is headers
+                      const cellStyle = tableData.cellStyles?.[cellStyleKey];
+                      const styledValue = wrapCellValueWithStyle(cellValue, cellStyle);
+                      if (idx === 0) obj['header'] = styledValue;
+                      else obj['value'] = styledValue;
                     });
                     return obj;
                   });
                 } else {
-                  bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                  // first-row or none: send as array of objects mapped to jsonPath with cell styles
+                  bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
-                      obj[mapping.jsonPath] = row[idx] || '';
+                      const cellValue = row[idx] || '';
+                      const cellStyleKey = `${rowIdx + 1}-${idx}`; // +1 because row 0 is headers
+                      const cellStyle = tableData.cellStyles?.[cellStyleKey];
+                      obj[mapping.jsonPath] = wrapCellValueWithStyle(cellValue, cellStyle);
                     });
                     return obj;
                   });
@@ -1392,19 +1414,26 @@ const RunTemplates = () => {
               
               if (!bodyData[payloadKey]) {
                 if (headerPosition === 'first-column') {
-                  bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                  bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
-                      if (idx === 0) obj['header'] = row[idx] || '';
-                      else obj['value'] = row[idx] || '';
+                      const cellValue = row[idx] || '';
+                      const cellStyleKey = `${rowIdx + 1}-${idx}`;
+                      const cellStyle = tableData.cellStyles?.[cellStyleKey];
+                      const styledValue = wrapCellValueWithStyle(cellValue, cellStyle);
+                      if (idx === 0) obj['header'] = styledValue;
+                      else obj['value'] = styledValue;
                     });
                     return obj;
                   });
                 } else {
-                  bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                  bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
-                      obj[mapping.jsonPath] = row[idx] || '';
+                      const cellValue = row[idx] || '';
+                      const cellStyleKey = `${rowIdx + 1}-${idx}`;
+                      const cellStyle = tableData.cellStyles?.[cellStyleKey];
+                      obj[mapping.jsonPath] = wrapCellValueWithStyle(cellValue, cellStyle);
                     });
                     return obj;
                   });
