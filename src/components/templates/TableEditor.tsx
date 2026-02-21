@@ -274,13 +274,15 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
       const firstItem = dataArray[0];
       const keys = Object.keys(firstItem);
       if (keys.length === 0) { toast.error('No properties found in JSON data'); return; }
-      const columnMappings = keys.map(key => ({
-        header: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), jsonPath: key
+      const columnMappings = keys.map((key, i) => ({
+        header: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), jsonPath: `col_${i + 1}`
       }));
-      const allRows = mapJsonToTableData(dataArray, columnMappings);
-      // mapJsonToTableData returns [headers, ...dataRows] — separate them
-      const headers = allRows[0];
-      const dataRows = allRows.slice(1);
+      // Map JSON data to rows using original keys (not col_X jsonPath)
+      const headers = columnMappings.map(m => m.header);
+      const dataRows = dataArray.map(item => keys.map(key => {
+        const value = item[key];
+        return value !== undefined && value !== null ? String(value) : '';
+      }));
       updateTableData({
         ...tableData, headers, rows: dataRows, columnWidths: new Array(columnMappings.length).fill('auto'),
         jsonMapping: { enabled: true, columnMappings }, isStatic: false,
@@ -336,9 +338,9 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
           // First row is headers — extract and use as headers
           importedHeaders = rows[0];
           dataRows = rows.slice(1);
-          columnMappings = importedHeaders.map(h => ({
+          columnMappings = importedHeaders.map((h, i) => ({
             header: h || 'Column',
-            jsonPath: h ? h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') : 'field'
+            jsonPath: `col_${i + 1}`
           }));
         } else if (headerPos === 'first-column') {
           // First column values become headers, rest is data
