@@ -31,6 +31,7 @@ export interface TableData {
   cellPadding?: CellPadding; // small: 4px, medium: 8px, large: 12px
   isStatic?: boolean; // If true, table is static (manual data). If false, can be populated from JSON/API
   tableVariableName?: string; // Variable name for dynamic th:each collection (e.g., "tableRows_abc123")
+  headerVariableName?: string; // Variable name for dynamic th:each headers (e.g., "tableHeaders_abc123")
   headerPosition?: HeaderPosition; // Where headers are: first-row (default), first-column, or none
   jsonMapping?: {
     enabled: boolean;
@@ -44,6 +45,12 @@ export const generateTableVariableName = (sectionId: string): string => {
   return `tableRows_${cleanId}`;
 };
 
+// Generate a unique variable name for a table's headers
+export const generateHeaderVariableName = (sectionId: string): string => {
+  const cleanId = sectionId.replace(/[^a-zA-Z0-9]/g, '_');
+  return `tableHeaders_${cleanId}`;
+};
+
 // Generate Thymeleaf-compatible table HTML with th:each for dynamic tables
 export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionId: string): string => {
   if (!tableData || !tableData.jsonMapping?.columnMappings?.length) {
@@ -52,6 +59,7 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
 
   const headerPosition = tableData.headerPosition || 'first-row';
   const variableName = tableData.tableVariableName || generateTableVariableName(sectionId);
+  const headerVarName = tableData.headerVariableName || generateHeaderVariableName(sectionId);
   const mappings = tableData.jsonMapping.columnMappings;
   const borderColor = tableData.borderColor || '#ddd';
   const showBorder = tableData.showBorder;
@@ -78,13 +86,12 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
   }
 
   if (headerPosition === 'first-row') {
-    // Standard: header row on top, body rows below
+    // Header row with th:each
     html += '<thead><tr>';
-    mappings.forEach((mapping) => {
-      html += `<th style="${headerCellStyle}">${mapping.header}</th>`;
-    });
+    html += `<th th:each="header : \${${headerVarName}}" style="${headerCellStyle}"><span th:utext="\${header}"/></th>`;
     html += '</tr></thead>';
 
+    // Body rows with th:each
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
     mappings.forEach((mapping) => {
@@ -93,16 +100,12 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
     html += '</tr>';
     html += '</tbody>';
   } else if (headerPosition === 'first-column') {
-    // Each row is: <th>header</th><td>value</td> — key-value style
+    // Each row: <th>header</th><td>value</td> — key-value style
+    // Headers come from headerVarName, values from variableName
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    mappings.forEach((mapping, idx) => {
-      if (idx === 0) {
-        html += `<th style="${headerCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></th>`;
-      } else {
-        html += `<td style="${bodyCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></td>`;
-      }
-    });
+    html += `<th style="${headerCellStyle}"><span th:utext="\${row.header}"/></th>`;
+    html += `<td style="${bodyCellStyle}"><span th:utext="\${row.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
   } else {
