@@ -1351,7 +1351,7 @@ const RunTemplates = () => {
                 const hs = tableData.headerStyle;
                 const defaultHeaderStyle = `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
                 const headerValues = tableData.jsonMapping.columnMappings.map((m: any, idx: number) => {
-                  const cellStyleKey = `0-${idx}`;
+                  const cellStyleKey = hasHeaders ? `h-${idx}` : `0-${idx}`;
                   const cellStyle = tableData.cellStyles?.[cellStyleKey];
                   const customStyle = buildCellStyleString(cellStyle);
                   return {
@@ -1370,7 +1370,7 @@ const RunTemplates = () => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
-                      const cellStyleKey = `${rowIdx + 1}-${idx}`;
+                      const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
                       if (idx === 0) {
                        obj['header'] = cellValue;
@@ -1390,7 +1390,7 @@ const RunTemplates = () => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
-                      const cellStyleKey = `${rowIdx + 1}-${idx}`;
+                      const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
                       obj[mapping.jsonPath] = cellValue;
                       obj[`${mapping.jsonPath}_style`] = buildCellStyleString(cellStyle);
@@ -1425,7 +1425,7 @@ const RunTemplates = () => {
                 const hs = tableData.headerStyle;
                 const defaultHeaderStyle = `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
                 const headerValues = tableData.jsonMapping.columnMappings.map((m: any, idx: number) => {
-                  const cellStyleKey = `0-${idx}`;
+                  const cellStyleKey = hasHeaders ? `h-${idx}` : `0-${idx}`;
                   const cellStyle = tableData.cellStyles?.[cellStyleKey];
                   const customStyle = buildCellStyleString(cellStyle);
                   return {
@@ -1444,7 +1444,7 @@ const RunTemplates = () => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
-                      const cellStyleKey = `${rowIdx + 1}-${idx}`;
+                      const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
                       if (idx === 0) {
                        obj['header'] = cellValue;
@@ -1464,7 +1464,7 @@ const RunTemplates = () => {
                     const obj: Record<string, string> = {};
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
-                      const cellStyleKey = `${rowIdx + 1}-${idx}`;
+                      const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
                       obj[mapping.jsonPath] = cellValue;
                       obj[`${mapping.jsonPath}_style`] = buildCellStyleString(cellStyle);

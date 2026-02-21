@@ -38,18 +38,26 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     try {
       const data = section.variables?.tableData as any;
       if (data && typeof data === 'object') {
-        const rows = data.rows || [['Header 1', 'Header 2'], ['Data 1', 'Data 2']];
+        // Support legacy format: if no headers array, extract from rows[0]
+        let headers = data.headers;
+        let rows = data.rows || [['Data 1', 'Data 2']];
+        if (!headers || !Array.isArray(headers)) {
+          headers = rows[0] || ['Header 1', 'Header 2'];
+          rows = rows.slice(1);
+        }
         return {
+          headers,
           rows,
           showBorder: data.showBorder !== false,
           borderColor: data.borderColor || '#ddd',
           mergedCells: data.mergedCells || {},
           cellStyles: data.cellStyles || {},
           headerStyle: data.headerStyle || { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
-          columnWidths: data.columnWidths || new Array(rows[0]?.length || 2).fill('auto'),
+          columnWidths: data.columnWidths || new Array(headers.length || 2).fill('auto'),
           cellPadding: data.cellPadding || 'medium',
           isStatic: data.isStatic === true ? true : false,
           tableVariableName: data.tableVariableName,
+          headerVariableName: data.headerVariableName,
           headerPosition: data.headerPosition || 'first-row',
           jsonMapping: data.jsonMapping || { enabled: false, columnMappings: [] }
         };
@@ -58,7 +66,8 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
       console.error('Error parsing table data:', e);
     }
     return {
-      rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
+      headers: ['Header 1', 'Header 2'],
+      rows: [['Data 1', 'Data 2']],
       showBorder: true, borderColor: '#ddd', mergedCells: {}, cellStyles: {},
       headerStyle: { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
       columnWidths: ['auto', 'auto'], cellPadding: 'medium', isStatic: false,
@@ -82,7 +91,8 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
   // ── Row/Col Operations ──
   const insertRowAbove = () => {
     if (!selectedCell) return;
-    const newRow = new Array(tableData.rows[0]?.length || 2).fill('');
+    const colCount = tableData.headers?.length || tableData.rows[0]?.length || 2;
+    const newRow = new Array(colCount).fill('');
     const newRows = [...tableData.rows];
     newRows.splice(selectedCell.row, 0, newRow);
     updateTableData({ ...tableData, rows: newRows });
@@ -91,7 +101,8 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
   const insertRowBelow = () => {
     const insertAt = selectedCell ? selectedCell.row + 1 : tableData.rows.length;
-    const newRow = new Array(tableData.rows[0]?.length || 2).fill('');
+    const colCount = tableData.headers?.length || tableData.rows[0]?.length || 2;
+    const newRow = new Array(colCount).fill('');
     const newRows = [...tableData.rows];
     newRows.splice(insertAt, 0, newRow);
     updateTableData({ ...tableData, rows: newRows });
@@ -116,28 +127,33 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
   const insertColumnLeft = () => {
     if (!selectedCell) return;
+    const newHeaders = [...(tableData.headers || [])];
+    newHeaders.splice(selectedCell.col, 0, '');
     const newRows = tableData.rows.map(row => {
       const r = [...row]; r.splice(selectedCell.col, 0, ''); return r;
     });
     const newWidths = [...(tableData.columnWidths || [])];
     newWidths.splice(selectedCell.col, 0, 'auto');
-    updateTableData({ ...tableData, rows: newRows, columnWidths: newWidths });
+    updateTableData({ ...tableData, headers: newHeaders, rows: newRows, columnWidths: newWidths });
     setSelectedCell({ row: selectedCell.row, col: selectedCell.col + 1 });
   };
 
   const insertColumnRight = () => {
-    const insertAt = selectedCell ? selectedCell.col + 1 : (tableData.rows[0]?.length || 0);
+    const insertAt = selectedCell ? selectedCell.col + 1 : (tableData.headers?.length || tableData.rows[0]?.length || 0);
+    const newHeaders = [...(tableData.headers || [])];
+    newHeaders.splice(insertAt, 0, '');
     const newRows = tableData.rows.map(row => {
       const r = [...row]; r.splice(insertAt, 0, ''); return r;
     });
     const newWidths = [...(tableData.columnWidths || [])];
     newWidths.splice(insertAt, 0, 'auto');
-    updateTableData({ ...tableData, rows: newRows, columnWidths: newWidths });
+    updateTableData({ ...tableData, headers: newHeaders, rows: newRows, columnWidths: newWidths });
   };
 
   const deleteColumn = () => {
-    if (!selectedCell || tableData.rows[0]?.length <= 1) return;
+    if (!selectedCell || (tableData.headers?.length || tableData.rows[0]?.length || 0) <= 1) return;
     const ci = selectedCell.col;
+    const newHeaders = tableData.headers?.filter((_, i) => i !== ci);
     const newRows = tableData.rows.map(row => row.filter((_, i) => i !== ci));
     const newCellStyles = { ...tableData.cellStyles };
     Object.keys(newCellStyles).forEach(key => {
@@ -145,9 +161,17 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
       if (c === ci) delete newCellStyles[key];
       else if (c > ci) { delete newCellStyles[key]; newCellStyles[`${r}-${c - 1}`] = tableData.cellStyles![key]; }
     });
+    // Also handle header cell styles (h-colIndex)
+    Object.keys(newCellStyles).forEach(key => {
+      if (key.startsWith('h-')) {
+        const c = parseInt(key.split('-')[1]);
+        if (c === ci) delete newCellStyles[key];
+        else if (c > ci) { const style = newCellStyles[key]; delete newCellStyles[key]; newCellStyles[`h-${c - 1}`] = style; }
+      }
+    });
     const newWidths = tableData.columnWidths?.filter((_, i) => i !== ci);
     setSelectedCell(null);
-    updateTableData({ ...tableData, rows: newRows, cellStyles: newCellStyles, columnWidths: newWidths });
+    updateTableData({ ...tableData, headers: newHeaders, rows: newRows, cellStyles: newCellStyles, columnWidths: newWidths });
   };
 
   const updateCell = (rowIndex: number, colIndex: number, value: string) => {
@@ -155,6 +179,19 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
       rIdx === rowIndex ? row.map((cell, cIdx) => cIdx === colIndex ? value : cell) : [...row]
     );
     updateTableData({ ...tableData, rows: newRows });
+  };
+
+  const updateHeader = (colIndex: number, value: string) => {
+    const newHeaders = [...(tableData.headers || [])];
+    newHeaders[colIndex] = value;
+    updateTableData({ ...tableData, headers: newHeaders });
+  };
+
+  const getHeaderCellStyle = (colIndex: number): CellStyle => tableData.cellStyles?.[`h-${colIndex}`] || {};
+
+  const updateHeaderCellStyle = (colIndex: number, style: Partial<CellStyle>) => {
+    const cellKey = `h-${colIndex}`;
+    updateTableData({ ...tableData, cellStyles: { ...tableData.cellStyles, [cellKey]: { ...getHeaderCellStyle(colIndex), ...style } } });
   };
 
   const updateColumnWidth = (colIndex: number, width: string) => {
@@ -195,14 +232,16 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
   const getCellMerge = (rowIndex: number, colIndex: number) => tableData.mergedCells[`${rowIndex}-${colIndex}`];
   const getCellStyle = (rowIndex: number, colIndex: number): CellStyle => tableData.cellStyles?.[`${rowIndex}-${colIndex}`] || {};
+  const getHeaderStyle = (colIndex: number): CellStyle => tableData.cellStyles?.[`h-${colIndex}`] || {};
 
   const updateCellStyle = (rowIndex: number, colIndex: number, style: Partial<CellStyle>) => {
-    const cellKey = `${rowIndex}-${colIndex}`;
-    updateTableData({ ...tableData, cellStyles: { ...tableData.cellStyles, [cellKey]: { ...getCellStyle(rowIndex, colIndex), ...style } } });
+    const cellKey = rowIndex === -1 ? `h-${colIndex}` : `${rowIndex}-${colIndex}`;
+    const currentStyle = rowIndex === -1 ? getHeaderStyle(colIndex) : getCellStyle(rowIndex, colIndex);
+    updateTableData({ ...tableData, cellStyles: { ...tableData.cellStyles, [cellKey]: { ...currentStyle, ...style } } });
   };
 
   const toggleCellStyle = (rowIndex: number, colIndex: number, property: keyof CellStyle) => {
-    const currentStyle = getCellStyle(rowIndex, colIndex);
+    const currentStyle = rowIndex === -1 ? getHeaderStyle(colIndex) : getCellStyle(rowIndex, colIndex);
     updateCellStyle(rowIndex, colIndex, { [property]: !currentStyle[property] });
   };
 
@@ -212,8 +251,8 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     if (!isStatic) {
       const varName = tableData.tableVariableName || generateTableVariableName(section.id);
       updates.tableVariableName = varName;
-      if (!tableData.jsonMapping?.columnMappings?.length && tableData.rows[0]?.length) {
-        const columnMappings = tableData.rows[0].map(header => ({
+      if (!tableData.jsonMapping?.columnMappings?.length && tableData.headers?.length) {
+        const columnMappings = tableData.headers.map(header => ({
           header: header || 'Column',
           jsonPath: header ? header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') : 'field'
         }));
@@ -342,7 +381,9 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     updateJsonMapping((tableData.jsonMapping?.columnMappings || []).filter((_, i) => i !== index));
   };
 
-  const selectedCellStyle = selectedCell ? getCellStyle(selectedCell.row, selectedCell.col) : {};
+  const selectedCellStyle = selectedCell 
+    ? (selectedCell.row === -1 ? getHeaderStyle(selectedCell.col) : getCellStyle(selectedCell.row, selectedCell.col)) 
+    : {};
   const isDynamic = tableData.isStatic === false;
 
   return (
@@ -377,7 +418,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
               </TooltipTrigger><TooltipContent side="bottom">Insert column right</TooltipContent></Tooltip>
 
               <Tooltip><TooltipTrigger asChild>
-                <button className={styles.toolbarBtn} onClick={deleteColumn} disabled={!selectedCell || (tableData.rows[0]?.length || 0) <= 1}><Columns3 size={14} /></button>
+                <button className={styles.toolbarBtn} onClick={deleteColumn} disabled={!selectedCell || (tableData.headers?.length || 0) <= 1}><Columns3 size={14} /></button>
               </TooltipTrigger><TooltipContent side="bottom">Delete column</TooltipContent></Tooltip>
 
               <div className={styles.toolbarDivider} />
@@ -415,7 +456,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                   <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: 'hsl(var(--foreground))' }}>
                     Cell Properties
                     <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'hsl(var(--muted-foreground))', marginLeft: '0.5rem' }}>
-                      R{selectedCell.row + 1}:C{selectedCell.col + 1}
+                      {selectedCell.row === -1 ? 'Header' : `R${selectedCell.row + 1}`}:C{selectedCell.col + 1}
                     </span>
                   </h4>
 
@@ -607,7 +648,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                 <div className={styles.propGroup}>
                   <span className={styles.propSmallLabel}>Column Widths</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                    {tableData.rows[0]?.map((_, colIndex) => (
+                    {(tableData.headers || []).map((_, colIndex) => (
                       <div key={colIndex} style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
                         <span style={{ fontSize: '0.5625rem', color: 'hsl(var(--muted-foreground))' }}>Col {colIndex + 1}</span>
                         <Select value={tableData.columnWidths?.[colIndex] || 'auto'} onValueChange={(v) => updateColumnWidth(colIndex, v)}>
@@ -642,6 +683,42 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
         <div className={styles.tableWrapper}>
           <table className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''}`}
             style={{ borderColor: tableData.borderColor || '#ddd' }}>
+            {/* ── Header Row ── */}
+            {tableData.headers && (tableData.headerPosition || 'first-row') === 'first-row' && (
+              <thead>
+                <tr>
+                  {tableData.headers.map((header, colIndex) => {
+                    const hs = tableData.headerStyle;
+                    const hCellStyle = getHeaderStyle(colIndex);
+                    const isSelected = selectedCell?.row === -1 && selectedCell?.col === colIndex;
+                    const inputStyle: React.CSSProperties = {
+                      color: hCellStyle.color || (hs?.textColor || '#000000'),
+                      fontWeight: hCellStyle.bold ? 'bold' : (hs?.bold !== false ? 'bold' : undefined),
+                      fontStyle: hCellStyle.italic ? 'italic' : undefined,
+                      textDecoration: hCellStyle.underline ? 'underline' : undefined,
+                      backgroundColor: hCellStyle.backgroundColor || (hs?.backgroundColor || '#FFC000'),
+                      fontSize: hCellStyle.fontSize,
+                      textAlign: hCellStyle.textAlign, verticalAlign: hCellStyle.verticalAlign,
+                    };
+                    const tdStyle: React.CSSProperties = {
+                      borderColor: tableData.borderColor || '#ddd',
+                      backgroundColor: hCellStyle.backgroundColor || (hs?.backgroundColor || '#FFC000'),
+                    };
+                    return (
+                      <th key={colIndex}
+                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
+                        style={tdStyle}
+                        onClick={() => setSelectedCell({ row: -1, col: colIndex })}>
+                        <Input value={header} onChange={(e) => updateHeader(colIndex, e.target.value)}
+                          className={styles.cellInput} style={inputStyle}
+                          placeholder={`Header ${colIndex + 1}`} />
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+            )}
+            {/* ── Data Rows ── */}
             <tbody>
               {tableData.rows.map((row, rowIndex) => (
                 <tr key={rowIndex}>
@@ -651,9 +728,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                     const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
                     const cellStyle = getCellStyle(rowIndex, colIndex);
                     const headerPosition = tableData.headerPosition || 'first-row';
-                    const isHeader = 
-                      (headerPosition === 'first-row' && rowIndex === 0) ||
-                      (headerPosition === 'first-column' && colIndex === 0);
+                    const isHeader = (headerPosition === 'first-column' && colIndex === 0);
                     const hs = tableData.headerStyle;
                     const inputStyle: React.CSSProperties = {
                       color: cellStyle.color || (isHeader ? (hs?.textColor || '#000000') : undefined),
@@ -757,11 +832,11 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
         {/* ── Status Bar ── */}
         <div className={styles.statusBar}>
-          <span>{tableData.rows.length} rows × {tableData.rows[0]?.length || 0} cols</span>
+          <span>{tableData.rows.length} rows × {tableData.headers?.length || 0} cols</span>
           {selectedCell && (
             <span>
-              Selected: R{selectedCell.row + 1}:C{selectedCell.col + 1}
-              {getCellMerge(selectedCell.row, selectedCell.col) ? ' (merged)' : ''}
+              Selected: {selectedCell.row === -1 ? 'Header' : `R${selectedCell.row + 1}`}:C{selectedCell.col + 1}
+              {selectedCell.row >= 0 && getCellMerge(selectedCell.row, selectedCell.col) ? ' (merged)' : ''}
             </span>
           )}
         </div>

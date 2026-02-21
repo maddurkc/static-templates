@@ -139,7 +139,8 @@ export const sectionTypes: SectionDefinition[] = [
         label: 'Table Data', 
         type: 'table' as any, 
         defaultValue: {
-          rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
+          headers: ['Header 1', 'Header 2'],
+          rows: [['Data 1', 'Data 2']],
           showBorder: true,
           mergedCells: {},
           isStatic: false,
