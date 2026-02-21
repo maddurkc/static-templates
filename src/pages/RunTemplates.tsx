@@ -1681,7 +1681,10 @@ const RunTemplates = () => {
                   const restored = { ...originalTableData };
                   // Static table payload: { headers, rows }
                   if (value && typeof value === 'object' && !Array.isArray(value) && value.headers) {
-                    restored.headers = value.headers;
+                    // Headers in payload may be objects {value, style} - extract plain strings
+                    restored.headers = Array.isArray(value.headers)
+                      ? value.headers.map((h: any) => typeof h === 'object' && h !== null ? h.value || '' : String(h))
+                      : value.headers;
                     restored.rows = value.rows || [];
                   }
                   // Dynamic table payload: array of objects - reconstruct rows from mappings
@@ -1787,7 +1790,11 @@ const RunTemplates = () => {
                   if (originalTableData) {
                     const restored = { ...originalTableData };
                     if (value && typeof value === 'object' && !Array.isArray(value) && (value as any).headers) {
-                      restored.headers = (value as any).headers;
+                      // Headers in payload may be objects {value, style} - extract plain strings
+                      const rawHeaders = (value as any).headers;
+                      restored.headers = Array.isArray(rawHeaders)
+                        ? rawHeaders.map((h: any) => typeof h === 'object' && h !== null ? h.value || '' : String(h))
+                        : rawHeaders;
                       restored.rows = (value as any).rows || [];
                     } else if (Array.isArray(value) && restored.jsonMapping?.columnMappings?.length) {
                       const mappings = restored.jsonMapping.columnMappings;
