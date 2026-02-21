@@ -18,6 +18,8 @@ export interface HeaderStyle {
 
 export type CellPadding = 'small' | 'medium' | 'large';
 
+export type HeaderPosition = 'first-row' | 'first-column' | 'none';
+
 export interface TableData {
   rows: string[][];
   showBorder: boolean;
@@ -29,6 +31,7 @@ export interface TableData {
   cellPadding?: CellPadding; // small: 4px, medium: 8px, large: 12px
   isStatic?: boolean; // If true, table is static (manual data). If false, can be populated from JSON/API
   tableVariableName?: string; // Variable name for dynamic th:each collection (e.g., "tableRows_abc123")
+  headerPosition?: HeaderPosition; // Where headers are: first-row (default), first-column, or none
   jsonMapping?: {
     enabled: boolean;
     columnMappings: { header: string; jsonPath: string }[];
@@ -47,6 +50,7 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
     return '<table><tr><td>No column mappings defined</td></tr></table>';
   }
 
+  const headerPosition = tableData.headerPosition || 'first-row';
   const variableName = tableData.tableVariableName || generateTableVariableName(sectionId);
   const mappings = tableData.jsonMapping.columnMappings;
   const borderColor = tableData.borderColor || '#ddd';
@@ -73,23 +77,44 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
     html += '</colgroup>';
   }
 
-  // Static header row from column mappings
-  html += '<thead><tr>';
-  mappings.forEach((mapping) => {
-    html += `<th style="${headerCellStyle}">${mapping.header}</th>`;
-  });
-  html += '</tr></thead>';
+  if (headerPosition === 'first-row') {
+    // Standard: header row on top, body rows below
+    html += '<thead><tr>';
+    mappings.forEach((mapping) => {
+      html += `<th style="${headerCellStyle}">${mapping.header}</th>`;
+    });
+    html += '</tr></thead>';
 
-  // Dynamic body rows with th:each
-  html += '<tbody>';
-  html += `<tr th:each="row : \${${variableName}}">`;
-  mappings.forEach((mapping) => {
-    const jsonPath = mapping.jsonPath;
-    // Use dot notation for nested paths: row.user.name -> ${row.user.name}
-    html += `<td style="${bodyCellStyle}"><span th:utext="\${row.${jsonPath}}"/></td>`;
-  });
-  html += '</tr>';
-  html += '</tbody>';
+    html += '<tbody>';
+    html += `<tr th:each="row : \${${variableName}}">`;
+    mappings.forEach((mapping) => {
+      html += `<td style="${bodyCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></td>`;
+    });
+    html += '</tr>';
+    html += '</tbody>';
+  } else if (headerPosition === 'first-column') {
+    // Each row is: <th>header</th><td>value</td> — key-value style
+    html += '<tbody>';
+    html += `<tr th:each="row : \${${variableName}}">`;
+    mappings.forEach((mapping, idx) => {
+      if (idx === 0) {
+        html += `<th style="${headerCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></th>`;
+      } else {
+        html += `<td style="${bodyCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></td>`;
+      }
+    });
+    html += '</tr>';
+    html += '</tbody>';
+  } else {
+    // No headers — all cells are <td>
+    html += '<tbody>';
+    html += `<tr th:each="row : \${${variableName}}">`;
+    mappings.forEach((mapping) => {
+      html += `<td style="${bodyCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></td>`;
+    });
+    html += '</tr>';
+    html += '</tbody>';
+  }
 
   html += '</table>';
   return html;
@@ -160,6 +185,7 @@ export const generateTableHTML = (tableData: TableData): string => {
     return '<table><tr><td>No data</td></tr></table>';
   }
   
+  const headerPosition = tableData.headerPosition || 'first-row';
   const borderColor = tableData.borderColor || '#ddd';
   const paddingValue = getPaddingValue(tableData.cellPadding);
   const borderStyle = tableData.showBorder ? ` border="1" style="border-collapse: collapse; border: 1px solid ${borderColor};"` : ' style="border-collapse: collapse;"';
@@ -194,6 +220,16 @@ export const generateTableHTML = (tableData: TableData): string => {
       }
     });
   }
+
+  // Build header style string
+  const buildHeaderStyleString = (): string => {
+    const hs = tableData.headerStyle;
+    const bgColor = hs?.backgroundColor || '#FFC000';
+    const textColor = hs?.textColor || 'inherit';
+    const fontWeight = hs?.bold !== false ? 'bold' : 'normal';
+    return `background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;
+  };
+
   tableData.rows.forEach((row, rowIndex) => {
     html += '<tr>';
     row.forEach((cell, colIndex) => {
@@ -205,7 +241,13 @@ export const generateTableHTML = (tableData: TableData): string => {
       }
       
       const merge = tableData.mergedCells?.[cellKey];
-      const tag = rowIndex === 0 ? 'th' : 'td';
+      
+      // Determine if this cell is a header based on headerPosition
+      const isHeaderCell = 
+        (headerPosition === 'first-row' && rowIndex === 0) ||
+        (headerPosition === 'first-column' && colIndex === 0);
+      
+      const tag = isHeaderCell ? 'th' : 'td';
       const mergeAttrs = merge 
         ? ` rowspan="${merge.rowSpan}" colspan="${merge.colSpan}"`
         : '';
@@ -214,21 +256,17 @@ export const generateTableHTML = (tableData: TableData): string => {
       const cellStyle = tableData.cellStyles?.[cellKey];
       const customStyles = generateCellStyleString(cellStyle);
       
-      // Header styling - use custom header style or defaults
-      let headerStyle = '';
-      if (rowIndex === 0) {
-        const hs = tableData.headerStyle;
-        const bgColor = hs?.backgroundColor || '#FFC000';
-        const textColor = hs?.textColor || 'inherit';
-        const fontWeight = hs?.bold !== false ? 'bold' : 'normal';
-        headerStyle = `background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;
+      // Header styling
+      let headerStyleStr = '';
+      if (isHeaderCell) {
+        headerStyleStr = buildHeaderStyleString();
       }
       
       // Add column width to cell style if defined
       const columnWidth = tableData.columnWidths?.[colIndex];
       const widthStyle = columnWidth ? `width: ${columnWidth};` : '';
       
-      const allParts = [baseCellStyle, headerStyle, customStyles, widthStyle].filter(s => s.length > 0);
+      const allParts = [baseCellStyle, headerStyleStr, customStyles, widthStyle].filter(s => s.length > 0);
       const fullStyle = allParts.map(s => s.endsWith(';') ? s : s + ';').join(' ').trim();
       
       html += `<${tag} style="${fullStyle}"${mergeAttrs}>${cell}</${tag}>`;

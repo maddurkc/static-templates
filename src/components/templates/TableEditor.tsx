@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Section } from "@/types/section";
-import { TableData, CellStyle, HeaderStyle, CellPadding, mapJsonToTableData, generateTableVariableName } from "@/lib/tableUtils";
+import { TableData, CellStyle, HeaderStyle, CellPadding, HeaderPosition, mapJsonToTableData, generateTableVariableName } from "@/lib/tableUtils";
 import { toast } from "sonner";
 import styles from "./TableEditor.module.scss";
 
@@ -50,6 +50,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
           cellPadding: data.cellPadding || 'medium',
           isStatic: data.isStatic === true ? true : false,
           tableVariableName: data.tableVariableName,
+          headerPosition: data.headerPosition || 'first-row',
           jsonMapping: data.jsonMapping || { enabled: false, columnMappings: [] }
         };
       }
@@ -61,6 +62,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
       showBorder: true, borderColor: '#ddd', mergedCells: {}, cellStyles: {},
       headerStyle: { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
       columnWidths: ['auto', 'auto'], cellPadding: 'medium', isStatic: false,
+      headerPosition: 'first-row',
       jsonMapping: { enabled: false, columnMappings: [] }
     };
   }, [section.id, section.variables?.tableData]);
@@ -283,22 +285,35 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
         if (rows.length < 1) { toast.error('File is empty'); return; }
 
-        const headers = rows[0];
-        const columnMappings = headers.map(h => ({
-          header: h || 'Column',
-          jsonPath: h ? h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') : 'field'
-        }));
+        const headerPos = tableData.headerPosition || 'first-row';
+        let columnMappings: { header: string; jsonPath: string }[];
+        
+        if (headerPos === 'first-row') {
+          // First row is headers
+          const headers = rows[0];
+          columnMappings = headers.map(h => ({
+            header: h || 'Column',
+            jsonPath: h ? h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') : 'field'
+          }));
+        } else {
+          // No header row — generate generic column names
+          const colCount = rows[0]?.length || 1;
+          columnMappings = Array.from({ length: colCount }, (_, i) => ({
+            header: `Column ${i + 1}`,
+            jsonPath: `col_${i + 1}`
+          }));
+        }
 
         updateTableData({
           ...tableData,
           rows,
-          columnWidths: new Array(headers.length).fill('auto'),
+          columnWidths: new Array(columnMappings.length).fill('auto'),
           jsonMapping: { enabled: true, columnMappings },
           isStatic: false,
           tableVariableName: tableData.tableVariableName || generateTableVariableName(section.id)
         });
 
-        toast.success(`Imported ${rows.length - 1} data rows with ${headers.length} columns from ${file.name}`);
+        toast.success(`Imported ${rows.length} rows with ${columnMappings.length} columns from ${file.name}`);
       } catch (err) {
         console.error('File import error:', err);
         toast.error('Failed to parse file. Ensure it is a valid CSV or Excel file.');
@@ -537,7 +552,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
                 {/* Header styling */}
                 <div className={styles.propGroup}>
-                  <span className={styles.propSmallLabel}>Header Row</span>
+                  <span className={styles.propSmallLabel}>Header Style ({tableData.headerPosition === 'first-column' ? 'Column' : 'Row'})</span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div>
                       <span style={{ fontSize: '0.6875rem', color: 'hsl(var(--muted-foreground))', display: 'block', marginBottom: '0.25rem' }}>BG Color</span>
@@ -618,8 +633,10 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                     const merge = getCellMerge(rowIndex, colIndex);
                     const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
                     const cellStyle = getCellStyle(rowIndex, colIndex);
-                    // For header row (row 0), apply headerStyle as base, then overlay individual cell styles
-                    const isHeader = rowIndex === 0;
+                    const headerPosition = tableData.headerPosition || 'first-row';
+                    const isHeader = 
+                      (headerPosition === 'first-row' && rowIndex === 0) ||
+                      (headerPosition === 'first-column' && colIndex === 0);
                     const hs = tableData.headerStyle;
                     const inputStyle: React.CSSProperties = {
                       color: cellStyle.color || (isHeader ? (hs?.textColor || '#000000') : undefined),
@@ -660,7 +677,20 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                 <Zap size={12} />
                 Dynamic Data (th:each)
               </div>
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
+              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                <Select
+                  value={tableData.headerPosition || 'first-row'}
+                  onValueChange={(v: HeaderPosition) => updateTableData({ ...tableData, headerPosition: v })}
+                >
+                  <SelectTrigger className="h-6 text-xs w-[130px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border shadow-lg z-50">
+                    <SelectItem value="first-row">Header: 1st Row</SelectItem>
+                    <SelectItem value="first-column">Header: 1st Column</SelectItem>
+                    <SelectItem value="none">No Headers</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button size="sm" variant="ghost" onClick={() => fileInputRef.current?.click()} className="h-6 px-2 text-xs">
                   <Upload size={12} className="mr-1" />
                   Upload CSV/Excel
