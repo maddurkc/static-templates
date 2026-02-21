@@ -1015,6 +1015,20 @@ const RunTemplates = () => {
     setEmailTitle(template.name);
   };
 
+  // Helper: wrap cell value in styled span if cellStyle exists
+  const applyCellStyleToValue = (value: string, cellStyle?: any): string => {
+    if (!cellStyle) return value;
+    const parts: string[] = [];
+    if (cellStyle.color) parts.push(`color: ${cellStyle.color}`);
+    if (cellStyle.bold) parts.push('font-weight: bold');
+    if (cellStyle.italic) parts.push('font-style: italic');
+    if (cellStyle.underline) parts.push('text-decoration: underline');
+    if (cellStyle.backgroundColor) parts.push(`background-color: ${cellStyle.backgroundColor}`);
+    if (cellStyle.fontSize) parts.push(`font-size: ${cellStyle.fontSize}`);
+    if (parts.length === 0) return value;
+    return `<span style="${parts.join('; ')}">${value}</span>`;
+  };
+
   const handleSendTemplate = () => {
     if (!selectedTemplate) return;
 
@@ -1331,10 +1345,14 @@ const RunTemplates = () => {
             if (tableData.isStatic === false && tableData.jsonMapping?.columnMappings?.length) {
               const payloadKey = tableData.tableVariableName || section.id;
               if (!bodyData[payloadKey]) {
-                bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                const headerRowOffset = hasHeaders ? 0 : 1; // offset to find cellStyles key
+                bodyData[payloadKey] = dataRows.map((row: string[], dataRowIdx: number) => {
                   const obj: Record<string, string> = {};
+                  const actualRowIdx = dataRowIdx + (hasHeaders ? 1 : 1); // data rows start after header row in tableData.rows
                   tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
-                    obj[mapping.jsonPath] = row[idx] || '';
+                    const cellValue = row[idx] || '';
+                    const cellStyle = tableData.cellStyles?.[`${actualRowIdx}-${idx}`];
+                    obj[mapping.jsonPath] = applyCellStyleToValue(cellValue, cellStyle);
                   });
                   return obj;
                 });
@@ -1359,10 +1377,13 @@ const RunTemplates = () => {
             if (tableData.isStatic === false && tableData.jsonMapping?.columnMappings?.length) {
               const payloadKey = tableData.tableVariableName || section.id;
               if (!bodyData[payloadKey]) {
-                bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                bodyData[payloadKey] = dataRows.map((row: string[], dataRowIdx: number) => {
                   const obj: Record<string, string> = {};
+                  const actualRowIdx = dataRowIdx + 1; // data rows start after header row
                   tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
-                    obj[mapping.jsonPath] = row[idx] || '';
+                    const cellValue = row[idx] || '';
+                    const cellStyle = tableData.cellStyles?.[`${actualRowIdx}-${idx}`];
+                    obj[mapping.jsonPath] = applyCellStyleToValue(cellValue, cellStyle);
                   });
                   return obj;
                 });
