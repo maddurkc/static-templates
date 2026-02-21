@@ -646,7 +646,20 @@ const TemplateEditor = () => {
         dynamicContent = `<div style="text-align: right; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; color: #333333; line-height: 21px; mso-line-height-rule: exactly;"><span th:utext="\${${dateVariableName}}"/></div>`;
       }
 
-      // Get default styles for heading sections - include Outlook font family for all sections
+      // For standalone table sections, generate Thymeleaf dynamic HTML with th:each
+      if (sectionDef.type === 'table') {
+        const tableData = variables['tableData'] as any;
+        if (tableData) {
+          const tableVariableName = `tableRows_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          tableData.tableVariableName = tableVariableName;
+          tableData.isStatic = false;
+          variables['tableData'] = tableData;
+          
+          // Generate Thymeleaf dynamic HTML based on header position
+          dynamicContent = generateThymeleafDynamicTableHTMLUtil(tableData as TableData, newSectionId);
+        }
+      }
+
       const isHeadingSection = sectionDef.type.startsWith('heading');
       const defaultStyles = isHeadingSection && headingDefaultStyles[sectionDef.type] 
         ? headingDefaultStyles[sectionDef.type]

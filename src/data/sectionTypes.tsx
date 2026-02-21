@@ -131,7 +131,7 @@ export const sectionTypes: SectionDefinition[] = [
     label: 'Table',
     icon: Table,
     description: 'Data table',
-    defaultContent: `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; font-family: ${OUTLOOK_FONT_FAMILY};"><tr><th style="padding: 8px; border: 1px solid #ddd;">Header 1</th><th style="padding: 8px; border: 1px solid #ddd;">Header 2</th></tr><tr><td style="padding: 8px; border: 1px solid #ddd;">Data 1</td><td style="padding: 8px; border: 1px solid #ddd;">Data 2</td></tr></table>`,
+    defaultContent: '', // Will be generated dynamically with Thymeleaf tags in TemplateEditor
     category: 'layout',
     variables: [
       { 
@@ -142,7 +142,16 @@ export const sectionTypes: SectionDefinition[] = [
           rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
           showBorder: true,
           mergedCells: {},
-          headerStyle: { backgroundColor: '#FFC000', textColor: '#000000', bold: true }
+          isStatic: false,
+          headerPosition: 'first-row',
+          headerStyle: { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
+          jsonMapping: {
+            enabled: true,
+            columnMappings: [
+              { header: 'Header 1', jsonPath: 'col1' },
+              { header: 'Header 2', jsonPath: 'col2' }
+            ]
+          }
         } as any
       }
     ]
