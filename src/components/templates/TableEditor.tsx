@@ -48,7 +48,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
           headerStyle: data.headerStyle || { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
           columnWidths: data.columnWidths || new Array(rows[0]?.length || 2).fill('auto'),
           cellPadding: data.cellPadding || 'medium',
-          isStatic: data.isStatic !== false,
+          isStatic: data.isStatic === true ? true : false,
           tableVariableName: data.tableVariableName,
           jsonMapping: data.jsonMapping || { enabled: false, columnMappings: [] }
         };
@@ -60,7 +60,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
       rows: [['Header 1', 'Header 2'], ['Data 1', 'Data 2']],
       showBorder: true, borderColor: '#ddd', mergedCells: {}, cellStyles: {},
       headerStyle: { backgroundColor: '#FFC000', textColor: '#000000', bold: true },
-      columnWidths: ['auto', 'auto'], cellPadding: 'medium', isStatic: true,
+      columnWidths: ['auto', 'auto'], cellPadding: 'medium', isStatic: false,
       jsonMapping: { enabled: false, columnMappings: [] }
     };
   }, [section.id, section.variables?.tableData]);
@@ -601,18 +601,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
           </Popover>
           )}
 
-          {/* Mode chip */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className={`${styles.modeChip} ${isDynamic ? styles.dynamic : styles.static}`}
-                onClick={() => toggleStaticMode(isDynamic)}
-              >
-                {isDynamic ? <><Zap size={10} /> Dynamic</> : <><Database size={10} /> Static</>}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Switch to {isDynamic ? 'static' : 'dynamic'} mode</TooltipContent>
-          </Tooltip>
+          {/* Mode chip - hidden, tables default to dynamic */}
         </div>
 
 
