@@ -77,41 +77,33 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
     html += '</colgroup>';
   }
 
+  const headersVariableName = variableName.replace('tableRows_', 'tableHeaders_');
+
   if (headerPosition === 'first-row') {
-    // Standard: header row on top, body rows below
+    // th:each for headers row, th:each for data rows
     html += '<thead><tr>';
-    mappings.forEach((mapping) => {
-      html += `<th style="${headerCellStyle}">${mapping.header}</th>`;
-    });
+    html += `<th th:each="header : \${${headersVariableName}}" th:utext="\${header}" style="${headerCellStyle}"/>`;
     html += '</tr></thead>';
 
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    mappings.forEach((mapping) => {
-      html += `<td style="${bodyCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></td>`;
-    });
+    html += `<td th:each="cell : \${row}" th:utext="\${cell}" style="${bodyCellStyle}"/>`;
     html += '</tr>';
     html += '</tbody>';
   } else if (headerPosition === 'first-column') {
-    // Each row is: <th>header</th><td>value</td> — key-value style
+    // 2-column key-value layout: first col = header, second col = data
+    // Each entry has .header and .value
     html += '<tbody>';
-    html += `<tr th:each="row : \${${variableName}}">`;
-    mappings.forEach((mapping, idx) => {
-      if (idx === 0) {
-        html += `<th style="${headerCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></th>`;
-      } else {
-        html += `<td style="${bodyCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></td>`;
-      }
-    });
+    html += `<tr th:each="entry : \${${variableName}}">`;
+    html += `<th th:utext="\${entry.header}" style="${headerCellStyle}"/>`;
+    html += `<td th:utext="\${entry.value}" style="${bodyCellStyle}"/>`;
     html += '</tr>';
     html += '</tbody>';
   } else {
-    // No headers — all cells are <td>
+    // No headers — th:each for all rows and cells
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    mappings.forEach((mapping) => {
-      html += `<td style="${bodyCellStyle}"><span th:utext="\${row.${mapping.jsonPath}}"/></td>`;
-    });
+    html += `<td th:each="cell : \${row}" th:utext="\${cell}" style="${bodyCellStyle}"/>`;
     html += '</tr>';
     html += '</tbody>';
   }
