@@ -1648,6 +1648,12 @@ const RunTemplates = () => {
             return;
           }
 
+          // Skip tableHeaders_ keys - they are handled when restoring the main table variable
+          // but extract their values for use by the table restoration below
+          if (key.startsWith('tableHeaders_')) {
+            return;
+          }
+
           // Check against template sections for proper categorization
           if (template.sections) {
             const matchingSection = template.sections.find(s => {
@@ -1701,8 +1707,14 @@ const RunTemplates = () => {
                       return mappings.map((m: any) => rowObj[m.jsonPath] || '');
                     });
                     restored.rows = reconstructedRows;
-                    // Restore headers from columnMappings
-                    restored.headers = mappings.map((m: any) => m.header);
+                    // Restore headers from headerVariableName payload or columnMappings
+                    const headerVarName = restored.headerVariableName;
+                    const headerPayload = headerVarName ? bodyData[headerVarName] : null;
+                    if (Array.isArray(headerPayload)) {
+                      restored.headers = headerPayload.map((h: any) => typeof h === 'object' && h !== null ? h.value || '' : String(h));
+                    } else {
+                      restored.headers = mappings.map((m: any) => m.header);
+                    }
                   }
                   restoredTableVars[matchingSection.id] = restored;
                 } else {
@@ -1763,6 +1775,8 @@ const RunTemplates = () => {
           Object.entries(data.bodyData).forEach(([key, value]) => {
             if (key.startsWith('label_')) { restoredLabelVars[key] = String(value); return; }
             if (key.startsWith('items_') && Array.isArray(value)) { restoredListVars[key] = value as string[]; return; }
+            // Skip tableHeaders_ keys - handled when restoring the main table variable
+            if (key.startsWith('tableHeaders_')) { return; }
             if (fallbackTemplate.sections) {
               const matchingSection = fallbackTemplate.sections.find(s => {
                 if (s.type === 'labeled-content') {
@@ -1809,7 +1823,14 @@ const RunTemplates = () => {
                         return mappings.map((m: any) => rowObj[m.jsonPath] || '');
                       });
                       restored.rows = reconstructedRows;
-                      restored.headers = mappings.map((m: any) => m.header);
+                      // Restore headers from headerVariableName payload or columnMappings
+                      const headerVarName = restored.headerVariableName;
+                      const headerPayload = headerVarName ? data.bodyData[headerVarName] : null;
+                      if (Array.isArray(headerPayload)) {
+                        restored.headers = headerPayload.map((h: any) => typeof h === 'object' && h !== null ? h.value || '' : String(h));
+                      } else {
+                        restored.headers = mappings.map((m: any) => m.header);
+                      }
                     }
                     restoredTableVars[matchingSection.id] = restored;
                   } else {
