@@ -1330,14 +1330,36 @@ const RunTemplates = () => {
             
             if (tableData.isStatic === false && tableData.jsonMapping?.columnMappings?.length) {
               const payloadKey = tableData.tableVariableName || section.id;
+              const headerPosition = tableData.headerPosition || 'first-row';
+              
+              // Send headers variable for first-row header position
+              if (headerPosition === 'first-row' && tableData.headerVariableName) {
+                const headerValues = tableData.jsonMapping.columnMappings.map((m: any) => m.header);
+                if (!bodyData[tableData.headerVariableName]) {
+                  bodyData[tableData.headerVariableName] = headerValues;
+                }
+              }
+              
               if (!bodyData[payloadKey]) {
-                bodyData[payloadKey] = dataRows.map((row: string[]) => {
-                  const obj: Record<string, string> = {};
-                  tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
-                    obj[mapping.jsonPath] = row[idx] || '';
+                if (headerPosition === 'first-column') {
+                  // First-column: send as array of { header, value } objects
+                  bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                    const obj: Record<string, string> = {};
+                    tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                      if (idx === 0) obj['header'] = row[idx] || '';
+                      else obj['value'] = row[idx] || '';
+                    });
+                    return obj;
                   });
-                  return obj;
-                });
+                } else {
+                  bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                    const obj: Record<string, string> = {};
+                    tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                      obj[mapping.jsonPath] = row[idx] || '';
+                    });
+                    return obj;
+                  });
+                }
               }
             } else {
               if (!bodyData[section.id]) {
@@ -1358,14 +1380,35 @@ const RunTemplates = () => {
             
             if (tableData.isStatic === false && tableData.jsonMapping?.columnMappings?.length) {
               const payloadKey = tableData.tableVariableName || section.id;
+              const headerPosition = tableData.headerPosition || 'first-row';
+              
+              // Send headers variable for first-row header position
+              if (headerPosition === 'first-row' && tableData.headerVariableName) {
+                const headerValues = tableData.jsonMapping.columnMappings.map((m: any) => m.header);
+                if (!bodyData[tableData.headerVariableName]) {
+                  bodyData[tableData.headerVariableName] = headerValues;
+                }
+              }
+              
               if (!bodyData[payloadKey]) {
-                bodyData[payloadKey] = dataRows.map((row: string[]) => {
-                  const obj: Record<string, string> = {};
-                  tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
-                    obj[mapping.jsonPath] = row[idx] || '';
+                if (headerPosition === 'first-column') {
+                  bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                    const obj: Record<string, string> = {};
+                    tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                      if (idx === 0) obj['header'] = row[idx] || '';
+                      else obj['value'] = row[idx] || '';
+                    });
+                    return obj;
                   });
-                  return obj;
-                });
+                } else {
+                  bodyData[payloadKey] = dataRows.map((row: string[]) => {
+                    const obj: Record<string, string> = {};
+                    tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                      obj[mapping.jsonPath] = row[idx] || '';
+                    });
+                    return obj;
+                  });
+                }
               }
             } else {
               if (!bodyData[section.id]) {
