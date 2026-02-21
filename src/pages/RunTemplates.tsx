@@ -1347,8 +1347,18 @@ const RunTemplates = () => {
               const headerPosition = tableData.headerPosition || 'first-row';
               
               // Send headers variable for first-row header position
-              if (headerPosition === 'first-row' && tableData.headerVariableName) {
-                const headerValues = tableData.jsonMapping.columnMappings.map((m: any) => m.header);
+               if (headerPosition === 'first-row' && tableData.headerVariableName) {
+                const hs = tableData.headerStyle;
+                const defaultHeaderStyle = `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
+                const headerValues = tableData.jsonMapping.columnMappings.map((m: any, idx: number) => {
+                  const cellStyleKey = `0-${idx}`;
+                  const cellStyle = tableData.cellStyles?.[cellStyleKey];
+                  const customStyle = buildCellStyleString(cellStyle);
+                  return {
+                    value: m.header,
+                    style: customStyle || defaultHeaderStyle
+                  };
+                });
                 if (!bodyData[tableData.headerVariableName]) {
                   bodyData[tableData.headerVariableName] = headerValues;
                 }
@@ -1363,7 +1373,11 @@ const RunTemplates = () => {
                       const cellStyleKey = `${rowIdx + 1}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
                       if (idx === 0) {
-                        obj['header'] = cellValue;
+                       obj['header'] = cellValue;
+                        obj['header_style'] = buildCellStyleString(cellStyle) || (() => {
+                          const hs = tableData.headerStyle;
+                          return `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
+                        })();
                       } else {
                         obj['value'] = cellValue;
                         obj['value_style'] = buildCellStyleString(cellStyle);
@@ -1407,8 +1421,18 @@ const RunTemplates = () => {
               const headerPosition = tableData.headerPosition || 'first-row';
               
               // Send headers variable for first-row header position
-              if (headerPosition === 'first-row' && tableData.headerVariableName) {
-                const headerValues = tableData.jsonMapping.columnMappings.map((m: any) => m.header);
+               if (headerPosition === 'first-row' && tableData.headerVariableName) {
+                const hs = tableData.headerStyle;
+                const defaultHeaderStyle = `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
+                const headerValues = tableData.jsonMapping.columnMappings.map((m: any, idx: number) => {
+                  const cellStyleKey = `0-${idx}`;
+                  const cellStyle = tableData.cellStyles?.[cellStyleKey];
+                  const customStyle = buildCellStyleString(cellStyle);
+                  return {
+                    value: m.header,
+                    style: customStyle || defaultHeaderStyle
+                  };
+                });
                 if (!bodyData[tableData.headerVariableName]) {
                   bodyData[tableData.headerVariableName] = headerValues;
                 }
@@ -1423,7 +1447,11 @@ const RunTemplates = () => {
                       const cellStyleKey = `${rowIdx + 1}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
                       if (idx === 0) {
-                        obj['header'] = cellValue;
+                       obj['header'] = cellValue;
+                        obj['header_style'] = buildCellStyleString(cellStyle) || (() => {
+                          const hs = tableData.headerStyle;
+                          return `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
+                        })();
                       } else {
                         obj['value'] = cellValue;
                         obj['value_style'] = buildCellStyleString(cellStyle);

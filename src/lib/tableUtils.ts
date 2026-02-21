@@ -88,7 +88,7 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
   if (headerPosition === 'first-row') {
     // Header row with th:each
     html += '<thead><tr>';
-    html += `<th th:each="header : \${${headerVarName}}" style="${headerCellStyle}"><span th:utext="\${header}"/></th>`;
+    html += `<th th:each="header : \${${headerVarName}}" th:style="\${header.style}" style="${headerCellStyle}"><span th:utext="\${header.value}"/></th>`;
     html += '</tr></thead>';
 
     // Body rows with th:each
@@ -103,7 +103,7 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
     // Each row: <th>header</th><td>value</td> — key-value style
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<th style="${headerCellStyle}"><span th:utext="\${row.header}"/></th>`;
+    html += `<th th:style="\${row.header_style}" style="${headerCellStyle}"><span th:utext="\${row.header}"/></th>`;
     html += `<td th:style="\${row.value_style}" style="${bodyCellStyle}"><span th:utext="\${row.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
