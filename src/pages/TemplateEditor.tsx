@@ -651,7 +651,9 @@ const TemplateEditor = () => {
         const tableData = variables['tableData'] as any;
         if (tableData) {
           const tableVariableName = `tableRows_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          const headerVariableName = `tableHeaders_${newSectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
           tableData.tableVariableName = tableVariableName;
+          tableData.headerVariableName = headerVariableName;
           tableData.isStatic = false;
           variables['tableData'] = tableData;
           
