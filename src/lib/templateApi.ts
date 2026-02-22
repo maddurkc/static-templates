@@ -37,6 +37,17 @@ export interface TableDataRequest {
   rows: string[][];
 }
 
+export interface GlobalApiIntegrationRequest {
+  integrationId?: string;
+  name: string;
+  apiTemplateId: string;
+  variableName: string;
+  enabled: boolean;
+  paramValues: Record<string, string>;
+  transformation?: any; // DataTransformation JSON
+  orderIndex: number;
+}
+
 export interface TemplateCreateRequest {
   name: string;
   subject?: string; // Email subject - can contain {{placeholders}}
@@ -46,6 +57,7 @@ export interface TemplateCreateRequest {
   sections: TemplateSectionRequest[];
   variables?: TemplateVariableRequest[]; // Template-level variables registry
   apiConfig?: ApiConfigRequest;
+  globalApiIntegrations?: GlobalApiIntegrationRequest[];
 }
 
 export interface TemplateUpdateRequest {
@@ -57,6 +69,7 @@ export interface TemplateUpdateRequest {
   sections?: TemplateSectionRequest[];
   variables?: TemplateVariableRequest[]; // Template-level variables registry
   apiConfig?: ApiConfigRequest;
+  globalApiIntegrations?: GlobalApiIntegrationRequest[];
 }
 
 export interface ApiConfigRequest {
@@ -73,6 +86,21 @@ export interface ApiMappingRequest {
   variableName?: string;
 }
 
+export interface GlobalApiIntegrationResponse {
+  id: string;
+  templateId: string;
+  apiTemplateId: string;
+  apiTemplateName: string;
+  integrationName: string;
+  variableName: string;
+  enabled: boolean;
+  paramValues: Record<string, string>;
+  transformation?: any;
+  orderIndex: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TemplateResponse {
   id: string;
   name: string;
@@ -85,6 +113,7 @@ export interface TemplateResponse {
   sections: TemplateSectionResponse[];
   variables?: TemplateVariableResponse[]; // Template-level variables registry
   apiConfig?: ApiConfigResponse;
+  globalApiIntegrations?: GlobalApiIntegrationResponse[];
 }
 
 export interface TemplateSectionResponse {
@@ -314,6 +343,26 @@ export const flattenSectionsForApi = (
   return result;
 };
 
+// Helper function to convert GlobalApiConfig to API request format
+export const globalApiConfigToRequest = (
+  config?: import('@/types/global-api-config').GlobalApiConfig
+): GlobalApiIntegrationRequest[] | undefined => {
+  if (!config || !config.integrations || config.integrations.length === 0) {
+    return undefined;
+  }
+  
+  return config.integrations.map((integration, index) => ({
+    integrationId: integration.id,
+    name: integration.name,
+    apiTemplateId: integration.templateId,
+    variableName: integration.variableName,
+    enabled: integration.enabled,
+    paramValues: integration.paramValues || {},
+    transformation: integration.transformation || undefined,
+    orderIndex: index,
+  }));
+};
+
 // API Client class
 class TemplateApiClient {
   private baseUrl: string;
@@ -477,6 +526,23 @@ export const responseToTemplate = (response: TemplateResponse): Template => {
     children: [],
   })) || [];
 
+  // Convert global API integrations to GlobalApiConfig format
+  let globalApiConfig: import('@/types/global-api-config').GlobalApiConfig | undefined;
+  if (response.globalApiIntegrations && response.globalApiIntegrations.length > 0) {
+    globalApiConfig = {
+      integrations: response.globalApiIntegrations.map(int => ({
+        id: int.id,
+        name: int.integrationName,
+        templateId: int.apiTemplateId,
+        paramValues: int.paramValues || {},
+        variableName: int.variableName,
+        enabled: int.enabled,
+        transformation: int.transformation || undefined,
+      })),
+      globalVariables: {},
+    };
+  }
+
   return {
     id: response.id,
     name: response.name,
@@ -486,6 +552,7 @@ export const responseToTemplate = (response: TemplateResponse): Template => {
     sectionCount: response.sectionCount,
     archived: response.archived,
     sections,
+    globalApiConfig,
   };
 };
 
