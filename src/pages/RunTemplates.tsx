@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import { TableEditor } from "@/components/templates/TableEditor";
 import {
@@ -29,6 +29,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
 import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
+import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-config";
+import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
+import { resolveGlobalApiThymeleaf } from "@/lib/globalApiResolver";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -59,6 +62,8 @@ const RunTemplates = () => {
   const [editedSectionContent, setEditedSectionContent] = useState<Record<string, string>>({});
   const [resendMode, setResendMode] = useState(false); // Flag to skip default init when loading last sent
   const skipVariableInitRef = React.useRef(false); // Ref to prevent useEffect from overwriting restored variables
+  const [globalApiConfig, setGlobalApiConfig] = useState<GlobalApiConfig>(DEFAULT_GLOBAL_API_CONFIG);
+  const [showApiPanel, setShowApiPanel] = useState(false);
   const { toast } = useToast();
 
   // Scroll to section in preview when editing
@@ -976,6 +981,8 @@ const RunTemplates = () => {
 
   const handleRunTemplate = (template: Template) => {
     setSelectedTemplate(template);
+    // Load global API config from template
+    setGlobalApiConfig(template.globalApiConfig || DEFAULT_GLOBAL_API_CONFIG);
     const vars = extractAllVariables(template);
     const initialVars: Record<string, string | TextStyle> = {};
     const initialListVars: Record<string, string[] | ListItemStyle[]> = {};
@@ -1575,6 +1582,8 @@ const RunTemplates = () => {
     setLabelVariables({});
     setSubjectVariables({});
     setEmailSubject("");
+    setGlobalApiConfig(DEFAULT_GLOBAL_API_CONFIG);
+    setShowApiPanel(false);
   };
 
   // Check if a template has a last sent payload
@@ -1609,6 +1618,7 @@ const RunTemplates = () => {
         // Prevent the useEffect from overwriting restored variables
         skipVariableInitRef.current = true;
         setSelectedTemplate(template);
+        setGlobalApiConfig(template.globalApiConfig || DEFAULT_GLOBAL_API_CONFIG);
         setEmailTitle(template.name);
         setExecutedOn(new Date().toLocaleString());
 
@@ -1931,15 +1941,19 @@ const RunTemplates = () => {
               };
             }
           }
-          return wrapSectionInTable(renderSectionContent(sectionToRender, allVars), index === 0);
+          const rawHtml = wrapSectionInTable(renderSectionContent(sectionToRender, allVars), index === 0);
+          // Resolve global API variables in the rendered HTML
+          return resolveGlobalApiThymeleaf(rawHtml, globalApiConfig);
         })
         .join('');
       return wrapInGlobalTable(sectionRows);
     }
     
     // Otherwise render from html field
-    return replaceVariables(selectedTemplate.html, variables, listVariables);
-  }, [selectedTemplate, variables, listVariables, tableVariables, labelVariables]);
+    let html = replaceVariables(selectedTemplate.html, variables, listVariables);
+    html = resolveGlobalApiThymeleaf(html, globalApiConfig);
+    return html;
+  }, [selectedTemplate, variables, listVariables, tableVariables, labelVariables, globalApiConfig]);
 
   return (
     <div className={styles.container}>
@@ -2065,6 +2079,16 @@ const RunTemplates = () => {
               </div>
             </div>
             <div className="flex gap-2">
+              {selectedTemplate.globalApiConfig?.integrations?.length > 0 && (
+                <Button
+                  variant={showApiPanel ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowApiPanel(!showApiPanel)}
+                >
+                  <Database className="h-4 w-4 mr-2" />
+                  API ({globalApiConfig.integrations.length})
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -2177,8 +2201,18 @@ const RunTemplates = () => {
             </div>
           </div>
 
-          {/* Main Content: Variables (left) | Preview/Body (right) */}
-          <div className={styles.mainContent}>
+          {/* Main Content: API Panel (optional) | Variables (left) | Preview/Body (right) */}
+          <div className={`${styles.mainContent} ${showApiPanel ? styles.mainContentWithApi : ''}`}>
+            {/* API Panel (conditionally shown) */}
+            {showApiPanel && (
+              <div className={styles.apiPanel}>
+                <GlobalApiPanel
+                  config={globalApiConfig}
+                  onUpdate={setGlobalApiConfig}
+                  onClose={() => setShowApiPanel(false)}
+                />
+              </div>
+            )}
             {/* Left Panel - Template Variables */}
             <div className={styles.variablesPanel}>
               <div className={styles.variablesPanelHeader}>
@@ -3505,7 +3539,7 @@ const RunTemplates = () => {
                           <div 
                             key={section.id} 
                             id={`preview-section-${section.id}`}
-                            dangerouslySetInnerHTML={{ __html: wrapSectionInTable(renderSectionContent(sectionToRender, runtimeVars), sectionIndex === 0) }}
+                            dangerouslySetInnerHTML={{ __html: resolveGlobalApiThymeleaf(wrapSectionInTable(renderSectionContent(sectionToRender, runtimeVars), sectionIndex === 0), globalApiConfig) }}
                           />
                         );
                       })}
