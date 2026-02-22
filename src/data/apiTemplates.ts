@@ -384,7 +384,9 @@ export const API_TEMPLATES: ApiTemplate[] = [
     url: "mock://servicenow-change",
     method: "GET",
     headers: {},
-    requiredParams: [],
+    requiredParams: [
+      { name: 'changeNo', label: 'Change Number', type: 'text', placeholder: 'CHG1234567', required: false, description: 'Enter a change number to override mock data', location: 'query' }
+    ],
     sampleMappings: [],
     mockData: {
       changeNo: "CHG1234567",
@@ -412,7 +414,9 @@ export const API_TEMPLATES: ApiTemplate[] = [
     url: "mock://servicenow-incident",
     method: "GET",
     headers: {},
-    requiredParams: [],
+    requiredParams: [
+      { name: 'incidentNo', label: 'Incident Number', type: 'text', placeholder: 'INC0012345', required: false, description: 'Enter an incident number to override mock data', location: 'query' }
+    ],
     sampleMappings: [],
     mockData: {
       incidentNo: "INC0012345",
