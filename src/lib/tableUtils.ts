@@ -55,62 +55,68 @@ export const generateHeaderVariableName = (sectionId: string): string => {
 // Generate Thymeleaf-compatible table HTML with th:each for dynamic tables
 export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionId: string): string => {
   if (!tableData || !tableData.jsonMapping?.columnMappings?.length) {
-    return '<table><tr><td>No column mappings defined</td></tr></table>';
+    return '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;"><tr><td style="font-family: \'Wells Fargo Sans\', Arial, Helvetica, sans-serif; mso-line-height-rule: exactly;">No column mappings defined</td></tr></table>';
   }
 
   const headerPosition = tableData.headerPosition || 'first-row';
   const variableName = tableData.tableVariableName || generateTableVariableName(sectionId);
   const headerVarName = tableData.headerVariableName || generateHeaderVariableName(sectionId);
-  const mappings = tableData.jsonMapping.columnMappings;
   const borderColor = tableData.borderColor || '#ddd';
   const showBorder = tableData.showBorder;
-  const borderStyle = showBorder ? `border: 1px solid ${borderColor};` : '';
   const paddingValue = getPaddingValue(tableData.cellPadding);
+
+  // Outlook-safe border: use both border attribute style and explicit border style
+  const borderStyle = showBorder ? `border: 1px solid ${borderColor}; border-collapse: collapse;` : 'border-collapse: collapse;';
+  const cellBorderStyle = showBorder ? `border: 1px solid ${borderColor};` : '';
 
   // Header styling
   const hs = tableData.headerStyle;
   const bgColor = hs?.backgroundColor || '#FFC000';
   const textColor = hs?.textColor || 'inherit';
   const fontWeight = hs?.bold !== false ? 'bold' : 'normal';
-  const headerCellStyle = `padding: ${paddingValue}; ${borderStyle} background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight};`;
-  const bodyCellStyle = `padding: ${paddingValue}; ${borderStyle}`;
+  const fontFamily = "'Wells Fargo Sans', Arial, Helvetica, sans-serif";
+  const msoLineHeight = 'mso-line-height-rule: exactly;';
 
-  let html = `<table style="width: 100%; border-collapse: collapse; ${borderStyle}">`;
+  const headerCellStyle = `padding: ${paddingValue}; ${cellBorderStyle} background-color: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight}; font-family: ${fontFamily}; ${msoLineHeight}`;
+  const bodyCellStyle = `padding: ${paddingValue}; ${cellBorderStyle} font-family: ${fontFamily}; ${msoLineHeight}`;
+
+  // Outlook-compatible table: use cellpadding, cellspacing, border attributes alongside inline styles
+  const tableBorderAttr = showBorder ? ' border="1"' : ' border="0"';
+  let html = `<table cellpadding="0" cellspacing="0"${tableBorderAttr} width="100%" style="width: 100%; ${borderStyle} mso-table-lspace: 0pt; mso-table-rspace: 0pt;">`;
 
   // Colgroup for widths
   if (tableData.columnWidths && tableData.columnWidths.length > 0) {
     html += '<colgroup>';
     tableData.columnWidths.forEach((width) => {
-      html += `<col style="width: ${width};">`;
+      html += `<col style="width: ${width};" width="${parseInt(width) || 'auto'}">`;
     });
     html += '</colgroup>';
   }
 
   if (headerPosition === 'first-row') {
-    // Header row with th:each
+    // Header row
     html += '<thead><tr>';
-    html += `<th th:each="header : \${${headerVarName}}" th:style="\${header.style}" style="${headerCellStyle}"><span th:utext="\${header.value}"/></th>`;
+    html += `<th th:each="header : \${${headerVarName}}" th:style="\${header.style}" style="${headerCellStyle}" valign="middle"><span th:utext="\${header.value}"/></th>`;
     html += '</tr></thead>';
 
-    // Body rows with th:each, columns also dynamic
+    // Body rows - dynamic cells
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" style="${bodyCellStyle}"><span th:utext="\${cell.value}"/></td>`;
+    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
   } else if (headerPosition === 'first-column') {
-    // Each row: <th>header</th><td>value</td> — key-value style
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<th th:style="\${row.header_style}" style="${headerCellStyle}"><span th:utext="\${row.header}"/></th>`;
-    html += `<td th:style="\${row.value_style}" style="${bodyCellStyle}"><span th:utext="\${row.value}"/></td>`;
+    html += `<th th:style="\${row.header_style}" style="${headerCellStyle}" valign="middle"><span th:utext="\${row.header}"/></th>`;
+    html += `<td th:style="\${row.value_style}" style="${bodyCellStyle}" valign="top"><span th:utext="\${row.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
   } else {
-    // No headers — all cells are <td>, also dynamic
+    // No headers
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" style="${bodyCellStyle}"><span th:utext="\${cell.value}"/></td>`;
+    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
   }
