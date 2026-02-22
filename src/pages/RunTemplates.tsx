@@ -1706,6 +1706,11 @@ const RunTemplates = () => {
                           return rowObj['value'] || '';
                         });
                       }
+                      // New cells format: { cells: [{value, style}] }
+                      if (rowObj.cells && Array.isArray(rowObj.cells)) {
+                        return rowObj.cells.map((cell: any) => cell.value || '');
+                      }
+                      // Legacy col_X format fallback
                       return mappings.map((m: any) => rowObj[m.jsonPath] || '');
                     });
                     restored.rows = reconstructedRows;
@@ -1822,6 +1827,11 @@ const RunTemplates = () => {
                             return rowObj['value'] || '';
                           });
                         }
+                        // New cells format: { cells: [{value, style}] }
+                        if (rowObj.cells && Array.isArray(rowObj.cells)) {
+                          return rowObj.cells.map((cell: any) => cell.value || '');
+                        }
+                        // Legacy col_X format fallback
                         return mappings.map((m: any) => rowObj[m.jsonPath] || '');
                       });
                       restored.rows = reconstructedRows;
@@ -3637,6 +3647,12 @@ const RunTemplates = () => {
                   key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')
                 );
                 
+                // Create column mappings with col_X jsonPaths
+                const columnMappings = keys.map((key, i) => ({
+                  header: headers[i],
+                  jsonPath: `col_${i + 1}`
+                }));
+                
                 // Create rows from data
                 const rows = dataArray.map(item => 
                   keys.map(key => {
@@ -3647,7 +3663,12 @@ const RunTemplates = () => {
 
                 setTableVariables(prev => ({
                   ...prev,
-                  [jsonImportOpen]: { ...prev[jsonImportOpen], headers, rows }
+                  [jsonImportOpen]: { 
+                    ...prev[jsonImportOpen], 
+                    headers, 
+                    rows,
+                    jsonMapping: { enabled: true, columnMappings }
+                  }
                 }));
 
                 toast({
