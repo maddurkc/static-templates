@@ -1275,8 +1275,8 @@ const TemplateEditor = () => {
 
   const handleSubjectChange = (value: string) => {
     setTemplateSubject(value);
-    const error = validateSubject(value);
-    setSubjectError(error?.message || null);
+    const errors = validateSubject(value);
+    setSubjectError(errors.length > 0 ? errors.map(e => e.message).join('; ') : null);
   };
 
   const handleSaveTemplate = async () => {

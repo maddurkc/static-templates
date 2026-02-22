@@ -65,19 +65,22 @@ export const validateTemplateName = (name: string): ValidationError | null => {
 };
 
 // Validate subject line
-export const validateSubject = (subject: string): ValidationError | null => {
+export const validateSubject = (subject: string): ValidationError[] => {
+  const errors: ValidationError[] = [];
+  
   if (!subject.trim()) {
-    return {
+    errors.push({
       field: 'templateSubject',
       message: 'Email subject is required'
-    };
+    });
+    return errors;
   }
   
   if (subject.length > 200) {
-    return {
+    errors.push({
       field: 'templateSubject',
       message: 'Subject must be less than 200 characters'
-    };
+    });
   }
   
   // Check for unclosed placeholders
@@ -85,21 +88,33 @@ export const validateSubject = (subject: string): ValidationError | null => {
   const closeCount = (subject.match(/\}\}/g) || []).length;
   
   if (openCount !== closeCount) {
-    return {
+    errors.push({
       field: 'templateSubject',
       message: 'Subject has unclosed placeholder brackets'
-    };
+    });
   }
   
   // Check for empty placeholders {{}}
   if (/\{\{\s*\}\}/.test(subject)) {
-    return {
+    errors.push({
       field: 'templateSubject',
       message: 'Subject has empty placeholder brackets'
-    };
+    });
+  }
+
+  // Check for reserved system variable names in subject placeholders
+  const subjectPlaceholders = extractPlaceholders(subject);
+  for (const placeholder of subjectPlaceholders) {
+    const nameError = validatePlaceholderName(placeholder);
+    if (nameError) {
+      errors.push({
+        field: 'templateSubject',
+        message: `Subject placeholder "{{${placeholder}}}" is a reserved system variable. Reserved names: ${SYSTEM_VARIABLE_NAMES.join(', ')}`
+      });
+    }
   }
   
-  return null;
+  return errors;
 };
 
 // Get human-readable section name
@@ -160,8 +175,30 @@ const SYSTEM_VARIABLE_PATTERNS = [
   /^isStatic$/, /^apiVariable$/
 ];
 
+// Human-readable list of reserved system variable prefixes/names for error messages
+export const SYSTEM_VARIABLE_NAMES: string[] = [
+  'label_*', 'content_*', 'headingText_*', 'dateValue_*',
+  'items_*', 'ctaText_*', 'ctaUrl_*', 'programNameText',
+  'text_*', 'paragraph_*', 'textContent_*', 'paragraphContent_*',
+  'companyName', 'tagline', 'year', 'contactEmail',
+  'labelVariableName', 'textVariableName', 'listVariableName',
+  'contentType', 'listStyle', 'listHtml', 'tableData',
+  'isStatic', 'apiVariable'
+];
+
 const isSystemVariable = (varName: string): boolean => {
   return SYSTEM_VARIABLE_PATTERNS.some(pattern => pattern.test(varName));
+};
+
+// Validate that a placeholder name is not a reserved system variable
+export const validatePlaceholderName = (varName: string): ValidationError | null => {
+  if (isSystemVariable(varName)) {
+    return {
+      field: 'placeholderName',
+      message: `"{{${varName}}}" is a reserved system variable and cannot be used as a placeholder. Reserved names: ${SYSTEM_VARIABLE_NAMES.join(', ')}`
+    };
+  }
+  return null;
 };
 
 // Validate section placeholders against defined variables
@@ -174,6 +211,20 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
   }
   
   const sectionName = getSectionDisplayName(section);
+  
+  // Helper: check if placeholder uses a reserved system variable name
+  const checkReservedName = (placeholder: string): boolean => {
+    if (isSystemVariable(placeholder)) {
+      errors.push({
+        field: 'sectionVariable',
+        message: `In "${sectionName}": "{{${placeholder}}}" is a reserved system variable and cannot be used as a placeholder. Reserved names: ${SYSTEM_VARIABLE_NAMES.join(', ')}`,
+        sectionId: section.id,
+        sectionType: section.type
+      });
+      return true;
+    }
+    return false;
+  };
   
   // Get defined variables (excluding system/metadata variables)
   const definedVars = Object.keys(section.variables || {});
@@ -195,6 +246,9 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
       for (const placeholder of textPlaceholders) {
         // Skip if it's the textVariableName itself
         if (placeholder === textVariableName) continue;
+        
+        // Check reserved name first
+        if (checkReservedName(placeholder)) continue;
         
         if (!definedVars.includes(placeholder) || 
             (section.variables?.[placeholder] === '' || 
@@ -230,6 +284,9 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
         
         const listPlaceholders = extractItemPlaceholders(items);
         for (const placeholder of listPlaceholders) {
+          // Check reserved name first
+          if (checkReservedName(placeholder)) continue;
+          
           if (!definedVars.includes(placeholder) ||
               (section.variables?.[placeholder] === '' ||
                section.variables?.[placeholder] === undefined ||
@@ -256,6 +313,9 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
       // Skip the labelVariableName itself
       if (placeholder === labelVariableName) continue;
       
+      // Check reserved name first
+      if (checkReservedName(placeholder)) continue;
+      
       if (!definedVars.includes(placeholder) ||
           (section.variables?.[placeholder] === '' ||
            section.variables?.[placeholder] === undefined ||
@@ -277,6 +337,9 @@ export const validateSectionPlaceholders = (section: Section): ValidationError[]
     
     // Check for undefined placeholders in content
     for (const placeholder of contentPlaceholders) {
+      // Check reserved name first
+      if (checkReservedName(placeholder)) continue;
+      
       if (!definedVars.includes(placeholder)) {
         errors.push({
           field: 'sectionContent',
@@ -439,8 +502,8 @@ export const validateTemplate = (
   if (nameError) errors.push(nameError);
   
   // Validate subject
-  const subjectError = validateSubject(templateSubject);
-  if (subjectError) errors.push(subjectError);
+  const subjectErrors = validateSubject(templateSubject);
+  errors.push(...subjectErrors);
   
   // Validate sections
   errors.push(...validateSections(sections));
