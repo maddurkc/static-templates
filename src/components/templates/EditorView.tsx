@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { GripVertical, Plus, Trash2, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
+import { resolveGlobalApiVariables, resolveGlobalApiThymeleaf } from "@/lib/globalApiResolver";
 import { generateTableHTML, TableData } from "@/lib/tableUtils";
 import { InlineSectionControls } from "./InlineSectionControls";
 import { SectionContextMenu } from "./SectionContextMenu";
@@ -162,10 +163,14 @@ const SortableSection = ({
                       }
                       return `{{${varName}}}`;
                     });
+                    // Resolve global API variables (dot-notation)
+                    if (globalApiConfig) {
+                      labelContent = resolveGlobalApiVariables(labelContent, globalApiConfig);
+                    }
                     // Style any remaining {{placeholder}} markers
                     return labelContent.replace(
-                      /\{\{(\w+)\}\}/g,
-                      '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">${$1}</span>'
+                      /\{\{(\w+(?:\.\w+)*)\}\}/g,
+                      (m, p) => `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-primary/10 text-primary border border-primary/20">{{${p}}}</span>`
                     );
                   })()
                 }}
@@ -249,6 +254,10 @@ const SortableSection = ({
                         }
                         return `{{${varName}}}`;
                       });
+                    }
+                    // Resolve global API variables
+                    if (globalApiConfig) {
+                      content = resolveGlobalApiThymeleaf(content, globalApiConfig);
                     }
                     return content;
                   })()
@@ -372,7 +381,12 @@ const SortableSection = ({
                   
                   if (isInlinePlaceholder && section.variables && Object.keys(section.variables).length > 0) {
                     // Display default values from variables, actual content still has Thymeleaf tags
-                    return replaceWithDefaults(section.content, section.variables);
+                    let result = replaceWithDefaults(section.content, section.variables);
+                    // Also resolve global API variables (dot-notation)
+                    if (globalApiConfig) {
+                      result = resolveGlobalApiThymeleaf(result, globalApiConfig);
+                    }
+                    return result;
                   }
                   
                   // For mixed-content sections, show the content with placeholders as badges

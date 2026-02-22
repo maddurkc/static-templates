@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import { Section } from "@/types/section";
+import { GlobalApiConfig } from "@/types/global-api-config";
 import { renderSectionContent } from "@/lib/templateUtils";
 import { thymeleafToPlaceholder, replaceWithDefaults } from "@/lib/thymeleafUtils";
 import { generateTableHTML, TableData } from "@/lib/tableUtils";
 import { wrapSectionInTable } from "@/lib/templateUtils";
+import { resolveGlobalApiVariables, resolveGlobalApiThymeleaf } from "@/lib/globalApiResolver";
 import styles from "./PreviewView.module.scss";
 
 interface PreviewViewProps {
@@ -14,9 +16,10 @@ interface PreviewViewProps {
   hoveredSectionId?: string | null;
   onHoverSection?: (id: string | null) => void;
   highlightedVariableName?: string | null;
+  globalApiConfig?: GlobalApiConfig;
 }
 
-export const PreviewView = ({ headerSection, footerSection, sections, selectedSectionId, hoveredSectionId, onHoverSection, highlightedVariableName }: PreviewViewProps) => {
+export const PreviewView = ({ headerSection, footerSection, sections, selectedSectionId, hoveredSectionId, onHoverSection, highlightedVariableName, globalApiConfig }: PreviewViewProps) => {
   const allSections = [headerSection, ...sections, footerSection];
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +74,15 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
   
   // Helper function to get HTML string for a section (used with wrapSectionInTable)
   const getSectionHtml = (section: Section): string => {
+    const rawHtml = getSectionHtmlInner(section);
+    // Resolve global API variables (dot-notation like {{snowDetails.changeNo}})
+    if (globalApiConfig) {
+      return resolveGlobalApiThymeleaf(rawHtml, globalApiConfig);
+    }
+    return rawHtml;
+  };
+
+  const getSectionHtmlInner = (section: Section): string => {
     const defaultStyles: Record<string, string> = {
       margin: '10px 0',
       padding: '8px',
