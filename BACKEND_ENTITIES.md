@@ -16,8 +16,7 @@ This document provides comprehensive Spring Boot entity classes, DTOs, repositor
    - [TemplateVariable Entity](#templatevariable-entity)
    - [ApiTemplate Entity](#apitemplate-entity)
    - [ApiTemplateParam Entity](#apitemplateparam-entity)
-   - [TemplateApiConfig Entity](#templateapiconfig-entity)
-   - [ApiMapping Entity](#apimapping-entity)
+   - [TemplateGlobalApiIntegration Entity](#templateglobalapiintegration-entity)
 3. [Models](#models)
 4. [DTOs](#dtos)
 5. [Repositories](#repositories)
@@ -59,9 +58,10 @@ This document provides comprehensive Spring Boot entity classes, DTOs, repositor
                                             │  (Section Variable Rows)    │
                                             └─────────────────────────────┘
 
-┌─────────────────┐      FK: template_id    ┌────────────────────┐
-│   templates     │◄────────────────────────│template_api_configs│
-└────────┬────────┘     (1:1 - UNIQUE)      └─────────┬──────────┘
+┌─────────────────┐      FK: template_id    ┌─────────────────────────────────┐
+│   templates     │◄────────────────────────│ template_global_api_integrations│
+└────────┬────────┘     (1:Many)            │  (Global API Integrations)      │
+         │                                  └─────────┬───────────────────────┘
          │                                            │
          │                                            │ FK: api_template_id
          │                                            ▼
@@ -84,14 +84,13 @@ This document provides comprehensive Spring Boot entity classes, DTOs, repositor
 |-------|---------|---------------|
 | sections | Master catalog of section types (building blocks) | Parent to section_variables (catalog) |
 | section_variables | Variable definitions & instance values (dual-purpose) | FK to sections.type (catalog) OR FK to template_sections.id (instance) |
-| templates | User-created templates (main documents) | Parent to template_sections, template_runs, template_variables, template_api_configs |
+| templates | User-created templates (main documents) | Parent to template_sections, template_runs, template_variables, template_global_api_integrations |
 | template_sections | Section instances within templates | FK to templates, self-reference for nesting, parent to section_variables (instance) |
 | template_runs | Audit log of template executions | FK to templates |
 | template_variables | Available variables per template | FK to templates |
 | api_templates | Pre-configured API endpoint templates | Parent to api_template_params |
 | api_template_params | Parameters for each API template | FK to api_templates |
-| template_api_configs | Links templates to API templates | FK to templates, api_templates |
-| api_mappings | Maps API response data to sections | FK to template_api_configs, template_sections |
+| template_global_api_integrations | Links templates to multiple API integrations with global variable storage | FK to templates, api_templates |
 
 ---
 
@@ -398,13 +397,13 @@ import java.util.UUID;
  * - NO FOREIGN KEYS (This is a parent table)
  * - REFERENCED BY: template_sections.template_id (1:Many)
  * - REFERENCED BY: template_runs.template_id (1:Many)
- * - REFERENCED BY: template_api_configs.template_id (1:1)
+ * - REFERENCED BY: template_global_api_integrations.template_id (1:Many)
  * - REFERENCED BY: template_variables.template_id (1:Many)
  * 
  * CASCADE BEHAVIOR (when template deleted):
  * → All template_sections are deleted
  * → All template_runs are deleted
- * → The template_api_configs is deleted
+ * → All template_global_api_integrations are deleted
  * → All template_variables are deleted
  */
 @Entity
@@ -502,13 +501,14 @@ public class Template {
     private List<TemplateVariable> variables = new ArrayList<>();
 
     /**
-     * One template can have one API configuration (1:1)
-     * CASCADE ALL: API config is deleted when template is deleted
+     * One template can have MANY global API integrations (1:Many)
+     * CASCADE ALL: API integrations are deleted when template is deleted
      * NOT AUDITED: API config changes are not versioned
      */
-    @OneToOne(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @NotAudited
-    private TemplateApiConfig apiConfig;
+    @Builder.Default
+    private List<TemplateGlobalApiIntegration> globalApiIntegrations = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
@@ -714,13 +714,9 @@ public class TemplateSection {
     private List<SectionVariable> sectionVariables = new ArrayList<>();
 
     /**
-     * API mappings for this section (data from external APIs)
-     * NOT AUDITED: API mappings are not versioned
+     * NOTE: API mappings are now managed at template level via TemplateGlobalApiIntegration.
+     * Sections reference global API variables using {{variableName.field}} syntax in content.
      */
-    @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
-    @NotAudited
-    @Builder.Default
-    private List<ApiMapping> apiMappings = new ArrayList<>();
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -1233,13 +1229,12 @@ public class ApiTemplateParam {
 }
 ```
 
-### TemplateApiConfig Entity
+### TemplateGlobalApiIntegration Entity
 
 ```java
 package com.example.pagebuilder.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
@@ -1248,33 +1243,63 @@ import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 /**
- * Entity representing a template's API configuration.
+ * Entity representing a global API integration for a template.
  * 
- * TABLE: template_api_configs
- * PURPOSE: Links templates to API templates with user-provided parameter values
- * Each template can have ONE API configuration (1:1 relationship enforced by UNIQUE).
+ * TABLE: template_global_api_integrations
+ * PURPOSE: Stores per-template API integrations. Each template can have MULTIPLE
+ * API integrations (1:Many). Each integration fetches data from an external API
+ * and stores the response in a named global variable accessible from any section
+ * via {{variableName.field.path}} syntax.
  * 
  * RELATIONSHIPS:
- * - FOREIGN KEY: template_id → templates.id (CASCADE DELETE) [UNIQUE - 1:1]
+ * - FOREIGN KEY: template_id → templates.id (CASCADE DELETE)
  * - FOREIGN KEY: api_template_id → api_templates.id
- * - REFERENCED BY: api_mappings.template_api_config_id (1:Many)
+ * 
+ * FRONTEND TYPE MAPPING:
+ * Maps to GlobalApiIntegration from src/types/global-api-config.ts:
+ * {
+ *   id: string;
+ *   name: string;           → integration_name
+ *   templateId: string;     → api_template_id (references api_templates)
+ *   paramValues: Record;    → param_values (JSON)
+ *   variableName: string;   → variable_name (global variable to store response)
+ *   enabled: boolean;       → enabled
+ *   transformation?: {...}  → transformation (JSON)
+ * }
+ * 
+ * DATA FLOW:
+ * 1. User configures integration in GlobalApiPanel (editor mode)
+ * 2. Template is saved → integrations stored in this table
+ * 3. In RunTemplates, user clicks "Fetch" on an integration
+ * 4. API response is stored in globalVariables[variableName]
+ * 5. Sections referencing {{variableName.field}} auto-resolve
+ * 
+ * TRANSFORMATION JSON STRUCTURE:
+ * {
+ *   "filters": [{"id":"f1","field":"status","operator":"equals","value":"active"}],
+ *   "filterLogic": "and",
+ *   "fieldMappings": [{"id":"m1","sourceField":"name","targetField":"fullName","enabled":true}],
+ *   "selectFields": ["name","status"],
+ *   "limit": 10,
+ *   "sortField": "name",
+ *   "sortOrder": "asc"
+ * }
  */
 @Entity
-@Table(name = "template_api_configs", indexes = {
-    @Index(name = "idx_template_api_configs_template", columnList = "template_id")
+@Table(name = "template_global_api_integrations", indexes = {
+    @Index(name = "idx_tgai_template_id", columnList = "template_id"),
+    @Index(name = "idx_tgai_api_template_id", columnList = "api_template_id")
 }, uniqueConstraints = {
-    @UniqueConstraint(name = "uk_template_api_configs", columnNames = {"template_id"})
+    @UniqueConstraint(name = "uk_tgai_template_variable", columnNames = {"template_id", "variable_name"})
 })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TemplateApiConfig {
+public class TemplateGlobalApiIntegration {
 
     @Id
     @GeneratedValue(generator = "UUID")
@@ -1283,53 +1308,83 @@ public class TemplateApiConfig {
     private UUID id;
 
     /**
-     * Foreign key to templates.id (UNIQUE creates 1:1 relationship)
-     * CASCADE DELETE: Remove API config when template is deleted
+     * Foreign key to templates.id
+     * CASCADE DELETE: Remove integration when template is deleted
      */
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "template_id", nullable = false, unique = true,
-            foreignKey = @ForeignKey(name = "fk_template_api_configs_template"))
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_tgai_template"))
     @JsonBackReference
     private Template template;
 
     /**
-     * Foreign key to api_templates.id (which API to use)
+     * Foreign key to api_templates.id (which API endpoint to use)
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "api_template_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_template_api_configs_api_template"))
+            foreignKey = @ForeignKey(name = "fk_tgai_api_template"))
     private ApiTemplate apiTemplate;
 
     /**
-     * Toggle: 1 = API active, 0 = API disabled (can toggle without losing config)
+     * User-friendly name for this integration
+     * Examples: "ServiceNow Change Details", "Jira Issue Data"
+     */
+    @Column(name = "integration_name", nullable = false, length = 255)
+    private String integrationName;
+
+    /**
+     * Global variable name to store the API response
+     * MUST be unique per template (enforced by UK constraint)
+     * Examples: "snowDetails", "jiraIssue", "githubRepo"
+     * Used in sections as {{snowDetails.changeNo}}, {{jiraIssue.fields.summary}}
+     */
+    @Column(name = "variable_name", nullable = false, length = 100)
+    private String variableName;
+
+    /**
+     * Toggle: 1 = integration active, 0 = disabled
+     * Allows disabling without losing configuration
      */
     @Column(name = "enabled", columnDefinition = "BIT")
     @Builder.Default
-    private Boolean enabled = false;
+    private Boolean enabled = true;
 
     /**
      * User-provided values for API parameters (JSON object)
      * Keys MUST match param_name from api_template_params
-     * Example: {"domain": "mycompany", "issueKey": "PROJ-123"}
+     * Example: {"changeNo": "CHG1234567", "domain": "mycompany"}
+     * 
+     * These values are editable in RunTemplates mode, allowing users
+     * to input real values (e.g., a real change number) before fetching.
      */
     @Type(JsonType.class)
     @Column(name = "param_values", columnDefinition = "NVARCHAR(MAX)")
     private JsonNode paramValues;
+
+    /**
+     * Optional data transformation configuration (JSON object)
+     * Applied to API response data AFTER fetching, BEFORE storing in globalVariables.
+     * Supports: filters, field mappings, sorting, limiting, field selection.
+     * 
+     * See DataTransformation type in src/types/global-api-config.ts
+     * NULL = no transformation (raw data stored as-is)
+     */
+    @Type(JsonType.class)
+    @Column(name = "transformation", columnDefinition = "NVARCHAR(MAX)")
+    private JsonNode transformation;
+
+    /**
+     * Display order within the template's integration list (0, 1, 2, ...)
+     */
+    @Column(name = "order_index", nullable = false)
+    @Builder.Default
+    private Integer orderIndex = 0;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-    /**
-     * One API config has many field mappings
-     * CASCADE ALL: Mappings are deleted when config is deleted
-     */
-    @OneToMany(mappedBy = "templateApiConfig", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    @Builder.Default
-    private List<ApiMapping> mappings = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
@@ -1340,111 +1395,6 @@ public class TemplateApiConfig {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
-
-    public void addMapping(ApiMapping mapping) {
-        mappings.add(mapping);
-        mapping.setTemplateApiConfig(this);
-    }
-
-    public void removeMapping(ApiMapping mapping) {
-        mappings.remove(mapping);
-        mapping.setTemplateApiConfig(null);
-    }
-}
-```
-
-### ApiMapping Entity
-
-```java
-package com.example.pagebuilder.entity;
-
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.GenericGenerator;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-/**
- * Entity representing a mapping from API response data to a template section.
- * 
- * TABLE: api_mappings
- * PURPOSE: Maps API response data to specific sections within templates
- * Extracts fields from API JSON response and populates section variables.
- * 
- * RELATIONSHIPS:
- * - FOREIGN KEY: template_api_config_id → template_api_configs.id (CASCADE)
- * - FOREIGN KEY: section_id → template_sections.id (CASCADE)
- * 
- * DATA FLOW:
- * 1. API returns JSON response
- * 2. api_path extracts specific field (e.g., "fields.summary")
- * 3. Extracted data populates variable_name in the target section
- */
-@Entity
-@Table(name = "api_mappings", indexes = {
-    @Index(name = "idx_api_mappings_config", columnList = "template_api_config_id"),
-    @Index(name = "idx_api_mappings_section", columnList = "section_id")
-})
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class ApiMapping {
-
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "UNIQUEIDENTIFIER")
-    private UUID id;
-
-    /**
-     * Foreign key to template_api_configs.id
-     * CASCADE DELETE: Remove mapping when API config is deleted
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "template_api_config_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_api_mappings_config"))
-    @JsonBackReference
-    private TemplateApiConfig templateApiConfig;
-
-    /**
-     * Foreign key to template_sections.id
-     * CASCADE DELETE: Remove mapping when section is deleted
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "section_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_api_mappings_section"))
-    @JsonBackReference
-    private TemplateSection section;
-
-    /**
-     * JSONPath expression to extract data from API response
-     * Examples: 'fields.summary', 'data.items[0].title'
-     */
-    @Column(name = "api_path", nullable = false, columnDefinition = "NVARCHAR(MAX)")
-    private String apiPath;
-
-    /**
-     * Data type: 'text', 'list', 'html' (determines processing)
-     */
-    @Column(name = "data_type", nullable = false, length = 50)
-    private String dataType;
-
-    /**
-     * Which variable in section to populate (NULL = replace entire content)
-     */
-    @Column(name = "variable_name", length = 100)
-    private String variableName;
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
     }
 }
 ```
@@ -1659,8 +1609,8 @@ public class TemplateRequestDTO {
     @Schema(description = "Template sections")
     private List<TemplateSectionRequestDTO> sections;
 
-    @Schema(description = "API configuration")
-    private TemplateApiConfigRequestDTO apiConfig;
+    @Schema(description = "Global API integrations")
+    private List<GlobalApiIntegrationRequestDTO> globalApiIntegrations;
 }
 
 // === TemplateSectionRequestDTO ===
@@ -1825,50 +1775,43 @@ public class ApiTemplateParamRequestDTO {
     private JsonNode options;
 }
 
-// === TemplateApiConfigRequestDTO ===
+// === GlobalApiIntegrationRequestDTO ===
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Request payload for template API config")
-public class TemplateApiConfigRequestDTO {
+@Schema(description = "Request payload for a global API integration")
+public class GlobalApiIntegrationRequestDTO {
 
-    @NotNull(message = "API template ID is required")
-    @Schema(description = "API template ID")
-    private UUID apiTemplateId;
+    @Schema(description = "Integration ID (for updates, null for creates)")
+    private String integrationId;
+
+    @NotBlank(message = "Integration name is required")
+    @Size(max = 255, message = "Integration name must not exceed 255 characters")
+    @Schema(description = "User-friendly name", example = "ServiceNow Change Details")
+    private String name;
+
+    @NotBlank(message = "API template ID is required")
+    @Schema(description = "API template ID from api_templates catalog", example = "mock-servicenow-change")
+    private String apiTemplateId;
+
+    @NotBlank(message = "Variable name is required")
+    @Size(max = 100, message = "Variable name must not exceed 100 characters")
+    @Pattern(regexp = "^[a-zA-Z_][a-zA-Z0-9_]*$", message = "Variable name must be a valid identifier")
+    @Schema(description = "Global variable name to store API response", example = "snowDetails")
+    private String variableName;
 
     @Schema(description = "Is enabled", example = "true")
-    private Boolean enabled = false;
+    private Boolean enabled = true;
 
-    @Schema(description = "Parameter values (JSON object)")
+    @Schema(description = "User-provided parameter values (JSON object)", 
+            example = "{\"changeNo\": \"CHG1234567\"}")
     private JsonNode paramValues;
 
-    @Schema(description = "Field mappings")
-    private List<ApiMappingRequestDTO> mappings;
-}
+    @Schema(description = "Data transformation configuration (JSON object with filters, sort, limit, fieldMappings)")
+    private JsonNode transformation;
 
-// === ApiMappingRequestDTO ===
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Schema(description = "Request payload for API mapping")
-public class ApiMappingRequestDTO {
-
-    @NotNull(message = "Section ID is required")
-    @Schema(description = "Target section ID")
-    private UUID sectionId;
-
-    @NotBlank(message = "API path is required")
-    @Schema(description = "JSONPath expression", example = "fields.summary")
-    private String apiPath;
-
-    @NotBlank(message = "Data type is required")
-    @Size(max = 50, message = "Data type must not exceed 50 characters")
-    @Schema(description = "Data type", example = "text")
-    private String dataType;
-
-    @Size(max = 100, message = "Variable name must not exceed 100 characters")
-    @Schema(description = "Variable name to populate")
-    private String variableName;
+    @Schema(description = "Display order in integration list", example = "0")
+    private Integer orderIndex = 0;
 }
 ```
 
@@ -1924,7 +1867,7 @@ public class TemplateResponseDTO {
     private LocalDateTime updatedAt;
     private List<TemplateSectionResponseDTO> sections;
     private List<TemplateVariableResponseDTO> variables;
-    private TemplateApiConfigResponseDTO apiConfig;
+    private List<GlobalApiIntegrationResponseDTO> globalApiIntegrations;
     private Integer runCount;
 }
 
@@ -2025,38 +1968,35 @@ public class ApiTemplateParamResponseDTO {
     private LocalDateTime createdAt;
 }
 
-// === TemplateApiConfigResponseDTO ===
+// === GlobalApiIntegrationResponseDTO ===
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Template API config details")
-public class TemplateApiConfigResponseDTO {
+@Schema(description = "Global API integration details")
+public class GlobalApiIntegrationResponseDTO {
+    @Schema(description = "Integration ID")
     private UUID id;
+    @Schema(description = "Template ID this integration belongs to")
     private UUID templateId;
-    private UUID apiTemplateId;
+    @Schema(description = "API template ID from api_templates catalog")
+    private String apiTemplateId;
+    @Schema(description = "API template display name")
     private String apiTemplateName;
+    @Schema(description = "User-friendly integration name")
+    private String integrationName;
+    @Schema(description = "Global variable name for storing API response")
+    private String variableName;
+    @Schema(description = "Whether integration is active")
     private Boolean enabled;
+    @Schema(description = "User-provided parameter values (JSON)")
     private JsonNode paramValues;
+    @Schema(description = "Data transformation config (JSON)")
+    private JsonNode transformation;
+    @Schema(description = "Display order")
+    private Integer orderIndex;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private List<ApiMappingResponseDTO> mappings;
 }
-
-// === ApiMappingResponseDTO ===
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Schema(description = "API mapping details")
-public class ApiMappingResponseDTO {
-    private UUID id;
-    private UUID templateApiConfigId;
-    private UUID sectionId;
-    private String apiPath;
-    private String dataType;
-    private String variableName;
-    private LocalDateTime createdAt;
-}
-```
 
 ---
 
@@ -2114,8 +2054,8 @@ public interface TemplateRepository extends JpaRepository<Template, UUID> {
     @Query("SELECT t FROM Template t LEFT JOIN FETCH t.sections WHERE t.id = :id")
     Optional<Template> findByIdWithSections(@Param("id") UUID id);
     
-    @Query("SELECT t FROM Template t LEFT JOIN FETCH t.apiConfig WHERE t.id = :id")
-    Optional<Template> findByIdWithApiConfig(@Param("id") UUID id);
+    @Query("SELECT t FROM Template t LEFT JOIN FETCH t.globalApiIntegrations WHERE t.id = :id")
+    Optional<Template> findByIdWithApiIntegrations(@Param("id") UUID id);
     
     @Query("SELECT t, COUNT(r) FROM Template t LEFT JOIN t.runs r GROUP BY t ORDER BY t.createdAt DESC")
     List<Object[]> findAllWithRunCounts();
@@ -2254,33 +2194,41 @@ public interface ApiTemplateParamRepository extends JpaRepository<ApiTemplatePar
     void deleteByApiTemplateId(UUID apiTemplateId);
 }
 
-// === TemplateApiConfigRepository ===
+// === TemplateGlobalApiIntegrationRepository ===
 @Repository
-public interface TemplateApiConfigRepository extends JpaRepository<TemplateApiConfig, UUID> {
+public interface TemplateGlobalApiIntegrationRepository extends JpaRepository<TemplateGlobalApiIntegration, UUID> {
     
-    Optional<TemplateApiConfig> findByTemplateId(UUID templateId);
+    /**
+     * Find all integrations for a template, ordered by display position.
+     */
+    List<TemplateGlobalApiIntegration> findByTemplateIdOrderByOrderIndex(UUID templateId);
     
-    List<TemplateApiConfig> findByApiTemplateId(UUID apiTemplateId);
+    /**
+     * Find integration by template and variable name (unique constraint).
+     */
+    Optional<TemplateGlobalApiIntegration> findByTemplateIdAndVariableName(UUID templateId, String variableName);
     
-    List<TemplateApiConfig> findByEnabled(Boolean enabled);
+    /**
+     * Find all integrations using a specific API template.
+     */
+    List<TemplateGlobalApiIntegration> findByApiTemplateId(UUID apiTemplateId);
     
-    @Query("SELECT c FROM TemplateApiConfig c LEFT JOIN FETCH c.mappings WHERE c.id = :id")
-    Optional<TemplateApiConfig> findByIdWithMappings(@Param("id") UUID id);
+    /**
+     * Find enabled integrations for a template.
+     */
+    List<TemplateGlobalApiIntegration> findByTemplateIdAndEnabled(UUID templateId, Boolean enabled);
     
-    void deleteByTemplateId(UUID templateId);
-}
-
-// === ApiMappingRepository ===
-@Repository
-public interface ApiMappingRepository extends JpaRepository<ApiMapping, UUID> {
+    /**
+     * Delete all integrations for a template (used during template update).
+     */
+    @Modifying
+    @Query("DELETE FROM TemplateGlobalApiIntegration i WHERE i.template.id = :templateId")
+    void deleteByTemplateId(@Param("templateId") UUID templateId);
     
-    List<ApiMapping> findByTemplateApiConfigId(UUID templateApiConfigId);
-    
-    List<ApiMapping> findBySectionId(UUID sectionId);
-    
-    void deleteByTemplateApiConfigId(UUID templateApiConfigId);
-    
-    void deleteBySectionId(UUID sectionId);
+    /**
+     * Count integrations for a template.
+     */
+    long countByTemplateId(UUID templateId);
 }
 
 // Note: TemplateSectionVariableRepository is no longer needed.
@@ -2362,6 +2310,8 @@ public class TemplateService {
 
     private final TemplateRepository templateRepository;
     private final TemplateSectionRepository sectionRepository;
+    private final TemplateGlobalApiIntegrationRepository apiIntegrationRepository;
+    private final ApiTemplateRepository apiTemplateRepository;
     private final TemplateMapper templateMapper;
     private final TemplateSectionMapper sectionMapper;
 
@@ -2405,9 +2355,13 @@ public class TemplateService {
             }
         }
         
+        // Handle global API integrations
+        addGlobalApiIntegrations(template, request.getGlobalApiIntegrations());
+        
         Template saved = templateRepository.save(template);
-        log.info("Created template '{}' with {} sections", saved.getName(), 
-                saved.getSections() != null ? saved.getSections().size() : 0);
+        log.info("Created template '{}' with {} sections and {} API integrations", saved.getName(), 
+                saved.getSections() != null ? saved.getSections().size() : 0,
+                saved.getGlobalApiIntegrations() != null ? saved.getGlobalApiIntegrations().size() : 0);
         return templateMapper.toResponseDTO(saved);
     }
 
@@ -2519,10 +2473,59 @@ public class TemplateService {
             }
         }
         
+        }
+        
+        // Update global API integrations (clear old, add new via CASCADE)
+        existing.getGlobalApiIntegrations().clear();
+        addGlobalApiIntegrations(existing, request.getGlobalApiIntegrations());
+        
         Template updated = templateRepository.save(existing);
-        log.info("Updated template '{}' (id: {}) with {} sections", updated.getName(), id,
-                updated.getSections() != null ? updated.getSections().size() : 0);
+        log.info("Updated template '{}' (id: {}) with {} sections and {} API integrations", 
+                updated.getName(), id,
+                updated.getSections() != null ? updated.getSections().size() : 0,
+                updated.getGlobalApiIntegrations() != null ? updated.getGlobalApiIntegrations().size() : 0);
         return templateMapper.toResponseDTO(updated);
+    }
+
+    /**
+     * Add global API integrations to a template from the request DTOs.
+     * Each integration links to an api_template and stores:
+     * - variableName: global variable to store API response (e.g., "snowDetails")
+     * - paramValues: user-provided API parameter values (e.g., {"changeNo": "CHG123"})
+     * - transformation: optional data transformation config (filters, sort, limit)
+     * 
+     * These integrations are persisted in template_global_api_integrations table
+     * and loaded back when the template is retrieved.
+     */
+    private void addGlobalApiIntegrations(Template template, List<GlobalApiIntegrationRequestDTO> integrations) {
+        if (integrations == null || integrations.isEmpty()) return;
+        
+        for (int i = 0; i < integrations.size(); i++) {
+            GlobalApiIntegrationRequestDTO dto = integrations.get(i);
+            
+            // Resolve the API template reference
+            ApiTemplate apiTemplate = apiTemplateRepository.findById(UUID.fromString(dto.getApiTemplateId()))
+                    .orElse(null); // Allow null for mock/demo templates with string IDs
+            
+            TemplateGlobalApiIntegration integration = TemplateGlobalApiIntegration.builder()
+                    .integrationName(dto.getName())
+                    .variableName(dto.getVariableName())
+                    .enabled(dto.getEnabled() != null ? dto.getEnabled() : true)
+                    .paramValues(dto.getParamValues())
+                    .transformation(dto.getTransformation())
+                    .orderIndex(dto.getOrderIndex() != null ? dto.getOrderIndex() : i)
+                    .build();
+            
+            if (apiTemplate != null) {
+                integration.setApiTemplate(apiTemplate);
+            }
+            
+            integration.setTemplate(template);
+            template.getGlobalApiIntegrations().add(integration);
+        }
+        
+        log.debug("Added {} global API integrations to template '{}'", 
+                integrations.size(), template.getName());
     }
 
     public void deleteTemplate(UUID id) {
