@@ -217,6 +217,18 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection, onClose }: G
     });
   };
 
+  // Build param overrides: user-provided values that match mock data field names
+  const getParamOverrides = (integration: GlobalApiIntegration, template: any): Record<string, string> => {
+    const overrides: Record<string, string> = {};
+    if (!integration.paramValues) return overrides;
+    for (const [key, value] of Object.entries(integration.paramValues)) {
+      if (value && value.trim() !== '') {
+        overrides[key] = value;
+      }
+    }
+    return overrides;
+  };
+
   const testAndFetchApi = async (integration: GlobalApiIntegration, useMock: boolean = false) => {
     const template = getTemplateById(integration.templateId);
     if (!template) {
@@ -234,9 +246,11 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection, onClose }: G
       let rawData: any;
 
       if (useMock && template.mockData) {
-        // Use mock data directly
+        // Use mock data with user-provided param overrides
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-        rawData = template.mockData;
+        rawData = Array.isArray(template.mockData) 
+          ? template.mockData.map((item: any) => ({ ...item, ...getParamOverrides(integration, template) }))
+          : { ...template.mockData, ...getParamOverrides(integration, template) };
       } else {
         // Build a temporary ApiConfig to use existing utilities
         const tempApiConfig = {
