@@ -1387,15 +1387,16 @@ const RunTemplates = () => {
                   });
                 } else {
                   bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
-                    const obj: Record<string, string> = {};
-                    tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                    const cells = tableData.jsonMapping.columnMappings.map((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
-                      obj[mapping.jsonPath] = cellValue;
-                      obj[`${mapping.jsonPath}_style`] = buildCellStyleString(cellStyle);
+                      return {
+                        value: cellValue,
+                        style: buildCellStyleString(cellStyle)
+                      };
                     });
-                    return obj;
+                    return { cells };
                   });
                 }
               }
@@ -1461,15 +1462,16 @@ const RunTemplates = () => {
                   });
                 } else {
                   bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
-                    const obj: Record<string, string> = {};
-                    tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                    const cells = tableData.jsonMapping.columnMappings.map((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
-                      obj[mapping.jsonPath] = cellValue;
-                      obj[`${mapping.jsonPath}_style`] = buildCellStyleString(cellStyle);
+                      return {
+                        value: cellValue,
+                        style: buildCellStyleString(cellStyle)
+                      };
                     });
-                    return obj;
+                    return { cells };
                   });
                 }
               }
