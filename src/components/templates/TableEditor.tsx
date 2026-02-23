@@ -894,12 +894,19 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                       backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#FFC000') : undefined),
                     };
 
+                    const hasMerge = merge && (merge.rowSpan > 1 || merge.colSpan > 1);
+
                     return (
                       <td key={colIndex} rowSpan={merge?.rowSpan} colSpan={merge?.colSpan}
                         className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''} ${isCellInRange(rowIndex, colIndex) ? styles.inRange : ''}`}
                         style={tdStyle}
                         onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
                         onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}>
+                        {hasMerge && (
+                          <span className={styles.mergeBadge} title={`Merged ${merge.rowSpan}×${merge.colSpan}`}>
+                            <Merge size={10} />
+                          </span>
+                        )}
                         <Input value={cell} onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
                           className={styles.cellInput} style={inputStyle}
                           placeholder={isHeader ? `Header ${colIndex + 1}` : ''} />

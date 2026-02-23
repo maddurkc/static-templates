@@ -359,3 +359,20 @@
   box-shadow: 0 0 0 2px hsl(var(--primary));
   transform: scale(1.1);
 }
+
+/* ── Merge Badge ── */
+.mergeBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+  z-index: 2;
+  pointer-events: none;
+}
