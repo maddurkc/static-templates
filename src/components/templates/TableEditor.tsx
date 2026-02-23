@@ -203,9 +203,37 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
   };
 
   const updateColumnWidth = (colIndex: number, width: string) => {
+    const totalCols = tableData.headers?.length || tableData.rows?.[0]?.length || 0;
     const newWidths = [...(tableData.columnWidths || [])];
-    while (newWidths.length <= colIndex) newWidths.push('auto');
+    while (newWidths.length < totalCols) newWidths.push('auto');
     newWidths[colIndex] = width;
+
+    // Auto-distribute remaining percentage among other columns
+    const parsePercent = (v: string) => v.endsWith('%') ? parseFloat(v) : 0;
+    const assignedPercent = newWidths.reduce((sum, w, i) => {
+      if (i === colIndex) return sum;
+      // Only count columns that were explicitly set to a percentage
+      return sum + (w.endsWith('%') ? parsePercent(w) : 0);
+    }, 0);
+    const currentPercent = parsePercent(width);
+
+    if (currentPercent > 0) {
+      // Distribute remaining percentage equally among non-explicitly-set columns
+      const otherExplicitPercent = assignedPercent;
+      const remaining = Math.max(0, 100 - currentPercent - otherExplicitPercent);
+      const autoColumns = newWidths.reduce((cols, w, i) => {
+        if (i !== colIndex && !w.endsWith('%')) cols.push(i);
+        return cols;
+      }, [] as number[]);
+
+      if (autoColumns.length > 0) {
+        const each = Math.round((remaining / autoColumns.length) * 100) / 100;
+        autoColumns.forEach(i => {
+          newWidths[i] = `${each}%`;
+        });
+      }
+    }
+
     updateTableData({ ...tableData, columnWidths: newWidths });
   };
 
@@ -681,14 +709,17 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                           <SelectTrigger className="h-6 text-xs w-16"><SelectValue /></SelectTrigger>
                           <SelectContent className="bg-popover border shadow-lg z-50">
                             <SelectItem value="auto">Auto</SelectItem>
-                            <SelectItem value="50px">50px</SelectItem>
-                            <SelectItem value="100px">100px</SelectItem>
-                            <SelectItem value="150px">150px</SelectItem>
-                            <SelectItem value="200px">200px</SelectItem>
+                            <SelectItem value="10%">10%</SelectItem>
+                            <SelectItem value="15%">15%</SelectItem>
                             <SelectItem value="20%">20%</SelectItem>
                             <SelectItem value="25%">25%</SelectItem>
+                            <SelectItem value="30%">30%</SelectItem>
                             <SelectItem value="33%">33%</SelectItem>
+                            <SelectItem value="40%">40%</SelectItem>
                             <SelectItem value="50%">50%</SelectItem>
+                            <SelectItem value="60%">60%</SelectItem>
+                            <SelectItem value="70%">70%</SelectItem>
+                            <SelectItem value="75%">75%</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
