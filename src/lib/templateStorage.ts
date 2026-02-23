@@ -507,6 +507,202 @@ export const getTemplates = (): Template[] => {
           }
         ]
       },
+      {
+        id: "demo-api-integration",
+        name: "API Integration Demo - User Profile",
+        subject: "User Profile: {{userName}}",
+        html: "",
+        createdAt: new Date().toISOString(),
+        sectionCount: 8,
+        archived: false,
+        globalApiConfig: {
+          integrations: [
+            {
+              id: "integration-user-api",
+              name: "User Profile API",
+              variableName: "userDetails",
+              templateId: "jsonplaceholder-user",
+              enabled: true,
+              paramValues: { userId: "1" }
+            },
+            {
+              id: "integration-issues-api",
+              name: "Project Issues",
+              variableName: "issuesList",
+              templateId: "mock-object-list",
+              enabled: true,
+              paramValues: {}
+            }
+          ],
+          globalVariables: {
+            userDetails: {
+              name: "userDetails",
+              data: {
+                id: 1,
+                name: "Leanne Graham",
+                username: "Bret",
+                email: "leanne@example.com",
+                phone: "1-770-736-8031",
+                website: "hildegard.org",
+                company: {
+                  name: "Romaguera-Crona",
+                  catchPhrase: "Multi-layered client-server neural-net"
+                },
+                address: {
+                  street: "Kulas Light",
+                  city: "Gwenborough",
+                  zipcode: "92998-3874"
+                }
+              },
+              dataType: "object",
+              schema: {
+                "id": "number",
+                "name": "string",
+                "username": "string",
+                "email": "string",
+                "phone": "string",
+                "website": "string",
+                "company.name": "string",
+                "company.catchPhrase": "string",
+                "address.street": "string",
+                "address.city": "string",
+                "address.zipcode": "string"
+              }
+            },
+            issuesList: {
+              name: "issuesList",
+              data: [
+                { id: "JIRA-101", title: "Fix login timeout", status: "Done", priority: "High", assignee: "John Doe" },
+                { id: "JIRA-102", title: "Add dark mode support", status: "In Progress", priority: "Medium", assignee: "Jane Smith" },
+                { id: "JIRA-103", title: "Optimize database queries", status: "Open", priority: "High", assignee: "Bob Wilson" },
+                { id: "JIRA-104", title: "Update API documentation", status: "Done", priority: "Low", assignee: "Alice Brown" }
+              ],
+              dataType: "list",
+              schema: {
+                "id": "string",
+                "title": "string",
+                "status": "string",
+                "priority": "string",
+                "assignee": "string"
+              }
+            }
+          }
+        },
+        sections: [
+          {
+            id: "section-api-title",
+            type: "heading1",
+            content: "<h1>User Profile Report</h1>",
+            order: 0,
+            isLabelEditable: false,
+            variables: {},
+            styles: { fontSize: '32px', color: '#1a365d' }
+          },
+          {
+            id: "section-api-subtitle",
+            type: "heading2",
+            content: "<h2>Profile: {{userDetails.name}}</h2>",
+            order: 1,
+            isLabelEditable: true,
+            variables: { userName: "Leanne Graham" },
+            styles: { fontSize: '24px', color: '#2d3748' }
+          },
+          {
+            id: "section-api-info",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 2,
+            isLabelEditable: true,
+            variables: {
+              label: "Contact Information",
+              contentType: "text",
+              content: "Email: {{userDetails.email}} | Phone: {{userDetails.phone}} | Website: {{userDetails.website}}"
+            },
+            styles: {}
+          },
+          {
+            id: "section-api-company",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 3,
+            isLabelEditable: true,
+            variables: {
+              label: "Company Details",
+              contentType: "text",
+              content: "{{userDetails.company.name}} — {{userDetails.company.catchPhrase}}"
+            },
+            styles: {}
+          },
+          {
+            id: "section-api-address",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 4,
+            isLabelEditable: true,
+            variables: {
+              label: "Address",
+              contentType: "text",
+              content: "{{userDetails.address.street}}, {{userDetails.address.city}} {{userDetails.address.zipcode}}"
+            },
+            styles: {}
+          },
+          {
+            id: "section-api-issues-heading",
+            type: "heading3",
+            content: "<h3>Assigned Issues</h3>",
+            order: 5,
+            isLabelEditable: false,
+            variables: {},
+            styles: { fontSize: '20px', color: '#2d3748' }
+          },
+          {
+            id: "section-api-issues-table",
+            type: "table",
+            content: "",
+            order: 6,
+            variables: {
+              tableData: {
+                rows: [
+                  ["Issue ID", "Title", "Status", "Priority", "Assignee"],
+                  ["JIRA-101", "Fix login timeout", "Done", "High", "John Doe"],
+                  ["JIRA-102", "Add dark mode support", "In Progress", "Medium", "Jane Smith"],
+                  ["JIRA-103", "Optimize database queries", "Open", "High", "Bob Wilson"],
+                  ["JIRA-104", "Update API documentation", "Done", "Low", "Alice Brown"]
+                ],
+                showBorder: true,
+                borderColor: "#dee2e6",
+                mergedCells: {},
+                cellStyles: {},
+                headerStyle: { backgroundColor: "#2563eb", textColor: "#ffffff", bold: true },
+                columnWidths: ["15%", "30%", "15%", "15%", "25%"],
+                cellPadding: "medium" as const,
+                isStatic: false,
+                tableVariableName: "issueRows",
+                jsonMapping: {
+                  enabled: true,
+                  columnMappings: [
+                    { header: "Issue ID", jsonPath: "id" },
+                    { header: "Title", jsonPath: "title" },
+                    { header: "Status", jsonPath: "status" },
+                    { header: "Priority", jsonPath: "priority" },
+                    { header: "Assignee", jsonPath: "assignee" }
+                  ]
+                }
+              }
+            },
+            styles: {}
+          },
+          {
+            id: "section-api-footer",
+            type: "paragraph",
+            content: "<p>This template demonstrates API integration. Open the API panel to see how data from JSONPlaceholder and Mock APIs populate the template variables automatically.</p>",
+            order: 7,
+            isLabelEditable: false,
+            variables: {},
+            styles: { fontSize: '13px', color: '#718096', fontStyle: 'italic' }
+          }
+        ]
+      },
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mockTemplates));
     return mockTemplates;
