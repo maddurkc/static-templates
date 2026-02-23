@@ -1852,7 +1852,7 @@ ${sectionRows}
                     API ({globalApiConfig.integrations.length})
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-[400px] p-0 overflow-hidden [&>button]:hidden">
+                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-[520px] sm:max-w-[520px] p-0 overflow-hidden [&>button]:hidden">
                   <GlobalApiPanel 
                     config={globalApiConfig}
                     onUpdate={setGlobalApiConfig}
