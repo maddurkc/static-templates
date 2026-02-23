@@ -628,6 +628,17 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     } catch { toast.error('Invalid JSON format'); }
   };
 
+  // Helper: convert xlsx RGB hex (e.g. "FF0000" or "FFFF0000") to CSS hex
+  const xlsxColorToHex = (color: any): string | undefined => {
+    if (!color) return undefined;
+    if (color.rgb) {
+      const rgb = color.rgb.length === 8 ? color.rgb.slice(2) : color.rgb;
+      return `#${rgb}`;
+    }
+    if (color.theme !== undefined) return undefined; // theme colors not easily resolvable
+    return undefined;
+  };
+
   const importFileData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -637,10 +648,12 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     reader.onload = (evt) => {
       try {
         let rows: string[][] = [];
+        let extractedCellStyles: Record<string, CellStyle> = {};
+        let extractedMergedCells: Record<string, { rowSpan: number; colSpan: number }> = {};
+
         if (isCSV) {
           const text = evt.target?.result as string;
           rows = text.split(/\r?\n/).filter(line => line.trim()).map(line => {
-            // Simple CSV parse handling quoted fields
             const result: string[] = [];
             let current = '';
             let inQuotes = false;
@@ -655,16 +668,89 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
           });
         } else {
           const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const workbook = XLSX.read(data, { type: 'array', cellStyles: true });
           const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+
+          // Extract raw rows with values
           rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: '' })
             .filter((row: string[]) => row.some(cell => String(cell).trim() !== ''));
           rows = rows.map(row => row.map(cell => String(cell)));
+
+          // Extract cell styles from the sheet
+          for (let R = range.s.r; R <= range.e.r; R++) {
+            for (let C = range.s.c; C <= range.e.c; C++) {
+              const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+              const xlCell = sheet[cellAddr];
+              if (!xlCell) continue;
+
+              const style: CellStyle = {};
+              let hasStyle = false;
+
+              // Font styles
+              const font = xlCell.s?.font;
+              if (font) {
+                if (font.bold) { style.bold = true; hasStyle = true; }
+                if (font.italic) { style.italic = true; hasStyle = true; }
+                if (font.underline) { style.underline = true; hasStyle = true; }
+                const textColor = xlsxColorToHex(font.color);
+                if (textColor && textColor !== '#000000') { style.color = textColor; hasStyle = true; }
+                if (font.sz) { style.fontSize = `${font.sz}pt`; hasStyle = true; }
+              }
+
+              // Fill / background color
+              const fill = xlCell.s?.fill;
+              if (fill) {
+                const bgColor = xlsxColorToHex(fill.fgColor) || xlsxColorToHex(fill.bgColor);
+                if (bgColor && bgColor !== '#FFFFFF' && bgColor !== '#000000') {
+                  style.backgroundColor = bgColor;
+                  hasStyle = true;
+                }
+              }
+
+              // Alignment
+              const alignment = xlCell.s?.alignment;
+              if (alignment) {
+                if (alignment.horizontal && ['left', 'center', 'right', 'justify'].includes(alignment.horizontal)) {
+                  style.textAlign = alignment.horizontal as CellStyle['textAlign'];
+                  hasStyle = true;
+                }
+                if (alignment.vertical && ['top', 'middle', 'bottom'].includes(alignment.vertical)) {
+                  style.verticalAlign = alignment.vertical === 'center' ? 'middle' : alignment.vertical as CellStyle['verticalAlign'];
+                  hasStyle = true;
+                }
+              }
+
+              // Hyperlinks — wrap cell value in <a> tag
+              if (xlCell.l && xlCell.l.Target) {
+                const cellValue = rows[R]?.[C];
+                if (cellValue !== undefined) {
+                  rows[R][C] = `<a href="${xlCell.l.Target}" style="color: #0066CC; text-decoration: underline;">${cellValue || xlCell.l.Target}</a>`;
+                }
+              }
+
+              if (hasStyle) {
+                // Store using row-col key (will be adjusted for header offset later)
+                extractedCellStyles[`${R}-${C}`] = style;
+              }
+            }
+          }
+
+          // Extract merged cells from sheet
+          if (sheet['!merges']) {
+            for (const merge of sheet['!merges']) {
+              const rowSpan = merge.e.r - merge.s.r + 1;
+              const colSpan = merge.e.c - merge.s.c + 1;
+              if (rowSpan > 1 || colSpan > 1) {
+                extractedMergedCells[`${merge.s.r}-${merge.s.c}`] = { rowSpan, colSpan };
+              }
+            }
+          }
         }
 
         if (rows.length < 1) { toast.error('File is empty'); return; }
         let truncatedFile = false;
-        if (rows.length > MAX_IMPORT_ROWS + 1) { // +1 for header row
+        if (rows.length > MAX_IMPORT_ROWS + 1) {
           truncatedFile = true;
           rows = rows.slice(0, MAX_IMPORT_ROWS + 1);
         }
@@ -673,17 +759,41 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
         let columnMappings: { header: string; jsonPath: string }[];
         let importedHeaders: string[];
         let dataRows: string[][];
+        let finalCellStyles: Record<string, CellStyle> = {};
+        let finalMergedCells: Record<string, { rowSpan: number; colSpan: number }> = {};
         
         if (headerPos === 'first-row') {
-          // First row is headers — extract and use as headers
           importedHeaders = rows[0];
           dataRows = rows.slice(1);
           columnMappings = importedHeaders.map((h, i) => ({
             header: h || 'Column',
             jsonPath: `col_${i + 1}`
           }));
+
+          // Map header styles (row 0 in Excel -> h-colIndex)
+          for (const [key, style] of Object.entries(extractedCellStyles)) {
+            const [r, c] = key.split('-').map(Number);
+            if (r === 0) {
+              finalCellStyles[`h-${c}`] = style;
+            } else {
+              finalCellStyles[`${r - 1}-${c}`] = style; // shift row index by -1
+            }
+          }
+
+          // Adjust merged cells for header row offset
+          for (const [key, merge] of Object.entries(extractedMergedCells)) {
+            const [r, c] = key.split('-').map(Number);
+            if (r === 0) {
+              // Header merges are not directly supported in the same way, skip or keep
+              // but if it spans into data rows, we adjust
+              if (merge.rowSpan > 1) {
+                finalMergedCells[`${r}-${c}`] = { rowSpan: merge.rowSpan - 1, colSpan: merge.colSpan };
+              }
+            } else {
+              finalMergedCells[`${r - 1}-${c}`] = merge;
+            }
+          }
         } else if (headerPos === 'first-column') {
-          // First column values become headers, rest is data
           importedHeaders = rows.map(row => row[0] || '');
           dataRows = rows.map(row => row.slice(1));
           const colCount = dataRows[0]?.length || 1;
@@ -691,8 +801,24 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
             header: `Column ${i + 1}`,
             jsonPath: `col_${i + 1}`
           }));
+
+          // Adjust column indices (shift by -1 for first-column header removal)
+          for (const [key, style] of Object.entries(extractedCellStyles)) {
+            const [r, c] = key.split('-').map(Number);
+            if (c === 0) {
+              // First column is header, store as header-row style
+              finalCellStyles[`${r}-0`] = style;
+            } else {
+              finalCellStyles[`${r}-${c - 1}`] = style;
+            }
+          }
+          for (const [key, merge] of Object.entries(extractedMergedCells)) {
+            const [r, c] = key.split('-').map(Number);
+            if (c > 0) {
+              finalMergedCells[`${r}-${c - 1}`] = merge;
+            }
+          }
         } else {
-          // No headers — all rows are data
           importedHeaders = [];
           dataRows = rows;
           const colCount = rows[0]?.length || 1;
@@ -700,6 +826,22 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
             header: `Column ${i + 1}`,
             jsonPath: `col_${i + 1}`
           }));
+          finalCellStyles = extractedCellStyles;
+          finalMergedCells = extractedMergedCells;
+        }
+
+        // Detect header style from first header row cells
+        let headerStyle = tableData.headerStyle;
+        if (headerPos === 'first-row' && Object.keys(finalCellStyles).some(k => k.startsWith('h-'))) {
+          const firstHeaderStyle = finalCellStyles['h-0'];
+          if (firstHeaderStyle) {
+            headerStyle = {
+              ...headerStyle,
+              backgroundColor: firstHeaderStyle.backgroundColor || headerStyle?.backgroundColor || '#FFC000',
+              textColor: firstHeaderStyle.color || headerStyle?.textColor || '#000000',
+              bold: firstHeaderStyle.bold ?? headerStyle?.bold ?? true,
+            };
+          }
         }
 
         updateTableData({
@@ -709,13 +851,22 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
           columnWidths: new Array(columnMappings.length).fill('auto'),
           jsonMapping: { enabled: true, columnMappings },
           isStatic: false,
-          tableVariableName: tableData.tableVariableName || generateTableVariableName(section.id)
+          tableVariableName: tableData.tableVariableName || generateTableVariableName(section.id),
+          cellStyles: finalCellStyles,
+          mergedCells: finalMergedCells,
+          headerStyle,
         });
+
+        const styleCount = Object.keys(finalCellStyles).length;
+        const mergeCount = Object.keys(finalMergedCells).length;
+        const extras: string[] = [];
+        if (styleCount > 0) extras.push(`${styleCount} styled cells`);
+        if (mergeCount > 0) extras.push(`${mergeCount} merges`);
 
         if (truncatedFile) {
           toast.warning(`Import capped at ${MAX_IMPORT_ROWS} rows from ${file.name}. Original file had more rows.`);
         } else {
-          toast.success(`Imported ${dataRows.length} rows with ${columnMappings.length} columns from ${file.name}`);
+          toast.success(`Imported ${dataRows.length} rows with ${columnMappings.length} columns from ${file.name}${extras.length ? ` (${extras.join(', ')})` : ''}`);
         }
       } catch (err) {
         console.error('File import error:', err);
@@ -726,7 +877,6 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     if (isCSV) { reader.readAsText(file); }
     else { reader.readAsArrayBuffer(file); }
 
-    // Reset input so same file can be re-uploaded
     e.target.value = '';
   };
 
