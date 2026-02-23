@@ -429,7 +429,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
           </TooltipTrigger><TooltipContent side="bottom">Insert row below</TooltipContent></Tooltip>
 
           <Tooltip><TooltipTrigger asChild>
-            <button className={styles.toolbarBtn} onClick={deleteRow} disabled={!selectedCell || tableData.rows.length <= 1}><Rows3 size={14} /></button>
+            <button className={styles.toolbarBtn} onClick={deleteRow} disabled={!selectedCell}><Rows3 size={14} /></button>
           </TooltipTrigger><TooltipContent side="bottom">Delete row</TooltipContent></Tooltip>
 
           <div className={styles.toolbarDivider} />
