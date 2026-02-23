@@ -90,19 +90,19 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
   if (headerPosition === 'first-row') {
     // Header row — widths come from header.style and header.width
     html += '<thead><tr>';
-    html += `<th th:each="header : \${${headerVarName}}" th:style="\${header.style}" th:attr="width=\${header.width}" style="${headerCellStyle}" valign="middle"><span th:utext="\${header.value}"/></th>`;
+    html += `<th th:each="header : \${${headerVarName}}" th:if="\${!header.skip}" th:style="\${header.style}" th:attr="width=\${header.width},colspan=\${header.colSpan}" style="${headerCellStyle}" valign="middle"><span th:utext="\${header.value}"/></th>`;
     html += '</tr></thead>';
 
     // Body rows — widths come from cell.style and cell.width
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" th:attr="width=\${cell.width}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
+    html += `<td th:each="cell : \${row.cells}" th:if="\${!cell.skip}" th:style="\${cell.style}" th:attr="width=\${cell.width},rowspan=\${cell.rowSpan},colspan=\${cell.colSpan}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
   } else if (headerPosition === 'first-column') {
     html += '<tbody>';
-    html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<th th:style="\${row.header_style}" th:attr="width=\${row.header_width}" style="${headerCellStyle}" valign="middle"><span th:utext="\${row.header}"/></th>`;
+    html += `<tr th:each="row : \${${variableName}}" th:if="\${!row.skip}">`;
+    html += `<th th:style="\${row.header_style}" th:attr="width=\${row.header_width},rowspan=\${row.rowSpan}" style="${headerCellStyle}" valign="middle"><span th:utext="\${row.header}"/></th>`;
     html += `<td th:style="\${row.value_style}" th:attr="width=\${row.value_width}" style="${bodyCellStyle}" valign="top"><span th:utext="\${row.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
@@ -110,7 +110,7 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
     // No headers
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" th:attr="width=\${cell.width}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
+    html += `<td th:each="cell : \${row.cells}" th:if="\${!cell.skip}" th:style="\${cell.style}" th:attr="width=\${cell.width},rowspan=\${cell.rowSpan},colspan=\${cell.colSpan}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
   }
