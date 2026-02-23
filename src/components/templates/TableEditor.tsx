@@ -457,14 +457,6 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                   onClick={mergeCells} disabled={!selectedCell}><Merge size={14} /></button>
               </TooltipTrigger><TooltipContent side="bottom">Merge / Unmerge cells</TooltipContent></Tooltip>
 
-              <div className={styles.toolbarDivider} />
-
-              {/* Border toggle */}
-              <Tooltip><TooltipTrigger asChild>
-                <button className={`${styles.toolbarBtn} ${tableData.showBorder ? styles.active : ''}`} onClick={toggleBorder}>
-                  <Grid3X3 size={14} />
-                </button>
-              </TooltipTrigger><TooltipContent side="bottom">Toggle borders</TooltipContent></Tooltip>
             </>
           )}
 
@@ -594,6 +586,12 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
             <PopoverContent className="p-3 bg-popover border shadow-lg z-50" align="start" side="bottom">
               <div className={styles.propsPanel}>
                 <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: 'hsl(var(--foreground))' }}>Table Properties</h4>
+
+                {/* Show Border */}
+                <div className={styles.propRow}>
+                  <span className={styles.propLabel}>Show Border</span>
+                  <Switch checked={tableData.showBorder} onCheckedChange={(checked) => updateTableData({ ...tableData, showBorder: checked })} />
+                </div>
 
                 {/* Border color */}
                 {tableData.showBorder && (
