@@ -217,14 +217,14 @@ export const DataTransformationEditor = ({
               <div className={styles.sortField}>
                 <Label className={styles.smallLabel}>Sort by</Label>
                 <Select
-                  value={transformation.sortField || ''}
-                  onValueChange={(value) => onChange({ ...transformation, sortField: value || undefined })}
-                >
-                  <SelectTrigger className={styles.fieldSelect}>
-                    <SelectValue placeholder="No sorting" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No sorting</SelectItem>
+                   value={transformation.sortField || '__none__'}
+                   onValueChange={(value) => onChange({ ...transformation, sortField: value === '__none__' ? undefined : value })}
+                 >
+                   <SelectTrigger className={styles.fieldSelect}>
+                     <SelectValue placeholder="No sorting" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="__none__">No sorting</SelectItem>
                     {availableFields.map(field => (
                       <SelectItem key={field} value={field}>{field}</SelectItem>
                     ))}
