@@ -252,10 +252,61 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     updateTableData({ ...tableData, cellStyles: { ...tableData.cellStyles, [cellKey]: { ...getHeaderCellStyle(colIndex), ...style } } });
   };
 
+  // Helper: compute equal width string for N columns
+  const equalWidth = (n: number) => `${Math.floor(100 / n)}%`;
+
+  // Helper: get resolved width for a column (replace 'auto' with computed equal share)
+  const getResolvedWidth = (colIndex: number): string => {
+    const widths = tableData.columnWidths || [];
+    const totalCols = (tableData.headers || []).length || widths.length;
+    const w = widths[colIndex];
+    if (w && w !== 'auto') return w;
+    // Calculate remaining % after fixed columns
+    let usedPercent = 0;
+    let autoCount = 0;
+    for (let i = 0; i < totalCols; i++) {
+      const cw = widths[i];
+      if (cw && cw !== 'auto' && cw.endsWith('%')) {
+        usedPercent += parseInt(cw, 10);
+      } else {
+        autoCount++;
+      }
+    }
+    const remaining = Math.max(0, 100 - usedPercent);
+    return autoCount > 0 ? `${Math.floor(remaining / autoCount)}%` : `${Math.floor(100 / totalCols)}%`;
+  };
+
   const updateColumnWidth = (colIndex: number, width: string) => {
-    const newWidths = [...(tableData.columnWidths || [])];
-    while (newWidths.length <= colIndex) newWidths.push('auto');
+    const totalCols = (tableData.headers || []).length || 2;
+    const newWidths = [...(tableData.columnWidths || new Array(totalCols).fill('auto'))];
+    while (newWidths.length < totalCols) newWidths.push('auto');
+
     newWidths[colIndex] = width;
+
+    // Validate: sum of all fixed % columns must not exceed 100%
+    let fixedSum = 0;
+    let autoCount = 0;
+    for (let i = 0; i < totalCols; i++) {
+      const w = newWidths[i];
+      if (w && w !== 'auto' && w.endsWith('%')) {
+        fixedSum += parseInt(w, 10);
+      } else {
+        autoCount++;
+      }
+    }
+
+    if (fixedSum > 100) {
+      toast.error(`Total width exceeds 100%. Please reduce other columns first.`);
+      return;
+    }
+
+    // Auto-distribute remaining % to 'auto' columns
+    if (autoCount > 0) {
+      const remaining = 100 - fixedSum;
+      const perAuto = Math.floor(remaining / autoCount);
+      // Don't actually write these computed values — keep 'auto' and resolve at render time
+    }
+
     updateTableData({ ...tableData, columnWidths: newWidths });
   };
 
@@ -801,17 +852,19 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                       <div key={colIndex} style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
                         <span style={{ fontSize: '0.5625rem', color: 'hsl(var(--muted-foreground))' }}>Col {colIndex + 1}</span>
                         <Select value={tableData.columnWidths?.[colIndex] || 'auto'} onValueChange={(v) => updateColumnWidth(colIndex, v)}>
-                          <SelectTrigger className="h-6 text-xs w-16"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-6 text-xs w-20"><SelectValue /></SelectTrigger>
                           <SelectContent className="bg-popover border shadow-lg z-50">
-                            <SelectItem value="auto">Auto</SelectItem>
-                            <SelectItem value="50px">50px</SelectItem>
-                            <SelectItem value="100px">100px</SelectItem>
-                            <SelectItem value="150px">150px</SelectItem>
-                            <SelectItem value="200px">200px</SelectItem>
+                            <SelectItem value="auto">Auto ({getResolvedWidth(colIndex)})</SelectItem>
+                            <SelectItem value="10%">10%</SelectItem>
+                            <SelectItem value="15%">15%</SelectItem>
                             <SelectItem value="20%">20%</SelectItem>
                             <SelectItem value="25%">25%</SelectItem>
+                            <SelectItem value="30%">30%</SelectItem>
                             <SelectItem value="33%">33%</SelectItem>
+                            <SelectItem value="40%">40%</SelectItem>
                             <SelectItem value="50%">50%</SelectItem>
+                            <SelectItem value="60%">60%</SelectItem>
+                            <SelectItem value="75%">75%</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -849,9 +902,13 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                       fontSize: hCellStyle.fontSize,
                       textAlign: hCellStyle.textAlign, verticalAlign: hCellStyle.verticalAlign,
                     };
+                    const resolvedWidth = getResolvedWidth(colIndex);
                     const tdStyle: React.CSSProperties = {
                       borderColor: tableData.borderColor || '#ddd',
                       backgroundColor: hCellStyle.backgroundColor || (hs?.backgroundColor || '#FFC000'),
+                      width: resolvedWidth,
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
                     };
                     return (
                       <th key={colIndex}
@@ -889,9 +946,13 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                       fontSize: cellStyle.fontSize,
                       textAlign: cellStyle.textAlign, verticalAlign: cellStyle.verticalAlign,
                     };
+                    const resolvedWidth = getResolvedWidth(colIndex);
                     const tdStyle: React.CSSProperties = {
                       borderColor: tableData.borderColor || '#ddd',
                       backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#FFC000') : undefined),
+                      width: resolvedWidth,
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
                     };
 
                     const hasMerge = merge && (merge.rowSpan > 1 || merge.colSpan > 1);
