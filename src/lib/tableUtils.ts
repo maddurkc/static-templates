@@ -84,22 +84,16 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
   const tableBorderAttr = showBorder ? ' border="1"' : ' border="0"';
   let html = `<table cellpadding="0" cellspacing="0"${tableBorderAttr} width="100%" style="width: 100%; ${borderStyle} mso-table-lspace: 0pt; mso-table-rspace: 0pt;">`;
 
-  // Colgroup for widths
-  if (tableData.columnWidths && tableData.columnWidths.length > 0) {
-    html += '<colgroup>';
-    tableData.columnWidths.forEach((width) => {
-      html += `<col style="width: ${width};" width="${parseInt(width) || 'auto'}">`;
-    });
-    html += '</colgroup>';
-  }
+  // Note: colgroup/col is NOT used here — Outlook ignores it.
+  // Column widths are applied directly on th/td via th:style from the backend data.
 
   if (headerPosition === 'first-row') {
-    // Header row
+    // Header row — widths come from header.style which includes width
     html += '<thead><tr>';
     html += `<th th:each="header : \${${headerVarName}}" th:style="\${header.style}" style="${headerCellStyle}" valign="middle"><span th:utext="\${header.value}"/></th>`;
     html += '</tr></thead>';
 
-    // Body rows - dynamic cells
+    // Body rows — widths come from cell.style which includes width
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
     html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
