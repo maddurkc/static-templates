@@ -110,12 +110,16 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
   const deleteRow = () => {
     if (!selectedCell || tableData.rows.length <= 1) return;
-    const newRows = tableData.rows.filter((_, i) => i !== selectedCell.row);
+    // If header cell is selected (row === -1), delete the first data row instead
+    const rowToDelete = selectedCell.row === -1 ? 0 : selectedCell.row;
+    if (rowToDelete < 0 || rowToDelete >= tableData.rows.length) return;
+    const newRows = tableData.rows.filter((_, i) => i !== rowToDelete);
     const newCellStyles = { ...tableData.cellStyles };
     Object.keys(newCellStyles).forEach(key => {
+      if (key.startsWith('h-')) return; // Skip header styles
       const [r] = key.split('-').map(Number);
-      if (r === selectedCell.row) delete newCellStyles[key];
-      else if (r > selectedCell.row) {
+      if (r === rowToDelete) delete newCellStyles[key];
+      else if (r > rowToDelete) {
         const [, c] = key.split('-').map(Number);
         delete newCellStyles[key];
         newCellStyles[`${r - 1}-${c}`] = tableData.cellStyles![key];
@@ -151,17 +155,21 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
   };
 
   const deleteColumn = () => {
-    if (!selectedCell || (tableData.headers?.length || tableData.rows[0]?.length || 0) <= 1) return;
+    const colCount = tableData.headers?.length || tableData.rows[0]?.length || 0;
+    if (!selectedCell || colCount <= 1) return;
     const ci = selectedCell.col;
+    if (ci < 0 || ci >= colCount) return;
     const newHeaders = tableData.headers?.filter((_, i) => i !== ci);
     const newRows = tableData.rows.map(row => row.filter((_, i) => i !== ci));
     const newCellStyles = { ...tableData.cellStyles };
+    // Re-index data cell styles
     Object.keys(newCellStyles).forEach(key => {
+      if (key.startsWith('h-')) return; // Handle header styles separately below
       const [r, c] = key.split('-').map(Number);
       if (c === ci) delete newCellStyles[key];
       else if (c > ci) { delete newCellStyles[key]; newCellStyles[`${r}-${c - 1}`] = tableData.cellStyles![key]; }
     });
-    // Also handle header cell styles (h-colIndex)
+    // Re-index header cell styles (h-colIndex)
     Object.keys(newCellStyles).forEach(key => {
       if (key.startsWith('h-')) {
         const c = parseInt(key.split('-')[1]);
