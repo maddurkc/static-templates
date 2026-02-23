@@ -1743,38 +1743,66 @@ const RunTemplates = () => {
                 const originalTableData = matchingSection.variables?.tableData;
                 if (originalTableData) {
                   const restored = { ...originalTableData };
-                  // Static table payload: { headers, rows }
+                  // Static table payload: { headers, rows, mergedCells }
                   if (value && typeof value === 'object' && !Array.isArray(value) && value.headers) {
                     // Headers in payload may be objects {value, style} - extract plain strings
                     restored.headers = Array.isArray(value.headers)
                       ? value.headers.map((h: any) => typeof h === 'object' && h !== null ? h.value || '' : String(h))
                       : value.headers;
                     restored.rows = value.rows || [];
+                    // Restore mergedCells from static payload
+                    if (value.mergedCells && typeof value.mergedCells === 'object') {
+                      restored.mergedCells = value.mergedCells;
+                    }
                   }
-                  // Dynamic table payload: array of objects - reconstruct rows from mappings
+                  // Dynamic table payload: array of objects - reconstruct rows and merges from mappings
                   else if (Array.isArray(value) && restored.jsonMapping?.columnMappings?.length) {
                     const mappings = restored.jsonMapping.columnMappings;
                     const headerPosition = restored.headerPosition || 'first-row';
-                    const reconstructedRows = value.map((rowObj: any) => {
+                    const reconstructedMergedCells: Record<string, { rowSpan: number; colSpan: number }> = {};
+                    const reconstructedRows = value.map((rowObj: any, rowIdx: number) => {
                       if (headerPosition === 'first-column') {
+                        // Restore row-level merge for first-column mode
+                        if (rowObj.rowSpan && rowObj.rowSpan > 1) {
+                          reconstructedMergedCells[`${rowIdx}-0`] = { rowSpan: rowObj.rowSpan, colSpan: 1 };
+                        }
                         return mappings.map((_: any, idx: number) => {
                           if (idx === 0) return rowObj['header'] || '';
                           return rowObj['value'] || '';
                         });
                       }
-                      // New cells format: { cells: [{value, style}] }
+                      // New cells format: { cells: [{value, style, rowSpan, colSpan, skip}] }
                       if (rowObj.cells && Array.isArray(rowObj.cells)) {
+                        rowObj.cells.forEach((cell: any, colIdx: number) => {
+                          const rs = cell.rowSpan || 1;
+                          const cs = cell.colSpan || 1;
+                          if (rs > 1 || cs > 1) {
+                            reconstructedMergedCells[`${rowIdx}-${colIdx}`] = { rowSpan: rs, colSpan: cs };
+                          }
+                        });
                         return rowObj.cells.map((cell: any) => cell.value || '');
                       }
                       // Legacy col_X format fallback
                       return mappings.map((m: any) => rowObj[m.jsonPath] || '');
                     });
                     restored.rows = reconstructedRows;
-                    // Restore headers from headerVariableName payload or columnMappings
+                    if (Object.keys(reconstructedMergedCells).length > 0) {
+                      restored.mergedCells = reconstructedMergedCells;
+                    }
+                    // Restore header merges from header payload
                     const headerVarName = restored.headerVariableName;
                     const headerPayload = headerVarName ? bodyData[headerVarName] : null;
                     if (Array.isArray(headerPayload)) {
                       restored.headers = headerPayload.map((h: any) => typeof h === 'object' && h !== null ? h.value || '' : String(h));
+                      // Restore header-level merges
+                      headerPayload.forEach((h: any, idx: number) => {
+                        if (h && typeof h === 'object' && h.colSpan && h.colSpan > 1) {
+                          reconstructedMergedCells[`h-${idx}`] = { rowSpan: 1, colSpan: h.colSpan };
+                        }
+                      });
+                      if (Object.keys(reconstructedMergedCells).length > 0) {
+                        restored.mergedCells = reconstructedMergedCells;
+                      }
                     } else {
                       restored.headers = mappings.map((m: any) => m.header);
                     }
