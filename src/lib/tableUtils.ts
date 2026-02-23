@@ -88,29 +88,29 @@ export const generateThymeleafDynamicTableHTML = (tableData: TableData, sectionI
   // Column widths are applied directly on th/td via th:style from the backend data.
 
   if (headerPosition === 'first-row') {
-    // Header row — widths come from header.style which includes width
+    // Header row — widths come from header.style and header.width
     html += '<thead><tr>';
-    html += `<th th:each="header : \${${headerVarName}}" th:style="\${header.style}" style="${headerCellStyle}" valign="middle"><span th:utext="\${header.value}"/></th>`;
+    html += `<th th:each="header : \${${headerVarName}}" th:style="\${header.style}" th:attr="width=\${header.width}" style="${headerCellStyle}" valign="middle"><span th:utext="\${header.value}"/></th>`;
     html += '</tr></thead>';
 
-    // Body rows — widths come from cell.style which includes width
+    // Body rows — widths come from cell.style and cell.width
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
+    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" th:attr="width=\${cell.width}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
   } else if (headerPosition === 'first-column') {
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<th th:style="\${row.header_style}" style="${headerCellStyle}" valign="middle"><span th:utext="\${row.header}"/></th>`;
-    html += `<td th:style="\${row.value_style}" style="${bodyCellStyle}" valign="top"><span th:utext="\${row.value}"/></td>`;
+    html += `<th th:style="\${row.header_style}" th:attr="width=\${row.header_width}" style="${headerCellStyle}" valign="middle"><span th:utext="\${row.header}"/></th>`;
+    html += `<td th:style="\${row.value_style}" th:attr="width=\${row.value_width}" style="${bodyCellStyle}" valign="top"><span th:utext="\${row.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
   } else {
     // No headers
     html += '<tbody>';
     html += `<tr th:each="row : \${${variableName}}">`;
-    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
+    html += `<td th:each="cell : \${row.cells}" th:style="\${cell.style}" th:attr="width=\${cell.width}" style="${bodyCellStyle}" valign="top"><span th:utext="\${cell.value}"/></td>`;
     html += '</tr>';
     html += '</tbody>';
   }
