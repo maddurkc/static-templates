@@ -188,7 +188,10 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     });
     const newWidths = [...(tableData.columnWidths || [])];
     newWidths.splice(selectedCell.col, 0, 'auto');
-    updateTableData({ ...tableData, headers: newHeaders, rows: newRows, columnWidths: newWidths });
+    // Sync jsonMapping.columnMappings
+    const newMappings = [...(tableData.jsonMapping?.columnMappings || [])];
+    newMappings.splice(selectedCell.col, 0, { header: '', jsonPath: `col_${newMappings.length + 1}` });
+    updateTableData({ ...tableData, headers: newHeaders, rows: newRows, columnWidths: newWidths, jsonMapping: { enabled: true, columnMappings: newMappings } });
     setSelectedCell({ row: selectedCell.row, col: selectedCell.col + 1 });
   };
 
@@ -201,7 +204,10 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     });
     const newWidths = [...(tableData.columnWidths || [])];
     newWidths.splice(insertAt, 0, 'auto');
-    updateTableData({ ...tableData, headers: newHeaders, rows: newRows, columnWidths: newWidths });
+    // Sync jsonMapping.columnMappings
+    const newMappings = [...(tableData.jsonMapping?.columnMappings || [])];
+    newMappings.splice(insertAt, 0, { header: '', jsonPath: `col_${newMappings.length + 1}` });
+    updateTableData({ ...tableData, headers: newHeaders, rows: newRows, columnWidths: newWidths, jsonMapping: { enabled: true, columnMappings: newMappings } });
   };
 
   const deleteColumn = () => {
@@ -228,8 +234,10 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
       }
     });
     const newWidths = tableData.columnWidths?.filter((_, i) => i !== ci);
+    // Sync jsonMapping.columnMappings
+    const newMappings = (tableData.jsonMapping?.columnMappings || []).filter((_, i) => i !== ci);
     setSelectedCell(null);
-    updateTableData({ ...tableData, headers: newHeaders, rows: newRows, cellStyles: newCellStyles, columnWidths: newWidths });
+    updateTableData({ ...tableData, headers: newHeaders, rows: newRows, cellStyles: newCellStyles, columnWidths: newWidths, jsonMapping: { enabled: true, columnMappings: newMappings } });
   };
 
   const updateCell = (rowIndex: number, colIndex: number, value: string) => {
@@ -242,7 +250,12 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
   const updateHeader = (colIndex: number, value: string) => {
     const newHeaders = [...(tableData.headers || [])];
     newHeaders[colIndex] = value;
-    updateTableData({ ...tableData, headers: newHeaders });
+    // Sync jsonMapping.columnMappings header name
+    const newMappings = [...(tableData.jsonMapping?.columnMappings || [])];
+    if (newMappings[colIndex]) {
+      newMappings[colIndex] = { ...newMappings[colIndex], header: value };
+    }
+    updateTableData({ ...tableData, headers: newHeaders, jsonMapping: { ...tableData.jsonMapping, enabled: true, columnMappings: newMappings } });
   };
 
   const getHeaderCellStyle = (colIndex: number): CellStyle => tableData.cellStyles?.[`h-${colIndex}`] || {};

@@ -1372,18 +1372,28 @@ const RunTemplates = () => {
               const payloadKey = tableData.tableVariableName || section.id;
               const headerPosition = tableData.headerPosition || 'first-row';
               
+              // Use actual column count from headers/rows, not just columnMappings length
+              const actualColCount = headers.length;
+              // Ensure columnMappings covers all columns — rebuild if out of sync
+              let columnMappings = tableData.jsonMapping.columnMappings;
+              if (columnMappings.length < actualColCount) {
+                columnMappings = headers.map((h: string, i: number) => 
+                  columnMappings[i] || { header: h || `Column ${i + 1}`, jsonPath: `col_${i + 1}` }
+                );
+              }
+              
               // Send headers variable for first-row header position
                if (headerPosition === 'first-row' && tableData.headerVariableName) {
                 const hs = tableData.headerStyle;
                 const defaultHeaderStyle = `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
-                const headerValues = tableData.jsonMapping.columnMappings.map((m: any, idx: number) => {
+                const headerValues = columnMappings.map((m: any, idx: number) => {
                   const cellStyleKey = hasHeaders ? `h-${idx}` : `0-${idx}`;
                   const cellStyle = tableData.cellStyles?.[cellStyleKey];
                   const customStyle = buildCellStyleString(cellStyle);
                   const hMerge = tableData.mergedCells?.[`h-${idx}`] || tableData.mergedCells?.[`-1-${idx}`];
                   const hSkip = isMergedInto(tableData.mergedCells || {}, -1, idx);
                    return {
-                    value: m.header,
+                    value: headers[idx] || m.header,
                     style: customStyle || defaultHeaderStyle,
                     width: resolveColumnWidth(tableData, idx),
                     colSpan: hMerge?.colSpan || 1,
@@ -1402,7 +1412,7 @@ const RunTemplates = () => {
                     const merge = tableData.mergedCells?.[`${rowIdx}-0`];
                     obj['rowSpan'] = merge?.rowSpan || 1;
                     obj['skip'] = isMergedInto(tableData.mergedCells || {}, rowIdx, 0);
-                    tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
+                    columnMappings.forEach((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
@@ -1423,7 +1433,7 @@ const RunTemplates = () => {
                   });
                 } else {
                   bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
-                    const cells = tableData.jsonMapping.columnMappings.map((mapping: any, idx: number) => {
+                    const cells = columnMappings.map((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
