@@ -87,6 +87,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 
   &.bordered {
     border-width: 1px;
@@ -126,6 +127,10 @@
   border-radius: 0;
   width: 100%;
   padding: 0.25rem 0.5rem;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  white-space: normal;
+  text-overflow: ellipsis;
 
   &:focus {
     outline: none;

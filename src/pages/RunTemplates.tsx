@@ -1039,7 +1039,26 @@ const RunTemplates = () => {
     return parts.join('; ');
   };
 
-  // Helper: check if a cell is "swallowed" by another merged cell
+  // Helper: resolve column width — 'auto' becomes computed equal share of remaining %
+  const resolveColumnWidth = (tableData: any, colIndex: number): string => {
+    const widths = tableData.columnWidths || [];
+    const totalCols = (tableData.headers || tableData.rows?.[0] || []).length || widths.length;
+    const w = widths[colIndex];
+    if (w && w !== 'auto' && w.endsWith('%')) return w;
+    let usedPercent = 0;
+    let autoCount = 0;
+    for (let i = 0; i < totalCols; i++) {
+      const cw = widths[i];
+      if (cw && cw !== 'auto' && cw.endsWith('%')) {
+        usedPercent += parseInt(cw, 10);
+      } else {
+        autoCount++;
+      }
+    }
+    const remaining = Math.max(0, 100 - usedPercent);
+    return autoCount > 0 ? `${Math.floor(remaining / autoCount)}%` : `${Math.floor(100 / totalCols)}%`;
+  };
+
   const isMergedInto = (mergedCells: Record<string, {rowSpan: number; colSpan: number}>, rowIdx: number, colIdx: number): boolean => {
     for (const [key, merge] of Object.entries(mergedCells || {})) {
       const [mr, mc] = key.split('-').map(Number);
@@ -1380,7 +1399,7 @@ const RunTemplates = () => {
                    return {
                     value: m.header,
                     style: customStyle || defaultHeaderStyle,
-                    width: tableData.columnWidths?.[idx] || '',
+                    width: resolveColumnWidth(tableData, idx),
                     colSpan: hMerge?.colSpan || 1,
                     skip: hSkip
                   };
@@ -1407,11 +1426,11 @@ const RunTemplates = () => {
                           const hs = tableData.headerStyle;
                           return `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
                         })();
-                        obj['header_width'] = tableData.columnWidths?.[idx] || '';
+                        obj['header_width'] = resolveColumnWidth(tableData, idx);
                       } else {
                         obj['value'] = cellValue;
                         obj['value_style'] = buildCellStyleString(cellStyle);
-                        obj['value_width'] = tableData.columnWidths?.[idx] || '';
+                        obj['value_width'] = resolveColumnWidth(tableData, idx);
                       }
                     });
                     return obj;
@@ -1427,7 +1446,7 @@ const RunTemplates = () => {
                       return {
                         value: cellValue,
                         style: buildCellStyleString(cellStyle),
-                        width: tableData.columnWidths?.[idx] || '',
+                        width: resolveColumnWidth(tableData, idx),
                         rowSpan: merge?.rowSpan || 1,
                         colSpan: merge?.colSpan || 1,
                         skip
@@ -1471,7 +1490,7 @@ const RunTemplates = () => {
                   return {
                     value: m.header,
                     style: customStyle || defaultHeaderStyle,
-                    width: tableData.columnWidths?.[idx] || '',
+                    width: resolveColumnWidth(tableData, idx),
                     colSpan: hMerge?.colSpan || 1,
                     skip: hSkip
                   };
@@ -1498,11 +1517,11 @@ const RunTemplates = () => {
                           const hs = tableData.headerStyle;
                           return `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
                         })();
-                        obj['header_width'] = tableData.columnWidths?.[idx] || '';
+                        obj['header_width'] = resolveColumnWidth(tableData, idx);
                       } else {
                         obj['value'] = cellValue;
                         obj['value_style'] = buildCellStyleString(cellStyle);
-                        obj['value_width'] = tableData.columnWidths?.[idx] || '';
+                        obj['value_width'] = resolveColumnWidth(tableData, idx);
                       }
                     });
                     return obj;
@@ -1518,7 +1537,7 @@ const RunTemplates = () => {
                       return {
                         value: cellValue,
                         style: buildCellStyleString(cellStyle),
-                        width: tableData.columnWidths?.[idx] || '',
+                        width: resolveColumnWidth(tableData, idx),
                         rowSpan: merge?.rowSpan || 1,
                         colSpan: merge?.colSpan || 1,
                         skip
