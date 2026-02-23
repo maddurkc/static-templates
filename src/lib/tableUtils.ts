@@ -128,6 +128,24 @@ const getPaddingValue = (padding?: CellPadding): string => {
   }
 };
 
+// Resolve a column width: convert 'auto' to an equal share of remaining percentage
+export const resolveColumnWidth = (columnWidths: string[] | undefined, colIndex: number, totalCols: number): string => {
+  const w = columnWidths?.[colIndex];
+  if (w && w !== 'auto') return w;
+  let usedPercent = 0;
+  let autoCount = 0;
+  for (let i = 0; i < totalCols; i++) {
+    const cw = columnWidths?.[i];
+    if (cw && cw !== 'auto' && cw.endsWith('%')) {
+      usedPercent += parseInt(cw, 10);
+    } else {
+      autoCount++;
+    }
+  }
+  const remaining = Math.max(0, 100 - usedPercent);
+  return autoCount > 0 ? `${Math.floor(remaining / autoCount)}%` : `${Math.floor(100 / totalCols)}%`;
+};
+
 export const generateCellStyleString = (style?: CellStyle): string => {
   if (!style) return '';
   
@@ -194,12 +212,15 @@ export const generateTableHTML = (tableData: TableData): string => {
   
   let html = `<table${borderStyle}>`;
   
-  // Add colgroup for column widths if defined
-  if (tableData.columnWidths && tableData.columnWidths.length > 0) {
+  const totalCols = (tableData.headers || tableData.rows[0] || []).length;
+
+  // Add colgroup for column widths — always resolve auto to equal %
+  if (totalCols > 0) {
     html += '<colgroup>';
-    tableData.columnWidths.forEach((width) => {
-      html += `<col style="width: ${width};">`;
-    });
+    for (let i = 0; i < totalCols; i++) {
+      const w = resolveColumnWidth(tableData.columnWidths, i, totalCols);
+      html += `<col style="width: ${w};">`;
+    }
     html += '</colgroup>';
   }
   
@@ -235,8 +256,8 @@ export const generateTableHTML = (tableData: TableData): string => {
     tableData.headers.forEach((header, colIndex) => {
       const cellStyle = tableData.cellStyles?.[`h-${colIndex}`];
       const customStyles = generateCellStyleString(cellStyle);
-      const columnWidth = tableData.columnWidths?.[colIndex];
-      const widthStyle = columnWidth ? `width: ${columnWidth};` : '';
+      const columnWidth = resolveColumnWidth(tableData.columnWidths, colIndex, totalCols);
+      const widthStyle = `width: ${columnWidth};`;
       const allParts = [baseCellStyle, buildHeaderStyleString(), customStyles, widthStyle].filter(s => s.length > 0);
       const fullStyle = allParts.map(s => s.endsWith(';') ? s : s + ';').join(' ').trim();
       html += `<th style="${fullStyle}">${header}</th>`;
@@ -275,8 +296,8 @@ export const generateTableHTML = (tableData: TableData): string => {
       }
       
       // Add column width to cell style if defined
-      const columnWidth = tableData.columnWidths?.[colIndex];
-      const widthStyle = columnWidth ? `width: ${columnWidth};` : '';
+      const columnWidth = resolveColumnWidth(tableData.columnWidths, colIndex, totalCols);
+      const widthStyle = `width: ${columnWidth};`;
       
       const allParts = [baseCellStyle, headerStyleStr, customStyles, widthStyle].filter(s => s.length > 0);
       const fullStyle = allParts.map(s => s.endsWith(';') ? s : s + ';').join(' ').trim();

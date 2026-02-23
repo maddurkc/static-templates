@@ -28,7 +28,7 @@ import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobal
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
-import { mapJsonToTableData, getValueByPath } from "@/lib/tableUtils";
+import { mapJsonToTableData, getValueByPath, resolveColumnWidth as resolveColWidth } from "@/lib/tableUtils";
 import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-config";
 import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
 import { resolveGlobalApiThymeleaf } from "@/lib/globalApiResolver";
@@ -1039,24 +1039,10 @@ const RunTemplates = () => {
     return parts.join('; ');
   };
 
-  // Helper: resolve column width — 'auto' becomes computed equal share of remaining %
+  // Helper: resolve column width using shared utility
   const resolveColumnWidth = (tableData: any, colIndex: number): string => {
-    const widths = tableData.columnWidths || [];
-    const totalCols = (tableData.headers || tableData.rows?.[0] || []).length || widths.length;
-    const w = widths[colIndex];
-    if (w && w !== 'auto' && w.endsWith('%')) return w;
-    let usedPercent = 0;
-    let autoCount = 0;
-    for (let i = 0; i < totalCols; i++) {
-      const cw = widths[i];
-      if (cw && cw !== 'auto' && cw.endsWith('%')) {
-        usedPercent += parseInt(cw, 10);
-      } else {
-        autoCount++;
-      }
-    }
-    const remaining = Math.max(0, 100 - usedPercent);
-    return autoCount > 0 ? `${Math.floor(remaining / autoCount)}%` : `${Math.floor(100 / totalCols)}%`;
+    const totalCols = (tableData.headers || tableData.rows?.[0] || []).length || (tableData.columnWidths || []).length;
+    return resolveColWidth(tableData.columnWidths, colIndex, totalCols);
   };
 
   const isMergedInto = (mergedCells: Record<string, {rowSpan: number; colSpan: number}>, rowIdx: number, colIdx: number): boolean => {
