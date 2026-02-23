@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
-  Plus, Trash2, Merge, Bold, Italic, Underline, Database, FileJson,
+  Plus, Trash2, Merge, Split, Bold, Italic, Underline, Database, FileJson,
   Settings2, Rows3, Columns3, ArrowUpFromLine, ArrowDownFromLine,
   ArrowLeftFromLine, ArrowRightFromLine, Palette, Grid3X3, Zap,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -77,11 +77,61 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
   }, [section.id, section.variables?.tableData]);
 
   const [tableData, setTableData] = useState<TableData>(parseTableData());
-  const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+  const [selectionStart, setSelectionStart] = useState<{ row: number; col: number } | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<{ row: number; col: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const selectedCell = selectionStart;
+  const setSelectedCell = (cell: { row: number; col: number } | null) => {
+    setSelectionStart(cell);
+    setSelectionEnd(null);
+  };
 
   useEffect(() => {
     setTableData(parseTableData());
   }, [parseTableData]);
+
+  // Selection range helpers
+  const getSelectedRange = () => {
+    if (!selectionStart) return null;
+    const end = selectionEnd || selectionStart;
+    return {
+      startRow: Math.min(selectionStart.row, end.row),
+      endRow: Math.max(selectionStart.row, end.row),
+      startCol: Math.min(selectionStart.col, end.col),
+      endCol: Math.max(selectionStart.col, end.col),
+    };
+  };
+
+  const isCellInRange = (row: number, col: number) => {
+    const range = getSelectedRange();
+    if (!range) return false;
+    return row >= range.startRow && row <= range.endRow && col >= range.startCol && col <= range.endCol;
+  };
+
+  const hasMultiSelection = () => {
+    const range = getSelectedRange();
+    if (!range) return false;
+    return range.startRow !== range.endRow || range.startCol !== range.endCol;
+  };
+
+  // Drag selection handlers
+  const handleCellMouseDown = (row: number, col: number) => {
+    setSelectionStart({ row, col });
+    setSelectionEnd(null);
+    setIsDragging(true);
+  };
+
+  const handleCellMouseEnter = (row: number, col: number) => {
+    if (isDragging) {
+      setSelectionEnd({ row, col });
+    }
+  };
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => setIsDragging(false);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, []);
 
   const updateTableData = (newData: TableData) => {
     setTableData(newData);
@@ -215,17 +265,49 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
   const updateCellPadding = (padding: CellPadding) => updateTableData({ ...tableData, cellPadding: padding });
 
   // ── Merge ──
-  const mergeCells = () => {
-    if (!selectedCell) return;
-    const cellKey = `${selectedCell.row}-${selectedCell.col}`;
-    const currentMerge = tableData.mergedCells[cellKey];
-    if (currentMerge) {
-      const newMergedCells = { ...tableData.mergedCells };
-      delete newMergedCells[cellKey];
-      updateTableData({ ...tableData, mergedCells: newMergedCells });
-    } else {
-      updateTableData({ ...tableData, mergedCells: { ...tableData.mergedCells, [cellKey]: { rowSpan: 1, colSpan: 2 } } });
+  const mergeColumns = () => {
+    const range = getSelectedRange();
+    if (!range || range.startCol === range.endCol) return;
+    const newMerged = { ...tableData.mergedCells };
+    for (let r = range.startRow; r <= range.endRow; r++) {
+      const cellKey = `${r}-${range.startCol}`;
+      newMerged[cellKey] = { rowSpan: 1, colSpan: range.endCol - range.startCol + 1 };
     }
+    updateTableData({ ...tableData, mergedCells: newMerged });
+  };
+
+  const mergeRows = () => {
+    const range = getSelectedRange();
+    if (!range || range.startRow === range.endRow) return;
+    const newMerged = { ...tableData.mergedCells };
+    for (let c = range.startCol; c <= range.endCol; c++) {
+      const cellKey = `${range.startRow}-${c}`;
+      newMerged[cellKey] = { rowSpan: range.endRow - range.startRow + 1, colSpan: 1 };
+    }
+    updateTableData({ ...tableData, mergedCells: newMerged });
+  };
+
+  const unmergeSelected = () => {
+    const range = getSelectedRange();
+    if (!range) return;
+    const newMerged = { ...tableData.mergedCells };
+    for (let r = range.startRow; r <= range.endRow; r++) {
+      for (let c = range.startCol; c <= range.endCol; c++) {
+        delete newMerged[`${r}-${c}`];
+      }
+    }
+    updateTableData({ ...tableData, mergedCells: newMerged });
+  };
+
+  const hasAnyMergeInRange = () => {
+    const range = getSelectedRange();
+    if (!range) return false;
+    for (let r = range.startRow; r <= range.endRow; r++) {
+      for (let c = range.startCol; c <= range.endCol; c++) {
+        if (tableData.mergedCells[`${r}-${c}`]) return true;
+      }
+    }
+    return false;
   };
 
   const isCellMerged = (rowIndex: number, colIndex: number) => {
@@ -451,11 +533,29 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
               <div className={styles.toolbarDivider} />
 
-              {/* Merge */}
+              {/* Merge Columns */}
               <Tooltip><TooltipTrigger asChild>
-                <button className={`${styles.toolbarBtn} ${selectedCell && getCellMerge(selectedCell.row, selectedCell.col) ? styles.active : ''}`}
-                  onClick={mergeCells} disabled={!selectedCell}><Merge size={14} /></button>
-              </TooltipTrigger><TooltipContent side="bottom">Merge / Unmerge cells</TooltipContent></Tooltip>
+                <button className={styles.toolbarBtn}
+                  onClick={mergeColumns} disabled={!hasMultiSelection() || getSelectedRange()?.startCol === getSelectedRange()?.endCol}>
+                  <Merge size={14} />
+                </button>
+              </TooltipTrigger><TooltipContent side="bottom">Merge columns (horizontal)</TooltipContent></Tooltip>
+
+              {/* Merge Rows */}
+              <Tooltip><TooltipTrigger asChild>
+                <button className={styles.toolbarBtn}
+                  onClick={mergeRows} disabled={!hasMultiSelection() || getSelectedRange()?.startRow === getSelectedRange()?.endRow}>
+                  <Merge size={14} style={{ transform: 'rotate(90deg)' }} />
+                </button>
+              </TooltipTrigger><TooltipContent side="bottom">Merge rows (vertical)</TooltipContent></Tooltip>
+
+              {/* Unmerge */}
+              <Tooltip><TooltipTrigger asChild>
+                <button className={`${styles.toolbarBtn} ${hasAnyMergeInRange() ? styles.active : ''}`}
+                  onClick={unmergeSelected} disabled={!hasAnyMergeInRange()}>
+                  <Split size={14} />
+                </button>
+              </TooltipTrigger><TooltipContent side="bottom">Unmerge cells</TooltipContent></Tooltip>
 
             </>
           )}
@@ -567,6 +667,29 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                       className="h-7 text-xs w-24"
                     />
                   </div>
+
+                  {/* Merge/Unmerge */}
+                  {hasMultiSelection() && (
+                    <div className={styles.propGroup}>
+                      <span className={styles.propSmallLabel}>Merge Cells</span>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                          onClick={mergeColumns} disabled={getSelectedRange()?.startCol === getSelectedRange()?.endCol}>
+                          <Merge size={12} className="mr-1" /> Cols
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                          onClick={mergeRows} disabled={getSelectedRange()?.startRow === getSelectedRange()?.endRow}>
+                          <Merge size={12} className="mr-1" style={{ transform: 'rotate(90deg)' }} /> Rows
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {hasAnyMergeInRange() && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs w-full"
+                      onClick={unmergeSelected}>
+                      <Split size={12} className="mr-1" /> Unmerge
+                    </Button>
+                  )}
                 </div>
               )}
             </PopoverContent>
@@ -732,9 +855,10 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
                     };
                     return (
                       <th key={colIndex}
-                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
+                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''} ${isCellInRange(-1, colIndex) ? styles.inRange : ''}`}
                         style={tdStyle}
-                        onClick={() => setSelectedCell({ row: -1, col: colIndex })}>
+                        onMouseDown={() => handleCellMouseDown(-1, colIndex)}
+                        onMouseEnter={() => handleCellMouseEnter(-1, colIndex)}>
                         <Input value={header} onChange={(e) => updateHeader(colIndex, e.target.value)}
                           className={styles.cellInput} style={inputStyle}
                           placeholder={`Header ${colIndex + 1}`} />
@@ -772,9 +896,10 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
                     return (
                       <td key={colIndex} rowSpan={merge?.rowSpan} colSpan={merge?.colSpan}
-                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''}`}
+                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''} ${isCellInRange(rowIndex, colIndex) ? styles.inRange : ''}`}
                         style={tdStyle}
-                        onClick={() => setSelectedCell({ row: rowIndex, col: colIndex })}>
+                        onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
+                        onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}>
                         <Input value={cell} onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
                           className={styles.cellInput} style={inputStyle}
                           placeholder={isHeader ? `Header ${colIndex + 1}` : ''} />
@@ -861,8 +986,10 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
           <span>{tableData.rows.length} rows × {tableData.headers?.length || 0} cols</span>
           {selectedCell && (
             <span>
-              Selected: {selectedCell.row === -1 ? 'Header' : `R${selectedCell.row + 1}`}:C{selectedCell.col + 1}
-              {selectedCell.row >= 0 && getCellMerge(selectedCell.row, selectedCell.col) ? ' (merged)' : ''}
+              {hasMultiSelection()
+                ? `Selected: ${getSelectedRange()!.endRow - getSelectedRange()!.startRow + 1}×${getSelectedRange()!.endCol - getSelectedRange()!.startCol + 1} range`
+                : `Selected: ${selectedCell.row === -1 ? 'Header' : `R${selectedCell.row + 1}`}:C${selectedCell.col + 1}${selectedCell.row >= 0 && getCellMerge(selectedCell.row, selectedCell.col) ? ' (merged)' : ''}`
+              }
             </span>
           )}
         </div>

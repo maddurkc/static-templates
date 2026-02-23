@@ -1039,6 +1039,17 @@ const RunTemplates = () => {
     return parts.join('; ');
   };
 
+  // Helper: check if a cell is "swallowed" by another merged cell
+  const isMergedInto = (mergedCells: Record<string, {rowSpan: number; colSpan: number}>, rowIdx: number, colIdx: number): boolean => {
+    for (const [key, merge] of Object.entries(mergedCells || {})) {
+      const [mr, mc] = key.split('-').map(Number);
+      if (rowIdx >= mr && rowIdx < mr + merge.rowSpan &&
+          colIdx >= mc && colIdx < mc + merge.colSpan &&
+          (rowIdx !== mr || colIdx !== mc)) return true;
+    }
+    return false;
+  };
+
   const handleSendTemplate = () => {
     if (!selectedTemplate) return;
 
@@ -1364,10 +1375,14 @@ const RunTemplates = () => {
                   const cellStyleKey = hasHeaders ? `h-${idx}` : `0-${idx}`;
                   const cellStyle = tableData.cellStyles?.[cellStyleKey];
                   const customStyle = buildCellStyleString(cellStyle);
+                  const hMerge = tableData.mergedCells?.[`h-${idx}`] || tableData.mergedCells?.[`-1-${idx}`];
+                  const hSkip = isMergedInto(tableData.mergedCells || {}, -1, idx);
                    return {
                     value: m.header,
                     style: customStyle || defaultHeaderStyle,
-                    width: tableData.columnWidths?.[idx] || ''
+                    width: tableData.columnWidths?.[idx] || '',
+                    colSpan: hMerge?.colSpan || 1,
+                    skip: hSkip
                   };
                 });
                 if (!bodyData[tableData.headerVariableName]) {
@@ -1378,7 +1393,10 @@ const RunTemplates = () => {
               if (!bodyData[payloadKey]) {
                 if (headerPosition === 'first-column') {
                   bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
-                    const obj: Record<string, string> = {};
+                    const obj: Record<string, any> = {};
+                    const merge = tableData.mergedCells?.[`${rowIdx}-0`];
+                    obj['rowSpan'] = merge?.rowSpan || 1;
+                    obj['skip'] = isMergedInto(tableData.mergedCells || {}, rowIdx, 0);
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx}-${idx}`;
@@ -1404,10 +1422,15 @@ const RunTemplates = () => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
+                      const merge = tableData.mergedCells?.[`${rowIdx}-${idx}`];
+                      const skip = isMergedInto(tableData.mergedCells || {}, rowIdx, idx);
                       return {
                         value: cellValue,
                         style: buildCellStyleString(cellStyle),
-                        width: tableData.columnWidths?.[idx] || ''
+                        width: tableData.columnWidths?.[idx] || '',
+                        rowSpan: merge?.rowSpan || 1,
+                        colSpan: merge?.colSpan || 1,
+                        skip
                       };
                     });
                     return { cells };
@@ -1416,7 +1439,7 @@ const RunTemplates = () => {
               }
             } else {
               if (!bodyData[section.id]) {
-                bodyData[section.id] = { headers, rows: dataRows };
+                bodyData[section.id] = { headers, rows: dataRows, mergedCells: tableData.mergedCells || {} };
               }
             }
           }
@@ -1443,10 +1466,14 @@ const RunTemplates = () => {
                   const cellStyleKey = hasHeaders ? `h-${idx}` : `0-${idx}`;
                   const cellStyle = tableData.cellStyles?.[cellStyleKey];
                   const customStyle = buildCellStyleString(cellStyle);
+                  const hMerge = tableData.mergedCells?.[`h-${idx}`] || tableData.mergedCells?.[`-1-${idx}`];
+                  const hSkip = isMergedInto(tableData.mergedCells || {}, -1, idx);
                   return {
                     value: m.header,
                     style: customStyle || defaultHeaderStyle,
-                    width: tableData.columnWidths?.[idx] || ''
+                    width: tableData.columnWidths?.[idx] || '',
+                    colSpan: hMerge?.colSpan || 1,
+                    skip: hSkip
                   };
                 });
                 if (!bodyData[tableData.headerVariableName]) {
@@ -1457,7 +1484,10 @@ const RunTemplates = () => {
               if (!bodyData[payloadKey]) {
                 if (headerPosition === 'first-column') {
                   bodyData[payloadKey] = dataRows.map((row: string[], rowIdx: number) => {
-                    const obj: Record<string, string> = {};
+                    const obj: Record<string, any> = {};
+                    const merge = tableData.mergedCells?.[`${rowIdx}-0`];
+                    obj['rowSpan'] = merge?.rowSpan || 1;
+                    obj['skip'] = isMergedInto(tableData.mergedCells || {}, rowIdx, 0);
                     tableData.jsonMapping.columnMappings.forEach((mapping: any, idx: number) => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx}-${idx}`;
@@ -1483,10 +1513,15 @@ const RunTemplates = () => {
                       const cellValue = row[idx] || '';
                       const cellStyleKey = `${rowIdx}-${idx}`;
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
+                      const merge = tableData.mergedCells?.[`${rowIdx}-${idx}`];
+                      const skip = isMergedInto(tableData.mergedCells || {}, rowIdx, idx);
                       return {
                         value: cellValue,
                         style: buildCellStyleString(cellStyle),
-                        width: tableData.columnWidths?.[idx] || ''
+                        width: tableData.columnWidths?.[idx] || '',
+                        rowSpan: merge?.rowSpan || 1,
+                        colSpan: merge?.colSpan || 1,
+                        skip
                       };
                     });
                     return { cells };
@@ -1495,7 +1530,7 @@ const RunTemplates = () => {
               }
             } else {
               if (!bodyData[section.id]) {
-                bodyData[section.id] = { headers, rows: dataRows };
+                bodyData[section.id] = { headers, rows: dataRows, mergedCells: tableData.mergedCells || {} };
               }
             }
           }
