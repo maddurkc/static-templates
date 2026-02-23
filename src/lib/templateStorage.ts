@@ -523,7 +523,16 @@ export const getTemplates = (): Template[] => {
               variableName: "userDetails",
               templateId: "jsonplaceholder-user",
               enabled: true,
-              paramValues: { userId: "1" }
+              paramValues: { userId: "1" },
+              transformation: {
+                filters: [],
+                filterLogic: 'and' as const,
+                fieldMappings: [],
+                selectFields: [],
+                limit: undefined,
+                sortField: undefined,
+                sortOrder: 'asc' as const
+              }
             },
             {
               id: "integration-issues-api",
@@ -531,7 +540,42 @@ export const getTemplates = (): Template[] => {
               variableName: "issuesList",
               templateId: "mock-object-list",
               enabled: true,
-              paramValues: {}
+              paramValues: {},
+              transformation: {
+                filters: [
+                  {
+                    id: "filter-demo-1",
+                    field: "priority",
+                    operator: 'equals' as const,
+                    value: "High"
+                  }
+                ],
+                filterLogic: 'and' as const,
+                fieldMappings: [
+                  {
+                    id: "map-demo-1",
+                    sourceField: "id",
+                    targetField: "issueId",
+                    enabled: true
+                  },
+                  {
+                    id: "map-demo-2",
+                    sourceField: "title",
+                    targetField: "summary",
+                    enabled: true
+                  },
+                  {
+                    id: "map-demo-3",
+                    sourceField: "assignee",
+                    targetField: "owner",
+                    enabled: true
+                  }
+                ],
+                selectFields: ["id", "title", "status", "priority", "assignee"],
+                limit: 10,
+                sortField: "priority",
+                sortOrder: 'desc' as const
+              }
             }
           ],
           globalVariables: {
@@ -554,7 +598,24 @@ export const getTemplates = (): Template[] => {
                   zipcode: "92998-3874"
                 }
               },
-              dataType: "object",
+              dataType: "object" as const,
+              rawData: {
+                id: 1,
+                name: "Leanne Graham",
+                username: "Bret",
+                email: "leanne@example.com",
+                phone: "1-770-736-8031",
+                website: "hildegard.org",
+                company: {
+                  name: "Romaguera-Crona",
+                  catchPhrase: "Multi-layered client-server neural-net"
+                },
+                address: {
+                  street: "Kulas Light",
+                  city: "Gwenborough",
+                  zipcode: "92998-3874"
+                }
+              },
               schema: {
                 "id": "number",
                 "name": "string",
@@ -572,12 +633,16 @@ export const getTemplates = (): Template[] => {
             issuesList: {
               name: "issuesList",
               data: [
+                { issueId: "JIRA-101", summary: "Fix login timeout", status: "Done", priority: "High", owner: "John Doe" },
+                { issueId: "JIRA-103", summary: "Optimize database queries", status: "Open", priority: "High", owner: "Bob Wilson" }
+              ],
+              dataType: "list" as const,
+              rawData: [
                 { id: "JIRA-101", title: "Fix login timeout", status: "Done", priority: "High", assignee: "John Doe" },
                 { id: "JIRA-102", title: "Add dark mode support", status: "In Progress", priority: "Medium", assignee: "Jane Smith" },
                 { id: "JIRA-103", title: "Optimize database queries", status: "Open", priority: "High", assignee: "Bob Wilson" },
                 { id: "JIRA-104", title: "Update API documentation", status: "Done", priority: "Low", assignee: "Alice Brown" }
               ],
-              dataType: "list",
               schema: {
                 "id": "string",
                 "title": "string",
