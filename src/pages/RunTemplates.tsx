@@ -1033,6 +1033,9 @@ const RunTemplates = () => {
     if (cellStyle.underline) parts.push('text-decoration: underline');
     if (cellStyle.backgroundColor) parts.push(`background-color: ${cellStyle.backgroundColor}`);
     if (cellStyle.fontSize) parts.push(`font-size: ${cellStyle.fontSize}`);
+    if (cellStyle.textAlign) parts.push(`text-align: ${cellStyle.textAlign}`);
+    if (cellStyle.verticalAlign) parts.push(`vertical-align: ${cellStyle.verticalAlign}`);
+    if (cellStyle.cellPadding) parts.push(`padding: ${cellStyle.cellPadding}`);
     return parts.join('; ');
   };
 
