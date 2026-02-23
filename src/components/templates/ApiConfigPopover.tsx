@@ -258,16 +258,16 @@ export const ApiConfigPopover = ({ apiConfig, sections, onUpdate }: ApiConfigPop
                             <div className={styles.section}>
                               <Label className={styles.label}>Variable (Optional)</Label>
                               <Select
-                                value={mapping.variableName || ''}
-                                onValueChange={(variableName) => 
-                                  updateMapping(mapping.id, { variableName })
-                                }
-                              >
-                                <SelectTrigger className={styles.selectTrigger}>
-                                  <SelectValue placeholder="Select variable" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="">Content only</SelectItem>
+                                 value={mapping.variableName || '__content_only__'}
+                                 onValueChange={(variableName) => 
+                                   updateMapping(mapping.id, { variableName: variableName === '__content_only__' ? '' : variableName })
+                                 }
+                               >
+                                 <SelectTrigger className={styles.selectTrigger}>
+                                   <SelectValue placeholder="Select variable" />
+                                 </SelectTrigger>
+                                 <SelectContent>
+                                   <SelectItem value="__content_only__">Content only</SelectItem>
                                   {variables.map((varName) => (
                                     <SelectItem key={varName} value={varName}>
                                       {varName}
