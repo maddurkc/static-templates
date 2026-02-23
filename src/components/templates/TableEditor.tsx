@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,175 @@ import styles from "./TableEditor.module.scss";
 const TEXT_COLORS = ['#000000', '#FF0000', '#0066CC', '#008000', '#FF6600', '#800080', '#666666', '#003366'];
 const BG_COLORS = ['#FFFFFF', '#FFFF00', '#90EE90', '#ADD8E6', '#FFB6C1', '#E6E6FA', '#F5F5DC', '#F0F0F0'];
 
+const VIRTUALIZE_THRESHOLD = 50;
+const ROW_HEIGHT = 33;
+
+interface VirtualizedTableBodyProps {
+  tableData: TableData;
+  tableScrollRef: React.RefObject<HTMLDivElement>;
+  selectedCell: { row: number; col: number } | null;
+  isCellInRange: (row: number, col: number) => boolean;
+  isCellMerged: (row: number, col: number) => boolean;
+  getCellMerge: (row: number, col: number) => { rowSpan: number; colSpan: number } | undefined;
+  getCellStyle: (row: number, col: number) => CellStyle;
+  getHeaderStyle: (col: number) => CellStyle;
+  getResolvedWidth: (col: number) => string;
+  handleCellMouseDown: (row: number, col: number) => void;
+  handleCellMouseEnter: (row: number, col: number) => void;
+  updateHeader: (col: number, value: string) => void;
+  updateCell: (row: number, col: number, value: string) => void;
+}
+
+const VirtualizedTableBody = ({
+  tableData, tableScrollRef, selectedCell,
+  isCellInRange, isCellMerged, getCellMerge, getCellStyle, getHeaderStyle,
+  getResolvedWidth, handleCellMouseDown, handleCellMouseEnter, updateHeader, updateCell
+}: VirtualizedTableBodyProps) => {
+  const useVirtual = tableData.rows.length > VIRTUALIZE_THRESHOLD;
+
+  const rowVirtualizer = useVirtualizer({
+    count: tableData.rows.length,
+    getScrollElement: () => tableScrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10,
+    enabled: useVirtual,
+  });
+
+  const renderHeaderRow = () => {
+    if (!tableData.headers || (tableData.headerPosition || 'first-row') !== 'first-row') return null;
+    const hs = tableData.headerStyle;
+    return (
+      <thead>
+        <tr>
+          {tableData.headers.map((header, colIndex) => {
+            const hCellStyle = getHeaderStyle(colIndex);
+            const isSelected = selectedCell?.row === -1 && selectedCell?.col === colIndex;
+            const inputStyle: React.CSSProperties = {
+              color: hCellStyle.color || (hs?.textColor || '#000000'),
+              fontWeight: hCellStyle.bold ? 'bold' : (hs?.bold !== false ? 'bold' : undefined),
+              fontStyle: hCellStyle.italic ? 'italic' : undefined,
+              textDecoration: hCellStyle.underline ? 'underline' : undefined,
+              backgroundColor: hCellStyle.backgroundColor || (hs?.backgroundColor || '#FFC000'),
+              fontSize: hCellStyle.fontSize,
+              textAlign: hCellStyle.textAlign, verticalAlign: hCellStyle.verticalAlign,
+            };
+            const resolvedWidth = getResolvedWidth(colIndex);
+            const tdStyle: React.CSSProperties = {
+              borderColor: tableData.borderColor || '#ddd',
+              backgroundColor: hCellStyle.backgroundColor || (hs?.backgroundColor || '#FFC000'),
+              width: resolvedWidth, wordWrap: 'break-word', overflowWrap: 'break-word',
+            };
+            return (
+              <th key={colIndex}
+                className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''} ${isCellInRange(-1, colIndex) ? styles.inRange : ''}`}
+                style={tdStyle}
+                onMouseDown={() => handleCellMouseDown(-1, colIndex)}
+                onMouseEnter={() => handleCellMouseEnter(-1, colIndex)}>
+                <Input value={header} onChange={(e) => updateHeader(colIndex, e.target.value)}
+                  className={styles.cellInput} style={inputStyle}
+                  placeholder={`Header ${colIndex + 1}`} />
+              </th>
+            );
+          })}
+        </tr>
+      </thead>
+    );
+  };
+
+  const renderDataRow = (rowIndex: number) => {
+    const row = tableData.rows[rowIndex];
+    if (!row) return null;
+    const headerPosition = tableData.headerPosition || 'first-row';
+    const hs = tableData.headerStyle;
+    return row.map((cell, colIndex) => {
+      if (isCellMerged(rowIndex, colIndex)) return null;
+      const merge = getCellMerge(rowIndex, colIndex);
+      const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
+      const cellStyleObj = getCellStyle(rowIndex, colIndex);
+      const isHeader = (headerPosition === 'first-column' && colIndex === 0);
+      const inputStyle: React.CSSProperties = {
+        color: cellStyleObj.color || (isHeader ? (hs?.textColor || '#000000') : undefined),
+        fontWeight: cellStyleObj.bold ? 'bold' : (isHeader && hs?.bold !== false ? 'bold' : undefined),
+        fontStyle: cellStyleObj.italic ? 'italic' : undefined,
+        textDecoration: cellStyleObj.underline ? 'underline' : undefined,
+        backgroundColor: cellStyleObj.backgroundColor || (isHeader ? (hs?.backgroundColor || '#FFC000') : undefined),
+        fontSize: cellStyleObj.fontSize,
+        textAlign: cellStyleObj.textAlign, verticalAlign: cellStyleObj.verticalAlign,
+      };
+      const resolvedWidth = getResolvedWidth(colIndex);
+      const tdStyle: React.CSSProperties = {
+        borderColor: tableData.borderColor || '#ddd',
+        backgroundColor: cellStyleObj.backgroundColor || (isHeader ? (hs?.backgroundColor || '#FFC000') : undefined),
+        width: resolvedWidth, wordWrap: 'break-word', overflowWrap: 'break-word',
+      };
+      const hasMerge = merge && (merge.rowSpan > 1 || merge.colSpan > 1);
+      return (
+        <td key={colIndex} rowSpan={merge?.rowSpan} colSpan={merge?.colSpan}
+          className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''} ${isCellInRange(rowIndex, colIndex) ? styles.inRange : ''}`}
+          style={tdStyle}
+          onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
+          onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}>
+          {hasMerge && (
+            <span className={styles.mergeBadge} title={`Merged ${merge.rowSpan}×${merge.colSpan}`}>
+              <Merge size={10} />
+            </span>
+          )}
+          <Input value={cell} onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
+            className={styles.cellInput} style={inputStyle}
+            placeholder={isHeader ? `Header ${colIndex + 1}` : ''} />
+        </td>
+      );
+    });
+  };
+
+  if (!useVirtual) {
+    return (
+      <div className={styles.tableWrapper} ref={tableScrollRef as any}>
+        <table className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''}`}
+          style={{ borderColor: tableData.borderColor || '#ddd' }}>
+          {renderHeaderRow()}
+          <tbody>
+            {tableData.rows.map((_, rowIndex) => (
+              <tr key={rowIndex}>{renderDataRow(rowIndex)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.tableWrapper} ref={tableScrollRef as any} style={{ maxHeight: 420, overflow: 'auto' }}>
+      <table className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''}`}
+        style={{ borderColor: tableData.borderColor || '#ddd' }}>
+        {renderHeaderRow()}
+      </table>
+      <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
+        {rowVirtualizer.getVirtualItems().map(virtualRow => (
+          <div
+            key={virtualRow.index}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: `${virtualRow.size}px`,
+              transform: `translateY(${virtualRow.start}px)`,
+            }}
+          >
+            <table className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''}`}
+              style={{ borderColor: tableData.borderColor || '#ddd' }}>
+              <tbody>
+                <tr>{renderDataRow(virtualRow.index)}</tr>
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 interface TableEditorProps {
   section: Section;
   onUpdate: (section: Section) => void;
@@ -33,6 +203,7 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
   const [jsonInput, setJsonInput] = useState('');
   const [showJsonImport, setShowJsonImport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const parseTableData = useCallback((): TableData => {
     try {
@@ -420,18 +591,24 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
     updateTableData({ ...tableData, jsonMapping: { enabled: true, columnMappings } });
   };
 
+  const MAX_IMPORT_ROWS = 1000;
+
   const importJsonData = () => {
     try {
       const parsed = JSON.parse(jsonInput);
-      const dataArray = Array.isArray(parsed) ? parsed : [parsed];
+      let dataArray = Array.isArray(parsed) ? parsed : [parsed];
       if (dataArray.length === 0) { toast.error('JSON data is empty'); return; }
       const firstItem = dataArray[0];
       const keys = Object.keys(firstItem);
       if (keys.length === 0) { toast.error('No properties found in JSON data'); return; }
+      let truncated = false;
+      if (dataArray.length > MAX_IMPORT_ROWS) {
+        truncated = true;
+        dataArray = dataArray.slice(0, MAX_IMPORT_ROWS);
+      }
       const columnMappings = keys.map((key, i) => ({
         header: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), jsonPath: `col_${i + 1}`
       }));
-      // Map JSON data to rows using original keys (not col_X jsonPath)
       const headers = columnMappings.map(m => m.header);
       const dataRows = dataArray.map(item => keys.map(key => {
         const value = item[key];
@@ -443,7 +620,11 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
         tableVariableName: tableData.tableVariableName || generateTableVariableName(section.id)
       });
       setJsonInput(''); setShowJsonImport(false);
-      toast.success(`Imported ${dataArray.length} rows with ${keys.length} columns`);
+      if (truncated) {
+        toast.warning(`Import capped at ${MAX_IMPORT_ROWS} rows. Original data had more rows.`);
+      } else {
+        toast.success(`Imported ${dataArray.length} rows with ${keys.length} columns`);
+      }
     } catch { toast.error('Invalid JSON format'); }
   };
 
@@ -482,6 +663,11 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
         }
 
         if (rows.length < 1) { toast.error('File is empty'); return; }
+        let truncatedFile = false;
+        if (rows.length > MAX_IMPORT_ROWS + 1) { // +1 for header row
+          truncatedFile = true;
+          rows = rows.slice(0, MAX_IMPORT_ROWS + 1);
+        }
 
         const headerPos = tableData.headerPosition || 'first-row';
         let columnMappings: { header: string; jsonPath: string }[];
@@ -526,7 +712,11 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
           tableVariableName: tableData.tableVariableName || generateTableVariableName(section.id)
         });
 
-        toast.success(`Imported ${rows.length} rows with ${columnMappings.length} columns from ${file.name}`);
+        if (truncatedFile) {
+          toast.warning(`Import capped at ${MAX_IMPORT_ROWS} rows from ${file.name}. Original file had more rows.`);
+        } else {
+          toast.success(`Imported ${dataRows.length} rows with ${columnMappings.length} columns from ${file.name}`);
+        }
       } catch (err) {
         console.error('File import error:', err);
         toast.error('Failed to parse file. Ensure it is a valid CSV or Excel file.');
@@ -895,103 +1085,21 @@ export const TableEditor = ({ section, onUpdate, hideStructuralControls = false 
 
 
         {/* ── Table ── */}
-        <div className={styles.tableWrapper}>
-          <table className={`${styles.table} ${tableData.showBorder ? styles.bordered : ''}`}
-            style={{ borderColor: tableData.borderColor || '#ddd' }}>
-            {/* ── Header Row ── */}
-            {tableData.headers && (tableData.headerPosition || 'first-row') === 'first-row' && (
-              <thead>
-                <tr>
-                  {tableData.headers.map((header, colIndex) => {
-                    const hs = tableData.headerStyle;
-                    const hCellStyle = getHeaderStyle(colIndex);
-                    const isSelected = selectedCell?.row === -1 && selectedCell?.col === colIndex;
-                    const inputStyle: React.CSSProperties = {
-                      color: hCellStyle.color || (hs?.textColor || '#000000'),
-                      fontWeight: hCellStyle.bold ? 'bold' : (hs?.bold !== false ? 'bold' : undefined),
-                      fontStyle: hCellStyle.italic ? 'italic' : undefined,
-                      textDecoration: hCellStyle.underline ? 'underline' : undefined,
-                      backgroundColor: hCellStyle.backgroundColor || (hs?.backgroundColor || '#FFC000'),
-                      fontSize: hCellStyle.fontSize,
-                      textAlign: hCellStyle.textAlign, verticalAlign: hCellStyle.verticalAlign,
-                    };
-                    const resolvedWidth = getResolvedWidth(colIndex);
-                    const tdStyle: React.CSSProperties = {
-                      borderColor: tableData.borderColor || '#ddd',
-                      backgroundColor: hCellStyle.backgroundColor || (hs?.backgroundColor || '#FFC000'),
-                      width: resolvedWidth,
-                      wordWrap: 'break-word',
-                      overflowWrap: 'break-word',
-                    };
-                    return (
-                      <th key={colIndex}
-                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''} ${isCellInRange(-1, colIndex) ? styles.inRange : ''}`}
-                        style={tdStyle}
-                        onMouseDown={() => handleCellMouseDown(-1, colIndex)}
-                        onMouseEnter={() => handleCellMouseEnter(-1, colIndex)}>
-                        <Input value={header} onChange={(e) => updateHeader(colIndex, e.target.value)}
-                          className={styles.cellInput} style={inputStyle}
-                          placeholder={`Header ${colIndex + 1}`} />
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-            )}
-            {/* ── Data Rows ── */}
-            <tbody>
-              {tableData.rows.map((row, rowIndex) => (
-                <tr key={rowIndex}>
-                  {row.map((cell, colIndex) => {
-                    if (isCellMerged(rowIndex, colIndex)) return null;
-                    const merge = getCellMerge(rowIndex, colIndex);
-                    const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
-                    const cellStyle = getCellStyle(rowIndex, colIndex);
-                    const headerPosition = tableData.headerPosition || 'first-row';
-                    const isHeader = (headerPosition === 'first-column' && colIndex === 0);
-                    const hs = tableData.headerStyle;
-                    const inputStyle: React.CSSProperties = {
-                      color: cellStyle.color || (isHeader ? (hs?.textColor || '#000000') : undefined),
-                      fontWeight: cellStyle.bold ? 'bold' : (isHeader && hs?.bold !== false ? 'bold' : undefined),
-                      fontStyle: cellStyle.italic ? 'italic' : undefined,
-                      textDecoration: cellStyle.underline ? 'underline' : undefined,
-                      backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#FFC000') : undefined),
-                      fontSize: cellStyle.fontSize,
-                      textAlign: cellStyle.textAlign, verticalAlign: cellStyle.verticalAlign,
-                    };
-                    const resolvedWidth = getResolvedWidth(colIndex);
-                    const tdStyle: React.CSSProperties = {
-                      borderColor: tableData.borderColor || '#ddd',
-                      backgroundColor: cellStyle.backgroundColor || (isHeader ? (hs?.backgroundColor || '#FFC000') : undefined),
-                      width: resolvedWidth,
-                      wordWrap: 'break-word',
-                      overflowWrap: 'break-word',
-                    };
-
-                    const hasMerge = merge && (merge.rowSpan > 1 || merge.colSpan > 1);
-
-                    return (
-                      <td key={colIndex} rowSpan={merge?.rowSpan} colSpan={merge?.colSpan}
-                        className={`${styles.cell} ${tableData.showBorder ? styles.bordered : ''} ${isSelected ? styles.selected : ''} ${isCellInRange(rowIndex, colIndex) ? styles.inRange : ''}`}
-                        style={tdStyle}
-                        onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
-                        onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}>
-                        {hasMerge && (
-                          <span className={styles.mergeBadge} title={`Merged ${merge.rowSpan}×${merge.colSpan}`}>
-                            <Merge size={10} />
-                          </span>
-                        )}
-                        <Input value={cell} onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
-                          className={styles.cellInput} style={inputStyle}
-                          placeholder={isHeader ? `Header ${colIndex + 1}` : ''} />
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <VirtualizedTableBody
+          tableData={tableData}
+          tableScrollRef={tableScrollRef}
+          selectedCell={selectedCell}
+          isCellInRange={isCellInRange}
+          isCellMerged={isCellMerged}
+          getCellMerge={getCellMerge}
+          getCellStyle={getCellStyle}
+          getHeaderStyle={getHeaderStyle}
+          getResolvedWidth={getResolvedWidth}
+          handleCellMouseDown={handleCellMouseDown}
+          handleCellMouseEnter={handleCellMouseEnter}
+          updateHeader={updateHeader}
+          updateCell={updateCell}
+        />
 
         {/* ── Dynamic Mode Panel ── */}
         {isDynamic && (
