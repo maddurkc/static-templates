@@ -2512,12 +2512,57 @@ const RunTemplates = () => {
                                     
                                     return (
                                       <>
-                                        {/* Main text content preview */}
-                                        <div 
-                                          className="px-3 py-2 bg-muted/30 rounded border border-border/50 text-sm mb-2"
-                                          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                                          dangerouslySetInnerHTML={{ __html: textContent || '<span class="text-muted-foreground">No content</span>' }}
-                                        />
+                                        {/* Main text content - click to edit if editable */}
+                                        {editable ? (
+                                          editingSectionId === `text-${section.id}` ? (
+                                            <div className="border rounded-lg border-primary/30 bg-background mb-2">
+                                              <RichTextEditor
+                                                value={textContent}
+                                                onChange={(html) => {
+                                                  setVariables(prev => ({
+                                                    ...prev,
+                                                    [textVarName]: html
+                                                  }));
+                                                }}
+                                                onFocus={() => scrollToSection(section.id)}
+                                                placeholder="Enter text content..."
+                                                className="text-sm"
+                                              />
+                                              <div className="flex justify-end p-1 border-t border-border/50">
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-6 px-2 text-xs"
+                                                  onClick={() => setEditingSectionId(null)}
+                                                >
+                                                  <Check className="h-3 w-3 mr-1" />
+                                                  Done
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div 
+                                              className="group flex items-center gap-2 px-3 py-2 rounded cursor-pointer hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50 mb-2"
+                                              onClick={() => {
+                                                setEditingSectionId(`text-${section.id}`);
+                                                scrollToSection(section.id);
+                                              }}
+                                            >
+                                              <span 
+                                                className="flex-1 text-sm"
+                                                style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                                                dangerouslySetInnerHTML={{ __html: textContent || '<span class="text-muted-foreground">Click to edit...</span>' }}
+                                              />
+                                              <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                            </div>
+                                          )
+                                        ) : (
+                                          <div 
+                                            className="px-3 py-2 bg-muted/30 rounded border border-border/50 text-sm mb-2"
+                                            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                                            dangerouslySetInnerHTML={{ __html: textContent || '<span class="text-muted-foreground">No content</span>' }}
+                                          />
+                                        )}
                                         
                                         {/* Individual placeholder inputs */}
                                         {textPlaceholders.length > 0 && (
