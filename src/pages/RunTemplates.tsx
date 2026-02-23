@@ -1361,9 +1361,10 @@ const RunTemplates = () => {
                   const cellStyleKey = hasHeaders ? `h-${idx}` : `0-${idx}`;
                   const cellStyle = tableData.cellStyles?.[cellStyleKey];
                   const customStyle = buildCellStyleString(cellStyle);
-                  return {
+                   return {
                     value: m.header,
-                    style: customStyle || defaultHeaderStyle
+                    style: customStyle || defaultHeaderStyle,
+                    width: tableData.columnWidths?.[idx] || ''
                   };
                 });
                 if (!bodyData[tableData.headerVariableName]) {
@@ -1385,9 +1386,11 @@ const RunTemplates = () => {
                           const hs = tableData.headerStyle;
                           return `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
                         })();
+                        obj['header_width'] = tableData.columnWidths?.[idx] || '';
                       } else {
                         obj['value'] = cellValue;
                         obj['value_style'] = buildCellStyleString(cellStyle);
+                        obj['value_width'] = tableData.columnWidths?.[idx] || '';
                       }
                     });
                     return obj;
@@ -1400,7 +1403,8 @@ const RunTemplates = () => {
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
                       return {
                         value: cellValue,
-                        style: buildCellStyleString(cellStyle)
+                        style: buildCellStyleString(cellStyle),
+                        width: tableData.columnWidths?.[idx] || ''
                       };
                     });
                     return { cells };
@@ -1438,7 +1442,8 @@ const RunTemplates = () => {
                   const customStyle = buildCellStyleString(cellStyle);
                   return {
                     value: m.header,
-                    style: customStyle || defaultHeaderStyle
+                    style: customStyle || defaultHeaderStyle,
+                    width: tableData.columnWidths?.[idx] || ''
                   };
                 });
                 if (!bodyData[tableData.headerVariableName]) {
@@ -1460,9 +1465,11 @@ const RunTemplates = () => {
                           const hs = tableData.headerStyle;
                           return `background-color: ${hs?.backgroundColor || '#FFC000'}; color: ${hs?.textColor || 'inherit'}; font-weight: ${hs?.bold !== false ? 'bold' : 'normal'};`;
                         })();
+                        obj['header_width'] = tableData.columnWidths?.[idx] || '';
                       } else {
                         obj['value'] = cellValue;
                         obj['value_style'] = buildCellStyleString(cellStyle);
+                        obj['value_width'] = tableData.columnWidths?.[idx] || '';
                       }
                     });
                     return obj;
@@ -1475,7 +1482,8 @@ const RunTemplates = () => {
                       const cellStyle = tableData.cellStyles?.[cellStyleKey];
                       return {
                         value: cellValue,
-                        style: buildCellStyleString(cellStyle)
+                        style: buildCellStyleString(cellStyle),
+                        width: tableData.columnWidths?.[idx] || ''
                       };
                     });
                     return { cells };
