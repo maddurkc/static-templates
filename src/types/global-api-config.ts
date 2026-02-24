@@ -99,7 +99,8 @@ export const detectSchema = (data: any): Record<string, string> => {
   
   const schema: Record<string, string> = {};
   
-  const extractPaths = (obj: any, prefix: string = '') => {
+  const extractPaths = (obj: any, prefix: string = '', depth: number = 0) => {
+    if (depth > 5) return; // Prevent infinite recursion on deeply nested objects
     for (const key of Object.keys(obj)) {
       const path = prefix ? `${prefix}.${key}` : key;
       const value = obj[key];
@@ -109,10 +110,13 @@ export const detectSchema = (data: any): Record<string, string> => {
       } else if (Array.isArray(value)) {
         schema[path] = 'array';
         if (value.length > 0 && typeof value[0] === 'object') {
-          extractPaths(value[0], `${path}[]`);
+          extractPaths(value[0], `${path}[]`, depth + 1);
+        } else if (value.length > 0) {
+          schema[`${path}[]`] = typeof value[0]; // e.g., string[], number[]
         }
       } else if (typeof value === 'object') {
-        extractPaths(value, path);
+        schema[path] = 'object';
+        extractPaths(value, path, depth + 1);
       } else {
         schema[path] = typeof value;
       }
@@ -123,9 +127,15 @@ export const detectSchema = (data: any): Record<string, string> => {
   return schema;
 };
 
-// Get nested value from object using dot notation
+// Get nested value from object using dot notation (supports array bracket notation like "items[].name")
 const getNestedValue = (obj: any, path: string): any => {
-  return path.split('.').reduce((acc, part) => acc?.[part], obj);
+  const parts = path.replace(/\[\]/g, '.0').split('.');
+  return parts.reduce((acc, part) => {
+    if (acc === null || acc === undefined) return undefined;
+    // Handle numeric index
+    if (/^\d+$/.test(part)) return acc[parseInt(part)];
+    return acc[part];
+  }, obj);
 };
 
 // Apply filter condition to a single item
@@ -155,12 +165,14 @@ const matchesFilter = (item: any, filter: FilterCondition): boolean => {
   }
 };
 
-// Apply transformations to data
+// Apply transformations to data (handles objects, arrays, and nested structures)
 export const applyTransformations = (data: any, transformation?: DataTransformation): any => {
   if (!transformation) return data;
-  if (!Array.isArray(data)) return data; // Only transform arrays
+  if (data === null || data === undefined) return data;
   
-  let result = [...data];
+  // For single objects, wrap in array, transform, then unwrap
+  const isSingleObject = !Array.isArray(data) && typeof data === 'object';
+  let result = isSingleObject ? [data] : Array.isArray(data) ? [...data] : [data];
   
   // Apply filters
   if (transformation.filters.length > 0) {
@@ -213,5 +225,6 @@ export const applyTransformations = (data: any, transformation?: DataTransformat
     });
   }
   
-  return result;
+  // Unwrap if input was a single object
+  return isSingleObject ? result[0] : result;
 };
