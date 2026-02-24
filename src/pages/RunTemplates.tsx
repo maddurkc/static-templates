@@ -967,10 +967,14 @@ const RunTemplates = () => {
   };
 
   // Get processed subject with variables replaced - handles both formats
+  // Also resolves global API variables (e.g., {{snowDetails.changeNo}})
   const getProcessedSubject = (): string => {
     if (!selectedTemplate?.subject) return emailSubject;
     
-    return processSubjectWithValues(selectedTemplate.subject, subjectVariables);
+    let processed = processSubjectWithValues(selectedTemplate.subject, subjectVariables);
+    // Resolve any global API variable references in the subject
+    processed = resolveGlobalApiThymeleaf(processed, globalApiConfig);
+    return processed;
   };
   
   // Get display-friendly subject (converts Thymeleaf to placeholders for display)
@@ -1059,9 +1063,10 @@ const RunTemplates = () => {
     if (!selectedTemplate) return;
 
     // Get the final subject (either processed from template or manual input)
-    const finalSubject = selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 
+    // Global API variables are resolved in both paths
+    let finalSubject = selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 
       ? getProcessedSubject() 
-      : emailSubject;
+      : resolveGlobalApiThymeleaf(emailSubject, globalApiConfig);
 
     // Validate subject
     if (!finalSubject.trim()) {
@@ -2241,8 +2246,11 @@ const RunTemplates = () => {
                   <div className="flex-1 flex items-center gap-2">
                     <span className="text-sm text-muted-foreground font-mono shrink-0">
                       {/* Show processed subject with values or placeholders */}
-                      {getDisplaySubject().replace(/\{\{(\w+)\}\}/g, (_, varName) => 
-                        subjectVariables[varName] || `{{${varName}}}`
+                      {resolveGlobalApiThymeleaf(
+                        getDisplaySubject().replace(/\{\{(\w+)\}\}/g, (_, varName) => 
+                          subjectVariables[varName] || `{{${varName}}}`
+                        ),
+                        globalApiConfig
                       )}
                     </span>
                     <Popover>
