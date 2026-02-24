@@ -304,9 +304,7 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection, onClose }: G
         dataType,
         lastFetched: new Date().toISOString(),
         schema,
-        rawData: integration.transformation?.filters.length || integration.transformation?.fieldMappings.length 
-          ? rawData 
-          : undefined
+        rawData // Always store raw data for transform re-application
       };
 
       onUpdate({
@@ -358,9 +356,19 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection, onClose }: G
     return fields.join(', ') + suffix;
   };
 
-  const getAvailableFieldsForTemplate = (template: any): string[] => {
-    if (!template.mockData) return [];
-    const sample = Array.isArray(template.mockData) ? template.mockData[0] : template.mockData;
+  const getAvailableFieldsForIntegration = (integration: GlobalApiIntegration, template: any): string[] => {
+    // Prefer actual fetched raw data fields over mock data
+    const variable = config.globalVariables[integration.variableName];
+    const sourceData = variable?.rawData || variable?.data;
+    const sampleSource = sourceData 
+      ? (Array.isArray(sourceData) ? sourceData[0] : sourceData)
+      : null;
+    
+    // Fallback to mock data if no fetched data
+    const sample = sampleSource || (template?.mockData 
+      ? (Array.isArray(template.mockData) ? template.mockData[0] : template.mockData) 
+      : null);
+    
     if (!sample || typeof sample !== 'object') return [];
     
     const fields: string[] = [];
@@ -799,19 +807,46 @@ export const GlobalApiPanel = ({ config, onUpdate, onCreateSection, onClose }: G
 
                             {/* TRANSFORM TAB */}
                             <TabsContent value="transform" className={styles.tabContent}>
-                              {template.mockData ? (
-                                <DataTransformationEditor
-                                  transformation={integration.transformation || DEFAULT_TRANSFORMATION}
-                                  onChange={(transformation) => updateIntegration(integration.id, { transformation })}
-                                  availableFields={getAvailableFieldsForTemplate(template)}
-                                />
-                              ) : (
-                                <div className={styles.noResponse}>
-                                  <Settings2 className={styles.iconSmall} />
-                                  <span>No data available for transformation</span>
-                                  <p className={styles.noResponseHint}>Fetch data first to configure transformations</p>
-                                </div>
-                              )}
+                              {(() => {
+                                const availableFields = getAvailableFieldsForIntegration(integration, template);
+                                return availableFields.length > 0 ? (
+                                  <DataTransformationEditor
+                                    transformation={integration.transformation || DEFAULT_TRANSFORMATION}
+                                    onChange={(transformation) => {
+                                      updateIntegration(integration.id, { transformation });
+                                      // Re-apply transformations on existing data when config changes
+                                      const variable = config.globalVariables[integration.variableName];
+                                      if (variable?.rawData) {
+                                        const transformedData = applyTransformations(variable.rawData, transformation);
+                                        const dataType = detectDataType(transformedData);
+                                        const schema = detectSchema(transformedData);
+                                        onUpdate({
+                                          ...config,
+                                          integrations: config.integrations.map(i => 
+                                            i.id === integration.id ? { ...i, transformation } : i
+                                          ),
+                                          globalVariables: {
+                                            ...config.globalVariables,
+                                            [integration.variableName]: {
+                                              ...variable,
+                                              data: transformedData,
+                                              dataType,
+                                              schema,
+                                            }
+                                          }
+                                        });
+                                      }
+                                    }}
+                                    availableFields={availableFields}
+                                  />
+                                ) : (
+                                  <div className={styles.noResponse}>
+                                    <Settings2 className={styles.iconSmall} />
+                                    <span>No data available for transformation</span>
+                                    <p className={styles.noResponseHint}>Fetch data first to configure transformations</p>
+                                  </div>
+                                );
+                              })()}
                             </TabsContent>
                           </Tabs>
                         </>
