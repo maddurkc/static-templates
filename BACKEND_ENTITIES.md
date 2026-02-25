@@ -1374,6 +1374,23 @@ public class TemplateGlobalApiIntegration {
     private JsonNode transformation;
 
     /**
+     * Cached API response data (JSON object)
+     * Stores the last-fetched API response so templates can render without re-fetching.
+     * Contains: { data, rawData, dataType, schema }
+     * NULL = API has not been fetched yet
+     */
+    @Type(JsonType.class)
+    @Column(name = "cached_response", columnDefinition = "NVARCHAR(MAX)")
+    private JsonNode cachedResponse;
+
+    /**
+     * Timestamp of the last successful API fetch.
+     * NULL = never fetched
+     */
+    @Column(name = "cached_response_at")
+    private LocalDateTime cachedResponseAt;
+
+    /**
      * Display order within the template's integration list (0, 1, 2, ...)
      */
     @Column(name = "order_index", nullable = false)
@@ -1810,6 +1827,9 @@ public class GlobalApiIntegrationRequestDTO {
     @Schema(description = "Data transformation configuration (JSON object with filters, sort, limit, fieldMappings)")
     private JsonNode transformation;
 
+    @Schema(description = "Cached API response data (JSON with data, rawData, dataType, schema)")
+    private JsonNode cachedResponse;
+
     @Schema(description = "Display order in integration list", example = "0")
     private Integer orderIndex = 0;
 }
@@ -1992,6 +2012,10 @@ public class GlobalApiIntegrationResponseDTO {
     private JsonNode paramValues;
     @Schema(description = "Data transformation config (JSON)")
     private JsonNode transformation;
+    @Schema(description = "Cached API response data (JSON with data, rawData, dataType, schema)")
+    private JsonNode cachedResponse;
+    @Schema(description = "Timestamp of last successful API fetch")
+    private LocalDateTime cachedResponseAt;
     @Schema(description = "Display order")
     private Integer orderIndex;
     private LocalDateTime createdAt;
@@ -2519,6 +2543,8 @@ public class TemplateService {
                     .enabled(dto.getEnabled() != null ? dto.getEnabled() : true)
                     .paramValues(dto.getParamValues())
                     .transformation(dto.getTransformation())
+                    .cachedResponse(dto.getCachedResponse())
+                    .cachedResponseAt(dto.getCachedResponse() != null ? LocalDateTime.now() : null)
                     .orderIndex(dto.getOrderIndex() != null ? dto.getOrderIndex() : i)
                     .build();
             

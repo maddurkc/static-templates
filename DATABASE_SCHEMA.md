@@ -632,6 +632,22 @@ CREATE TABLE template_global_api_integrations (
   -- NULL = no transformation (raw data stored as-is)
   transformation NVARCHAR(MAX),
   
+  -- Cached API response data (JSON)
+  -- Stores the last-fetched API response so templates can render without re-fetching.
+  -- Contains both raw and transformed data, schema info, and data type.
+  -- Structure: {
+  --   "data": <transformed response>,
+  --   "rawData": <original response before transformation>,
+  --   "dataType": "object" | "list" | "stringList",
+  --   "schema": {"field": "type", ...}
+  -- }
+  -- NULL = no cached data (API has not been fetched yet)
+  cached_response NVARCHAR(MAX),
+  
+  -- Timestamp of the last successful API fetch
+  -- NULL = never fetched
+  cached_response_at DATETIME2,
+  
   -- Display order within the template's integration list (0, 1, 2, ...)
   order_index INT NOT NULL DEFAULT 0,
   
@@ -1204,6 +1220,20 @@ When creating the database, execute migrations in this order:
 8. `008_create_api_template_params.sql`
 9. `009_create_template_global_api_integrations.sql`
 10. `010_seed_sections.sql`
+
+### Alter Scripts (run after initial setup)
+
+14. `014_add_cached_response_to_integrations.sql`
+
+```sql
+-- 014_add_cached_response_to_integrations.sql
+-- Adds cached API response storage to template_global_api_integrations
+ALTER TABLE template_global_api_integrations
+  ADD cached_response NVARCHAR(MAX) NULL;
+
+ALTER TABLE template_global_api_integrations
+  ADD cached_response_at DATETIME2 NULL;
+```
 11. `011_seed_section_variables.sql`
 12. `012_seed_api_templates.sql`
 13. `013_seed_api_template_params.sql`
