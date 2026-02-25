@@ -45,6 +45,7 @@ export interface GlobalApiIntegrationRequest {
   enabled: boolean;
   paramValues: Record<string, string>;
   transformation?: any; // DataTransformation JSON
+  cachedResponse?: any; // Cached API response: { data, rawData, dataType, schema }
   orderIndex: number;
 }
 
@@ -96,6 +97,8 @@ export interface GlobalApiIntegrationResponse {
   enabled: boolean;
   paramValues: Record<string, string>;
   transformation?: any;
+  cachedResponse?: any; // { data, rawData, dataType, schema }
+  cachedResponseAt?: string; // ISO timestamp of last fetch
   orderIndex: number;
   createdAt: string;
   updatedAt: string;
@@ -351,16 +354,28 @@ export const globalApiConfigToRequest = (
     return undefined;
   }
   
-  return config.integrations.map((integration, index) => ({
-    integrationId: integration.id,
-    name: integration.name,
-    apiTemplateId: integration.templateId,
-    variableName: integration.variableName,
-    enabled: integration.enabled,
-    paramValues: integration.paramValues || {},
-    transformation: integration.transformation || undefined,
-    orderIndex: index,
-  }));
+  return config.integrations.map((integration, index) => {
+    // Build cached response payload from globalVariables if available
+    const globalVar = config.globalVariables?.[integration.variableName];
+    const cachedResponse = globalVar ? {
+      data: globalVar.data,
+      rawData: globalVar.rawData,
+      dataType: globalVar.dataType,
+      schema: globalVar.schema,
+    } : undefined;
+
+    return {
+      integrationId: integration.id,
+      name: integration.name,
+      apiTemplateId: integration.templateId,
+      variableName: integration.variableName,
+      enabled: integration.enabled,
+      paramValues: integration.paramValues || {},
+      transformation: integration.transformation || undefined,
+      cachedResponse,
+      orderIndex: index,
+    };
+  });
 };
 
 // API Client class
@@ -529,6 +544,22 @@ export const responseToTemplate = (response: TemplateResponse): Template => {
   // Convert global API integrations to GlobalApiConfig format
   let globalApiConfig: import('@/types/global-api-config').GlobalApiConfig | undefined;
   if (response.globalApiIntegrations && response.globalApiIntegrations.length > 0) {
+    // Restore cached API response data into globalVariables
+    const globalVariables: Record<string, import('@/types/global-api-config').GlobalApiVariable> = {};
+    
+    response.globalApiIntegrations.forEach(int => {
+      if (int.cachedResponse && int.cachedResponse.data !== undefined) {
+        globalVariables[int.variableName] = {
+          name: int.variableName,
+          data: int.cachedResponse.data,
+          rawData: int.cachedResponse.rawData,
+          dataType: int.cachedResponse.dataType || 'object',
+          schema: int.cachedResponse.schema || {},
+          lastFetched: int.cachedResponseAt,
+        };
+      }
+    });
+
     globalApiConfig = {
       integrations: response.globalApiIntegrations.map(int => ({
         id: int.id,
@@ -539,7 +570,7 @@ export const responseToTemplate = (response: TemplateResponse): Template => {
         enabled: int.enabled,
         transformation: int.transformation || undefined,
       })),
-      globalVariables: {},
+      globalVariables,
     };
   }
 
