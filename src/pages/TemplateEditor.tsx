@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
 import { renderSectionContent, wrapSectionInTable } from "@/lib/templateUtils";
-import { templateApi, flattenSectionsForApi, TemplateCreateRequest, TemplateUpdateRequest, fetchTemplateById } from "@/lib/templateApi";
+import { templateApi, flattenSectionsForApi, globalApiConfigToRequest, TemplateCreateRequest, TemplateUpdateRequest, fetchTemplateById } from "@/lib/templateApi";
 import { validateTemplate, validateTemplateName, validateSubject, ValidationError } from "@/lib/templateValidation";
 import { extractAllTemplateVariables, variableToRequest } from "@/lib/variableExtractor";
 import { subjectPlaceholderToThymeleaf, subjectThymeleafToPlaceholder } from "@/lib/thymeleafUtils";
@@ -1373,8 +1373,9 @@ const TemplateEditor = () => {
       console.log('Extracted template variables:', templateVariables);
       console.log('Subject with Thymeleaf:', subjectForStorage);
       
-      // Build global API config for storage
+      // Build global API config for storage (localStorage) and API request
       const globalApiConfigRequest = globalApiConfig.integrations.length > 0 ? globalApiConfig : undefined;
+      const globalApiIntegrationsRequest = globalApiConfigToRequest(globalApiConfig);
 
       if (isEditMode && editingTemplateId) {
         // UPDATE: Call backend API to update existing template
@@ -1386,6 +1387,7 @@ const TemplateEditor = () => {
           archived: false,
           sections: apiSections,
           variables: variableRequests,
+          globalApiIntegrations: globalApiIntegrationsRequest,
         };
 
         const response = await templateApi.updateTemplate(editingTemplateId, updateRequest);
@@ -1418,6 +1420,7 @@ const TemplateEditor = () => {
           archived: false,
           sections: apiSections,
           variables: variableRequests,
+          globalApiIntegrations: globalApiIntegrationsRequest,
         };
 
         const response = await templateApi.createTemplate(createRequest);
