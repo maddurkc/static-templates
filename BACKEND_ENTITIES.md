@@ -2822,6 +2822,9 @@ public class TemplateVariableService {
 }
 ```
 
+### ApiTemplateService
+
+```java
 // === ApiTemplateService ===
 /**
  * Service for managing API templates and their parameters.
