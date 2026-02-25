@@ -887,6 +887,309 @@ WHERE template_id = @templateId
 ORDER BY order_index;
 ```
 
+## Seed Data: API Templates & Parameters
+
+The following INSERT scripts populate the `api_templates` and `api_template_params` tables with the pre-configured API endpoint templates from the frontend `apiTemplates.ts` file.
+
+### Seed API Templates
+
+```sql
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ SEED DATA: api_templates                                                      ║
+-- ║ SOURCE: src/data/apiTemplates.ts                                              ║
+-- ║ PURPOSE: Pre-configured API endpoint templates (Jira, GitHub, ServiceNow, etc)║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+
+-- 1. Jira Fix Version Details
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000001',
+  'Jira Fix Version Details',
+  'Get details of a specific fix version from Jira',
+  'Jira',
+  'https://{domain}.atlassian.net/rest/api/3/version/{versionId}',
+  'GET',
+  '{"Authorization": "Basic {authToken}", "Content-Type": "application/json"}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 2. Jira Version Issues
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000002',
+  'Jira Version Issues',
+  'Get all issues associated with a fix version',
+  'Jira',
+  'https://{domain}.atlassian.net/rest/api/3/search?jql=fixVersion={versionName}',
+  'GET',
+  '{"Authorization": "Basic {authToken}", "Content-Type": "application/json"}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 3. ServiceNow Incident Details
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000003',
+  'ServiceNow Incident Details',
+  'Get details of a specific incident from ServiceNow',
+  'ServiceNow',
+  'https://{instance}.service-now.com/api/now/table/incident/{incidentNumber}',
+  'GET',
+  '{"Authorization": "Basic {authToken}", "Content-Type": "application/json"}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 4. ServiceNow Change Details
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000004',
+  'ServiceNow Change Details',
+  'Get details of a specific change request from ServiceNow',
+  'ServiceNow',
+  'https://{instance}.service-now.com/api/now/table/change_request/{changeNumber}',
+  'GET',
+  '{"Authorization": "Basic {authToken}", "Content-Type": "application/json"}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 5. GitHub Repository Info
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000005',
+  'GitHub Repository Info',
+  'Get information about a GitHub repository',
+  'GitHub',
+  'https://api.github.com/repos/{owner}/{repo}',
+  'GET',
+  '{"Authorization": "Bearer {token}", "Accept": "application/vnd.github.v3+json"}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 6. JSONPlaceholder User (Demo)
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000006',
+  'JSONPlaceholder User (Demo)',
+  'Get user information from JSONPlaceholder - Free fake API for testing',
+  'Demo',
+  'https://jsonplaceholder.typicode.com/users/{userId}',
+  'GET',
+  '{"Content-Type": "application/json"}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 7. Mock Tags List (Demo)
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000007',
+  'Mock Tags List (Demo)',
+  'Returns a list of string tags - Maps to bullet list',
+  'Demo',
+  'mock://string-list',
+  'GET',
+  '{}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 8. Mock Issues List (Demo)
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000008',
+  'Mock Issues List (Demo)',
+  'Returns a list of objects - Maps to table',
+  'Demo',
+  'mock://object-list',
+  'GET',
+  '{}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 9. Mock Release Info (Demo)
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000009',
+  'Mock Release Info (Demo)',
+  'Returns a single object - Maps to table or labeled list',
+  'Demo',
+  'mock://single-object',
+  'GET',
+  '{}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 10. Mock ServiceNow Change (Demo)
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000010',
+  'Mock ServiceNow Change (Demo)',
+  'Returns a ServiceNow change request object - Use with dot notation like {{snowDetails.changeNo}}',
+  'Demo',
+  'mock://servicenow-change',
+  'GET',
+  '{}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 11. Mock ServiceNow Incident (Demo)
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000011',
+  'Mock ServiceNow Incident (Demo)',
+  'Returns a ServiceNow incident object',
+  'Demo',
+  'mock://servicenow-incident',
+  'GET',
+  '{}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+
+-- 12. Mock Team Members (Demo)
+INSERT INTO api_templates (id, name, description, category, url_template, method, headers, body_template, is_custom, created_at)
+VALUES (
+  'A0000001-0001-0001-0001-000000000012',
+  'Mock Team Members (Demo)',
+  'Returns nested objects with arrays - Complex data structure',
+  'Demo',
+  'mock://nested-list',
+  'GET',
+  '{}',
+  NULL,
+  0,
+  GETUTCDATE()
+);
+```
+
+### Seed API Template Parameters
+
+```sql
+-- ╔══════════════════════════════════════════════════════════════════════════════╗
+-- ║ SEED DATA: api_template_params                                                ║
+-- ║ SOURCE: src/data/apiTemplates.ts → requiredParams                             ║
+-- ║ PURPOSE: Parameters for each API template                                     ║
+-- ╚══════════════════════════════════════════════════════════════════════════════╝
+
+-- === Jira Fix Version Details (A0000001-0001-0001-0001-000000000001) ===
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000001', 'domain', 'Jira Domain', 'text', 'path', 'your-company', 1, 'Your Jira subdomain (e.g., ''your-company'' for your-company.atlassian.net)', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000001', 'versionId', 'Version ID', 'text', 'path', '10000', 1, 'The ID of the fix version', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000001', 'authToken', 'Auth Token', 'text', 'header', 'Base64 encoded email:api_token', 1, 'Base64 encoded ''email:api_token''', GETUTCDATE());
+
+-- === Jira Version Issues (A0000001-0001-0001-0001-000000000002) ===
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000002', 'domain', 'Jira Domain', 'text', 'path', 'your-company', 1, 'Your Jira subdomain', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000002', 'versionName', 'Version Name', 'text', 'query', 'v1.0.0', 1, 'Name of the fix version', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000002', 'authToken', 'Auth Token', 'text', 'header', 'Base64 encoded email:api_token', 1, 'Base64 encoded ''email:api_token''', GETUTCDATE());
+
+-- === ServiceNow Incident Details (A0000001-0001-0001-0001-000000000003) ===
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000003', 'instance', 'ServiceNow Instance', 'text', 'path', 'dev12345', 1, 'Your ServiceNow instance name', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000003', 'incidentNumber', 'Incident Number', 'text', 'path', 'INC0010001', 1, 'The incident number', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000003', 'authToken', 'Auth Token', 'text', 'header', 'Base64 encoded username:password', 1, 'Base64 encoded ''username:password''', GETUTCDATE());
+
+-- === ServiceNow Change Details (A0000001-0001-0001-0001-000000000004) ===
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000004', 'instance', 'ServiceNow Instance', 'text', 'path', 'dev12345', 1, 'Your ServiceNow instance name', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000004', 'changeNumber', 'Change Number', 'text', 'path', 'CHG0030001', 1, 'The change request number', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000004', 'authToken', 'Auth Token', 'text', 'header', 'Base64 encoded username:password', 1, 'Base64 encoded ''username:password''', GETUTCDATE());
+
+-- === GitHub Repository Info (A0000001-0001-0001-0001-000000000005) ===
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000005', 'owner', 'Repository Owner', 'text', 'path', 'octocat', 1, 'GitHub username or organization', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000005', 'repo', 'Repository Name', 'text', 'path', 'hello-world', 1, 'Repository name', GETUTCDATE());
+
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000005', 'token', 'GitHub Token', 'text', 'header', 'ghp_xxxxxxxxxxxxx', 1, 'GitHub personal access token', GETUTCDATE());
+
+-- === JSONPlaceholder User (A0000001-0001-0001-0001-000000000006) ===
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000006', 'userId', 'User ID', 'text', 'path', '1', 1, 'User ID (1-10 available in demo API)', GETUTCDATE());
+
+-- === Mock Tags List (A0000001-0001-0001-0001-000000000007) ===
+-- No parameters required
+
+-- === Mock Issues List (A0000001-0001-0001-0001-000000000008) ===
+-- No parameters required
+
+-- === Mock Release Info (A0000001-0001-0001-0001-000000000009) ===
+-- No parameters required
+
+-- === Mock ServiceNow Change (A0000001-0001-0001-0001-000000000010) ===
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000010', 'changeNo', 'Change Number', 'text', 'query', 'CHG1234567', 0, 'Enter a change number to override mock data', GETUTCDATE());
+
+-- === Mock ServiceNow Incident (A0000001-0001-0001-0001-000000000011) ===
+INSERT INTO api_template_params (id, api_template_id, param_name, param_label, param_type, param_location, placeholder, required, description, created_at)
+VALUES (NEWID(), 'A0000001-0001-0001-0001-000000000011', 'incidentNo', 'Incident Number', 'text', 'query', 'INC0012345', 0, 'Enter an incident number to override mock data', GETUTCDATE());
+
+-- === Mock Team Members (A0000001-0001-0001-0001-000000000012) ===
+-- No parameters required
+```
+
+### Verify Seed Data
+
+```sql
+-- Verify api_templates seed data
+SELECT id, name, category, method, url_template FROM api_templates ORDER BY category, name;
+
+-- Verify api_template_params seed data  
+SELECT 
+  at.name AS template_name,
+  atp.param_name,
+  atp.param_label,
+  atp.param_type,
+  atp.param_location,
+  atp.required
+FROM api_template_params atp
+JOIN api_templates at ON atp.api_template_id = at.id
+ORDER BY at.name, atp.param_name;
+
+-- Count templates and params
+SELECT 
+  (SELECT COUNT(*) FROM api_templates) AS total_templates,
+  (SELECT COUNT(*) FROM api_template_params) AS total_params;
+-- Expected: 12 templates, 16 params
+```
+
 ## Migration Order
 
 When creating the database, execute migrations in this order:
@@ -902,6 +1205,8 @@ When creating the database, execute migrations in this order:
 9. `009_create_template_global_api_integrations.sql`
 10. `010_seed_sections.sql`
 11. `011_seed_section_variables.sql`
+12. `012_seed_api_templates.sql`
+13. `013_seed_api_template_params.sql`
 
 ## Key Relationships Summary
 
