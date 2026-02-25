@@ -2178,6 +2178,12 @@ public interface ApiTemplateRepository extends JpaRepository<ApiTemplate, UUID> 
     @Query("SELECT a FROM ApiTemplate a LEFT JOIN FETCH a.params WHERE a.id = :id")
     Optional<ApiTemplate> findByIdWithParams(@Param("id") UUID id);
     
+    @Query("SELECT DISTINCT a FROM ApiTemplate a LEFT JOIN FETCH a.params ORDER BY a.category, a.name")
+    List<ApiTemplate> findAllWithParams();
+    
+    @Query("SELECT DISTINCT a.category FROM ApiTemplate a WHERE a.category IS NOT NULL ORDER BY a.category")
+    List<String> findAllCategories();
+    
     List<ApiTemplate> findByNameContainingIgnoreCase(String name);
 }
 
@@ -2816,6 +2822,202 @@ public class TemplateVariableService {
 }
 ```
 
+// === ApiTemplateService ===
+/**
+ * Service for managing API templates and their parameters.
+ * 
+ * PURPOSE: Provides full CRUD operations for the api_templates and api_template_params tables.
+ * API templates are pre-configured endpoint definitions (Jira, GitHub, ServiceNow, etc.)
+ * that templates can reference via template_global_api_integrations.
+ * 
+ * KEY FEATURES:
+ * - CRUD for api_templates with cascading params management
+ * - Get all templates with params (for frontend dropdown/selection)
+ * - Filter by category (Jira, GitHub, ServiceNow, Demo)
+ * - Support for custom user-created API templates
+ * - Returns response structure matching frontend ApiTemplate type from apiTemplates.ts
+ * 
+ * RESPONSE FORMAT:
+ * The getAllApiTemplates() endpoint returns an array matching the frontend structure:
+ * [
+ *   {
+ *     id: UUID,
+ *     name: "Jira Fix Version Details",
+ *     description: "Get details of a specific fix version from Jira",
+ *     category: "Jira",
+ *     urlTemplate: "https://{domain}.atlassian.net/rest/api/3/version/{versionId}",
+ *     method: "GET",
+ *     headers: {"Authorization": "Basic {authToken}", "Content-Type": "application/json"},
+ *     params: [
+ *       {paramName: "domain", paramLabel: "Jira Domain", paramType: "text", paramLocation: "path", ...},
+ *       ...
+ *     ]
+ *   },
+ *   ...
+ * ]
+ */
+@Service
+@Slf4j
+@RequiredArgsConstructor
+@Transactional
+public class ApiTemplateService {
+
+    private final ApiTemplateRepository apiTemplateRepository;
+    private final ApiTemplateParamRepository apiTemplateParamRepository;
+    private final ApiTemplateMapper apiTemplateMapper;
+
+    /**
+     * Get all API templates with their parameters.
+     * Returns the complete catalog for frontend dropdown selection.
+     * Equivalent to the API_TEMPLATES array in apiTemplates.ts.
+     */
+    @Transactional(readOnly = true)
+    public List<ApiTemplateResponseDTO> getAllApiTemplates() {
+        List<ApiTemplate> templates = apiTemplateRepository.findAll();
+        return apiTemplateMapper.toResponseDTOList(templates);
+    }
+
+    /**
+     * Get a single API template by ID with all parameters.
+     */
+    @Transactional(readOnly = true)
+    public ApiTemplateResponseDTO getApiTemplateById(UUID id) {
+        ApiTemplate template = apiTemplateRepository.findByIdWithParams(id)
+                .orElseThrow(() -> new ResourceNotFoundException("API template not found with id: " + id));
+        return apiTemplateMapper.toResponseDTO(template);
+    }
+
+    /**
+     * Get API templates filtered by category.
+     * Categories: 'Jira', 'GitHub', 'ServiceNow', 'Demo', etc.
+     */
+    @Transactional(readOnly = true)
+    public List<ApiTemplateResponseDTO> getApiTemplatesByCategory(String category) {
+        List<ApiTemplate> templates = apiTemplateRepository.findByCategory(category);
+        return apiTemplateMapper.toResponseDTOList(templates);
+    }
+
+    /**
+     * Get all distinct categories.
+     * Returns: ["Jira", "ServiceNow", "GitHub", "Demo"]
+     */
+    @Transactional(readOnly = true)
+    public List<String> getAllCategories() {
+        return apiTemplateRepository.findAllCategories();
+    }
+
+    /**
+     * Get only custom (user-created) API templates.
+     */
+    @Transactional(readOnly = true)
+    public List<ApiTemplateResponseDTO> getCustomApiTemplates() {
+        return apiTemplateMapper.toResponseDTOList(apiTemplateRepository.findByIsCustom(true));
+    }
+
+    /**
+     * Get API templates created by a specific user.
+     */
+    @Transactional(readOnly = true)
+    public List<ApiTemplateResponseDTO> getApiTemplatesByUser(UUID userId) {
+        return apiTemplateMapper.toResponseDTOList(apiTemplateRepository.findByCreatedBy(userId));
+    }
+
+    /**
+     * Search API templates by name.
+     */
+    @Transactional(readOnly = true)
+    public List<ApiTemplateResponseDTO> searchApiTemplates(String searchTerm) {
+        return apiTemplateMapper.toResponseDTOList(apiTemplateRepository.findByNameContainingIgnoreCase(searchTerm));
+    }
+
+    /**
+     * Create a new API template with parameters.
+     * Handles cascading creation of api_template_params.
+     */
+    public ApiTemplateResponseDTO createApiTemplate(ApiTemplateRequestDTO request) {
+        ApiTemplate template = apiTemplateMapper.toEntity(request);
+        
+        // Add parameters
+        if (request.getParams() != null) {
+            for (ApiTemplateParamRequestDTO paramDto : request.getParams()) {
+                ApiTemplateParam param = ApiTemplateParam.builder()
+                        .paramName(paramDto.getParamName())
+                        .paramLabel(paramDto.getParamLabel())
+                        .paramType(paramDto.getParamType())
+                        .paramLocation(paramDto.getParamLocation())
+                        .placeholder(paramDto.getPlaceholder())
+                        .required(paramDto.getRequired() != null ? paramDto.getRequired() : true)
+                        .description(paramDto.getDescription())
+                        .options(paramDto.getOptions())
+                        .build();
+                template.addParam(param);
+            }
+        }
+        
+        ApiTemplate saved = apiTemplateRepository.save(template);
+        log.info("Created API template '{}' with {} params", saved.getName(), 
+                saved.getParams() != null ? saved.getParams().size() : 0);
+        return apiTemplateMapper.toResponseDTO(saved);
+    }
+
+    /**
+     * Update an existing API template and its parameters.
+     * Replaces all parameters (delete old + insert new).
+     */
+    public ApiTemplateResponseDTO updateApiTemplate(UUID id, ApiTemplateRequestDTO request) {
+        ApiTemplate existing = apiTemplateRepository.findByIdWithParams(id)
+                .orElseThrow(() -> new ResourceNotFoundException("API template not found with id: " + id));
+        
+        // Update basic fields
+        existing.setName(request.getName());
+        existing.setDescription(request.getDescription());
+        existing.setCategory(request.getCategory());
+        existing.setUrlTemplate(request.getUrlTemplate());
+        existing.setMethod(request.getMethod());
+        existing.setHeaders(request.getHeaders());
+        existing.setBodyTemplate(request.getBodyTemplate());
+        if (request.getIsCustom() != null) {
+            existing.setIsCustom(request.getIsCustom());
+        }
+        
+        // Replace parameters: clear old, add new
+        existing.getParams().clear();
+        if (request.getParams() != null) {
+            for (ApiTemplateParamRequestDTO paramDto : request.getParams()) {
+                ApiTemplateParam param = ApiTemplateParam.builder()
+                        .paramName(paramDto.getParamName())
+                        .paramLabel(paramDto.getParamLabel())
+                        .paramType(paramDto.getParamType())
+                        .paramLocation(paramDto.getParamLocation())
+                        .placeholder(paramDto.getPlaceholder())
+                        .required(paramDto.getRequired() != null ? paramDto.getRequired() : true)
+                        .description(paramDto.getDescription())
+                        .options(paramDto.getOptions())
+                        .build();
+                existing.addParam(param);
+            }
+        }
+        
+        ApiTemplate updated = apiTemplateRepository.save(existing);
+        log.info("Updated API template '{}' with {} params", updated.getName(), 
+                updated.getParams() != null ? updated.getParams().size() : 0);
+        return apiTemplateMapper.toResponseDTO(updated);
+    }
+
+    /**
+     * Delete an API template and all its parameters (CASCADE).
+     * Also checks if any template_global_api_integrations reference this template.
+     */
+    public void deleteApiTemplate(UUID id) {
+        if (!apiTemplateRepository.existsById(id)) {
+            throw new ResourceNotFoundException("API template not found with id: " + id);
+        }
+        apiTemplateRepository.deleteById(id);
+        log.info("Deleted API template with id: {}", id);
+    }
+}
+```
+
 ---
 
 ## Controllers
@@ -3058,47 +3260,133 @@ public class TemplateVariableController {
 }
 
 // === ApiTemplateController ===
+/**
+ * REST Controller for API template CRUD operations.
+ * 
+ * PURPOSE: Manages the api_templates and api_template_params catalog.
+ * These are the pre-configured API endpoint definitions (Jira, GitHub, etc.)
+ * that users can select when creating global API integrations on templates.
+ * 
+ * ENDPOINTS:
+ * - GET    /api/v1/api-templates                    → Get all API templates with params
+ * - GET    /api/v1/api-templates/{id}               → Get single API template by ID
+ * - GET    /api/v1/api-templates/category/{category} → Filter by category
+ * - GET    /api/v1/api-templates/categories          → Get all distinct categories
+ * - GET    /api/v1/api-templates/custom              → Get custom (user-created) templates
+ * - GET    /api/v1/api-templates/search?q={term}     → Search by name
+ * - POST   /api/v1/api-templates                    → Create new API template with params
+ * - PUT    /api/v1/api-templates/{id}               → Update API template and params
+ * - DELETE /api/v1/api-templates/{id}               → Delete API template (cascades params)
+ * 
+ * RESPONSE FORMAT:
+ * GET /api/v1/api-templates returns array matching frontend ApiTemplate[] structure:
+ * [
+ *   {
+ *     "id": "a0000001-...",
+ *     "name": "Jira Fix Version Details",
+ *     "description": "Get details of a specific fix version from Jira",
+ *     "category": "Jira",
+ *     "urlTemplate": "https://{domain}.atlassian.net/rest/api/3/version/{versionId}",
+ *     "method": "GET",
+ *     "headers": {"Authorization": "Basic {authToken}", "Content-Type": "application/json"},
+ *     "bodyTemplate": null,
+ *     "isCustom": false,
+ *     "createdBy": null,
+ *     "createdAt": "2024-01-01T00:00:00",
+ *     "params": [
+ *       {"id": "...", "apiTemplateId": "a0000001-...", "paramName": "domain", "paramLabel": "Jira Domain", 
+ *        "paramType": "text", "paramLocation": "path", "placeholder": "your-company", 
+ *        "required": true, "description": "Your Jira subdomain", "options": null, "createdAt": "..."},
+ *       ...
+ *     ]
+ *   },
+ *   ...
+ * ]
+ */
 @RestController
 @RequestMapping("/api/v1/api-templates")
 @RequiredArgsConstructor
-@Tag(name = "API Templates", description = "Manage API templates")
+@Tag(name = "API Templates", description = "Manage pre-configured API endpoint templates (Jira, GitHub, ServiceNow, etc.)")
 public class ApiTemplateController {
 
     private final ApiTemplateService apiTemplateService;
 
     @GetMapping
-    @Operation(summary = "Get all API templates")
+    @Operation(
+        summary = "Get all API templates",
+        description = "Returns the complete catalog of API templates with their parameters. " +
+                      "This is the primary endpoint used by the frontend to populate the API template " +
+                      "selection dropdown in GlobalApiPanel. Returns structure matching apiTemplates.ts."
+    )
+    @ApiResponse(responseCode = "200", description = "List of all API templates with params")
     public ResponseEntity<List<ApiTemplateResponseDTO>> getAllApiTemplates() {
         return ResponseEntity.ok(apiTemplateService.getAllApiTemplates());
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get API template by ID")
-    public ResponseEntity<ApiTemplateResponseDTO> getApiTemplateById(@PathVariable UUID id) {
+    @Operation(summary = "Get API template by ID", description = "Returns a single API template with all its parameters")
+    @ApiResponse(responseCode = "200", description = "API template found")
+    @ApiResponse(responseCode = "404", description = "API template not found")
+    public ResponseEntity<ApiTemplateResponseDTO> getApiTemplateById(
+            @Parameter(description = "API template UUID") @PathVariable UUID id) {
         return ResponseEntity.ok(apiTemplateService.getApiTemplateById(id));
     }
 
     @GetMapping("/category/{category}")
-    @Operation(summary = "Get API templates by category")
-    public ResponseEntity<List<ApiTemplateResponseDTO>> getApiTemplatesByCategory(@PathVariable String category) {
+    @Operation(summary = "Get API templates by category", description = "Filter templates by category (Jira, GitHub, ServiceNow, Demo)")
+    @ApiResponse(responseCode = "200", description = "Filtered list of API templates")
+    public ResponseEntity<List<ApiTemplateResponseDTO>> getApiTemplatesByCategory(
+            @Parameter(description = "Category name", example = "Jira") @PathVariable String category) {
         return ResponseEntity.ok(apiTemplateService.getApiTemplatesByCategory(category));
     }
 
+    @GetMapping("/categories")
+    @Operation(summary = "Get all categories", description = "Returns distinct category names for filtering UI")
+    @ApiResponse(responseCode = "200", description = "List of category names")
+    public ResponseEntity<List<String>> getAllCategories() {
+        return ResponseEntity.ok(apiTemplateService.getAllCategories());
+    }
+
+    @GetMapping("/custom")
+    @Operation(summary = "Get custom API templates", description = "Returns only user-created custom API templates")
+    @ApiResponse(responseCode = "200", description = "List of custom API templates")
+    public ResponseEntity<List<ApiTemplateResponseDTO>> getCustomApiTemplates() {
+        return ResponseEntity.ok(apiTemplateService.getCustomApiTemplates());
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search API templates by name", description = "Case-insensitive name search")
+    @ApiResponse(responseCode = "200", description = "Matching API templates")
+    public ResponseEntity<List<ApiTemplateResponseDTO>> searchApiTemplates(
+            @Parameter(description = "Search term") @RequestParam("q") String searchTerm) {
+        return ResponseEntity.ok(apiTemplateService.searchApiTemplates(searchTerm));
+    }
+
     @PostMapping
-    @Operation(summary = "Create API template")
-    public ResponseEntity<ApiTemplateResponseDTO> createApiTemplate(@Valid @RequestBody ApiTemplateRequestDTO request) {
+    @Operation(summary = "Create API template", description = "Creates a new API template with parameters. Use for custom user-created API integrations.")
+    @ApiResponse(responseCode = "201", description = "API template created")
+    @ApiResponse(responseCode = "400", description = "Validation error")
+    public ResponseEntity<ApiTemplateResponseDTO> createApiTemplate(
+            @Valid @RequestBody ApiTemplateRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(apiTemplateService.createApiTemplate(request));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update API template")
-    public ResponseEntity<ApiTemplateResponseDTO> updateApiTemplate(@PathVariable UUID id, @Valid @RequestBody ApiTemplateRequestDTO request) {
+    @Operation(summary = "Update API template", description = "Updates an existing API template and replaces all its parameters")
+    @ApiResponse(responseCode = "200", description = "API template updated")
+    @ApiResponse(responseCode = "404", description = "API template not found")
+    public ResponseEntity<ApiTemplateResponseDTO> updateApiTemplate(
+            @Parameter(description = "API template UUID") @PathVariable UUID id, 
+            @Valid @RequestBody ApiTemplateRequestDTO request) {
         return ResponseEntity.ok(apiTemplateService.updateApiTemplate(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete API template")
-    public ResponseEntity<Void> deleteApiTemplate(@PathVariable UUID id) {
+    @Operation(summary = "Delete API template", description = "Deletes an API template and all its parameters (CASCADE)")
+    @ApiResponse(responseCode = "204", description = "API template deleted")
+    @ApiResponse(responseCode = "404", description = "API template not found")
+    public ResponseEntity<Void> deleteApiTemplate(
+            @Parameter(description = "API template UUID") @PathVariable UUID id) {
         apiTemplateService.deleteApiTemplate(id);
         return ResponseEntity.noContent().build();
     }
@@ -3192,7 +3480,23 @@ public interface ApiTemplateMapper {
     @Mapping(target = "params", ignore = true)
     ApiTemplate toEntity(ApiTemplateRequestDTO dto);
     
+    void updateEntity(ApiTemplateRequestDTO dto, @MappingTarget ApiTemplate entity);
+    
     List<ApiTemplateResponseDTO> toResponseDTOList(List<ApiTemplate> entities);
+}
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface ApiTemplateParamMapper {
+    
+    @Mapping(source = "apiTemplate.id", target = "apiTemplateId")
+    ApiTemplateParamResponseDTO toResponseDTO(ApiTemplateParam entity);
+    
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "apiTemplate", ignore = true)
+    ApiTemplateParam toEntity(ApiTemplateParamRequestDTO dto);
+    
+    List<ApiTemplateParamResponseDTO> toResponseDTOList(List<ApiTemplateParam> entities);
 }
 ```
 
