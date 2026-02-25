@@ -2485,6 +2485,11 @@ public class TemplateService {
         existing.setName(request.getName());
         existing.setHtml(request.getHtml());
         
+        // Update subject if provided
+        if (request.getSubject() != null) {
+            existing.setSubject(request.getSubject());
+        }
+        
         // Update sections (clears old sections + their variables via CASCADE)
         if (request.getSections() != null) {
             existing.getSections().clear();
@@ -2503,11 +2508,10 @@ public class TemplateService {
             }
         }
         
-        }
-        
-        // Update global API integrations (clear old, add new via CASCADE)
-        existing.getGlobalApiIntegrations().clear();
-        addGlobalApiIntegrations(existing, request.getGlobalApiIntegrations());
+        // Update global API integrations using UPSERT logic
+        // Instead of clear() + insert (which causes duplicate key errors),
+        // match existing integrations by variableName and update in-place
+        updateGlobalApiIntegrations(existing, request.getGlobalApiIntegrations());
         
         Template updated = templateRepository.save(existing);
         log.info("Updated template '{}' (id: {}) with {} sections and {} API integrations", 
@@ -2515,6 +2519,74 @@ public class TemplateService {
                 updated.getSections() != null ? updated.getSections().size() : 0,
                 updated.getGlobalApiIntegrations() != null ? updated.getGlobalApiIntegrations().size() : 0);
         return templateMapper.toResponseDTO(updated);
+    }
+
+    /**
+     * Update global API integrations using upsert logic:
+     * - Existing integrations (matched by variableName) are updated in-place
+     * - New integrations are created with new IDs
+     * - Removed integrations (not in request) are deleted via orphanRemoval
+     * 
+     * This avoids the "duplicate key" error caused by clear() + insert
+     * where JPA doesn't flush the delete before the insert.
+     */
+    private void updateGlobalApiIntegrations(Template template, List<GlobalApiIntegrationRequestDTO> integrations) {
+        if (integrations == null || integrations.isEmpty()) {
+            // Remove all existing integrations
+            template.getGlobalApiIntegrations().clear();
+            return;
+        }
+        
+        // Build lookup map of existing integrations by variableName
+        Map<String, TemplateGlobalApiIntegration> existingMap = template.getGlobalApiIntegrations()
+                .stream()
+                .collect(Collectors.toMap(
+                        TemplateGlobalApiIntegration::getVariableName, 
+                        Function.identity(),
+                        (a, b) -> a // handle duplicates by keeping first
+                ));
+        
+        List<TemplateGlobalApiIntegration> updatedIntegrations = new ArrayList<>();
+        
+        for (int i = 0; i < integrations.size(); i++) {
+            GlobalApiIntegrationRequestDTO dto = integrations.get(i);
+            
+            // Try to find existing integration by variableName (upsert key)
+            TemplateGlobalApiIntegration entity = existingMap.get(dto.getVariableName());
+            
+            if (entity == null) {
+                // New integration - create fresh entity
+                entity = new TemplateGlobalApiIntegration();
+                entity.setTemplate(template);
+            }
+            
+            // Resolve the API template reference
+            ApiTemplate apiTemplate = apiTemplateRepository.findById(UUID.fromString(dto.getApiTemplateId()))
+                    .orElse(null);
+            
+            // Update all fields (works for both new and existing entities)
+            entity.setIntegrationName(dto.getName());
+            entity.setVariableName(dto.getVariableName());
+            entity.setEnabled(dto.getEnabled() != null ? dto.getEnabled() : true);
+            entity.setParamValues(dto.getParamValues());
+            entity.setTransformation(dto.getTransformation());
+            entity.setCachedResponse(dto.getCachedResponse());
+            entity.setCachedResponseAt(dto.getCachedResponse() != null ? LocalDateTime.now() : null);
+            entity.setOrderIndex(dto.getOrderIndex() != null ? dto.getOrderIndex() : i);
+            
+            if (apiTemplate != null) {
+                entity.setApiTemplate(apiTemplate);
+            }
+            
+            updatedIntegrations.add(entity);
+        }
+        
+        // Replace collection contents - orphanRemoval handles deletions
+        template.getGlobalApiIntegrations().clear();
+        template.getGlobalApiIntegrations().addAll(updatedIntegrations);
+        
+        log.debug("Upserted {} global API integrations for template '{}'", 
+                integrations.size(), template.getName());
     }
 
     /**
