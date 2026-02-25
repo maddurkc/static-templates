@@ -16,8 +16,7 @@ This database schema supports a flexible page builder system where users can cre
 | `template_variables` | Template-level variables | Stores variables that can be used across the entire template |
 | `api_templates` | Reusable API configs | Pre-configured API endpoints (Jira, GitHub, etc.) that templates can use |
 | `api_template_params` | API parameters | Defines required parameters for each API template (domain, API key, etc.) |
-| `template_api_configs` | Template API settings | Links templates to API templates with user-provided parameter values |
-| `api_mappings` | API data mappings | Maps API response data to specific sections in templates |
+| `template_global_api_integrations` | Global API integrations | Links templates to multiple API integrations with global variable storage and data transformations |
 
 ## Table Relationship Map
 
@@ -49,9 +48,10 @@ This database schema supports a flexible page builder system where users can cre
                                             │   Master + Instance)│
                                             └────────────────────┘
 
-┌─────────────────┐      FK: template_id    ┌────────────────────┐
-│   templates     │◄────────────────────────│template_api_configs│
-└────────┬────────┘     (1:1 - UNIQUE)      └─────────┬──────────┘
+┌─────────────────┐      FK: template_id    ┌─────────────────────────────────┐
+│   templates     │◄────────────────────────│ template_global_api_integrations│
+└────────┬────────┘     (1:Many)            │  (Global API Integrations)      │
+         │                                  └─────────┬───────────────────────┘
          │                                            │
          │                                            │ FK: api_template_id
          │                                            ▼
@@ -222,13 +222,13 @@ CREATE INDEX idx_section_variables_template_section ON section_variables(templat
 --   • REFERENCED BY: template_sections.template_id (1:Many)
 --   • REFERENCED BY: template_runs.template_id (1:Many)
 --   • REFERENCED BY: template_variables.template_id (1:Many)
---   • REFERENCED BY: template_api_configs.template_id (1:1)
+--   • REFERENCED BY: template_global_api_integrations.template_id (1:Many)
 --
 -- CASCADE BEHAVIOR (when template deleted):
 --   → All template_sections are deleted
 --   → All template_runs are deleted
 --   → All template_variables are deleted
---   → The template_api_configs is deleted
+--   → All template_global_api_integrations are deleted
 -- ============================================================================
 CREATE TABLE templates (
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
@@ -459,7 +459,7 @@ CREATE INDEX idx_template_variables_section_id ON template_variables(section_id)
 -- RELATIONSHIPS:
 --   • NO FOREIGN KEYS (Parent table)
 --   • REFERENCED BY: api_template_params.api_template_id (1:Many)
---   • REFERENCED BY: template_api_configs.api_template_id (Many:1)
+--   • REFERENCED BY: template_global_api_integrations.api_template_id (Many:1)
 -- ============================================================================
 CREATE TABLE api_templates (
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
@@ -557,94 +557,98 @@ CREATE INDEX idx_api_template_params_template ON api_template_params(api_templat
 
 
 -- ╔══════════════════════════════════════════════════════════════════════════════╗
--- ║ TABLE 9: template_api_configs                                                 ║
--- ║ PURPOSE: Links templates to API templates with user-provided parameter values ║
+-- ║ TABLE 9: template_global_api_integrations                                     ║
+-- ║ PURPOSE: Links templates to multiple API integrations with global variables   ║
 -- ╚══════════════════════════════════════════════════════════════════════════════╝
 --
 -- DESCRIPTION:
---   Each template can integrate with one API to fetch dynamic data.
---   Stores the parameter values provided by the user for that API.
+--   Each template can have MULTIPLE API integrations (1:Many). Each integration
+--   fetches data from an external API and stores the response in a named global
+--   variable accessible from any section via {{variableName.field.path}} syntax.
+--   Also supports referencing global variables in the email subject field.
+--
+--   The transformation column stores an optional data processing pipeline
+--   applied to the raw API response BEFORE storing in globalVariables.
+--   Supports: filtering, field mapping/renaming, sorting, limiting, field selection.
+--   Handles diverse response types: single objects, flat lists, nested objects.
 --
 -- RELATIONSHIPS:
---   • FOREIGN KEY: template_id → templates.id (CASCADE DELETE, UNIQUE - 1:1)
+--   • FOREIGN KEY: template_id → templates.id (CASCADE DELETE)
 --   • FOREIGN KEY: api_template_id → api_templates.id
---   • REFERENCED BY: api_mappings.api_config_id (1:Many)
+--   • UNIQUE CONSTRAINT: (template_id, variable_name) - no duplicate variable names per template
+--
+-- DATA FLOW:
+--   1. User configures integration in GlobalApiPanel (editor mode)
+--   2. Template is saved → integrations stored in this table
+--   3. In RunTemplates, user clicks "Fetch" on an integration
+--   4. API response is transformed (if configured) and stored in globalVariables[variableName]
+--   5. Sections and subject field referencing {{variableName.field}} auto-resolve
+--
+-- TRANSFORMATION JSON STRUCTURE:
+--   {
+--     "filters": [{"id":"f1","field":"status","operator":"equals","value":"active"}],
+--     "filterLogic": "and",
+--     "fieldMappings": [{"id":"m1","sourceField":"name","targetField":"fullName","enabled":true}],
+--     "selectFields": ["name","status"],
+--     "limit": 10,
+--     "sortField": "name",
+--     "sortOrder": "asc"
+--   }
 -- ============================================================================
-CREATE TABLE template_api_configs (
+CREATE TABLE template_global_api_integrations (
   id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
   
   -- Foreign key to templates.id (CASCADE DELETE)
-  -- UNIQUE constraint creates 1:1 relationship
-  template_id UNIQUEIDENTIFIER NOT NULL UNIQUE,
+  template_id UNIQUEIDENTIFIER NOT NULL,
   
-  -- Foreign key to api_templates.id
+  -- Foreign key to api_templates.id (which API endpoint to use)
   api_template_id UNIQUEIDENTIFIER NOT NULL,
   
-  -- User-provided parameter values (JSON)
-  -- {"domain": "mycompany", "version": "3", "apiToken": "abc123"}
-  param_values NVARCHAR(MAX),
+  -- User-friendly name for this integration
+  -- Examples: "ServiceNow Change Details", "Jira Issue Data"
+  integration_name NVARCHAR(255) NOT NULL,
+  
+  -- Global variable name to store the API response
+  -- MUST be unique per template (enforced by UK constraint)
+  -- Examples: "snowDetails", "jiraIssue", "githubRepo"
+  -- Used in sections as {{snowDetails.changeNo}}, {{jiraIssue.fields.summary}}
+  -- Also usable in subject field: "Change {{snowDetails.changeNo}} - Report"
+  variable_name NVARCHAR(100) NOT NULL,
   
   -- Whether this API integration is currently active
-  is_enabled BIT DEFAULT 1,
+  -- Allows disabling without losing configuration
+  enabled BIT DEFAULT 1,
+  
+  -- User-provided parameter values (JSON object)
+  -- Keys MUST match param_name from api_template_params
+  -- Example: {"changeNo": "CHG1234567", "domain": "mycompany"}
+  -- These values are editable in RunTemplates mode before fetching
+  param_values NVARCHAR(MAX),
+  
+  -- Optional data transformation configuration (JSON object)
+  -- Applied to API response data AFTER fetching, BEFORE storing in globalVariables
+  -- Supports: filters, field mappings, sorting, limiting, field selection
+  -- Handles: single objects, flat lists, lists of nested objects
+  -- NULL = no transformation (raw data stored as-is)
+  transformation NVARCHAR(MAX),
+  
+  -- Display order within the template's integration list (0, 1, 2, ...)
+  order_index INT NOT NULL DEFAULT 0,
   
   created_at DATETIME2 DEFAULT GETUTCDATE(),
+  updated_at DATETIME2 DEFAULT GETUTCDATE(),
   
-  CONSTRAINT fk_template_api_configs_template 
+  -- Unique constraint: No duplicate variable names per template
+  CONSTRAINT uk_tgai_template_variable UNIQUE(template_id, variable_name),
+  
+  CONSTRAINT fk_tgai_template 
     FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE,
-  CONSTRAINT fk_template_api_configs_api_template 
+  CONSTRAINT fk_tgai_api_template 
     FOREIGN KEY (api_template_id) REFERENCES api_templates(id)
 );
 
-CREATE INDEX idx_template_api_configs_template ON template_api_configs(template_id);
-CREATE INDEX idx_template_api_configs_api_template ON template_api_configs(api_template_id);
-
-
--- ╔══════════════════════════════════════════════════════════════════════════════╗
--- ║ TABLE 10: api_mappings                                                        ║
--- ║ PURPOSE: Maps API response data to specific sections in templates             ║
--- ╚══════════════════════════════════════════════════════════════════════════════╝
---
--- DESCRIPTION:
---   Defines how API response fields map to template sections/variables.
---   Allows data from API calls to automatically populate template content.
---
--- RELATIONSHIPS:
---   • FOREIGN KEY: api_config_id → template_api_configs.id (CASCADE DELETE)
---   • FOREIGN KEY: target_section_id → template_sections.id (optional)
--- ============================================================================
-CREATE TABLE api_mappings (
-  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-  
-  -- Foreign key to template_api_configs.id (CASCADE DELETE)
-  api_config_id UNIQUEIDENTIFIER NOT NULL,
-  
-  -- JSONPath expression to extract data from API response
-  -- Examples: '$.issue.summary', '$.data[0].title', '$.results.items'
-  source_path NVARCHAR(500) NOT NULL,
-  
-  -- Target section to receive the data (optional)
-  target_section_id UNIQUEIDENTIFIER,
-  
-  -- Target variable name within the section
-  -- Examples: 'content', 'items', 'label'
-  target_variable NVARCHAR(100) NOT NULL,
-  
-  -- Optional transformation to apply: 'none', 'uppercase', 'lowercase', 'date', 'number'
-  transformation NVARCHAR(50) DEFAULT 'none',
-  
-  -- Default value if API field is empty
-  default_value NVARCHAR(MAX),
-  
-  created_at DATETIME2 DEFAULT GETUTCDATE(),
-  
-  CONSTRAINT fk_api_mappings_config 
-    FOREIGN KEY (api_config_id) REFERENCES template_api_configs(id) ON DELETE CASCADE,
-  CONSTRAINT fk_api_mappings_section 
-    FOREIGN KEY (target_section_id) REFERENCES template_sections(id)
-);
-
-CREATE INDEX idx_api_mappings_config ON api_mappings(api_config_id);
-CREATE INDEX idx_api_mappings_section ON api_mappings(target_section_id);
+CREATE INDEX idx_tgai_template_id ON template_global_api_integrations(template_id);
+CREATE INDEX idx_tgai_api_template_id ON template_global_api_integrations(api_template_id);
 ```
 
 ## JSON Column Structures
@@ -895,10 +899,9 @@ When creating the database, execute migrations in this order:
 6. `006_create_template_variables.sql`
 7. `007_create_api_templates.sql`
 8. `008_create_api_template_params.sql`
-9. `009_create_template_api_configs.sql`
-10. `010_create_api_mappings.sql`
-11. `011_seed_sections.sql`
-12. `012_seed_section_variables.sql`
+9. `009_create_template_global_api_integrations.sql`
+10. `010_seed_sections.sql`
+11. `011_seed_section_variables.sql`
 
 ## Key Relationships Summary
 
@@ -908,7 +911,7 @@ When creating the database, execute migrations in this order:
 | templates → template_sections | 1:N | CASCADE |
 | templates → template_runs | 1:N | CASCADE |
 | templates → template_variables | 1:N | CASCADE |
-| templates → template_api_configs | 1:1 | CASCADE |
+| templates → template_global_api_integrations | 1:N | CASCADE |
 | template_sections → template_sections | Self-ref | CASCADE |
 | api_templates → api_template_params | 1:N | CASCADE |
-| template_api_configs → api_mappings | 1:N | CASCADE |
+| template_global_api_integrations → api_templates | N:1 | - |

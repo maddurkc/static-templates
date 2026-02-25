@@ -40,14 +40,11 @@ const ERDiagram = () => {
     
     templates ||--o{ template_sections : "contains"
     templates ||--o{ template_runs : "executed as"
-    templates ||--|| template_api_configs : "has"
+    templates ||--o{ template_global_api_integrations : "has"
     
     template_sections ||--o{ template_sections : "parent-child"
-    template_sections ||--o{ api_mappings : "mapped to"
     
-    template_api_configs ||--o{ api_mappings : "contains"
-    template_api_configs }o--|| api_templates : "uses"
-    
+    template_global_api_integrations }o--|| api_templates : "uses"
     api_templates ||--o{ api_template_params : "requires"
     
     sections {
@@ -76,6 +73,7 @@ const ERDiagram = () => {
     templates {
         uuid id PK
         varchar name
+        varchar subject
         text html
         uuid user_id FK
         timestamp created_at
@@ -89,6 +87,7 @@ const ERDiagram = () => {
         text content
         jsonb variables
         jsonb styles
+        bit is_label_editable
         int order_index
         uuid parent_section_id FK
         timestamp created_at
@@ -135,24 +134,18 @@ const ERDiagram = () => {
         timestamp created_at
     }
     
-    template_api_configs {
+    template_global_api_integrations {
         uuid id PK
         uuid template_id FK
         uuid api_template_id FK
-        boolean enabled
+        varchar integration_name
+        varchar variable_name
+        bit enabled
         jsonb param_values
+        jsonb transformation
+        int order_index
         timestamp created_at
         timestamp updated_at
-    }
-    
-    api_mappings {
-        uuid id PK
-        uuid template_api_config_id FK
-        uuid section_id FK
-        text api_path
-        varchar data_type
-        varchar variable_name
-        timestamp created_at
     }`}
                 </pre>
               </div>
@@ -231,11 +224,9 @@ const ERDiagram = () => {
               <div className={styles.diagramBox}>
                 <pre className="text-sm">
 {`erDiagram
-    templates ||--|| template_api_configs : "configured with"
-    template_api_configs }o--|| api_templates : "uses"
-    template_api_configs ||--o{ api_mappings : "contains"
+    templates ||--o{ template_global_api_integrations : "configured with"
+    template_global_api_integrations }o--|| api_templates : "uses"
     api_templates ||--o{ api_template_params : "requires"
-    api_mappings }o--|| template_sections : "updates"
     
     api_templates {
         uuid id PK
@@ -256,21 +247,16 @@ const ERDiagram = () => {
         boolean required
     }
     
-    template_api_configs {
+    template_global_api_integrations {
         uuid id PK
         uuid template_id FK
         uuid api_template_id FK
-        boolean enabled
+        varchar integration_name "ServiceNow Change Details"
+        varchar variable_name "snowDetails, jiraIssue"
+        bit enabled "Toggle on/off"
         jsonb param_values "User-provided values"
-    }
-    
-    api_mappings {
-        uuid id PK
-        uuid template_api_config_id FK
-        uuid section_id FK
-        text api_path "JSONPath: data.fields.summary"
-        varchar data_type "text, list, html"
-        varchar variable_name "Which variable to update"
+        jsonb transformation "Filter, sort, map fields"
+        int order_index "Display order"
     }`}
                 </pre>
               </div>
@@ -293,16 +279,17 @@ const ERDiagram = () => {
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• Templates → Template Sections</li>
                 <li>• Templates → Template Runs</li>
+                <li>• Templates → Global API Integrations</li>
                 <li>• Sections → Template Sections</li>
                 <li>• API Templates → Params</li>
-                <li>• API Configs → Mappings</li>
               </ul>
             </div>
 
             <div className={styles.keyItem}>
-              <h3>1:1 Relationships</h3>
+              <h3>Unique Constraints</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Templates ↔ API Configs</li>
+                <li>• (template_id, variable_name) per integration</li>
+                <li>• Sections type unique key</li>
               </ul>
             </div>
 
@@ -317,9 +304,9 @@ const ERDiagram = () => {
             <div className={styles.keyItem}>
               <h3>CASCADE Deletes</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Delete template → removes sections</li>
+                <li>• Delete template → removes sections & integrations</li>
                 <li>• Delete section → removes children</li>
-                <li>• Delete API config → removes mappings</li>
+                <li>• Delete API template → blocks (no cascade)</li>
               </ul>
             </div>
           </div>
