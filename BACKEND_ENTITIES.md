@@ -2020,6 +2020,9 @@ public class GlobalApiIntegrationResponseDTO {
     private Integer orderIndex;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    @Schema(description = "Full API template details (only included in full-details endpoint)")
+    private ApiTemplateResponseDTO apiTemplateDetails;
 }
 
 ---
@@ -2080,6 +2083,17 @@ public interface TemplateRepository extends JpaRepository<Template, UUID> {
     
     @Query("SELECT t FROM Template t LEFT JOIN FETCH t.globalApiIntegrations WHERE t.id = :id")
     Optional<Template> findByIdWithApiIntegrations(@Param("id") UUID id);
+    
+    /**
+     * Fetch template with global API integrations AND their associated ApiTemplate + ApiTemplateParams.
+     * Used by getTemplateWithFullDetails() to load everything in minimal queries.
+     */
+    @Query("SELECT DISTINCT t FROM Template t " +
+           "LEFT JOIN FETCH t.globalApiIntegrations gi " +
+           "LEFT JOIN FETCH gi.apiTemplate at " +
+           "LEFT JOIN FETCH at.params " +
+           "WHERE t.id = :id")
+    Optional<Template> findByIdWithIntegrationsAndApiTemplates(@Param("id") UUID id);
     
     @Query("SELECT t, COUNT(r) FROM Template t LEFT JOIN t.runs r GROUP BY t ORDER BY t.createdAt DESC")
     List<Object[]> findAllWithRunCounts();
@@ -2362,6 +2376,39 @@ public class TemplateService {
         Template template = templateRepository.findByIdWithSections(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Template not found with id: " + id));
         return templateMapper.toResponseDTO(template);
+    }
+
+    /**
+     * Load a template with ALL related data in minimal queries:
+     * 1. Template + sections (with section variables via cascade)
+     * 2. Template + globalApiIntegrations + ApiTemplate + ApiTemplateParams
+     * 
+     * Uses two separate fetch queries to avoid Cartesian product (MultipleBagFetchException)
+     * when fetching multiple collections simultaneously.
+     * 
+     * Returns a full TemplateResponseDTO including:
+     * - All sections with their variables
+     * - All global API integrations with cached responses
+     * - Each integration's ApiTemplate details (name, url, method, category)
+     * - Each ApiTemplate's params (name, type, required, defaultValue)
+     */
+    @Transactional(readOnly = true)
+    public TemplateResponseDTO getTemplateWithFullDetails(UUID id) {
+        // Query 1: Load template + sections (initializes sections collection)
+        Template template = templateRepository.findByIdWithSections(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Template not found with id: " + id));
+        
+        // Query 2: Load same template + globalApiIntegrations + apiTemplate + params
+        // This merges into the same persistence context, so the template entity
+        // now has both sections AND integrations fully initialized
+        templateRepository.findByIdWithIntegrationsAndApiTemplates(id);
+        
+        log.info("Loaded template '{}' with full details: {} sections, {} API integrations", 
+                template.getName(),
+                template.getSections() != null ? template.getSections().size() : 0,
+                template.getGlobalApiIntegrations() != null ? template.getGlobalApiIntegrations().size() : 0);
+        
+        return templateMapper.toFullResponseDTO(template);
     }
 
     public TemplateResponseDTO createTemplate(TemplateRequestDTO request) {
@@ -3194,6 +3241,16 @@ public class TemplateController {
         return ResponseEntity.ok(templateService.getTemplateById(id));
     }
 
+    @GetMapping("/{id}/full")
+    @Operation(summary = "Get template with full details", 
+               description = "Loads template with sections, global API integrations, " +
+                             "and each integration's ApiTemplate + ApiTemplateParams in minimal queries")
+    @ApiResponse(responseCode = "200", description = "Template with full details")
+    @ApiResponse(responseCode = "404", description = "Template not found")
+    public ResponseEntity<TemplateResponseDTO> getTemplateWithFullDetails(@PathVariable UUID id) {
+        return ResponseEntity.ok(templateService.getTemplateWithFullDetails(id));
+    }
+
     @PostMapping
     @Operation(summary = "Create template")
     public ResponseEntity<TemplateResponseDTO> createTemplate(@Valid @RequestBody TemplateRequestDTO request) {
@@ -3534,6 +3591,61 @@ public interface TemplateMapper {
     Template toEntity(TemplateRequestDTO dto);
     
     List<TemplateResponseDTO> toResponseDTOList(List<Template> entities);
+    
+    /**
+     * Map template to full response DTO including API template details
+     * in each global API integration. Used by getTemplateWithFullDetails().
+     * 
+     * This is a default method because MapStruct can't auto-map the nested
+     * apiTemplate -> apiTemplateDetails conversion in GlobalApiIntegrationResponseDTO.
+     */
+    default TemplateResponseDTO toFullResponseDTO(Template entity) {
+        TemplateResponseDTO dto = toResponseDTO(entity);
+        
+        // Enrich global API integrations with full ApiTemplate details
+        if (dto.getGlobalApiIntegrations() != null && entity.getGlobalApiIntegrations() != null) {
+            for (int i = 0; i < dto.getGlobalApiIntegrations().size(); i++) {
+                GlobalApiIntegrationResponseDTO integrationDto = dto.getGlobalApiIntegrations().get(i);
+                TemplateGlobalApiIntegration integrationEntity = entity.getGlobalApiIntegrations().get(i);
+                
+                if (integrationEntity.getApiTemplate() != null) {
+                    ApiTemplate apiTemplate = integrationEntity.getApiTemplate();
+                    ApiTemplateResponseDTO apiTemplateDto = new ApiTemplateResponseDTO();
+                    apiTemplateDto.setId(apiTemplate.getId());
+                    apiTemplateDto.setName(apiTemplate.getName());
+                    apiTemplateDto.setDescription(apiTemplate.getDescription());
+                    apiTemplateDto.setCategory(apiTemplate.getCategory());
+                    apiTemplateDto.setBaseUrl(apiTemplate.getBaseUrl());
+                    apiTemplateDto.setEndpoint(apiTemplate.getEndpoint());
+                    apiTemplateDto.setMethod(apiTemplate.getMethod());
+                    apiTemplateDto.setResponseFormat(apiTemplate.getResponseFormat());
+                    apiTemplateDto.setIsCustom(apiTemplate.getIsCustom());
+                    
+                    // Map params
+                    if (apiTemplate.getParams() != null) {
+                        List<ApiTemplateParamResponseDTO> paramDtos = apiTemplate.getParams().stream()
+                                .map(param -> {
+                                    ApiTemplateParamResponseDTO paramDto = new ApiTemplateParamResponseDTO();
+                                    paramDto.setId(param.getId());
+                                    paramDto.setName(param.getName());
+                                    paramDto.setLabel(param.getLabel());
+                                    paramDto.setParamType(param.getParamType());
+                                    paramDto.setRequired(param.getRequired());
+                                    paramDto.setDefaultValue(param.getDefaultValue());
+                                    paramDto.setDescription(param.getDescription());
+                                    return paramDto;
+                                })
+                                .collect(Collectors.toList());
+                        apiTemplateDto.setParams(paramDtos);
+                    }
+                    
+                    integrationDto.setApiTemplateDetails(apiTemplateDto);
+                }
+            }
+        }
+        
+        return dto;
+    }
 }
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
