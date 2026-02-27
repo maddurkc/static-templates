@@ -2085,15 +2085,22 @@ public interface TemplateRepository extends JpaRepository<Template, UUID> {
     Optional<Template> findByIdWithApiIntegrations(@Param("id") UUID id);
     
     /**
-     * Fetch template with global API integrations AND their associated ApiTemplate + ApiTemplateParams.
-     * Used by getTemplateWithFullDetails() to load everything in minimal queries.
+     * Single query to load template with ALL associations:
+     * - sections (ordered by orderIndex ASC)
+     * - globalApiIntegrations + their apiTemplate + apiTemplate params
+     * 
+     * NOTE: sections must be a Set (not List) in the Template entity to avoid
+     * MultipleBagFetchException when fetching two collections simultaneously.
+     * The ORDER BY ensures sections come back sorted by orderIndex ascending (0, 1, 2...).
      */
     @Query("SELECT DISTINCT t FROM Template t " +
-           "LEFT JOIN FETCH t.globalApiIntegrations gi " +
-           "LEFT JOIN FETCH gi.apiTemplate at " +
+           "LEFT JOIN FETCH t.sections s " +
+           "LEFT JOIN FETCH t.globalApiIntegrations g " +
+           "LEFT JOIN FETCH g.apiTemplate at " +
            "LEFT JOIN FETCH at.params " +
-           "WHERE t.id = :id")
-    Optional<Template> findByIdWithIntegrationsAndApiTemplates(@Param("id") UUID id);
+           "WHERE t.id = :id " +
+           "ORDER BY s.orderIndex ASC")
+    Optional<Template> findByIdWithFullDetails(@Param("id") UUID id);
     
     @Query("SELECT t, COUNT(r) FROM Template t LEFT JOIN t.runs r GROUP BY t ORDER BY t.createdAt DESC")
     List<Object[]> findAllWithRunCounts();
@@ -2392,16 +2399,17 @@ public class TemplateService {
      * - Each integration's ApiTemplate details (name, url, method, category)
      * - Each ApiTemplate's params (name, type, required, defaultValue)
      */
+    /**
+     * Single-query full load: sections (ordered by orderIndex ASC), 
+     * globalApiIntegrations, apiTemplate, and apiTemplateParams.
+     * 
+     * NOTE: Template.sections must be declared as Set<TemplateSection> (not List)
+     * to avoid MultipleBagFetchException with multiple JOIN FETCHes.
+     */
     @Transactional(readOnly = true)
     public TemplateResponseDTO getTemplateWithFullDetails(UUID id) {
-        // Query 1: Load template + sections (initializes sections collection)
-        Template template = templateRepository.findByIdWithSections(id)
+        Template template = templateRepository.findByIdWithFullDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Template not found with id: " + id));
-        
-        // Query 2: Load same template + globalApiIntegrations + apiTemplate + params
-        // This merges into the same persistence context, so the template entity
-        // now has both sections AND integrations fully initialized
-        templateRepository.findByIdWithIntegrationsAndApiTemplates(id);
         
         log.info("Loaded template '{}' with full details: {} sections, {} API integrations", 
                 template.getName(),
