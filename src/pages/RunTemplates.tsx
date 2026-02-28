@@ -31,7 +31,7 @@ import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete"
 import { mapJsonToTableData, getValueByPath, resolveColumnWidth as resolveColWidth } from "@/lib/tableUtils";
 import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-config";
 import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
-import { resolveGlobalApiThymeleaf } from "@/lib/globalApiResolver";
+import { resolveGlobalApiThymeleaf, resolveGlobalApiVariables } from "@/lib/globalApiResolver";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -1557,6 +1557,24 @@ const RunTemplates = () => {
         }
       });
     }
+
+    // Add global API variables as structured objects to bodyData
+    // e.g., apiData1: { changeNo: "CHG001", ... }, apiData2: { incidentNo: "INC001", ... }
+    if (globalApiConfig?.globalVariables) {
+      Object.entries(globalApiConfig.globalVariables).forEach(([varName, globalVar]) => {
+        if (globalVar?.data !== null && globalVar?.data !== undefined) {
+          bodyData[varName] = globalVar.data;
+        }
+      });
+    }
+
+    // Resolve any remaining {{globalVar.field}} placeholders in all bodyData string values
+    Object.keys(bodyData).forEach(key => {
+      const value = bodyData[key];
+      if (typeof value === 'string' && value.includes('{{')) {
+        bodyData[key] = resolveGlobalApiVariables(value, globalApiConfig);
+      }
+    });
 
     // Generate full rendered HTML with email wrapper for Outlook/email client compatibility
     const allVars: Record<string, string | string[] | any> = {
