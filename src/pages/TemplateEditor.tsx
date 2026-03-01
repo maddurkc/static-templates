@@ -14,12 +14,13 @@ import { VariablesPanel } from "@/components/templates/VariablesPanel";
 import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database, HelpCircle, Settings } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database, HelpCircle, Settings, LayoutGrid } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
@@ -80,6 +81,7 @@ const TemplateEditor = () => {
   const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
   const [globalApiConfig, setGlobalApiConfig] = useState<GlobalApiConfig>(DEFAULT_GLOBAL_API_CONFIG);
   const [showApiPanel, setShowApiPanel] = useState(false);
+  const [composeTab, setComposeTab] = useState<'canvas' | 'placeholders' | 'datasources'>('canvas');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -1815,147 +1817,7 @@ ${sectionRows}
                 </Tooltip>
               </TooltipProvider>
 
-              <Sheet open={showLibrary} onOpenChange={setShowLibrary}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" data-walkthrough="section-library-btn">
-                    <Library className="h-4 w-4 mr-2" />
-                    Section Library
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" onInteractOutside={(e) => e.preventDefault()} className="w-96 p-0 overflow-y-auto">
-                  <SheetHeader className="p-4 border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <SheetTitle>Section Library</SheetTitle>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Drag sections to add them to your template
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowLibrary(false)}
-                        className="h-8 w-8 hover:bg-muted"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </SheetHeader>
-                  <div data-walkthrough="section-library-content">
-                    <SectionLibrary existingSections={sections} />
-                  </div>
-                </SheetContent>
-              </Sheet>
               
-              {/* Global API Panel Sheet */}
-              <Sheet open={showApiPanel} onOpenChange={setShowApiPanel}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Database className="h-4 w-4 mr-2" />
-                    API ({globalApiConfig.integrations.length})
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-[520px] sm:max-w-[520px] p-0 overflow-hidden [&>button]:hidden">
-                  <GlobalApiPanel 
-                    config={globalApiConfig}
-                    onUpdate={setGlobalApiConfig}
-                    onCreateSection={(newSection) => {
-                      setSections(prev => [...prev, newSection]);
-                      setSelectedSection(newSection);
-                    }}
-                    onClose={() => setShowApiPanel(false)}
-                  />
-                </SheetContent>
-              </Sheet>
-              
-              {/* Variables Panel Sheet */}
-              <Sheet open={showVariablesPanel} onOpenChange={setShowVariablesPanel}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Variable className="h-4 w-4 mr-2" />
-                    Variables ({customBodyVariablesCount})
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-96 p-0 overflow-hidden">
-                  <SheetHeader className="p-4 border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <SheetTitle>Template Variables</SheetTitle>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          All placeholders extracted from your template
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowVariablesPanel(false)}
-                        className="h-8 w-8 hover:bg-muted"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </SheetHeader>
-                  <div className="h-[calc(100vh-80px)]">
-                    <VariablesPanel 
-                      variables={extractedVariables}
-                      readOnly={false}
-                      onFocusVariable={setFocusedVariableName}
-                      onVariableValueChange={(variableName, value) => {
-                        // Update sections that contain this variable
-                        setSections(prevSections => {
-                          const updateVariableInSection = (section: Section): Section => {
-                            // Check if variable exists in section.variables
-                            const hasVariableInVariables = section.variables && section.variables[variableName] !== undefined;
-                            
-                            // Check if {{variableName}} appears in the section content or variable values
-                            const placeholderPattern = `{{${variableName}}}`;
-                            const contentHasPlaceholder = section.content?.includes(placeholderPattern);
-                            
-                            // Also check for placeholder in variable values (e.g., labeled-content text/list content)
-                            let variableValuesHavePlaceholder = false;
-                            if (section.variables) {
-                              Object.values(section.variables).forEach(val => {
-                                if (typeof val === 'string' && val.includes(placeholderPattern)) {
-                                  variableValuesHavePlaceholder = true;
-                                }
-                                // Check list items for placeholders
-                                if (Array.isArray(val)) {
-                                  val.forEach(item => {
-                                    if (typeof item === 'string' && item.includes(placeholderPattern)) {
-                                      variableValuesHavePlaceholder = true;
-                                    } else if (item && typeof item === 'object' && item.text && item.text.includes(placeholderPattern)) {
-                                      variableValuesHavePlaceholder = true;
-                                    }
-                                  });
-                                }
-                              });
-                            }
-                            
-                            if (hasVariableInVariables || contentHasPlaceholder || variableValuesHavePlaceholder) {
-                              return {
-                                ...section,
-                                variables: {
-                                  ...section.variables,
-                                  [variableName]: value
-                                }
-                              };
-                            }
-                            // Check children for container sections
-                            if (section.children && section.children.length > 0) {
-                              return {
-                                ...section,
-                                children: section.children.map(updateVariableInSection)
-                              };
-                            }
-                            return section;
-                          };
-                          return prevSections.map(updateVariableInSection);
-                        });
-                      }}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
               
               {/* Settings Panel */}
               <Sheet open={showSettingsPanel} onOpenChange={setShowSettingsPanel}>
@@ -2115,28 +1977,135 @@ ${sectionRows}
           {viewMode === 'split' ? (
             <ResizablePanelGroup direction="horizontal" className={styles.resizableGroup}>
               <ResizablePanel defaultSize={50} minSize={20} className={styles.editorSection} data-walkthrough="editor-view">
-                <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
-                  <EditorView
-                    headerSection={headerSection}
-                    footerSection={footerSection}
-                    sections={sections}
-                    selectedSection={selectedSection}
-                    sectionIdsWithErrors={sectionIdsWithErrors}
-                    onSelectSection={setSelectedSection}
-                    onUpdateSection={handleUpdateSection}
-                    onDeleteSection={handleDeleteSection}
-                    onMoveUp={handleMoveUp}
-                    onMoveDown={handleMoveDown}
-                    onAddChildToContainer={handleAddChildToContainer}
-                    onDuplicateSection={handleDuplicateSection}
-                    onCopyStyles={handleCopyStyles}
-                    onPasteStyles={handlePasteStyles}
-                    globalApiConfig={globalApiConfig}
-                    hoveredSectionId={hoveredSectionId}
-                    onHoverSection={setHoveredSectionId}
-                    dropIndicator={dropIndicator}
-                  />
-                </SortableContext>
+                <Tabs value={composeTab} onValueChange={(v) => setComposeTab(v as any)} className={styles.composeTabs}>
+                  <div className={styles.composeTabsHeader}>
+                    <TabsList className={styles.composeTabsList}>
+                      <TabsTrigger value="canvas" className={styles.composeTabTrigger}>
+                        <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+                        Canvas
+                      </TabsTrigger>
+                      <TabsTrigger value="placeholders" className={styles.composeTabTrigger}>
+                        <Variable className="h-3.5 w-3.5 mr-1.5" />
+                        Placeholders
+                        {customBodyVariablesCount > 0 && (
+                          <span className={styles.tabBadge}>{customBodyVariablesCount}</span>
+                        )}
+                      </TabsTrigger>
+                      <TabsTrigger value="datasources" className={styles.composeTabTrigger}>
+                        <Database className="h-3.5 w-3.5 mr-1.5" />
+                        Datasources
+                        {globalApiConfig.integrations.length > 0 && (
+                          <span className={styles.tabBadge}>{globalApiConfig.integrations.length}</span>
+                        )}
+                      </TabsTrigger>
+                    </TabsList>
+                    <Sheet open={showLibrary} onOpenChange={setShowLibrary}>
+                      <SheetTrigger asChild>
+                        <Button variant="outline" size="sm" className="ml-auto" data-walkthrough="section-library-btn">
+                          <Library className="h-3.5 w-3.5 mr-1.5" />
+                          Library
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent side="left" onInteractOutside={(e) => e.preventDefault()} className="w-96 p-0 overflow-y-auto">
+                        <SheetHeader className="p-4 border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <SheetTitle>Section Library</SheetTitle>
+                              <p className="text-xs text-muted-foreground mt-1">Drag sections to add them to your template</p>
+                            </div>
+                            <Button variant="ghost" size="icon" onClick={() => setShowLibrary(false)} className="h-8 w-8 hover:bg-muted">
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </SheetHeader>
+                        <div data-walkthrough="section-library-content">
+                          <SectionLibrary existingSections={sections} />
+                        </div>
+                      </SheetContent>
+                    </Sheet>
+                  </div>
+                  
+                  <TabsContent value="canvas" className={styles.composeTabContent}>
+                    <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                      <EditorView
+                        headerSection={headerSection}
+                        footerSection={footerSection}
+                        sections={sections}
+                        selectedSection={selectedSection}
+                        sectionIdsWithErrors={sectionIdsWithErrors}
+                        onSelectSection={setSelectedSection}
+                        onUpdateSection={handleUpdateSection}
+                        onDeleteSection={handleDeleteSection}
+                        onMoveUp={handleMoveUp}
+                        onMoveDown={handleMoveDown}
+                        onAddChildToContainer={handleAddChildToContainer}
+                        onDuplicateSection={handleDuplicateSection}
+                        onCopyStyles={handleCopyStyles}
+                        onPasteStyles={handlePasteStyles}
+                        globalApiConfig={globalApiConfig}
+                        hoveredSectionId={hoveredSectionId}
+                        onHoverSection={setHoveredSectionId}
+                        dropIndicator={dropIndicator}
+                      />
+                    </SortableContext>
+                  </TabsContent>
+                  
+                  <TabsContent value="placeholders" className={styles.composeTabContent}>
+                    <VariablesPanel 
+                      variables={extractedVariables}
+                      readOnly={false}
+                      onFocusVariable={setFocusedVariableName}
+                      onVariableValueChange={(variableName, value) => {
+                        setSections(prevSections => {
+                          const updateVariableInSection = (section: Section): Section => {
+                            const hasVariableInVariables = section.variables && section.variables[variableName] !== undefined;
+                            const placeholderPattern = `{{${variableName}}}`;
+                            const contentHasPlaceholder = section.content?.includes(placeholderPattern);
+                            let variableValuesHavePlaceholder = false;
+                            if (section.variables) {
+                              Object.values(section.variables).forEach(val => {
+                                if (typeof val === 'string' && val.includes(placeholderPattern)) {
+                                  variableValuesHavePlaceholder = true;
+                                }
+                                if (Array.isArray(val)) {
+                                  val.forEach(item => {
+                                    if (typeof item === 'string' && item.includes(placeholderPattern)) {
+                                      variableValuesHavePlaceholder = true;
+                                    } else if (item && typeof item === 'object' && item.text && item.text.includes(placeholderPattern)) {
+                                      variableValuesHavePlaceholder = true;
+                                    }
+                                  });
+                                }
+                              });
+                            }
+                            if (hasVariableInVariables || contentHasPlaceholder || variableValuesHavePlaceholder) {
+                              return {
+                                ...section,
+                                variables: { ...section.variables, [variableName]: value }
+                              };
+                            }
+                            if (section.children && section.children.length > 0) {
+                              return { ...section, children: section.children.map(updateVariableInSection) };
+                            }
+                            return section;
+                          };
+                          return prevSections.map(updateVariableInSection);
+                        });
+                      }}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="datasources" className={styles.composeTabContent}>
+                    <GlobalApiPanel 
+                      config={globalApiConfig}
+                      onUpdate={setGlobalApiConfig}
+                      onCreateSection={(newSection) => {
+                        setSections(prev => [...prev, newSection]);
+                        setSelectedSection(newSection);
+                      }}
+                    />
+                  </TabsContent>
+                </Tabs>
               </ResizablePanel>
               
               <ResizableHandle withHandle className={styles.resizeHandle} />
@@ -2159,28 +2128,54 @@ ${sectionRows}
               {/* Editor Only */}
               {viewMode === 'editor-only' && (
                 <div className={styles.singleViewContainer}>
-                  <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
-                    <EditorView
-                      headerSection={headerSection}
-                      footerSection={footerSection}
-                      sections={sections}
-                      selectedSection={selectedSection}
-                      sectionIdsWithErrors={sectionIdsWithErrors}
-                      onSelectSection={setSelectedSection}
-                      onUpdateSection={handleUpdateSection}
-                      onDeleteSection={handleDeleteSection}
-                      onMoveUp={handleMoveUp}
-                      onMoveDown={handleMoveDown}
-                      onAddChildToContainer={handleAddChildToContainer}
-                      onDuplicateSection={handleDuplicateSection}
-                      onCopyStyles={handleCopyStyles}
-                      onPasteStyles={handlePasteStyles}
-                      globalApiConfig={globalApiConfig}
-                      hoveredSectionId={hoveredSectionId}
-                      onHoverSection={setHoveredSectionId}
-                      dropIndicator={dropIndicator}
-                    />
-                  </SortableContext>
+                  <Tabs value={composeTab} onValueChange={(v) => setComposeTab(v as any)} className={styles.composeTabs}>
+                    <div className={styles.composeTabsHeader}>
+                      <TabsList className={styles.composeTabsList}>
+                        <TabsTrigger value="canvas" className={styles.composeTabTrigger}>
+                          <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+                          Canvas
+                        </TabsTrigger>
+                        <TabsTrigger value="placeholders" className={styles.composeTabTrigger}>
+                          <Variable className="h-3.5 w-3.5 mr-1.5" />
+                          Placeholders
+                        </TabsTrigger>
+                        <TabsTrigger value="datasources" className={styles.composeTabTrigger}>
+                          <Database className="h-3.5 w-3.5 mr-1.5" />
+                          Datasources
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
+                    <TabsContent value="canvas" className={styles.composeTabContent}>
+                      <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                        <EditorView
+                          headerSection={headerSection}
+                          footerSection={footerSection}
+                          sections={sections}
+                          selectedSection={selectedSection}
+                          sectionIdsWithErrors={sectionIdsWithErrors}
+                          onSelectSection={setSelectedSection}
+                          onUpdateSection={handleUpdateSection}
+                          onDeleteSection={handleDeleteSection}
+                          onMoveUp={handleMoveUp}
+                          onMoveDown={handleMoveDown}
+                          onAddChildToContainer={handleAddChildToContainer}
+                          onDuplicateSection={handleDuplicateSection}
+                          onCopyStyles={handleCopyStyles}
+                          onPasteStyles={handlePasteStyles}
+                          globalApiConfig={globalApiConfig}
+                          hoveredSectionId={hoveredSectionId}
+                          onHoverSection={setHoveredSectionId}
+                          dropIndicator={dropIndicator}
+                        />
+                      </SortableContext>
+                    </TabsContent>
+                    <TabsContent value="placeholders" className={styles.composeTabContent}>
+                      <VariablesPanel variables={extractedVariables} readOnly={false} onFocusVariable={setFocusedVariableName} />
+                    </TabsContent>
+                    <TabsContent value="datasources" className={styles.composeTabContent}>
+                      <GlobalApiPanel config={globalApiConfig} onUpdate={setGlobalApiConfig} onCreateSection={(newSection) => { setSections(prev => [...prev, newSection]); setSelectedSection(newSection); }} />
+                    </TabsContent>
+                  </Tabs>
                 </div>
               )}
 
