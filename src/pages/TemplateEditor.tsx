@@ -12,6 +12,7 @@ import { TextSelectionToolbar } from "@/components/templates/TextSelectionToolba
 import { ValidationErrorsPanel } from "@/components/templates/ValidationErrorsPanel";
 import { VariablesPanel } from "@/components/templates/VariablesPanel";
 import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -20,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database, HelpCircle, Settings, LayoutGrid, Send, Rocket, Archive, ArchiveRestore, Ban, CheckCircle2, Circle } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database, HelpCircle, Settings, LayoutGrid, Send, Rocket, Archive, ArchiveRestore, Ban, CheckCircle2, Circle, MoreVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
@@ -1806,23 +1807,7 @@ ${sectionRows}
               <TooltipProvider delayDuration={300}>
                 {isEditMode ? (
                   <>
-                    {/* Publish CTA */}
-                    <Button
-                      size="sm"
-                      className={styles.publishButton}
-                      onClick={() => {
-                        setTemplateStatus('published');
-                        toast({ title: "Template published", description: "Your template is now live." });
-                      }}
-                      disabled={templateStatus === 'published'}
-                    >
-                      <Rocket className="h-4 w-4 mr-1.5" />
-                      {templateStatus === 'published' ? 'Published' : 'Publish Now'}
-                    </Button>
-
-                    <div className={styles.separator} />
-
-                    {/* Start Tour */}
+                    {/* Tour */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -1834,62 +1819,27 @@ ${sectionRows}
                           <HelpCircle className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom"><p>{isWalkthroughActive ? "Exit tour" : "Start guided tour"}</p></TooltipContent>
-                    </Tooltip>
-
-                    {/* Section Library */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={styles.toolbarIconBtn}
-                          onClick={() => { setComposeTab('canvas'); setShowLibrary(true); }}
-                          data-walkthrough="section-library-btn"
-                        >
-                          <Library className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom"><p>Section Library</p></TooltipContent>
-                    </Tooltip>
-
-                    {/* Settings */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={styles.toolbarIconBtn}
-                          onClick={() => navigate('/templates/settings')}
-                        >
-                          <Settings className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom"><p>Settings</p></TooltipContent>
+                      <TooltipContent side="bottom"><p>{isWalkthroughActive ? "Exit tour" : "Guided tour"}</p></TooltipContent>
                     </Tooltip>
 
                     <div className={styles.separator} />
 
-                    {/* Send / Run Template */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={styles.toolbarBtn}
-                          onClick={() => navigate(`/run-templates/${editingTemplateId}`)}
-                        >
-                          <Send className="h-3.5 w-3.5 mr-1.5" />
-                          Run
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom"><p>Send / Run Template</p></TooltipContent>
-                    </Tooltip>
+                    {/* Run */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={styles.toolbarBtn}
+                      onClick={() => navigate(`/run-templates/${editingTemplateId}`)}
+                    >
+                      <Send className="h-3.5 w-3.5 mr-1.5" />
+                      Run
+                    </Button>
 
                     {/* Save */}
                     <Button
+                      variant="outline"
                       size="sm"
-                      className={styles.saveButton}
+                      className={styles.toolbarBtn}
                       onClick={handleSaveTemplate}
                       disabled={isSaving || !!nameError || !!subjectError}
                       data-walkthrough="save-btn"
@@ -1902,49 +1852,58 @@ ${sectionRows}
                       {isSaving ? 'Saving…' : 'Save'}
                     </Button>
 
-                    <div className={styles.separator} />
+                    {/* Publish CTA */}
+                    <Button
+                      size="sm"
+                      className={styles.publishButton}
+                      onClick={() => {
+                        setTemplateStatus('published');
+                        toast({ title: "Template published", description: "Your template is now live." });
+                      }}
+                      disabled={templateStatus === 'published'}
+                    >
+                      <Rocket className="h-3.5 w-3.5 mr-1.5" />
+                      {templateStatus === 'published' ? 'Published' : 'Publish'}
+                    </Button>
 
-                    {/* Disable / Enable */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`${styles.toolbarIconBtn} ${!isTemplateEnabled ? styles.destructiveIcon : ''}`}
+                    {/* More menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className={styles.toolbarIconBtn}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className={styles.moreMenu}>
+                        <DropdownMenuItem onClick={() => navigate('/templates/settings')}>
+                          <Settings className="h-4 w-4 mr-2" />
+                          Settings
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
                           onClick={() => {
                             setIsTemplateEnabled(!isTemplateEnabled);
                             setTemplateStatus(isTemplateEnabled ? 'disabled' : 'draft');
                             toast({ title: isTemplateEnabled ? "Template disabled" : "Template enabled" });
                           }}
                         >
-                          {isTemplateEnabled ? <Ban className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom"><p>{isTemplateEnabled ? "Disable template" : "Enable template"}</p></TooltipContent>
-                    </Tooltip>
-
-                    {/* Archive / Unarchive */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`${styles.toolbarIconBtn} ${isTemplateArchived ? styles.warningIcon : ''}`}
+                          {isTemplateEnabled ? <Ban className="h-4 w-4 mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                          {isTemplateEnabled ? 'Disable' : 'Enable'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => {
                             setIsTemplateArchived(!isTemplateArchived);
                             toast({ title: isTemplateArchived ? "Template unarchived" : "Template archived" });
                           }}
                         >
-                          {isTemplateArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom"><p>{isTemplateArchived ? "Unarchive" : "Archive"}</p></TooltipContent>
-                    </Tooltip>
+                          {isTemplateArchived ? <ArchiveRestore className="h-4 w-4 mr-2" /> : <Archive className="h-4 w-4 mr-2" />}
+                          {isTemplateArchived ? 'Unarchive' : 'Archive'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </>
                 ) : (
                   <>
                     {/* NEW TEMPLATE MODE */}
-                    {/* Section Library CTA */}
                     <Button
                       variant="outline"
                       size="sm"
@@ -1956,7 +1915,6 @@ ${sectionRows}
                       Section Library
                     </Button>
 
-                    {/* Start Tour */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -1968,10 +1926,9 @@ ${sectionRows}
                           <HelpCircle className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom"><p>{isWalkthroughActive ? "Exit tour" : "Start guided tour"}</p></TooltipContent>
+                      <TooltipContent side="bottom"><p>{isWalkthroughActive ? "Exit tour" : "Guided tour"}</p></TooltipContent>
                     </Tooltip>
 
-                    {/* Save */}
                     <Button
                       size="sm"
                       className={styles.saveButton}
