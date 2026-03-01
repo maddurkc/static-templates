@@ -1,0 +1,186 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="SpringBoot Active-Active Architecture (Observability)">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="2000">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- EXPERIENCE LAYER -->
+        <mxCell id="expLayer" value="EXPERIENCE LAYER" style="rounded=1;fillColor=#EAF2FF;strokeColor=#2B5FD9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="800" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="user" value="User / Web Browser / Public URL (DNS)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#2B5FD9;" vertex="1" parent="1">
+          <mxGeometry x="300" y="40" width="600" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- IDENTITY LAYER -->
+        <mxCell id="idLayer" value="IDENTITY & ACCESS (SSO)" style="rounded=1;fillColor=#F4E9FF;strokeColor=#6D28D9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="120" width="800" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pingfed" value="PingFederate (OIDC / SAML)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#6D28D9;" vertex="1" parent="1">
+          <mxGeometry x="260" y="150" width="320" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ad" value="Active Directory (LDAP Lookup)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#6D28D9;" vertex="1" parent="1">
+          <mxGeometry x="620" y="150" width="320" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- TRAFFIC LAYER -->
+        <mxCell id="trafficLayer" value="TRAFFIC MANAGEMENT" style="rounded=1;fillColor=#E8FFFB;strokeColor=#0F766E;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="270" width="800" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="glb" value="Global Load Balancer (GSLB)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#0F766E;" vertex="1" parent="1">
+          <mxGeometry x="310" y="305" width="260" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rlb" value="Regional Ingress / Load Balancer" style="rounded=1;fillColor=#FFFFFF;strokeColor=#0F766E;" vertex="1" parent="1">
+          <mxGeometry x="630" y="305" width="300" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- OCP RUNTIME -->
+        <mxCell id="ocpLayer" value="OCP RUNTIME (ACTIVE - ACTIVE)" style="rounded=1;fillColor=#FFF4E6;strokeColor=#C2410C;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="410" width="800" height="300" as="geometry"/>
+        </mxCell>
+
+        <!-- Garland -->
+        <mxCell id="garland" value="Region: Garland (Active)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#C2410C;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="450" width="340" height="220" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="garlandApp" value="Spring Boot Pods (HPA)" style="rounded=1;fillColor=#EAF2FF;strokeColor=#2B5FD9;" vertex="1" parent="1">
+          <mxGeometry x="270" y="490" width="280" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="garlandSvc" value="Service / Route" style="rounded=1;fillColor=#EEFFF1;strokeColor=#16A34A;" vertex="1" parent="1">
+          <mxGeometry x="270" y="560" width="280" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Sterling -->
+        <mxCell id="sterling" value="Region: Sterling (Active)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#C2410C;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="620" y="450" width="340" height="220" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sterlingApp" value="Spring Boot Pods (HPA)" style="rounded=1;fillColor=#EAF2FF;strokeColor=#2B5FD9;" vertex="1" parent="1">
+          <mxGeometry x="650" y="490" width="280" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sterlingSvc" value="Service / Route" style="rounded=1;fillColor=#EEFFF1;strokeColor=#16A34A;" vertex="1" parent="1">
+          <mxGeometry x="650" y="560" width="280" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- INTEGRATION -->
+        <mxCell id="integrationLayer" value="INTEGRATION & EXTERNAL SERVICES" style="rounded=1;fillColor=#EEFFF1;strokeColor=#16A34A;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="740" width="800" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="middleware" value="Middleware Tech: Ansible | Autosys | Kafka | Redis | Amelia" style="rounded=1;fillColor=#FFFFFF;strokeColor=#16A34A;" vertex="1" parent="1">
+          <mxGeometry x="250" y="780" width="320" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="external" value="External APIs: ServiceNow | Dispatch | Tachyon AI" style="rounded=1;fillColor=#FFFFFF;strokeColor=#16A34A;" vertex="1" parent="1">
+          <mxGeometry x="630" y="780" width="320" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- DATA -->
+        <mxCell id="dataLayer" value="DATA LAYER" style="rounded=1;fillColor=#FFF0F3;strokeColor=#BE123C;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="920" width="800" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sql" value="SQL Server (READ) - Core/Supporting Data" style="rounded=1;fillColor=#FFFFFF;strokeColor=#BE123C;" vertex="1" parent="1">
+          <mxGeometry x="300" y="950" width="280" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mongo" value="MongoDB (R/W) - Primary Application DB" style="rounded=1;fillColor=#FFFFFF;strokeColor=#BE123C;" vertex="1" parent="1">
+          <mxGeometry x="620" y="950" width="280" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- OBSERVABILITY -->
+        <mxCell id="obsLayer" value="OBSERVABILITY & MONITORING" style="rounded=1;fillColor=#FFF7ED;strokeColor=#A16207;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1070" width="800" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="splunk" value="Splunk (Logging)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#A16207;" vertex="1" parent="1">
+          <mxGeometry x="250" y="1110" width="230" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="appd" value="AppDynamics (APM / Monitoring)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#A16207;" vertex="1" parent="1">
+          <mxGeometry x="485" y="1110" width="260" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="te" value="ThousandEyes (Alerting / Synthetics)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#A16207;" vertex="1" parent="1">
+          <mxGeometry x="750" y="1110" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- FLOWS (Edges) -->
+        <mxCell id="e1" value="SSO Redirect" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="user" target="pingfed">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e2" value="LDAP Lookup" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="pingfed" target="ad">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e3" value="Auth Code / Token" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="pingfed" target="glb">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e4" value="Route to Regions" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="glb" target="garlandSvc">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e5" value="Route to Regions" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="glb" target="sterlingSvc">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e6" value="Service to Pods" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="garlandSvc" target="garlandApp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e7" value="Service to Pods" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="sterlingSvc" target="sterlingApp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e8" value="Integrations" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="garlandApp" target="middleware">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e9" value="Integrations" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="sterlingApp" target="external">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e10" value="DB Read" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="garlandApp" target="sql">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e11" value="DB Read/Write" style="endArrow=block;rounded=1;strokeWidth=1.6;" edge="1" parent="1" source="sterlingApp" target="mongo">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Observability edges from BOTH regions -->
+        <mxCell id="e12" value="Logs" style="endArrow=block;rounded=1;strokeWidth=1.6;dashed=1;" edge="1" parent="1" source="garlandApp" target="splunk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e13" value="Logs" style="endArrow=block;rounded=1;strokeWidth=1.6;dashed=1;" edge="1" parent="1" source="sterlingApp" target="splunk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e14" value="APM Metrics/Traces" style="endArrow=block;rounded=1;strokeWidth=1.6;dashed=1;" edge="1" parent="1" source="garlandApp" target="appd">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e15" value="APM Metrics/Traces" style="endArrow=block;rounded=1;strokeWidth=1.6;dashed=1;" edge="1" parent="1" source="sterlingApp" target="appd">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e16" value="Synthetics/Alerting" style="endArrow=block;rounded=1;strokeWidth=1.6;dashed=1;" edge="1" parent="1" source="glb" target="te">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
