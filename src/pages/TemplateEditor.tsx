@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database, HelpCircle, Settings, LayoutGrid } from "lucide-react";
+import { Save, Eye, EyeOff, Library, Code, Copy, Check, ArrowLeft, X, Play, PanelLeftClose, PanelRightClose, Columns, Loader2, AlertCircle, Variable, Database, HelpCircle, Settings, LayoutGrid, Send, Rocket, Archive, ArchiveRestore, Ban, CheckCircle2, Circle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { saveTemplate, updateTemplate, getTemplates } from "@/lib/templateStorage";
@@ -103,6 +103,9 @@ const TemplateEditor = () => {
   const [focusedVariableName, setFocusedVariableName] = useState<string | null>(null);
   const [delegates, setDelegates] = useState<User[]>([]);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [isTemplateEnabled, setIsTemplateEnabled] = useState(true);
+  const [isTemplateArchived, setIsTemplateArchived] = useState(false);
+  const [templateStatus, setTemplateStatus] = useState<'draft' | 'published' | 'disabled'>('draft');
   const [dropIndicator, setDropIndicatorState] = useState<{ sectionId: string; position: 'before' | 'after' } | null>(null);
   const dropIndicatorRef = useRef<{ sectionId: string; position: 'before' | 'after' } | null>(null);
   const setDropIndicator = useCallback((value: { sectionId: string; position: 'before' | 'after' } | null) => {
@@ -1751,109 +1754,256 @@ ${sectionRows}
         {/* Top Bar */}
         <div className={styles.topBar}>
           <div className={styles.topBarRow}>
-            <div className={styles.titleSection}>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/templates')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </div>
-            
-            {/* Inline Template Name and Subject Fields */}
-            <div className={styles.templateMetaFields}>
-              <div className={`${styles.metaField} ${nameError ? styles.hasError : ''}`}>
-                <Label htmlFor="inline-template-name" className={styles.metaLabel}>
-                  Template Name <span className={styles.required}>*</span>
-                </Label>
-                <div className={styles.inputWrapper}>
-                  <Input
-                    id="inline-template-name"
-                    placeholder="Enter template name..."
-                    value={templateName}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    className={`${styles.metaInput} ${nameError ? styles.inputError : ''}`}
-                  />
-                  {nameError && <span className={styles.errorText}>{nameError}</span>}
-                </div>
-              </div>
-              <div className={`${styles.metaField} ${subjectError ? styles.hasError : ''}`}>
-                <Label htmlFor="inline-template-subject" className={styles.metaLabel}>
-                  Subject <span className={styles.required}>*</span>
-                </Label>
-                <div className={styles.inputWrapper}>
-                  <Input
-                    id="inline-template-subject"
-                    placeholder="Email subject (supports {{placeholders}})..."
-                    value={templateSubject}
-                    onChange={(e) => handleSubjectChange(e.target.value)}
-                    className={`${styles.metaInput} ${subjectError ? styles.inputError : ''}`}
-                  />
-                  {subjectError && <span className={styles.errorText}>{subjectError}</span>}
-                </div>
-              </div>
-            </div>
-            
-            <div className={styles.viewControls}>
-              {/* Walkthrough Tour Button */}
-              <TooltipProvider>
+            {/* Left side */}
+            <div className={styles.toolbarLeft}>
+              <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      variant={isWalkthroughActive ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => isWalkthroughActive ? stopWalkthrough() : startWalkthrough()}
-                      className="gap-2"
+                      variant="ghost"
+                      size="icon"
+                      className={styles.backButton}
+                      onClick={() => navigate('/templates')}
                     >
-                      <HelpCircle className="h-4 w-4" />
-                      {isWalkthroughActive ? "Exit Tour" : "Start Tour"}
+                      <ArrowLeft className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{isWalkthroughActive ? "Exit the guided tour" : "Take a guided tour of the template editor"}</p>
-                  </TooltipContent>
+                  <TooltipContent side="bottom"><p>Back to templates</p></TooltipContent>
                 </Tooltip>
               </TooltipProvider>
 
+              <div className={styles.separator} />
 
-              {/* Settings - Full Page */}
-              <Button variant="outline" size="sm" onClick={() => navigate('/templates/settings')}>
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-              
-              
-              {/* Validation indicator */}
-              {validationErrors.length > 0 && (
-                <div className={styles.validationIndicator}>
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{validationErrors.length} issue{validationErrors.length > 1 ? 's' : ''}</span>
+              {isEditMode ? (
+                <div className={styles.templateIdentity}>
+                  <div className={styles.templateNameDisplay}>
+                    <Input
+                      value={templateName}
+                      onChange={(e) => handleNameChange(e.target.value)}
+                      placeholder="Untitled template"
+                      className={`${styles.inlineNameInput} ${nameError ? styles.inputError : ''}`}
+                    />
+                    {nameError && <span className={styles.errorText}>{nameError}</span>}
+                  </div>
+                  <div className={styles.statusBadge} data-status={templateStatus}>
+                    <Circle className="h-2 w-2" />
+                    <span>{templateStatus === 'draft' ? 'Draft' : templateStatus === 'published' ? 'Published' : 'Disabled'}</span>
+                  </div>
+                  {validationErrors.length > 0 && (
+                    <div className={styles.validationChip} onClick={() => setShowValidationPanel(true)}>
+                      <AlertCircle className="h-3 w-3" />
+                      <span>{validationErrors.length}</span>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <span className={styles.newTemplateLabel}>New Template</span>
               )}
-              
-              <Button
-                size="sm"
-                className="shadow-lg shadow-primary/20"
-                onClick={handleSaveTemplate}
-                disabled={isSaving || !!nameError || !!subjectError}
-                data-walkthrough="save-btn"
-              >
-                {isSaving ? (
+            </div>
+
+            {/* Right side */}
+            <div className={styles.toolbarRight}>
+              <TooltipProvider delayDuration={300}>
+                {isEditMode ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
+                    {/* Publish CTA */}
+                    <Button
+                      size="sm"
+                      className={styles.publishButton}
+                      onClick={() => {
+                        setTemplateStatus('published');
+                        toast({ title: "Template published", description: "Your template is now live." });
+                      }}
+                      disabled={templateStatus === 'published'}
+                    >
+                      <Rocket className="h-4 w-4 mr-1.5" />
+                      {templateStatus === 'published' ? 'Published' : 'Publish Now'}
+                    </Button>
+
+                    <div className={styles.separator} />
+
+                    {/* Start Tour */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={isWalkthroughActive ? "default" : "ghost"}
+                          size="icon"
+                          className={styles.toolbarIconBtn}
+                          onClick={() => isWalkthroughActive ? stopWalkthrough() : startWalkthrough()}
+                        >
+                          <HelpCircle className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom"><p>{isWalkthroughActive ? "Exit tour" : "Start guided tour"}</p></TooltipContent>
+                    </Tooltip>
+
+                    {/* Section Library */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={styles.toolbarIconBtn}
+                          onClick={() => { setComposeTab('canvas'); setShowLibrary(true); }}
+                          data-walkthrough="section-library-btn"
+                        >
+                          <Library className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom"><p>Section Library</p></TooltipContent>
+                    </Tooltip>
+
+                    {/* Settings */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={styles.toolbarIconBtn}
+                          onClick={() => navigate('/templates/settings')}
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom"><p>Settings</p></TooltipContent>
+                    </Tooltip>
+
+                    <div className={styles.separator} />
+
+                    {/* Send / Run Template */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={styles.toolbarBtn}
+                          onClick={() => navigate(`/run-templates/${editingTemplateId}`)}
+                        >
+                          <Send className="h-3.5 w-3.5 mr-1.5" />
+                          Run
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom"><p>Send / Run Template</p></TooltipContent>
+                    </Tooltip>
+
+                    {/* Save */}
+                    <Button
+                      size="sm"
+                      className={styles.saveButton}
+                      onClick={handleSaveTemplate}
+                      disabled={isSaving || !!nameError || !!subjectError}
+                      data-walkthrough="save-btn"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Save className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      {isSaving ? 'Saving…' : 'Save'}
+                    </Button>
+
+                    <div className={styles.separator} />
+
+                    {/* Disable / Enable */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={`${styles.toolbarIconBtn} ${!isTemplateEnabled ? styles.destructiveIcon : ''}`}
+                          onClick={() => {
+                            setIsTemplateEnabled(!isTemplateEnabled);
+                            setTemplateStatus(isTemplateEnabled ? 'disabled' : 'draft');
+                            toast({ title: isTemplateEnabled ? "Template disabled" : "Template enabled" });
+                          }}
+                        >
+                          {isTemplateEnabled ? <Ban className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom"><p>{isTemplateEnabled ? "Disable template" : "Enable template"}</p></TooltipContent>
+                    </Tooltip>
+
+                    {/* Archive / Unarchive */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={`${styles.toolbarIconBtn} ${isTemplateArchived ? styles.warningIcon : ''}`}
+                          onClick={() => {
+                            setIsTemplateArchived(!isTemplateArchived);
+                            toast({ title: isTemplateArchived ? "Template unarchived" : "Template archived" });
+                          }}
+                        >
+                          {isTemplateArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom"><p>{isTemplateArchived ? "Unarchive" : "Archive"}</p></TooltipContent>
+                    </Tooltip>
                   </>
                 ) : (
                   <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Template
+                    {/* NEW TEMPLATE MODE */}
+                    {/* Section Library CTA */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={styles.toolbarBtn}
+                      onClick={() => { setComposeTab('canvas'); setShowLibrary(true); }}
+                      data-walkthrough="section-library-btn"
+                    >
+                      <Library className="h-3.5 w-3.5 mr-1.5" />
+                      Section Library
+                    </Button>
+
+                    {/* Start Tour */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={isWalkthroughActive ? "default" : "ghost"}
+                          size="icon"
+                          className={styles.toolbarIconBtn}
+                          onClick={() => isWalkthroughActive ? stopWalkthrough() : startWalkthrough()}
+                        >
+                          <HelpCircle className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom"><p>{isWalkthroughActive ? "Exit tour" : "Start guided tour"}</p></TooltipContent>
+                    </Tooltip>
+
+                    {/* Save */}
+                    <Button
+                      size="sm"
+                      className={styles.saveButton}
+                      onClick={handleSaveTemplate}
+                      disabled={isSaving || !!nameError || !!subjectError}
+                      data-walkthrough="save-btn"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Save className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      {isSaving ? 'Saving…' : 'Save'}
+                    </Button>
                   </>
                 )}
-              </Button>
+              </TooltipProvider>
             </div>
           </div>
+        </div>
+
+        {/* Subject sub-bar */}
+        <div className={styles.subjectBar}>
+          <Label htmlFor="toolbar-subject" className={styles.subjectLabel}>Subject</Label>
+          <Input
+            id="toolbar-subject"
+            placeholder="Email subject line (supports {{placeholders}})…"
+            value={templateSubject}
+            onChange={(e) => handleSubjectChange(e.target.value)}
+            className={`${styles.subjectInput} ${subjectError ? styles.inputError : ''}`}
+          />
+          {subjectError && <span className={styles.errorText}>{subjectError}</span>}
         </div>
 
           {/* Validation Errors Panel */}
