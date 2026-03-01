@@ -2032,6 +2032,9 @@ ${sectionRows}
                       <TabsTrigger value="canvas" className={styles.composeTabTrigger}>
                         <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
                         Canvas
+                        {sections.length > 0 && (
+                          <span className={styles.tabBadge}>{sections.length}</span>
+                        )}
                       </TabsTrigger>
                       <TabsTrigger value="placeholders" className={styles.composeTabTrigger}>
                         <Variable className="h-3.5 w-3.5 mr-1.5" />
@@ -2218,6 +2221,9 @@ ${sectionRows}
                         <TabsTrigger value="canvas" className={styles.composeTabTrigger}>
                           <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
                           Canvas
+                          {sections.length > 0 && (
+                            <span className={styles.tabBadge}>{sections.length}</span>
+                          )}
                         </TabsTrigger>
                         <TabsTrigger value="placeholders" className={styles.composeTabTrigger}>
                           <Variable className="h-3.5 w-3.5 mr-1.5" />
