@@ -196,7 +196,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  height: 36px;
+  height: 52px;
   border-bottom: 1px solid hsl(var(--border));
   background: hsl(var(--muted) / 0.3);
   flex-shrink: 0;
@@ -206,6 +206,24 @@
   position: sticky;
   top: 0;
   z-index: 5;
+}
+
+.previewActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.previewActionBtn {
+  font-size: 0.75rem;
+  height: 28px;
+  padding: 0 0.5rem;
+  color: hsl(var(--muted-foreground));
+  
+  &:hover {
+    color: hsl(var(--foreground));
+  }
 }
 
 .previewScrollArea {
@@ -392,6 +410,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
+  height: 52px;
   border-bottom: 1px solid hsl(var(--border));
   background: hsl(var(--muted) / 0.3);
   flex-shrink: 0;

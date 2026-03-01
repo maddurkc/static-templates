@@ -1817,70 +1817,12 @@ ${sectionRows}
                 </Tooltip>
               </TooltipProvider>
 
-              
-              
-              {/* Settings Panel */}
-              <Sheet open={showSettingsPanel} onOpenChange={setShowSettingsPanel}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Settings
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" onInteractOutside={(e) => e.preventDefault()} className="w-[580px] p-0 overflow-hidden [&>button]:hidden">
-                  <TemplateSettingsPanel
-                    delegates={delegates}
-                    onDelegatesChange={setDelegates}
-                    onClose={() => setShowSettingsPanel(false)}
-                  />
-                </SheetContent>
-              </Sheet>
 
-              {/* Settings1 - Full Page */}
+              {/* Settings - Full Page */}
               <Button variant="outline" size="sm" onClick={() => navigate('/templates/settings')}>
                 <Settings className="h-4 w-4 mr-2" />
-                Settings1
+                Settings
               </Button>
-
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Code className="h-4 w-4 mr-2" />
-                    View HTML
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden">
-                  <DialogHeader>
-                    <DialogTitle>Generated HTML</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCopyHTML}
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="h-4 w-4 mr-2" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy HTML
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <ScrollArea className="h-[60vh] w-full rounded-md border">
-                      <pre className="p-4 text-sm whitespace-pre-wrap break-words overflow-x-auto">
-                        <code className="break-all">{generateHTMLWithPlaceholders()}</code>
-                      </pre>
-                    </ScrollArea>
-                  </div>
-                </DialogContent>
-              </Dialog>
               
               
               {/* Validation indicator */}
@@ -2115,6 +2057,33 @@ ${sectionRows}
                   <div className={styles.previewTabBar}>
                     <Eye className="h-3.5 w-3.5" />
                     <span>Live Preview</span>
+                    <div className={styles.previewActions}>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className={styles.previewActionBtn}>
+                            <Code className="h-3.5 w-3.5 mr-1" />
+                            HTML
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden">
+                          <DialogHeader>
+                            <DialogTitle>Generated HTML</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="flex justify-end">
+                              <Button size="sm" variant="outline" onClick={handleCopyHTML}>
+                                {copied ? (<><Check className="h-4 w-4 mr-2" />Copied!</>) : (<><Copy className="h-4 w-4 mr-2" />Copy HTML</>)}
+                              </Button>
+                            </div>
+                            <ScrollArea className="h-[60vh] w-full rounded-md border">
+                              <pre className="p-4 text-sm whitespace-pre-wrap break-words overflow-x-auto">
+                                <code className="break-all">{generateHTMLWithPlaceholders()}</code>
+                              </pre>
+                            </ScrollArea>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </div>
                   <div className={styles.previewScrollArea}>
                     <PreviewView 
@@ -2194,6 +2163,33 @@ ${sectionRows}
                     <div className={styles.previewTabBar}>
                       <Eye className="h-3.5 w-3.5" />
                       <span>Live Preview</span>
+                      <div className={styles.previewActions}>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className={styles.previewActionBtn}>
+                              <Code className="h-3.5 w-3.5 mr-1" />
+                              HTML
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden">
+                            <DialogHeader>
+                              <DialogTitle>Generated HTML</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="flex justify-end">
+                                <Button size="sm" variant="outline" onClick={handleCopyHTML}>
+                                  {copied ? (<><Check className="h-4 w-4 mr-2" />Copied!</>) : (<><Copy className="h-4 w-4 mr-2" />Copy HTML</>)}
+                                </Button>
+                              </div>
+                              <ScrollArea className="h-[60vh] w-full rounded-md border">
+                                <pre className="p-4 text-sm whitespace-pre-wrap break-words overflow-x-auto">
+                                  <code className="break-all">{generateHTMLWithPlaceholders()}</code>
+                                </pre>
+                              </ScrollArea>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </div>
                     <div className={styles.previewScrollArea}>
                       <PreviewView 
