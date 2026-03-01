@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import { TableEditor } from "@/components/templates/TableEditor";
 import {
@@ -2191,16 +2192,6 @@ const RunTemplates = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              {selectedTemplate.globalApiConfig?.integrations?.length > 0 && (
-                <Button
-                  variant={showApiPanel ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowApiPanel(!showApiPanel)}
-                >
-                  <Database className="h-4 w-4 mr-2" />
-                  API ({globalApiConfig.integrations.length})
-                </Button>
-              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -2316,25 +2307,29 @@ const RunTemplates = () => {
             </div>
           </div>
 
-          {/* Main Content: API Panel (optional) | Variables (left) | Preview/Body (right) */}
-          <div className={`${styles.mainContent} ${showApiPanel ? styles.mainContentWithApi : ''}`}>
-            {/* API Panel (conditionally shown) */}
-            {showApiPanel && (
-              <div className={styles.apiPanel}>
-                <GlobalApiPanel
-                  config={globalApiConfig}
-                  onUpdate={setGlobalApiConfig}
-                  onClose={() => setShowApiPanel(false)}
-                />
-              </div>
-            )}
-            {/* Left Panel - Template Variables */}
+          {/* Main Content: Variables (left) | Preview/Body (right) */}
+          <div className={styles.mainContent}>
+            {/* Left Panel - Tabs: Placeholders & Datasources */}
             <div className={styles.variablesPanel}>
-              <div className={styles.variablesPanelHeader}>
-                <h2>Template Variables</h2>
-              </div>
-              <ScrollArea className="flex-1">
-                <div className={styles.variablesList}>
+              <Tabs defaultValue="placeholders" className={styles.leftPanelTabs}>
+                <div className={styles.variablesPanelHeader}>
+                  <TabsList className={styles.leftPanelTabsList}>
+                    <TabsTrigger value="placeholders" className={styles.leftPanelTab}>
+                      <Variable className="h-3.5 w-3.5 mr-1.5" />
+                      Placeholders
+                    </TabsTrigger>
+                    <TabsTrigger value="datasources" className={styles.leftPanelTab}>
+                      <Database className="h-3.5 w-3.5 mr-1.5" />
+                      Datasources
+                      {globalApiConfig.integrations.length > 0 && (
+                        <span className={styles.tabBadge}>{globalApiConfig.integrations.length}</span>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+                <TabsContent value="placeholders" className={styles.leftPanelTabContent}>
+                  <ScrollArea className="flex-1 h-full">
+                    <div className={styles.variablesList}>
                   {/* Subject Data Section */}
                   {Object.keys(subjectVariables).length > 0 && (
                     <div className="mb-6">
@@ -3451,7 +3446,16 @@ const RunTemplates = () => {
                     );
                   })()}
                   </div>
-                </ScrollArea>
+                  </ScrollArea>
+                </TabsContent>
+                <TabsContent value="datasources" className={styles.leftPanelTabContent}>
+                  <GlobalApiPanel
+                    config={globalApiConfig}
+                    onUpdate={setGlobalApiConfig}
+                    onClose={() => {}}
+                  />
+                </TabsContent>
+              </Tabs>
             </div>
 
             {/* Right Panel - Preview (Email Body) */}

@@ -145,10 +145,69 @@
   }
 }
 
-.mainContentWithApi {
-  @media (min-width: 1024px) {
-    grid-template-columns: 480px 400px 1fr;
+/* Left Panel Tabs */
+.leftPanelTabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.leftPanelTabsList {
+  background: transparent;
+  border-radius: 0;
+  height: auto;
+  padding: 0;
+  gap: 0;
+  width: 100%;
+}
+
+.leftPanelTab {
+  flex: 1;
+  border-radius: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.5rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #6c757d;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+
+  &[data-state="active"] {
+    color: #0078d4;
+    border-bottom-color: #0078d4;
+    background: transparent;
+    box-shadow: none;
   }
+}
+
+.leftPanelTabContent {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  &[data-state="active"] {
+    display: flex;
+  }
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: #0078d4;
+  color: #ffffff;
+  margin-left: 4px;
 }
 
 .apiPanel {
@@ -172,7 +231,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  padding: 0.5rem 0.75rem;
   background: #ffffff;
   border-bottom: 1px solid #e9ecef;
 
