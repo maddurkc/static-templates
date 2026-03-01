@@ -1,0 +1,203 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Spring Boot Active-Active Architecture">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="2400">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== Title ===== -->
+        <mxCell id="title" value="Spring Boot Active-Active Architecture" style="text;html=1;align=center;verticalAlign=middle;fontStyle=1;fontSize=26;" vertex="1" parent="1">
+          <mxGeometry x="200" y="10" width="800" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Experience Layer ===== -->
+        <mxCell id="layer_exp" value=" " style="rounded=1;fillColor=#EAF2FF;strokeColor=#B6C7F2;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="60" width="900" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="exp_user" value="User" style="rounded=1;fillColor=#FFFFFF;strokeColor=#C9D6F5;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="95" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="exp_browser" value="Web&#xa;Browser" style="rounded=1;fillColor=#FFFFFF;strokeColor=#C9D6F5;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="95" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="exp_dns" value="Public&#xa;URL / DNS" style="rounded=1;fillColor=#FFFFFF;strokeColor=#C9D6F5;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="95" width="240" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Down arrow -->
+        <mxCell id="arr1" value="" style="shape=singleArrow;direction=south;fillColor=#FFFFFF;strokeColor=#9AA7C0;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="590" y="185" width="20" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Identity & Access Layer ===== -->
+        <mxCell id="layer_id" value=" " style="rounded=1;fillColor=#F4E9FF;strokeColor=#D7C2FF;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="220" width="900" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="id_ping" value="PingFederate (SSO)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#D7C2FF;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="260" width="360" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="id_ad" value="Active Directory&#xa;(User Lookup)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#D7C2FF;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="260" width="360" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="id_note1" value="OIDC / SAML Redirect" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="325" width="280" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="id_note2" value="LDAP / AD Lookup" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="325" width="240" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="id_note3" value="Auth Code / Token" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="345" width="200" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Down arrow -->
+        <mxCell id="arr2" value="" style="shape=singleArrow;direction=south;fillColor=#FFFFFF;strokeColor=#9AA7C0;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="590" y="385" width="20" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Traffic Layer ===== -->
+        <mxCell id="layer_traffic" value=" " style="rounded=1;fillColor=#E8FFFB;strokeColor=#BFEFE6;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="420" width="900" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="t_glb" value="Global Load&#xa;Balancer" style="rounded=1;fillColor=#FFFFFF;strokeColor=#BFEFE6;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="465" width="300" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="t_ing" value="Regional Ingress /&#xa;Load Balancer" style="rounded=1;fillColor=#FFFFFF;strokeColor=#BFEFE6;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="650" y="465" width="320" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Down arrow -->
+        <mxCell id="arr3" value="" style="shape=singleArrow;direction=south;fillColor=#FFFFFF;strokeColor=#9AA7C0;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="590" y="565" width="20" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== OCP Runtime Layer ===== -->
+        <mxCell id="layer_ocp" value=" " style="rounded=1;fillColor=#FFF4E6;strokeColor=#F3D3B2;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="600" width="900" height="300" as="geometry"/>
+        </mxCell>
+
+        <!-- Garland -->
+        <mxCell id="ocp_g_box" value="OCP Region: Garland (Active)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#F3D3B2;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="190" y="635" width="420" height="235" as="geometry"/>
+        </mxCell>
+        <mxCell id="ocp_g_pods" value="Spring Boot Pods&#xa;min Pods: 3  |  max Pods: 5" style="rounded=1;fillColor=#FFFFFF;strokeColor=#C9D6F5;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="690" width="320" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ocp_g_route" value="Service / Route" style="rounded=1;fillColor=#FFFFFF;strokeColor=#CFEBD7;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="780" width="320" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Sterling -->
+        <mxCell id="ocp_s_box" value="OCP Region: Sterling (Active)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#F3D3B2;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="630" y="635" width="400" height="235" as="geometry"/>
+        </mxCell>
+        <mxCell id="ocp_s_pods" value="Spring Boot Pods&#xa;min Pods: 3  |  max Pods: 5" style="rounded=1;fillColor=#FFFFFF;strokeColor=#C9D6F5;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="670" y="690" width="320" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ocp_s_route" value="Service / Route" style="rounded=1;fillColor=#FFFFFF;strokeColor=#CFEBD7;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="670" y="780" width="320" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Region routing labels -->
+        <mxCell id="route_lbl1" value="Route to Regions" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="360" y="560" width="180" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="route_lbl2" value="Route to Regions" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="560" width="180" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Down arrows from OCP to Integration -->
+        <mxCell id="arr4" value="" style="shape=singleArrow;direction=south;fillColor=#FFFFFF;strokeColor=#9AA7C0;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="585" y="905" width="20" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Integration & Services ===== -->
+        <mxCell id="layer_int" value="Integration &amp; Services" style="rounded=1;fillColor=#EEFFF1;strokeColor=#BFE8C8;strokeWidth=1;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="150" y="940" width="900" height="270" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="int_left" value="Ansible&#xa;&#xa;Amelia&#xa;&#xa;Kafka&#xa;&#xa;Autosys&#xa;&#xa;Redis" style="rounded=1;fillColor=#FFFFFF;strokeColor=#BFE8C8;align=left;spacingLeft=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="190" y="1010" width="420" height="170" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="int_right" value="ServiceNow API&#xa;&#xa;Dispatch APIs&#xa;&#xa;Tachyon AI APIs" style="rounded=1;fillColor=#FFFFFF;strokeColor=#BFE8C8;align=left;spacingLeft=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1010" width="400" height="170" as="geometry"/>
+        </mxCell>
+
+        <!-- Dashed log lines (visual only) -->
+        <mxCell id="dash1" value="Logs" style="text;html=1;align=left;fontSize=11;fontColor=#556;" vertex="1" parent="1">
+          <mxGeometry x="170" y="915" width="60" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Down arrow to Pink band -->
+        <mxCell id="arr5" value="" style="shape=singleArrow;direction=south;fillColor=#FFFFFF;strokeColor=#9AA7C0;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="585" y="1215" width="20" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Pink band (as in the image) ===== -->
+        <mxCell id="layer_pink" value="Integration &amp; Services" style="rounded=1;fillColor=#FDE7EF;strokeColor=#F2B7C8;strokeWidth=1;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1250" width="900" height="170" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pink_splunk" value="Splunk&#xa;Logging" style="rounded=1;fillColor=#FFFFFF;strokeColor=#F2B7C8;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="1300" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="pink_appd" value="AppDynamics&#xa;Monitoring" style="rounded=1;fillColor=#FFFFFF;strokeColor=#F2B7C8;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1300" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="pink_graf" value="Grafana&#xa;Custom Biz Metrics" style="rounded=1;fillColor=#FFFFFF;strokeColor=#F2B7C8;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="620" y="1300" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="pink_te" value="ThousandEyes&#xa;Alerting" style="rounded=1;fillColor=#FFFFFF;strokeColor=#F2B7C8;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="1300" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Down arrow -->
+        <mxCell id="arr6" value="" style="shape=singleArrow;direction=south;fillColor=#FFFFFF;strokeColor=#9AA7C0;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="585" y="1425" width="20" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Observability & Monitoring ===== -->
+        <mxCell id="layer_obs" value="Observability &amp; Monitoring" style="rounded=1;fillColor=#FFF1E0;strokeColor=#E6C29B;strokeWidth=1;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1460" width="900" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="obs_splunk" value="Splunk&#xa;(Logging)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#E6C29B;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="1515" width="210" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="obs_appd" value="AppDynamics&#xa;(Monitoring)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#E6C29B;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="405" y="1515" width="210" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="obs_graf" value="Grafana Dashboard&#xa;Custom Biz Metrics" style="rounded=1;fillColor=#FFFFFF;strokeColor=#E6C29B;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1515" width="250" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="obs_te" value="ThousandEyes&#xa;(Alerting)" style="rounded=1;fillColor=#FFFFFF;strokeColor=#E6C29B;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="895" y="1515" width="155" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Connectors (simple vertical) ===== -->
+        <mxCell id="c1" value="" style="endArrow=block;rounded=1;strokeWidth=1.2;strokeColor=#7C8AA6;" edge="1" parent="1" source="exp_browser" target="id_ping">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c2" value="" style="endArrow=block;rounded=1;strokeWidth=1.2;strokeColor=#7C8AA6;" edge="1" parent="1" source="id_ping" target="t_glb">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c3" value="" style="endArrow=block;rounded=1;strokeWidth=1.2;strokeColor=#7C8AA6;" edge="1" parent="1" source="t_glb" target="ocp_g_box">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c4" value="" style="endArrow=block;rounded=1;strokeWidth=1.2;strokeColor=#7C8AA6;" edge="1" parent="1" source="t_glb" target="ocp_s_box">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c5" value="" style="endArrow=block;rounded=1;strokeWidth=1.2;strokeColor=#7C8AA6;" edge="1" parent="1" source="ocp_g_route" target="layer_int">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c6" value="" style="endArrow=block;rounded=1;strokeWidth=1.2;strokeColor=#7C8AA6;" edge="1" parent="1" source="ocp_s_route" target="layer_int">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
