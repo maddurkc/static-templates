@@ -2111,16 +2111,24 @@ ${sectionRows}
               <ResizableHandle withHandle className={styles.resizeHandle} />
               
               <ResizablePanel defaultSize={50} minSize={20} className={styles.previewSection} data-walkthrough="preview-view">
-                <PreviewView 
-                  headerSection={headerSection}
-                  footerSection={footerSection}
-                  sections={sections}
-                  selectedSectionId={selectedSection?.id}
-                  hoveredSectionId={hoveredSectionId}
-                  onHoverSection={setHoveredSectionId}
-                  highlightedVariableName={focusedVariableName}
-                  globalApiConfig={globalApiConfig}
-                />
+                <div className={styles.previewPanel}>
+                  <div className={styles.previewTabBar}>
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>Live Preview</span>
+                  </div>
+                  <div className={styles.previewScrollArea}>
+                    <PreviewView 
+                      headerSection={headerSection}
+                      footerSection={footerSection}
+                      sections={sections}
+                      selectedSectionId={selectedSection?.id}
+                      hoveredSectionId={hoveredSectionId}
+                      onHoverSection={setHoveredSectionId}
+                      highlightedVariableName={focusedVariableName}
+                      globalApiConfig={globalApiConfig}
+                    />
+                  </div>
+                </div>
               </ResizablePanel>
             </ResizablePanelGroup>
           ) : (
@@ -2182,16 +2190,24 @@ ${sectionRows}
               {/* Preview Only */}
               {viewMode === 'preview-only' && (
                 <div className={styles.singleViewContainer}>
-                  <PreviewView 
-                    headerSection={headerSection}
-                    footerSection={footerSection}
-                    sections={sections}
-                    selectedSectionId={selectedSection?.id}
-                    hoveredSectionId={hoveredSectionId}
-                    onHoverSection={setHoveredSectionId}
-                    highlightedVariableName={focusedVariableName}
-                    globalApiConfig={globalApiConfig}
-                  />
+                  <div className={styles.previewPanel}>
+                    <div className={styles.previewTabBar}>
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Live Preview</span>
+                    </div>
+                    <div className={styles.previewScrollArea}>
+                      <PreviewView 
+                        headerSection={headerSection}
+                        footerSection={footerSection}
+                        sections={sections}
+                        selectedSectionId={selectedSection?.id}
+                        hoveredSectionId={hoveredSectionId}
+                        onHoverSection={setHoveredSectionId}
+                        highlightedVariableName={focusedVariableName}
+                        globalApiConfig={globalApiConfig}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </>

@@ -181,8 +181,36 @@
 }
 
 .previewSection {
-  overflow-y: auto;
+  overflow: hidden;
   background-color: white;
+}
+
+.previewPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.previewTabBar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  height: 36px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.3);
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.previewScrollArea {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .singleViewContainer {
