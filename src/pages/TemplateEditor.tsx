@@ -1807,32 +1807,18 @@ ${sectionRows}
               <TooltipProvider delayDuration={300}>
                 {isEditMode ? (
                   <>
-                    {/* Tour */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={isWalkthroughActive ? "default" : "ghost"}
-                          size="icon"
-                          className={styles.toolbarIconBtn}
-                          onClick={() => isWalkthroughActive ? stopWalkthrough() : startWalkthrough()}
-                        >
-                          <HelpCircle className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom"><p>{isWalkthroughActive ? "Exit tour" : "Guided tour"}</p></TooltipContent>
-                    </Tooltip>
-
-                    <div className={styles.separator} />
-
-                    {/* Run */}
+                    {/* Publish CTA - Primary action */}
                     <Button
-                      variant="outline"
                       size="sm"
-                      className={styles.toolbarBtn}
-                      onClick={() => navigate(`/run-templates/${editingTemplateId}`)}
+                      className={styles.publishButton}
+                      onClick={() => {
+                        setTemplateStatus('published');
+                        toast({ title: "Template published", description: "Your template is now live." });
+                      }}
+                      disabled={templateStatus === 'published'}
                     >
-                      <Send className="h-3.5 w-3.5 mr-1.5" />
-                      Run
+                      <Rocket className="h-3.5 w-3.5 mr-1.5" />
+                      {templateStatus === 'published' ? 'Published' : 'Publish'}
                     </Button>
 
                     {/* Save */}
@@ -1852,19 +1838,33 @@ ${sectionRows}
                       {isSaving ? 'Saving…' : 'Save'}
                     </Button>
 
-                    {/* Publish CTA */}
+                    {/* Run */}
                     <Button
+                      variant="outline"
                       size="sm"
-                      className={styles.publishButton}
-                      onClick={() => {
-                        setTemplateStatus('published');
-                        toast({ title: "Template published", description: "Your template is now live." });
-                      }}
-                      disabled={templateStatus === 'published'}
+                      className={styles.toolbarBtn}
+                      onClick={() => navigate(`/run-templates/${editingTemplateId}`)}
                     >
-                      <Rocket className="h-3.5 w-3.5 mr-1.5" />
-                      {templateStatus === 'published' ? 'Published' : 'Publish'}
+                      <Send className="h-3.5 w-3.5 mr-1.5" />
+                      Run
                     </Button>
+
+                    <div className={styles.separator} />
+
+                    {/* Tour */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={isWalkthroughActive ? "default" : "ghost"}
+                          size="icon"
+                          className={styles.toolbarIconBtn}
+                          onClick={() => isWalkthroughActive ? stopWalkthrough() : startWalkthrough()}
+                        >
+                          <HelpCircle className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom"><p>{isWalkthroughActive ? "Exit tour" : "Guided tour"}</p></TooltipContent>
+                    </Tooltip>
 
                     {/* More menu */}
                     <DropdownMenu>
