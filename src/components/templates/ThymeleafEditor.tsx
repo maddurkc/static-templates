@@ -1,5 +1,8 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { useIntellisenseContext } from "@/contexts/IntellisenseContext";
+import { useVariableIntellisense } from "@/hooks/useVariableIntellisense";
+import { VariableIntellisense } from "./VariableIntellisense";
 import styles from "./ThymeleafEditor.module.scss";
 
 interface ThymeleafEditorProps {
@@ -13,6 +16,10 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [highlightedHtml, setHighlightedHtml] = useState("");
 
+  // Intellisense
+  const { globalApiConfig } = useIntellisenseContext();
+  const intellisense = useVariableIntellisense({ globalApiConfig });
+
   useEffect(() => {
     const highlighted = highlightThymeleaf(value || "");
     setHighlightedHtml(highlighted);
@@ -21,19 +28,17 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
   const highlightThymeleaf = (text: string): string => {
     if (!text) return "";
     
-    // Escape HTML entities first
     let escaped = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
     
-    // Highlight {{placeholder}} syntax (user-friendly format)
+    // Highlight {{placeholder}} and {{var.field}} syntax
     escaped = escaped.replace(
-      /(\{\{(\w+)\}\})/g,
+      /(\{\{(\w+(?:\.\w+)*)\}\})/g,
       '<span class="text-primary font-semibold bg-primary/10 px-0.5 rounded">$1</span>'
     );
     
-    // Also highlight any remaining Thymeleaf tags for backwards compatibility
     escaped = escaped.replace(
       /(&lt;span\s+th:utext="\$\{([^}]+)\}"(?:\s*\/&gt;|&gt;))/g,
       '<span class="text-primary font-semibold">$1</span>'
@@ -44,7 +49,6 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
       '<span class="text-primary font-semibold">$1</span>'
     );
     
-    // Highlight closing tags
     escaped = escaped.replace(
       /(&lt;\/th:(if|each)&gt;)/g,
       '<span class="text-primary font-semibold">$1</span>'
@@ -63,23 +67,67 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
     }
   };
 
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
+    // Trigger intellisense
+    if (textareaRef.current) {
+      intellisense.handleTextareaInput(textareaRef.current);
+    }
+  }, [onChange, intellisense]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const handled = intellisense.handleKeyDown(e);
+    if (handled) {
+      if ((e.key === 'Enter' || e.key === 'Tab') && textareaRef.current) {
+        const suggestion = intellisense.getActiveSuggestion();
+        if (suggestion) {
+          intellisense.insertIntoTextarea(textareaRef.current, suggestion, onChange);
+          intellisense.close();
+        }
+      }
+      return;
+    }
+
+    // Ctrl+Space manual trigger
+    if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
+      e.preventDefault();
+      if (textareaRef.current) {
+        intellisense.handleTextareaInput(textareaRef.current);
+      }
+    }
+  }, [intellisense, onChange]);
+
   return (
     <div className={cn(styles.editorWrapper, className)}>
-      {/* Highlighted background */}
       <div
         className={styles.highlightLayer}
         dangerouslySetInnerHTML={{ __html: highlightedHtml }}
       />
       
-      {/* Actual textarea */}
       <textarea
         ref={textareaRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         onScroll={handleScroll}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={styles.textarea}
         spellCheck={false}
+      />
+
+      <VariableIntellisense
+        isOpen={intellisense.isOpen}
+        suggestions={intellisense.suggestions}
+        activeIndex={intellisense.activeIndex}
+        position={intellisense.position}
+        onSelect={(suggestion) => {
+          if (textareaRef.current) {
+            intellisense.insertIntoTextarea(textareaRef.current, suggestion, onChange);
+            intellisense.close();
+          }
+        }}
+        onHover={intellisense.setActiveIndex}
+        onClose={intellisense.close}
       />
     </div>
   );

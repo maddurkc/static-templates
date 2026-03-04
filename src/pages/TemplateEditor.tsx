@@ -38,6 +38,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { DelegatesDialog } from "@/components/templates/DelegatesDialog";
 import { TemplateSettingsPanel } from "@/components/templates/TemplateSettingsPanel";
 import { User } from "@/components/templates/UserAutocomplete";
+import { IntellisenseProvider } from "@/contexts/IntellisenseContext";
 import styles from "./TemplateEditor.module.scss";
 const TemplateEditor = () => {
   const navigate = useNavigate();
@@ -1744,6 +1745,7 @@ ${sectionRows}
   // Old section-level API test removed - now handled by GlobalApiPanel
 
   return (
+    <IntellisenseProvider globalApiConfig={globalApiConfig}>
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
@@ -2332,6 +2334,7 @@ ${sectionRows}
         </DragOverlay>
       </div>
     </DndContext>
+    </IntellisenseProvider>
   );
 };
 
