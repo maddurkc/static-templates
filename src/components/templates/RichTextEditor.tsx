@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle } from "lucide-react";
+import { useIntellisenseContext } from "@/contexts/IntellisenseContext";
+import { useVariableIntellisense } from "@/hooks/useVariableIntellisense";
+import { VariableIntellisense } from "./VariableIntellisense";
 import styles from "./RichTextEditor.module.scss";
 
 interface RichTextEditorProps {
@@ -40,6 +43,10 @@ export const RichTextEditor = ({
   const [isLink, setIsLink] = useState(false);
   const isUserEditingRef = useRef(false);
   const lastValueRef = useRef(value);
+
+  // Intellisense
+  const { globalApiConfig } = useIntellisenseContext();
+  const intellisense = useVariableIntellisense({ globalApiConfig });
 
   // Initialize content on mount and update if value changed externally
   useEffect(() => {
@@ -279,10 +286,39 @@ export const RichTextEditor = ({
     if (editorRef.current) {
       isUserEditingRef.current = true;
       onChange(editorRef.current.innerHTML);
+      // Trigger intellisense
+      intellisense.handleContentEditableInput(editorRef.current);
     }
-  }, [onChange]);
+  }, [onChange, intellisense]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Intellisense keyboard handling
+    const handled = intellisense.handleKeyDown(e);
+    if (handled) {
+      // If Enter/Tab was pressed on an active suggestion, insert it
+      if ((e.key === 'Enter' || e.key === 'Tab') && editorRef.current) {
+        const suggestion = intellisense.getActiveSuggestion();
+        if (suggestion) {
+          intellisense.insertIntoContentEditable(editorRef.current, suggestion);
+          intellisense.close();
+          if (editorRef.current) {
+            isUserEditingRef.current = true;
+            onChange(editorRef.current.innerHTML);
+          }
+        }
+      }
+      return;
+    }
+
+    // Ctrl+Space manual trigger
+    if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
+      e.preventDefault();
+      if (editorRef.current) {
+        intellisense.handleContentEditableInput(editorRef.current);
+      }
+      return;
+    }
+
     // Prevent Enter key in single line mode
     if (singleLine && e.key === 'Enter') {
       e.preventDefault();
@@ -668,6 +704,24 @@ export const RichTextEditor = ({
         data-placeholder={placeholder}
         data-walkthrough="variable-input"
         suppressContentEditableWarning
+      />
+
+      {/* Variable Intellisense */}
+      <VariableIntellisense
+        isOpen={intellisense.isOpen}
+        suggestions={intellisense.suggestions}
+        activeIndex={intellisense.activeIndex}
+        position={intellisense.position}
+        onSelect={(suggestion) => {
+          if (editorRef.current) {
+            intellisense.insertIntoContentEditable(editorRef.current, suggestion);
+            intellisense.close();
+            isUserEditingRef.current = true;
+            onChange(editorRef.current.innerHTML);
+          }
+        }}
+        onHover={intellisense.setActiveIndex}
+        onClose={intellisense.close}
       />
       
       {/* Link Dialog */}

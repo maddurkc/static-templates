@@ -33,6 +33,7 @@ import { mapJsonToTableData, getValueByPath, resolveColumnWidth as resolveColWid
 import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-config";
 import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
 import { resolveGlobalApiThymeleaf, resolveGlobalApiVariables } from "@/lib/globalApiResolver";
+import { IntellisenseProvider } from "@/contexts/IntellisenseContext";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -2069,6 +2070,7 @@ const RunTemplates = () => {
   }, [selectedTemplate, variables, listVariables, tableVariables, labelVariables, globalApiConfig]);
 
   return (
+    <IntellisenseProvider globalApiConfig={globalApiConfig}>
     <div className={styles.container}>
       {isLoadingTemplate ? (
         // Loading state when fetching template by ID
@@ -3891,6 +3893,7 @@ const RunTemplates = () => {
         </DialogContent>
       </Dialog>
     </div>
+    </IntellisenseProvider>
   );
 };
 
