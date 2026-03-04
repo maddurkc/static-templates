@@ -44,9 +44,11 @@ export const RichTextEditor = ({
   const isUserEditingRef = useRef(false);
   const lastValueRef = useRef(value);
 
-  // Intellisense
+  // Intellisense - use ref to avoid stale closures in contentEditable handlers
   const { globalApiConfig, enabled: intellisenseEnabled } = useIntellisenseContext();
   const intellisense = useVariableIntellisense({ globalApiConfig, enabled: intellisenseEnabled });
+  const intellisenseRef = useRef(intellisense);
+  intellisenseRef.current = intellisense;
 
   // Initialize content on mount and update if value changed externally
   useEffect(() => {
@@ -286,21 +288,21 @@ export const RichTextEditor = ({
     if (editorRef.current) {
       isUserEditingRef.current = true;
       onChange(editorRef.current.innerHTML);
-      // Trigger intellisense
-      intellisense.handleContentEditableInput(editorRef.current);
+      // Trigger intellisense via ref to avoid stale closures
+      intellisenseRef.current.handleContentEditableInput(editorRef.current);
     }
-  }, [onChange, intellisense]);
+  }, [onChange]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Intellisense keyboard handling
-    const handled = intellisense.handleKeyDown(e);
+    const handled = intellisenseRef.current.handleKeyDown(e);
     if (handled) {
       // If Enter/Tab was pressed on an active suggestion, insert it
       if ((e.key === 'Enter' || e.key === 'Tab') && editorRef.current) {
-        const suggestion = intellisense.getActiveSuggestion();
+        const suggestion = intellisenseRef.current.getActiveSuggestion();
         if (suggestion) {
-          intellisense.insertIntoContentEditable(editorRef.current, suggestion);
-          intellisense.close();
+          intellisenseRef.current.insertIntoContentEditable(editorRef.current, suggestion);
+          intellisenseRef.current.close();
           if (editorRef.current) {
             isUserEditingRef.current = true;
             onChange(editorRef.current.innerHTML);
@@ -314,7 +316,7 @@ export const RichTextEditor = ({
     if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
       e.preventDefault();
       if (editorRef.current) {
-        intellisense.handleContentEditableInput(editorRef.current);
+        intellisenseRef.current.handleContentEditableInput(editorRef.current);
       }
       return;
     }
