@@ -16,9 +16,11 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [highlightedHtml, setHighlightedHtml] = useState("");
 
-  // Intellisense
+  // Intellisense - use ref to avoid stale closures
   const { globalApiConfig, enabled: intellisenseEnabled } = useIntellisenseContext();
   const intellisense = useVariableIntellisense({ globalApiConfig, enabled: intellisenseEnabled });
+  const intellisenseRef = useRef(intellisense);
+  intellisenseRef.current = intellisense;
 
   useEffect(() => {
     const highlighted = highlightThymeleaf(value || "");
@@ -69,20 +71,19 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
-    // Trigger intellisense
     if (textareaRef.current) {
-      intellisense.handleTextareaInput(textareaRef.current);
+      intellisenseRef.current.handleTextareaInput(textareaRef.current);
     }
-  }, [onChange, intellisense]);
+  }, [onChange]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const handled = intellisense.handleKeyDown(e);
+    const handled = intellisenseRef.current.handleKeyDown(e);
     if (handled) {
       if ((e.key === 'Enter' || e.key === 'Tab') && textareaRef.current) {
-        const suggestion = intellisense.getActiveSuggestion();
+        const suggestion = intellisenseRef.current.getActiveSuggestion();
         if (suggestion) {
-          intellisense.insertIntoTextarea(textareaRef.current, suggestion, onChange);
-          intellisense.close();
+          intellisenseRef.current.insertIntoTextarea(textareaRef.current, suggestion, onChange);
+          intellisenseRef.current.close();
         }
       }
       return;
@@ -92,10 +93,10 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
     if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
       e.preventDefault();
       if (textareaRef.current) {
-        intellisense.handleTextareaInput(textareaRef.current);
+        intellisenseRef.current.handleTextareaInput(textareaRef.current);
       }
     }
-  }, [intellisense, onChange]);
+  }, [onChange]);
 
   return (
     <div className={cn(styles.editorWrapper, className)}>
