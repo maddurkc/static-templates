@@ -971,7 +971,10 @@ const RunTemplates = () => {
   // Get processed subject with variables replaced - handles both formats
   // Also resolves global API variables (e.g., {{snowDetails.changeNo}})
   const getProcessedSubject = (): string => {
-    if (!selectedTemplate?.subject) return emailSubject;
+    if (!selectedTemplate?.subject) {
+      // Even without a template subject, resolve global API variables in manual subject
+      return resolveGlobalApiThymeleaf(emailSubject, globalApiConfig);
+    }
     
     let processed = processSubjectWithValues(selectedTemplate.subject, subjectVariables);
     // Resolve any global API variable references in the subject
@@ -1065,10 +1068,8 @@ const RunTemplates = () => {
     if (!selectedTemplate) return;
 
     // Get the final subject (either processed from template or manual input)
-    // Global API variables are resolved in both paths
-    let finalSubject = selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 
-      ? getProcessedSubject() 
-      : resolveGlobalApiThymeleaf(emailSubject, globalApiConfig);
+    // Global API variables are resolved in both paths via getProcessedSubject
+    let finalSubject = getProcessedSubject();
 
     // Validate subject
     if (!finalSubject.trim()) {
@@ -2253,14 +2254,18 @@ const RunTemplates = () => {
               {/* Subject Field */}
               <div className={styles.emailFieldRow}>
                 <label>Subject:</label>
-                {selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 ? (
+                {selectedTemplate?.subject ? (
                   <div className="flex-1 flex items-center gap-2">
                     <span className="text-sm text-muted-foreground font-mono shrink-0">
                       {/* Show processed subject with values or placeholders */}
                       {resolveGlobalApiThymeleaf(
-                        getDisplaySubject().replace(/\{\{(\w+)\}\}/g, (_, varName) => 
-                          subjectVariables[varName] || `{{${varName}}}`
-                        ),
+                        getDisplaySubject().replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, fullPath) => {
+                          // For simple vars, check subjectVariables; for dot-notation, leave for global resolver
+                          if (!fullPath.includes('.') && subjectVariables[fullPath]) {
+                            return subjectVariables[fullPath];
+                          }
+                          return `{{${fullPath}}}`;
+                        }),
                         globalApiConfig
                       )}
                     </span>
@@ -3735,9 +3740,7 @@ const RunTemplates = () => {
             <div className="bg-muted/50 rounded-lg p-4 border">
               <Label className="text-sm font-medium text-muted-foreground">Subject</Label>
               <p className="text-lg font-semibold mt-1">
-                {selectedTemplate?.subject && Object.keys(subjectVariables).length > 0 
-                  ? getProcessedSubject() 
-                  : emailSubject || '(No subject)'}
+                {getProcessedSubject() || '(No subject)'}
               </p>
             </div>
 
