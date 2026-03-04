@@ -164,24 +164,39 @@
 .leftPanelTab {
   flex: 1;
   border-radius: 0;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0.5rem 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.625rem 0.75rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  color: #6c757d;
-  border-bottom: 2px solid transparent;
+  justify-content: center;
+  gap: 0.375rem;
+  color: #868e96;
+  border-bottom: 2.5px solid transparent;
   transition: all 0.2s ease;
+  position: relative;
+
+  &:hover {
+    color: #495057;
+    background: rgba(0, 120, 212, 0.04);
+  }
 
   &[data-state="active"] {
     color: #0078d4;
     border-bottom-color: #0078d4;
-    background: transparent;
+    background: rgba(0, 120, 212, 0.06);
     box-shadow: none;
   }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.tabLabel {
+  white-space: nowrap;
 }
 
 .leftPanelTabContent {
@@ -203,11 +218,28 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.65rem;
+  font-weight: 700;
   background: #0078d4;
   color: #ffffff;
-  margin-left: 4px;
+  line-height: 1;
+}
+
+.tabDescription {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.75rem;
+  color: #868e96;
+  background: #f1f3f5;
+  border-bottom: 1px solid #e9ecef;
+  line-height: 1.4;
+
+  svg {
+    flex-shrink: 0;
+    color: #adb5bd;
+  }
 }
 
 .apiPanel {
@@ -231,20 +263,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 0.75rem;
+  padding: 0;
   background: #ffffff;
   border-bottom: 1px solid #e9ecef;
-
-  h2 {
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #495057;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
 }
 
 .variablesList {
