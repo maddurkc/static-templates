@@ -4,6 +4,7 @@ import { GlobalApiConfig } from "@/types/global-api-config";
 export interface Template {
   id: string;
   name: string;
+  description?: string;
   subject?: string; // Email subject - can contain {{placeholders}}
   html: string;
   createdAt: string;

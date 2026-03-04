@@ -51,6 +51,7 @@ export interface GlobalApiIntegrationRequest {
 
 export interface TemplateCreateRequest {
   name: string;
+  description?: string;
   subject?: string; // Email subject - can contain {{placeholders}}
   html: string;
   sectionCount: number;
@@ -63,6 +64,7 @@ export interface TemplateCreateRequest {
 
 export interface TemplateUpdateRequest {
   name?: string;
+  description?: string;
   subject?: string; // Email subject - can contain {{placeholders}}
   html?: string;
   sectionCount?: number;

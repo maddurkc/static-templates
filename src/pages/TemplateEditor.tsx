@@ -89,6 +89,7 @@ const TemplateEditor = () => {
   const [showLibrary, setShowLibrary] = useState(false);
   const [copied, setCopied] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [templateDescription, setTemplateDescription] = useState("");
   const [templateSubject, setTemplateSubject] = useState(""); // Email subject with {{placeholders}} support
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -189,6 +190,7 @@ const TemplateEditor = () => {
     setIsEditMode(true);
     setEditingTemplateId(template.id);
     setTemplateName(template.name);
+    setTemplateDescription(template.description || "");
     // Convert Thymeleaf tags back to placeholders for editing display
     const subjectForEdit = template.subject ? subjectThymeleafToPlaceholder(template.subject) : "";
     setTemplateSubject(subjectForEdit);
@@ -1388,6 +1390,7 @@ const TemplateEditor = () => {
         // UPDATE: Call backend API to update existing template
         const updateRequest: TemplateUpdateRequest = {
           name: templateName,
+          description: templateDescription || undefined,
           subject: subjectForStorage,
           html,
           sectionCount: allSections.length,
@@ -1402,6 +1405,7 @@ const TemplateEditor = () => {
         
         updateTemplate(editingTemplateId, {
           name: templateName,
+          description: templateDescription || undefined,
           subject: subjectForStorage,
           html,
           sectionCount: allSections.length,
@@ -1421,6 +1425,7 @@ const TemplateEditor = () => {
         // CREATE: Call backend API to create new template
         const createRequest: TemplateCreateRequest = {
           name: templateName,
+          description: templateDescription || undefined,
           subject: subjectForStorage,
           html,
           sectionCount: allSections.length,
@@ -1435,6 +1440,7 @@ const TemplateEditor = () => {
         
         saveTemplate({
           name: templateName,
+          description: templateDescription || undefined,
           subject: subjectForStorage,
           html,
           createdAt: new Date().toISOString(),
@@ -1949,6 +1955,31 @@ ${sectionRows}
                 )}
               </TooltipProvider>
             </div>
+          </div>
+        </div>
+
+        {/* Template Name & Description sub-bar */}
+        <div className={styles.templateFieldsBar}>
+          <div className={styles.templateFieldRow}>
+            <Label htmlFor="toolbar-name" className={styles.subjectLabel}>Name</Label>
+            <Input
+              id="toolbar-name"
+              placeholder="Enter template name…"
+              value={templateName}
+              onChange={(e) => handleNameChange(e.target.value)}
+              className={`${styles.subjectInput} ${nameError ? styles.inputError : ''}`}
+            />
+            {nameError && <span className={styles.errorText}>{nameError}</span>}
+          </div>
+          <div className={styles.templateFieldRow}>
+            <Label htmlFor="toolbar-description" className={styles.subjectLabel}>Description</Label>
+            <Input
+              id="toolbar-description"
+              placeholder="Brief description of this template…"
+              value={templateDescription}
+              onChange={(e) => setTemplateDescription(e.target.value)}
+              className={styles.subjectInput}
+            />
           </div>
         </div>
 
