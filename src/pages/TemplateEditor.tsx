@@ -1745,7 +1745,7 @@ ${sectionRows}
   // Old section-level API test removed - now handled by GlobalApiPanel
 
   return (
-    <IntellisenseProvider globalApiConfig={globalApiConfig} enabled={isEditMode}>
+    <IntellisenseProvider globalApiConfig={globalApiConfig}>
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
