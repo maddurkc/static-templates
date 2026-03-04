@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import * as React from "react";
 import styles from "./RunTemplates.module.scss";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import { TableEditor } from "@/components/templates/TableEditor";
 import {
@@ -34,6 +34,8 @@ import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-c
 import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
 import { resolveGlobalApiThymeleaf, resolveGlobalApiVariables } from "@/lib/globalApiResolver";
 import { IntellisenseProvider } from "@/contexts/IntellisenseContext";
+import { VariablesPanel } from "@/components/templates/VariablesPanel";
+import { extractAllTemplateVariables } from "@/lib/variableExtractor";
 
 const RunTemplates = () => {
   const navigate = useNavigate();
@@ -67,6 +69,18 @@ const RunTemplates = () => {
   const [globalApiConfig, setGlobalApiConfig] = useState<GlobalApiConfig>(DEFAULT_GLOBAL_API_CONFIG);
   const [showApiPanel, setShowApiPanel] = useState(false);
   const { toast } = useToast();
+
+  // Extract template variables for the Placeholders tab (user-defined {{placeholder}} variables)
+  const extractedVariables = useMemo(() => {
+    if (!selectedTemplate) return [];
+    const dummySection = { id: '', type: 'header' as const, content: '', variables: {}, styles: {} };
+    return extractAllTemplateVariables(
+      emailSubject,
+      dummySection,
+      selectedTemplate.sections || [],
+      dummySection
+    );
+  }, [selectedTemplate, emailSubject]);
 
   // Scroll to section in preview when editing
   const scrollToSection = (sectionId: string) => {
@@ -2346,11 +2360,15 @@ const RunTemplates = () => {
 
           {/* Main Content: Variables (left) | Preview/Body (right) */}
           <div className={styles.mainContent}>
-            {/* Left Panel - Tabs: Placeholders & Datasources */}
+            {/* Left Panel - Tabs: Canvas, Placeholders & Datasources */}
             <div className={styles.variablesPanel}>
-              <Tabs defaultValue="placeholders" className={styles.leftPanelTabs}>
+              <Tabs defaultValue="canvas" className={styles.leftPanelTabs}>
                 <div className={styles.variablesPanelHeader}>
                   <TabsList className={styles.leftPanelTabsList}>
+                    <TabsTrigger value="canvas" className={styles.leftPanelTab}>
+                      <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+                      Canvas
+                    </TabsTrigger>
                     <TabsTrigger value="placeholders" className={styles.leftPanelTab}>
                       <Variable className="h-3.5 w-3.5 mr-1.5" />
                       Placeholders
@@ -2364,7 +2382,7 @@ const RunTemplates = () => {
                     </TabsTrigger>
                   </TabsList>
                 </div>
-                <TabsContent value="placeholders" className={styles.leftPanelTabContent}>
+                <TabsContent value="canvas" className={styles.leftPanelTabContent}>
                   <ScrollArea className="flex-1 h-full">
                     <div className={styles.variablesList}>
                   {/* Subject Data Section */}
@@ -3484,6 +3502,19 @@ const RunTemplates = () => {
                   })()}
                   </div>
                   </ScrollArea>
+                </TabsContent>
+                <TabsContent value="placeholders" className={styles.leftPanelTabContent}>
+                  <VariablesPanel 
+                    variables={extractedVariables}
+                    readOnly={false}
+                    onFocusVariable={() => {}}
+                    onVariableValueChange={(variableName, value) => {
+                      setVariables(prev => ({
+                        ...prev,
+                        [variableName]: value
+                      }));
+                    }}
+                  />
                 </TabsContent>
                 <TabsContent value="datasources" className={styles.leftPanelTabContent}>
                   <GlobalApiPanel
