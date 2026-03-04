@@ -17,8 +17,8 @@ export const ThymeleafEditor = ({ value, onChange, placeholder, className }: Thy
   const [highlightedHtml, setHighlightedHtml] = useState("");
 
   // Intellisense
-  const { globalApiConfig } = useIntellisenseContext();
-  const intellisense = useVariableIntellisense({ globalApiConfig });
+  const { globalApiConfig, enabled: intellisenseEnabled } = useIntellisenseContext();
+  const intellisense = useVariableIntellisense({ globalApiConfig, enabled: intellisenseEnabled });
 
   useEffect(() => {
     const highlighted = highlightThymeleaf(value || "");

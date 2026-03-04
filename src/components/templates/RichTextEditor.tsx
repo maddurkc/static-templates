@@ -45,8 +45,8 @@ export const RichTextEditor = ({
   const lastValueRef = useRef(value);
 
   // Intellisense
-  const { globalApiConfig } = useIntellisenseContext();
-  const intellisense = useVariableIntellisense({ globalApiConfig });
+  const { globalApiConfig, enabled: intellisenseEnabled } = useIntellisenseContext();
+  const intellisense = useVariableIntellisense({ globalApiConfig, enabled: intellisenseEnabled });
 
   // Initialize content on mount and update if value changed externally
   useEffect(() => {
