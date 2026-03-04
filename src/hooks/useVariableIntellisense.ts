@@ -249,12 +249,18 @@ export const useVariableIntellisense = ({ globalApiConfig, enabled = true }: Use
     }
   }, [enabled, computeSuggestions, close]);
 
+  // Check if a variable has fields (is object/array type)
+  const variableHasFields = useCallback((varName: string): boolean => {
+    const variable = globalApiConfig?.globalVariables?.[varName];
+    if (!variable?.schema) return false;
+    return Object.keys(variable.schema).length > 0;
+  }, [globalApiConfig]);
+
   // Insert selected suggestion into contentEditable
   const insertIntoContentEditable = useCallback((element: HTMLElement, suggestion: IntellisenseSuggestion) => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
 
-    // Get text before cursor to find what to replace
     const range = selection.getRangeAt(0);
     const preRange = document.createRange();
     preRange.selectNodeContents(element);
@@ -264,26 +270,32 @@ export const useVariableIntellisense = ({ globalApiConfig, enabled = true }: Use
     const ctx = parseContext(textBeforeCursor);
     if (ctx.mode === 'none') return;
 
-    // Calculate how many chars to delete (the partial query)
     const charsToDelete = ctx.fullPrefix.length;
-    
-    // Delete the partial text
     for (let i = 0; i < charsToDelete; i++) {
       document.execCommand('delete', false);
     }
 
-    // Insert the full path with closing braces
+    // If selecting a top-level variable that has fields, insert "varName." and show field suggestions
+    if (suggestion.kind === 'variable' && variableHasFields(suggestion.insertText)) {
+      const insertText = `${suggestion.insertText}.`;
+      document.execCommand('insertText', false, insertText);
+      // Re-trigger intellisense after insertion
+      requestAnimationFrame(() => {
+        handleContentEditableInput(element);
+      });
+      return;
+    }
+
     let insertText: string;
     if (suggestion.kind === 'variable') {
       insertText = `${suggestion.insertText}}}`;
     } else {
-      // Field: replace entire prefix with varName.fieldPath}}
       const varName = ctx.varName!;
       insertText = `${varName}.${suggestion.insertText}}}`;
     }
     
     document.execCommand('insertText', false, insertText);
-  }, [parseContext]);
+  }, [parseContext, variableHasFields, handleContentEditableInput]);
 
   // Insert into textarea
   const insertIntoTextarea = useCallback((textarea: HTMLTextAreaElement, suggestion: IntellisenseSuggestion, onChange: (val: string) => void) => {
@@ -297,6 +309,22 @@ export const useVariableIntellisense = ({ globalApiConfig, enabled = true }: Use
     const prefixEnd = cursorPos;
     const prefixStart = prefixEnd - ctx.fullPrefix.length;
 
+    // If selecting a top-level variable that has fields, insert "varName." and show field suggestions
+    if (suggestion.kind === 'variable' && variableHasFields(suggestion.insertText)) {
+      const insertText = `${suggestion.insertText}.`;
+      const newValue = textarea.value.substring(0, prefixStart) + insertText + textAfterCursor;
+      onChange(newValue);
+      const newCursorPos = prefixStart + insertText.length;
+      requestAnimationFrame(() => {
+        textarea.selectionStart = newCursorPos;
+        textarea.selectionEnd = newCursorPos;
+        textarea.focus();
+        // Re-trigger intellisense
+        handleTextareaInput(textarea);
+      });
+      return;
+    }
+
     let insertText: string;
     if (suggestion.kind === 'variable') {
       insertText = `${suggestion.insertText}}}`;
@@ -308,14 +336,13 @@ export const useVariableIntellisense = ({ globalApiConfig, enabled = true }: Use
     const newValue = textarea.value.substring(0, prefixStart) + insertText + textAfterCursor;
     onChange(newValue);
     
-    // Set cursor position after insert
     const newCursorPos = prefixStart + insertText.length;
     requestAnimationFrame(() => {
       textarea.selectionStart = newCursorPos;
       textarea.selectionEnd = newCursorPos;
       textarea.focus();
     });
-  }, [parseContext]);
+  }, [parseContext, variableHasFields, handleTextareaInput]);
 
   // Insert into regular input
   const insertIntoInput = useCallback((input: HTMLInputElement, suggestion: IntellisenseSuggestion, onChange: (val: string) => void) => {
@@ -328,6 +355,21 @@ export const useVariableIntellisense = ({ globalApiConfig, enabled = true }: Use
 
     const prefixEnd = cursorPos;
     const prefixStart = prefixEnd - ctx.fullPrefix.length;
+
+    // If selecting a top-level variable that has fields, insert "varName." and show field suggestions
+    if (suggestion.kind === 'variable' && variableHasFields(suggestion.insertText)) {
+      const insertText = `${suggestion.insertText}.`;
+      const newValue = input.value.substring(0, prefixStart) + insertText + textAfterCursor;
+      onChange(newValue);
+      const newCursorPos = prefixStart + insertText.length;
+      requestAnimationFrame(() => {
+        input.selectionStart = newCursorPos;
+        input.selectionEnd = newCursorPos;
+        input.focus();
+        handleInputElementInput(input);
+      });
+      return;
+    }
 
     let insertText: string;
     if (suggestion.kind === 'variable') {
@@ -346,7 +388,7 @@ export const useVariableIntellisense = ({ globalApiConfig, enabled = true }: Use
       input.selectionEnd = newCursorPos;
       input.focus();
     });
-  }, [parseContext]);
+  }, [parseContext, variableHasFields, handleInputElementInput]);
 
   // Keyboard navigation handler - returns true if event was handled
   const handleKeyDown = useCallback((e: React.KeyboardEvent | KeyboardEvent): boolean => {
