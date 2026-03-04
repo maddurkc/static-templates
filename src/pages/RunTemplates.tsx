@@ -969,15 +969,18 @@ const RunTemplates = () => {
   };
 
   // Get processed subject with variables replaced - handles both formats
-  // Also resolves global API variables (e.g., {{snowDetails.changeNo}})
+  // Resolves regular placeholders AND global API variables (e.g., {{snowDetails.changeNo}})
   const getProcessedSubject = (): string => {
     if (!selectedTemplate?.subject) {
       // Even without a template subject, resolve global API variables in manual subject
       return resolveGlobalApiThymeleaf(emailSubject, globalApiConfig);
     }
     
+    // Step 1: Replace regular subject variables (both Thymeleaf and {{placeholder}} formats)
     let processed = processSubjectWithValues(selectedTemplate.subject, subjectVariables);
-    // Resolve any global API variable references in the subject
+    // Step 2: Convert any remaining Thymeleaf tags to {{placeholder}} for display
+    processed = subjectThymeleafToPlaceholder(processed);
+    // Step 3: Resolve global API variable references (dot-notation like {{apiData1.number}})
     processed = resolveGlobalApiThymeleaf(processed, globalApiConfig);
     return processed;
   };
@@ -2257,50 +2260,44 @@ const RunTemplates = () => {
                 {selectedTemplate?.subject ? (
                   <div className="flex-1 flex items-center gap-2">
                     <span className="text-sm text-muted-foreground font-mono shrink-0">
-                      {/* Show processed subject with values or placeholders */}
-                      {resolveGlobalApiThymeleaf(
-                        getDisplaySubject().replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, fullPath) => {
-                          // For simple vars, check subjectVariables; for dot-notation, leave for global resolver
-                          if (!fullPath.includes('.') && subjectVariables[fullPath]) {
-                            return subjectVariables[fullPath];
-                          }
-                          return `{{${fullPath}}}`;
-                        }),
-                        globalApiConfig
-                      )}
+                      {/* Show processed subject with both regular and global API values resolved */}
+                      {getProcessedSubject()}
                     </span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                          Edit Variables
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80" align="start">
-                        <div className="space-y-3">
-                          <h4 className="font-medium text-sm">Subject Variables</h4>
-                          <p className="text-xs text-muted-foreground">
-                            Template: <code className="bg-muted px-1 rounded">{getDisplaySubject()}</code>
-                          </p>
-                          {Object.keys(subjectVariables).map((varName) => (
-                            <div key={`subject-var-${varName}`} className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs font-mono shrink-0">
-                                {`{{${varName}}}`}
-                              </Badge>
-                              <Input
-                                id={`subject-var-${varName}`}
-                                placeholder={`Enter ${varName}...`}
-                                value={subjectVariables[varName] || ''}
-                                onChange={(e) => setSubjectVariables(prev => ({
-                                  ...prev,
-                                  [varName]: e.target.value
-                                }))}
-                                className="flex-1 h-8"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    {/* Only show Edit Variables popover when there are regular (non-API) subject variables */}
+                    {Object.keys(subjectVariables).length > 0 && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                            Edit Variables
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80" align="start">
+                          <div className="space-y-3">
+                            <h4 className="font-medium text-sm">Subject Variables</h4>
+                            <p className="text-xs text-muted-foreground">
+                              Template: <code className="bg-muted px-1 rounded">{getDisplaySubject()}</code>
+                            </p>
+                            {Object.keys(subjectVariables).map((varName) => (
+                              <div key={`subject-var-${varName}`} className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs font-mono shrink-0">
+                                  {`{{${varName}}}`}
+                                </Badge>
+                                <Input
+                                  id={`subject-var-${varName}`}
+                                  placeholder={`Enter ${varName}...`}
+                                  value={subjectVariables[varName] || ''}
+                                  onChange={(e) => setSubjectVariables(prev => ({
+                                    ...prev,
+                                    [varName]: e.target.value
+                                  }))}
+                                  className="flex-1 h-8"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   </div>
                 ) : (
                   <input
