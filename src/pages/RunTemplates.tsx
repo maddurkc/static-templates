@@ -1595,6 +1595,39 @@ const RunTemplates = () => {
     const renderedBodyHtml = wrapInGlobalTable(sectionRows);
     const fullEmailHtml = wrapInEmailHtml(renderedBodyHtml);
 
+    // Build subject_data: merge regular placeholders + global API variables referenced in subject
+    const subjectData: Record<string, any> = { ...subjectVariables };
+    const subjectSource = selectedTemplate.subject || emailSubject || '';
+    if (globalApiConfig?.globalVariables) {
+      // Find all global API variable names referenced in the subject (e.g., {{apiData1.field}} → apiData1)
+      const subjectGlobalRefs = new Set<string>();
+      const refPattern = /\{\{(\w+)(?:\.\w+)*\}\}/g;
+      let refMatch;
+      // Check both the raw subject template and the Thymeleaf version
+      const subjectToScan = subjectSource + ' ' + subjectThymeleafToPlaceholder(subjectSource);
+      while ((refMatch = refPattern.exec(subjectToScan)) !== null) {
+        const varName = refMatch[1];
+        if (globalApiConfig.globalVariables[varName]) {
+          subjectGlobalRefs.add(varName);
+        }
+      }
+      // Also check for Thymeleaf-style references
+      const thPattern = /th:utext="\$\{(\w+)(?:\.\w+)*\}"/g;
+      while ((refMatch = thPattern.exec(subjectSource)) !== null) {
+        const varName = refMatch[1];
+        if (globalApiConfig.globalVariables[varName]) {
+          subjectGlobalRefs.add(varName);
+        }
+      }
+      // Add referenced global API variable data to subject_data
+      subjectGlobalRefs.forEach(varName => {
+        const globalVar = globalApiConfig.globalVariables[varName];
+        if (globalVar?.data !== null && globalVar?.data !== undefined) {
+          subjectData[varName] = globalVar.data;
+        }
+      });
+    }
+
     // Build the payload in the requested format
     const payload = {
       templateId: selectedTemplate.id,
@@ -1602,7 +1635,7 @@ const RunTemplates = () => {
       ccEmails: ccUsers.map(u => u.email),
       bccEmails: bccUsers.map(u => u.email),
       contentData: {
-        subject_data: { ...subjectVariables },
+        subject_data: subjectData,
         body_data: bodyData
       },
       renderedHtml: fullEmailHtml
@@ -1618,7 +1651,7 @@ const RunTemplates = () => {
           ccEmails: ccUsers.map(u => u.email),
           bccEmails: bccUsers.map(u => u.email),
           contentData: {
-            subject_data: { ...subjectVariables },
+            subject_data: subjectData,
             body_data: bodyData,
           },
         },
