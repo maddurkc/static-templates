@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid, Info } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import { TableEditor } from "@/components/templates/TableEditor";
 import {
@@ -2366,16 +2366,23 @@ const RunTemplates = () => {
                 <div className={styles.variablesPanelHeader}>
                   <TabsList className={styles.leftPanelTabsList}>
                     <TabsTrigger value="canvas" className={styles.leftPanelTab}>
-                      <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
-                      Canvas
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      <span className={styles.tabLabel}>Compose</span>
+                      {(() => {
+                        const sectionCount = selectedTemplate?.sections?.length || 0;
+                        return sectionCount > 0 ? <span className={styles.tabBadge}>{sectionCount}</span> : null;
+                      })()}
                     </TabsTrigger>
                     <TabsTrigger value="placeholders" className={styles.leftPanelTab}>
-                      <Variable className="h-3.5 w-3.5 mr-1.5" />
-                      Placeholders
+                      <Variable className="h-3.5 w-3.5" />
+                      <span className={styles.tabLabel}>Variables</span>
+                      {extractedVariables.length > 0 && (
+                        <span className={styles.tabBadge}>{extractedVariables.length}</span>
+                      )}
                     </TabsTrigger>
                     <TabsTrigger value="datasources" className={styles.leftPanelTab}>
-                      <Database className="h-3.5 w-3.5 mr-1.5" />
-                      Datasources
+                      <Database className="h-3.5 w-3.5" />
+                      <span className={styles.tabLabel}>API Data</span>
                       {globalApiConfig.integrations.length > 0 && (
                         <span className={styles.tabBadge}>{globalApiConfig.integrations.length}</span>
                       )}
@@ -2383,6 +2390,10 @@ const RunTemplates = () => {
                   </TabsList>
                 </div>
                 <TabsContent value="canvas" className={styles.leftPanelTabContent}>
+                  <div className={styles.tabDescription}>
+                    <Info className="h-3.5 w-3.5" />
+                    <span>Edit section content directly. Changes update the preview in real-time.</span>
+                  </div>
                   <ScrollArea className="flex-1 h-full">
                     <div className={styles.variablesList}>
                   {/* Subject Data Section */}
@@ -3504,6 +3515,10 @@ const RunTemplates = () => {
                   </ScrollArea>
                 </TabsContent>
                 <TabsContent value="placeholders" className={styles.leftPanelTabContent}>
+                  <div className={styles.tabDescription}>
+                    <Info className="h-3.5 w-3.5" />
+                    <span>Fill in custom placeholder values used across the template.</span>
+                  </div>
                   <VariablesPanel 
                     variables={extractedVariables}
                     readOnly={false}
@@ -3517,6 +3532,10 @@ const RunTemplates = () => {
                   />
                 </TabsContent>
                 <TabsContent value="datasources" className={styles.leftPanelTabContent}>
+                  <div className={styles.tabDescription}>
+                    <Info className="h-3.5 w-3.5" />
+                    <span>Fetch external data from APIs to auto-populate template fields.</span>
+                  </div>
                   <GlobalApiPanel
                     config={globalApiConfig}
                     onUpdate={setGlobalApiConfig}
