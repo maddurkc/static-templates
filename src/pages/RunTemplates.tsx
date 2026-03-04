@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid, Info } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid, Info, CheckCircle2, Circle, AlertCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import { TableEditor } from "@/components/templates/TableEditor";
 import {
@@ -81,6 +82,93 @@ const RunTemplates = () => {
       dummySection
     );
   }, [selectedTemplate, emailSubject]);
+
+  // Section completion checker for progress indicators
+  const getSectionCompletionStatus = (section: Section): 'complete' | 'partial' | 'empty' => {
+    if (section.type === 'labeled-content') {
+      const contentType = section.variables?.contentType || 'text';
+      const textVarName = section.variables?.textVariableName as string || section.id;
+      const listVarName = section.variables?.listVariableName as string || section.id;
+      
+      if (contentType === 'text') {
+        const val = variables[textVarName];
+        const text = typeof val === 'object' ? (val as TextStyle).text : (val as string);
+        if (text && text.trim() && text !== '<p></p>' && text !== '<br>') return 'complete';
+        // Check if section has default content
+        if (section.variables?.[textVarName] || section.variables?.content) return 'partial';
+        return 'empty';
+      }
+      if (contentType === 'list') {
+        const items = listVariables[listVarName] || section.variables?.items;
+        if (items && Array.isArray(items) && items.length > 0) {
+          const hasContent = items.some((item: any) => {
+            const text = typeof item === 'object' ? item.text : item;
+            return text && text.trim();
+          });
+          return hasContent ? 'complete' : 'empty';
+        }
+        return 'empty';
+      }
+      if (contentType === 'table') {
+        const tableData = tableVariables[listVarName] || section.variables?.tableData;
+        if (tableData?.rows && tableData.rows.length > 0) return 'complete';
+        return 'empty';
+      }
+      return 'empty';
+    }
+    
+    if (section.type === 'table') {
+      const tableData = tableVariables[section.id] || section.variables?.tableData;
+      if (tableData?.rows && tableData.rows.length > 0) return 'complete';
+      return 'empty';
+    }
+    
+    if (section.type === 'cta-text') {
+      const ctaText = variables[`ctaText_${section.id}`] as string || section.variables?.ctaText as string;
+      const ctaUrl = variables[`ctaUrl_${section.id}`] as string || section.variables?.ctaUrl as string;
+      if (ctaText && ctaUrl && ctaUrl !== '#') return 'complete';
+      if (ctaText || ctaUrl) return 'partial';
+      return 'empty';
+    }
+    
+    // For text/paragraph/heading sections with variables
+    const sectionVarKeys = Object.keys(section.variables || {}).filter(k => 
+      !['content', 'contentType', 'listVariableName', 'textVariableName', 'labelVariableName', 'tableData', 'items', 'label'].includes(k)
+    );
+    if (sectionVarKeys.length > 0) {
+      const filled = sectionVarKeys.filter(k => {
+        const val = variables[k];
+        if (!val) return false;
+        const text = typeof val === 'object' ? (val as TextStyle).text : val;
+        return text && text.trim();
+      }).length;
+      if (filled === sectionVarKeys.length) return 'complete';
+      if (filled > 0) return 'partial';
+      return 'empty';
+    }
+    
+    // Sections with direct editable content
+    if (editedSectionContent[section.id]) return 'complete';
+    if (section.content && section.content.trim()) return 'complete';
+    return 'empty';
+  };
+
+  // Calculate overall progress
+  const sectionProgress = useMemo(() => {
+    if (!selectedTemplate?.sections) return { filled: 0, total: 0, percentage: 0 };
+    const flattenSections = (sections: Section[]): Section[] => {
+      const result: Section[] = [];
+      sections.forEach(s => {
+        result.push(s);
+        if (s.children?.length) result.push(...flattenSections(s.children));
+      });
+      return result;
+    };
+    const all = flattenSections(selectedTemplate.sections);
+    const total = all.length;
+    const filled = all.filter(s => getSectionCompletionStatus(s) === 'complete').length;
+    return { filled, total, percentage: total > 0 ? Math.round((filled / total) * 100) : 0 };
+  }, [selectedTemplate, variables, listVariables, tableVariables, editedSectionContent]);
 
   // Scroll to section in preview when editing
   const scrollToSection = (sectionId: string) => {
@@ -2394,6 +2482,18 @@ const RunTemplates = () => {
                     <Info className="h-3.5 w-3.5" />
                     <span>Edit section content directly. Changes update the preview in real-time.</span>
                   </div>
+                  {/* Section Progress Bar */}
+                  {sectionProgress.total > 0 && (
+                    <div className={styles.progressBar}>
+                      <div className={styles.progressHeader}>
+                        <span className={styles.progressLabel}>
+                          {sectionProgress.filled}/{sectionProgress.total} sections filled
+                        </span>
+                        <span className={styles.progressPercentage}>{sectionProgress.percentage}%</span>
+                      </div>
+                      <Progress value={sectionProgress.percentage} className="h-1.5" />
+                    </div>
+                  )}
                   <ScrollArea className="flex-1 h-full">
                     <div className={styles.variablesList}>
                   {/* Subject Data Section */}
@@ -2505,6 +2605,24 @@ const RunTemplates = () => {
                                 key={section.id} 
                                 className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}
                               >
+                                {/* Section status indicator */}
+                                {(() => {
+                                  const status = getSectionCompletionStatus(section);
+                                  return (
+                                    <div className={styles.sectionStatusBar}>
+                                      {status === 'complete' ? (
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                      ) : status === 'partial' ? (
+                                        <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                                      ) : (
+                                        <Circle className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                      )}
+                                      <span className={`${styles.sectionStatusText} ${status === 'complete' ? styles.statusComplete : status === 'partial' ? styles.statusPartial : styles.statusEmpty}`}>
+                                        {status === 'complete' ? 'Filled' : status === 'partial' ? 'Has defaults' : 'Needs data'}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
                                 {/* Label - Jira-style editable with RichTextEditor */}
                                 <div className="mb-2">
                                   {editable ? (
@@ -3295,6 +3413,22 @@ const RunTemplates = () => {
                           if (section.type === 'table') {
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                {/* Section status indicator */}
+                                {(() => {
+                                  const status = getSectionCompletionStatus(section);
+                                  return (
+                                    <div className={styles.sectionStatusBar}>
+                                      {status === 'complete' ? (
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                      ) : (
+                                        <Circle className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                      )}
+                                      <span className={`${styles.sectionStatusText} ${status === 'complete' ? styles.statusComplete : styles.statusEmpty}`}>
+                                        {status === 'complete' ? 'Filled' : 'Needs data'}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
                                 <TableEditor
                                   hideStructuralControls
                                   section={section}
@@ -3317,6 +3451,24 @@ const RunTemplates = () => {
                             
                             return (
                               <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                                {/* Section status indicator */}
+                                {(() => {
+                                  const status = getSectionCompletionStatus(section);
+                                  return (
+                                    <div className={styles.sectionStatusBar}>
+                                      {status === 'complete' ? (
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                      ) : status === 'partial' ? (
+                                        <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                                      ) : (
+                                        <Circle className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                      )}
+                                      <span className={`${styles.sectionStatusText} ${status === 'complete' ? styles.statusComplete : status === 'partial' ? styles.statusPartial : styles.statusEmpty}`}>
+                                        {status === 'complete' ? 'Filled' : status === 'partial' ? 'Partially filled' : 'Needs data'}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
                                 <div className="text-xs text-muted-foreground mb-2">CTA Text Link</div>
                                 
                                 {/* Preview */}
