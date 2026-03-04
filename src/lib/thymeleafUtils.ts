@@ -43,7 +43,8 @@ export const placeholderToThymeleaf = (content: string): string => {
  * Uses <th:block th:utext="${variableName}"/> format for subjects
  */
 export const subjectPlaceholderToThymeleaf = (subject: string): string => {
-  return subject.replace(/\{\{(\w+)\}\}/g, '<th:block th:utext="${$1}"/>');
+  // Supports both regular {{varName}} and global API dot-notation {{apiData1.field.path}}
+  return subject.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, '<th:block th:utext="${$1}"/>');
 };
 
 /**
@@ -52,12 +53,12 @@ export const subjectPlaceholderToThymeleaf = (subject: string): string => {
  */
 export const subjectThymeleafToPlaceholder = (subject: string): string => {
   return subject
-    // New th:block format: <th:block th:utext="${var}"/> (with optional space before />)
-    .replace(/<th:block\s+th:utext="\$\{(\w+)\}"\s*\/>/g, '{{$1}}')
-    // th:block format without self-closing: <th:block th:utext="${var}">
-    .replace(/<th:block\s+th:utext="\$\{(\w+)\}">/g, '{{$1}}')
+    // New th:block format: <th:block th:utext="${var.field.path}"/> (with optional space before />)
+    .replace(/<th:block\s+th:utext="\$\{(\w+(?:\.\w+)*)\}"\s*\/>/g, '{{$1}}')
+    // th:block format without self-closing: <th:block th:utext="${var.field}">
+    .replace(/<th:block\s+th:utext="\$\{(\w+(?:\.\w+)*)\}">/g, '{{$1}}')
     // Old format for backward compatibility
-    .replace(/<th:utext="\$\{(\w+)\}">/g, '{{$1}}');
+    .replace(/<th:utext="\$\{(\w+(?:\.\w+)*)\}">/g, '{{$1}}');
 };
 
 /**
