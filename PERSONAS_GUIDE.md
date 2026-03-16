@@ -1,183 +1,240 @@
-# Template Platform - User Personas Guide
+# Template Platform - Demo & Personas Guide
 
 ## Overview
 
-This document explains the two primary user personas for the Template & Page Builder Platform. Use this guide to demo and explain the system to users.
+This guide helps you demo the platform by walking through two personas: **Runner** (who sends templates) and **Designer** (who builds them). Start with the Runner to show the end-user experience, then reveal the power behind it with the Designer.
 
 ---
 
-## Persona 1: Template Designer 🔨
+## Persona 1: Template Runner / Sender 📤
 
-**Who they are:** Content creators, marketing teams, developers, or designers who build reusable email/notification templates.
+**Who they are:** Operations teams, customer service reps, marketing ops, or automated systems that need to send personalized communications using pre-built templates.
 
-**Their goal:** Create beautiful, dynamic templates with sections, styles, variables, and API integrations that can be reused multiple times.
+**Their goal:** Pick a template, customize content, fill variables, and send — no design or coding skills needed.
 
-### What They Do
+### Demo Flow for Runner
 
-| Action | Description |
-|--------|-------------|
-| **Design Layouts** | Drag-and-drop sections (headers, paragraphs, tables, images, lists, dividers) |
-| **Style Content** | Customize fonts, colors, spacing, borders per section |
-| **Add Variables** | Define `{{placeholders}}` like `{{userName}}`, `{{orderId}}` |
-| **Connect APIs** | Link REST APIs to pull live data (user info, orders, etc.) |
-| **Set Thymeleaf** | Add Thymeleaf expressions for loops (`th:each`) and conditionals |
-| **Save Templates** | Store templates for reuse across the organization |
+#### Step 1: Select a Template
+> "Meet Mike, our Customer Service Rep. He needs to send an order confirmation. He opens **Run Templates** and picks a pre-designed template."
 
-### Their Workflow
+- Navigate to `/run-templates`
+- Browse available templates
+- Select one (e.g., "Order Confirmation")
 
-```
-1. Browse Section Library → 2. Add & Arrange Sections → 3. Style & Format
-                              ↓
-4. Add Variables {{}}    → 5. Connect API Data    → 6. Save Template
-```
+#### Step 2: Explain the Three Types of Content
 
-### Key Screens for Designer
+This is the core concept to demo. Every template has three content types:
 
-- **Sections Page** (`/sections`) - Preview all 19+ section types
-- **Template Editor** (`/templates`) - Build and edit templates
-- **Database Schema** (`/database-schema`) - View data structure
-- **ER Diagram** (`/er-diagram`) - Understand entity relationships
+| Content Type | What It Is | Runner Can Edit? | Example |
+|---|---|---|---|
+| **Static Content** | Fixed text/images baked into the template | ✅ Yes, in Compose tab | Company logo, footer text, greeting copy |
+| **Placeholders / Variables** | Dynamic `{{placeholders}}` that get filled at send time | ✅ Yes, in Variables tab | `{{customerName}}`, `{{orderId}}`, `{{totalAmount}}` |
+| **API Data** | Live data fetched from REST APIs at send time | ✅ Yes, configure in API tab | Order line items, user profile, account details |
 
----
+#### Step 3: Demo the Compose Tab (Static Content Editing)
+> "In the Compose tab, Mike sees all the template sections. He can directly edit any static text — change a greeting, update a paragraph, tweak a disclaimer — without touching the design."
 
-## Persona 2: Template Runner / Sender 📤
+**Key points to highlight:**
+- Sections are pre-arranged by the Designer
+- Runner can edit text content inline
+- Runner **cannot** add/remove sections or change layout
+- Changes are per-send, they don't modify the original template
 
-**Who they are:** Operations teams, customer service, automated systems, or anyone sending communications using pre-built templates.
+#### Step 4: Demo the Variables Tab (Placeholders)
+> "Now Mike switches to the Variables tab. He sees all the `{{placeholders}}` the Designer defined. He fills in: customerName = 'John Doe', orderId = '#12345', totalAmount = '$99.99'."
 
-**Their goal:** Select a template, fill in variable data, preview the result, and send/deliver the final content.
+**Key points to highlight:**
+- Each placeholder has a label and input field
+- Default values may be pre-filled by the Designer
+- Variables appear as `{{customerName}}` in the template and get replaced with real values
+- Supports text, URLs, lists, and table data types
 
-### What They Do
+#### Step 5: Demo the API Data Tab
+> "Some data comes from live APIs. Mike configures the Orders API to fetch line items dynamically. The API response auto-populates into the template sections."
 
-| Action | Description |
-|--------|-------------|
-| **Select Template** | Choose from pre-designed templates |
-| **Fill Variables** | Input values for `{{placeholders}}` (names, dates, amounts) |
-| **Add API Data** | Configure API calls to fetch live data at send time |
-| **Preview Result** | See the final rendered output before sending |
-| **Send/Deliver** | Send email, generate PDF, or trigger notification |
+**Key points to highlight:**
+- API templates are pre-configured by the Designer
+- Runner just provides parameter values (e.g., order ID, customer ID)
+- Data is fetched and mapped to template sections automatically
+- If an API fails, Runner sees an error and can fill data manually
 
-### Their Workflow
+#### Step 6: Live Preview & Send
+> "Mike clicks Preview. He sees exactly what the recipient will get — all static content, variables, and API data merged together. One click to send."
 
-```
-1. Pick Template      → 2. Fill Placeholders    → 3. Configure API Data
-                              ↓
-4. Live Preview       → 5. Send/Deliver
-```
-
-### Key Screens for Runner
-
-- **Run Templates** (`/run-templates`) - Execute templates with live data
-- **Template Selection** - Browse and pick from saved templates
-- **Data Input Forms** - Fill variables and API configs
-- **Live Preview** - Real-time preview of final output
+**Key talking point:**
+> "Mike didn't write any HTML, didn't design anything. He just filled in the blanks and hit send. The template handles everything — 10 seconds to send what took 30 minutes to design."
 
 ---
 
-## Demo Script: Explaining Both Personas
+## Persona 2: Template Designer 🔨
+
+**Who they are:** Content creators, marketing managers, developers, or designers who build reusable templates for the organization.
+
+**Their goal:** Create powerful, reusable templates with sections, styles, variables, and API integrations that Runners can use repeatedly.
+
+### Demo Flow for Designer
+
+#### Step 1: Start in the Template Editor
+> "Meet Sarah, our Marketing Manager. She's building an order confirmation email template that her team will send hundreds of times."
+
+- Navigate to `/templates`
+- Create a new template or open an existing one
+
+#### Step 2: Build Layout with Section Library
+> "Sarah opens the Section Library panel. She drags sections into her template to build the layout."
+
+**Available section types to demo:**
+- **Text sections:** Headings (H1-H6), Paragraphs, Static Text, Mixed Content
+- **Media sections:** Images, Banners, Buttons, Links
+- **Layout sections:** Containers, Grid, Line Breaks, Separators
+- **Interactive sections:** Tables, Bullet Lists, Number Lists, CTA Text
+
+**Key points:**
+- 19+ section types organized by category
+- Drag-and-drop from library into the editor
+- Reorder sections by dragging within the editor
+- Some sections (Banner, Program Name) are single-use per template
+- Containers can hold nested child sections
+
+#### Step 3: Add Placeholders / Variables
+> "Now Sarah adds dynamic placeholders. She types `{{customerName}}` directly in the content. The system detects it automatically."
+
+**How variables work:**
+- Type `{{variableName}}` anywhere in section content
+- Variable Editor panel shows all detected variables
+- Set default values, labels, and data types for each variable
+- Variables can be text, URL, list, or table type
+- Intellisense dropdown suggests existing variables as you type
+
+**Demo the Variable Editor:**
+- Open the Variables Panel
+- Show auto-detected variables from content
+- Set a default value (e.g., `{{customerName}}` → default: "Valued Customer")
+- Show how the preview updates with default values
+
+#### Step 4: Style the Template
+> "Sarah customizes the look and feel. Each section has its own style controls."
+
+**Style options per section:**
+- Font family, size, weight, style
+- Text color, background color
+- Padding, margin, line height
+- Text alignment (left, center, right)
+- Text decoration (bold, italic, underline)
+
+**Key points:**
+- Styles are set per section for granular control
+- Customization Toolbar appears when a section is selected
+- Style Editor panel provides detailed controls
+- Styles persist in the saved template
+
+#### Step 5: Configure API Data Integration
+> "Sarah connects a REST API so order details populate automatically when the Runner sends."
+
+**API configuration flow:**
+- Open the API panel
+- Select from pre-built API templates (or create custom)
+- Define parameters the Runner will need to provide
+- Set up data mappings: which API response field → which template section
+- Add data transformations if needed
+- Test with mock data
+
+**Key points:**
+- API templates are reusable across multiple templates
+- Supports GET, POST, PUT, DELETE methods
+- JSONPath for extracting nested API response data
+- Global API configs can be shared across sections
+- Mock data available for testing without live API calls
+
+#### Step 6: Thymeleaf Expressions (Advanced)
+> "For advanced logic, Sarah adds Thymeleaf expressions — conditional content and loops."
+
+**Examples:**
+- `{{if isVIP}}` ... `{{/if}}` — Show content only for VIP customers
+- `{{each item in orderItems}}` ... `{{/each}}` — Loop through items
+- Behind the scenes, these become proper Thymeleaf syntax (`th:if`, `th:each`)
+
+#### Step 7: Save & Handoff
+> "Sarah saves the template. Now every Runner on her team can use it instantly — they just fill in the data and send."
+
+---
+
+## Demo Script: Putting It Together
 
 ### Opening (30 seconds)
+> "Our platform separates **sending** from **designing**. Let me show you how easy it is to send a template first, then we'll peek behind the curtain at how templates are built."
 
-> "Our platform has two powerful modes - **Design** and **Send**. Think of it like creating a letterhead template in Word, then using it to send personalized letters to hundreds of people."
+### Part 1: Runner Demo (3 minutes)
+1. Open `/run-templates` → Select a template
+2. **Compose tab** → Edit static text ("I can change this greeting...")
+3. **Variables tab** → Fill in `{{customerName}}`, `{{orderId}}`
+4. **API tab** → Configure an API call
+5. **Preview** → "This is exactly what the recipient sees"
+6. **Send** → Done in 10 seconds
 
-### Demo Part 1: Designer Persona (2-3 minutes)
+### Part 2: Designer Demo (3-4 minutes)
+1. Open `/templates` → Create new template
+2. **Section Library** → Drag in Header, Paragraph, Table, Footer
+3. **Add variables** → Type `{{customerName}}` in content
+4. **Variable Editor** → Set defaults and labels
+5. **Style sections** → Customize fonts, colors, spacing
+6. **API config** → Connect an API with mappings
+7. **Save** → "Now any Runner can use this"
 
-**Setup:**
-> "First, let's see how Sarah, our Marketing Manager, creates a customer order confirmation email."
-
-**Steps:**
-1. **Navigate to Templates** → "Sarah starts in the Template Editor"
-2. **Show Section Library** → "She drags in a header, order details table, and footer"
-3. **Add Variables** → "She adds `{{customerName}}`, `{{orderId}}`, `{{totalAmount}}` as placeholders"
-4. **Style Content** → "She customizes colors and fonts to match brand guidelines"
-5. **Connect API** → "She links the Orders API so order details auto-populate"
-6. **Save Template** → "She saves it as 'Order Confirmation v2' for the team to use"
-
-**Key Talking Point:**
-> "Notice how Sarah creates something once, but it can be used thousands of times with different data."
-
-### Demo Part 2: Runner Persona (2-3 minutes)
-
-**Setup:**
-> "Now let's switch to Mike, our Customer Service Rep, who needs to send an order confirmation."
-
-**Steps:**
-1. **Navigate to Run Templates** → "Mike goes to the Run Templates page"
-2. **Select Template** → "He picks 'Order Confirmation v2' that Sarah created"
-3. **Fill Data (Compose Tab)** → "The sections appear - he can edit any content directly"
-4. **Fill Variables (Variables Tab)** → "He enters: customerName='John Doe', orderId='#12345', totalAmount='$99.99'"
-5. **Configure API (API Data Tab)** → "He sets the Order API to fetch line items dynamically"
-6. **Live Preview** → "He sees exactly what the customer will receive"
-7. **Send** → "He clicks Send - the email goes out with all data merged"
-
-**Key Talking Point:**
-> "Mike doesn't need to know HTML or design - he just fills in the data and sends. The template handles everything else."
-
-### Closing Summary (30 seconds)
-
-> "So we have:
-> - **Designers** building smart, reusable templates with variables and API connections
-> - **Runners** using those templates to quickly send personalized communications
-> 
-> This separation means experts handle the design, while anyone can send - no coding required."
+### Closing (30 seconds)
+> "Designers invest 30 minutes once. Runners send in 10 seconds, every time. Static content is editable per-send, placeholders ensure personalization, and API data brings in live information — all without coding."
 
 ---
 
-## Visual Comparison
+## Content Types Deep Dive
 
-| Aspect | Designer | Runner |
-|--------|----------|--------|
-| **Focus** | Build & Create | Use & Send |
-| **Time Investment** | One-time (per template) | Repeatable (seconds per send) |
-| **Technical Skill** | Medium (knows variables, APIs) | Low (just fills forms) |
-| **Main Screens** | Templates, Sections, Schema | Run Templates, Preview |
-| **Output** | Saved Template | Sent Email/Notification |
+### Static Content
+- Text, images, and layout that the Designer places in the template
+- Runner can edit the text but cannot change the structure
+- Examples: headings, paragraphs, footer disclaimers, logos
+- Stored as HTML content in each section
 
----
+### Placeholders / Variables (`{{variableName}}`)
+- Dynamic tokens the Runner fills in before sending
+- Designer defines them by typing `{{}}` syntax in content
+- Support types: text, URL, list, table data
+- Can have default values as fallbacks
+- Converted to Thymeleaf syntax (`<span th:utext="${var}"/>`) for server-side rendering
 
-## Frequently Asked Questions
-
-**Q: Can one user be both personas?**
-A: Yes! Small teams often have people who both design and send. The personas represent activities, not necessarily different people.
-
-**Q: Does the Runner need to know about Thymeleaf?**
-A: No. Thymeleaf is configured by the Designer. The Runner just sees the final output or simple form fields.
-
-**Q: Can Runners edit the template design?**
-A: In the "Compose" tab, Runners can edit section content directly (text, images), but can't add/remove sections or change the overall structure. This protects the design while allowing customization.
-
-**Q: What if the API fails when a Runner is sending?**
-A: The system shows an error in the preview, allowing the Runner to retry or fill data manually as a fallback.
+### API Data
+- Live data fetched from REST APIs at send time
+- Designer configures: endpoint, method, headers, parameters
+- Runner provides: parameter values (e.g., customer ID)
+- Data is mapped to template sections via JSONPath
+- Supports data transformations before insertion
 
 ---
 
-## Demo Tips
+## Key Screens Reference
 
-1. **Use Real Data:** Prepare sample customer/order data before the demo
-2. **Show the Connection:** After designing, immediately switch to Run mode to show the template in action
-3. **Highlight the Time Savings:** "Sarah spent 30 minutes building this - now Mike sends it in 10 seconds"
-4. **Show Mobile:** If possible, show that templates look good on mobile devices
-5. **Prepare Edge Cases:** Have an example of a template with conditional content (e.g., "if VIP customer, show discount section")
+| Screen | URL | Used By | Purpose |
+|--------|-----|---------|---------|
+| Run Templates | `/run-templates` | Runner | Select, fill, preview, send |
+| Template Editor | `/templates` | Designer | Build and edit templates |
+| Sections Library | `/sections` | Designer | Preview all section types |
+| Database Schema | `/database-schema` | Designer | View data structure |
+| ER Diagram | `/er-diagram` | Designer | Entity relationships |
 
 ---
 
-## Quick Reference Card
+## FAQs for Demo
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    TEMPLATE PLATFORM                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  PERSONA 1: DESIGNER                PERSONA 2: RUNNER         │
-│  ─────────────────                ─────────────────         │
-│  Creates templates                Uses templates            │
-│  ↓                                ↓                         │
-│  Sections                         Select Template           │
-│  Variables {{}}                   Fill Variables            │
-│  API Config                       Add API Data              │
-│  Styling                          Preview & Send              │
-│  Save                             Deliver                   │
-│                                                             │
-│  URL: /templates                  URL: /run-templates       │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+**Q: Can the Runner break the template design?**
+A: No. Runners can edit static text content but cannot add/remove sections, change layout, or modify styles.
+
+**Q: What happens if a variable isn't filled in?**
+A: The placeholder `{{variableName}}` remains visible in the preview, alerting the Runner to fill it.
+
+**Q: Can one person be both Designer and Runner?**
+A: Yes. Small teams often have people who both design and send. The personas represent activities, not roles.
+
+**Q: What if the API is down when sending?**
+A: The Runner sees an error in preview and can manually fill the data as a fallback.
+
+**Q: Do Runner edits affect the original template?**
+A: No. All Runner edits are per-send. The original template remains unchanged for future use.
