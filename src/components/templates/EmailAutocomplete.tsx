@@ -84,7 +84,7 @@ export const EmailAutocomplete: React.FC<EmailAutocompleteProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Parse comma-separated emails into array
   const selectedEmails = value
