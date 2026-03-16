@@ -80,7 +80,7 @@ export const UserAutocomplete: React.FC<UserAutocompleteProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced API search
   const searchUsers = useCallback(

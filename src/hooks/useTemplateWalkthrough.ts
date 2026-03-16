@@ -12,7 +12,7 @@ export const useTemplateWalkthrough = (options?: WalkthroughOptions) => {
   const [isWalkthroughActive, setIsWalkthroughActive] = useState(false);
   const waitingForActionRef = useRef<string | null>(null);
   const actionCompletedRef = useRef<boolean>(false);
-  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const checkIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup function
   const cleanup = useCallback(() => {
