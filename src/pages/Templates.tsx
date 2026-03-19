@@ -1,17 +1,19 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Templates.module.scss";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit, Loader2, RotateCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, PlayCircle, Eye, Calendar, Copy, Archive, ArchiveRestore, RefreshCw, Edit, Loader2, RotateCw, CopyPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTemplates, updateTemplate, resetTemplatesToDefault, Template } from "@/lib/templateStorage";
-import { fetchTemplates } from "@/lib/templateApi";
+import { fetchTemplates, templateApi, responseToTemplate } from "@/lib/templateApi";
 import { renderSectionContent } from "@/lib/templateUtils";
 
 const Templates = () => {
@@ -21,6 +23,14 @@ const Templates = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+
+  // Clone dialog state
+  const [showCloneDialog, setShowCloneDialog] = useState(false);
+  const [cloneSourceTemplate, setCloneSourceTemplate] = useState<Template | null>(null);
+  const [cloneName, setCloneName] = useState("");
+  const [cloneDescription, setCloneDescription] = useState("");
+  const [isCloning, setIsCloning] = useState(false);
+  const cloneNameInputRef = useRef<HTMLInputElement>(null);
 
   // Load templates from API (with localStorage fallback)
   const loadTemplates = async () => {
@@ -67,7 +77,7 @@ const Templates = () => {
 
   const handleArchiveTemplate = async (id: string, name: string, currentlyArchived: boolean) => {
     updateTemplate(id, { archived: !currentlyArchived });
-    await loadTemplates(); // Reload from API
+    await loadTemplates();
     
     toast({
       title: currentlyArchived ? "Template restored" : "Template archived",
@@ -84,7 +94,7 @@ const Templates = () => {
 
   const handleResetTemplates = async () => {
     resetTemplatesToDefault();
-    await loadTemplates(); // Reload from API
+    await loadTemplates();
     toast({
       title: "Templates reset",
       description: "All templates have been reset to default demos including the API demo template.",
@@ -103,18 +113,57 @@ const Templates = () => {
     return localStorage.getItem(`last_sent_${templateId}`) !== null;
   };
 
+  // Clone handlers
+  const openCloneDialog = (template: Template) => {
+    setCloneSourceTemplate(template);
+    setCloneName(`${template.name} (Copy)`);
+    setCloneDescription("");
+    setShowCloneDialog(true);
+    // Focus the name input after dialog opens
+    setTimeout(() => cloneNameInputRef.current?.select(), 100);
+  };
+
+  const handleCloneTemplate = async () => {
+    if (!cloneSourceTemplate || !cloneName.trim()) return;
+
+    setIsCloning(true);
+    try {
+      const response = await templateApi.cloneTemplate(
+        cloneSourceTemplate.id,
+        cloneName.trim(),
+        cloneDescription.trim()
+      );
+      const clonedTemplate = responseToTemplate(response);
+      
+      setShowCloneDialog(false);
+      await loadTemplates();
+
+      toast({
+        title: "Template cloned",
+        description: `"${clonedTemplate.name}" has been created from "${cloneSourceTemplate.name}".`,
+      });
+    } catch (error: any) {
+      console.error('Failed to clone template:', error);
+      toast({
+        title: "Clone failed",
+        description: error?.message || "Failed to clone template. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
   // Generate preview HTML from sections or html field
   const previewHtml = useMemo(() => {
     if (!previewTemplate) return "";
     
-    // If template has sections, render from sections
     if (previewTemplate.sections && previewTemplate.sections.length > 0) {
       return previewTemplate.sections
         .map((section) => renderSectionContent(section))
         .join('');
     }
     
-    // Otherwise use html field
     return previewTemplate.html;
   }, [previewTemplate]);
 
@@ -238,6 +287,15 @@ const Templates = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => openCloneDialog(template)}
+                        className={styles.cloneButton}
+                        title="Clone template"
+                      >
+                        <CopyPlus />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handlePreviewTemplate(template)}
                         className={styles.iconButton}
                       >
@@ -350,6 +408,89 @@ const Templates = () => {
                 />
               )}
             </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
+        {/* Clone Template Dialog */}
+        <Dialog open={showCloneDialog} onOpenChange={(open) => { if (!isCloning) setShowCloneDialog(open); }}>
+          <DialogContent className={styles.cloneDialog}>
+            <DialogHeader>
+              <DialogTitle className={styles.cloneDialogTitle}>
+                <CopyPlus className={styles.cloneDialogIcon} />
+                Clone Template
+              </DialogTitle>
+              <DialogDescription className={styles.cloneDialogDesc}>
+                Create a new template from <strong>"{cloneSourceTemplate?.name}"</strong>. All sections, styles, variables, and API integrations will be copied.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className={styles.cloneForm}>
+              <div className={styles.cloneField}>
+                <label htmlFor="clone-name" className={styles.cloneLabel}>
+                  Template Name <span className={styles.required}>*</span>
+                </label>
+                <Input
+                  id="clone-name"
+                  ref={cloneNameInputRef}
+                  value={cloneName}
+                  onChange={(e) => setCloneName(e.target.value)}
+                  placeholder="Enter a name for the cloned template"
+                  onKeyDown={(e) => { if (e.key === 'Enter' && cloneName.trim()) handleCloneTemplate(); }}
+                />
+              </div>
+
+              <div className={styles.cloneField}>
+                <label htmlFor="clone-desc" className={styles.cloneLabel}>
+                  Description <span className={styles.optional}>(optional)</span>
+                </label>
+                <Textarea
+                  id="clone-desc"
+                  value={cloneDescription}
+                  onChange={(e) => setCloneDescription(e.target.value)}
+                  placeholder="Add a description for the cloned template"
+                  rows={3}
+                  className={styles.cloneTextarea}
+                />
+              </div>
+
+              <div className={styles.cloneInfoBox}>
+                <h4>What will be cloned:</h4>
+                <ul>
+                  <li>All sections & content structure</li>
+                  <li>Styles & formatting</li>
+                  <li>Variables & placeholders</li>
+                  <li>API integrations & configurations</li>
+                  <li>Email subject template</li>
+                </ul>
+              </div>
+            </div>
+
+            <DialogFooter className={styles.cloneFooter}>
+              <Button
+                variant="outline"
+                onClick={() => setShowCloneDialog(false)}
+                disabled={isCloning}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCloneTemplate}
+                disabled={!cloneName.trim() || isCloning}
+                className={styles.cloneSubmitBtn}
+              >
+                {isCloning ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Cloning...
+                  </>
+                ) : (
+                  <>
+                    <CopyPlus className="h-4 w-4 mr-2" />
+                    Clone Template
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
