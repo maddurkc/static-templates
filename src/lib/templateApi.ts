@@ -477,11 +477,11 @@ class TemplateApiClient {
     });
   }
 
-  // DUPLICATE: Duplicate a template
-  async duplicateTemplate(id: string, newName: string): Promise<TemplateResponse> {
-    return this.request<TemplateResponse>(`/templates/${id}/duplicate`, {
+  // CLONE: Clone a template with new name and description
+  async cloneTemplate(id: string, newName: string, description?: string): Promise<TemplateResponse> {
+    return this.request<TemplateResponse>(`/templates/${id}/clone`, {
       method: 'POST',
-      body: JSON.stringify({ name: newName }),
+      body: JSON.stringify({ name: newName, description: description || '' }),
     });
   }
 }

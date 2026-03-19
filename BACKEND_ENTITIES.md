@@ -1604,6 +1604,23 @@ public class SectionVariableRequestDTO {
     private String defaultValue;
 }
 
+// === CloneTemplateRequestDTO ===
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "Request payload for cloning a template")
+public class CloneTemplateRequestDTO {
+
+    @NotBlank(message = "Name is required")
+    @Size(max = 255, message = "Name must not exceed 255 characters")
+    @Schema(description = "Name for the cloned template", example = "Welcome Email (Copy)")
+    private String name;
+
+    @Size(max = 1000, message = "Description must not exceed 1000 characters")
+    @Schema(description = "Description for the cloned template", example = "Cloned from Welcome Email")
+    private String description;
+}
+
 // === TemplateRequestDTO ===
 @Data
 @NoArgsConstructor
@@ -2693,6 +2710,118 @@ public class TemplateService {
         }
         templateRepository.deleteById(id);
     }
+
+    /**
+     * Clone an existing template into a new one with a new name and description.
+     * 
+     * Deep-copies:
+     * - All template sections (with children, variables, styles)
+     * - All template variables (placeholders registry)
+     * - All global API integrations (with param values, transformations, cached responses)
+     * - Email subject template
+     * - HTML content
+     * 
+     * The cloned template gets a new UUID, new timestamps, and archived=false.
+     * Section IDs and integration IDs are regenerated to avoid conflicts.
+     */
+    @Transactional
+    public TemplateResponseDTO cloneTemplate(UUID sourceId, CloneTemplateRequestDTO request) {
+        Template source = templateRepository.findByIdWithFullDetails(sourceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template not found with id: " + sourceId));
+
+        // Create new template with cloned metadata
+        Template clone = new Template();
+        clone.setName(request.getName());
+        clone.setDescription(request.getDescription());
+        clone.setSubjectContent(source.getSubjectContent());
+        clone.setHtmlContent(source.getHtmlContent());
+        clone.setSectionCount(source.getSectionCount());
+        clone.setArchived(false);
+
+        // Deep-clone sections
+        if (source.getSections() != null) {
+            Map<UUID, UUID> sectionIdMap = new HashMap<>(); // old ID → new ID (for parent references)
+            Set<TemplateSection> clonedSections = new LinkedHashSet<>();
+
+            for (TemplateSection srcSection : source.getSections()) {
+                TemplateSection clonedSection = cloneSection(srcSection, clone, null, sectionIdMap);
+                clonedSections.add(clonedSection);
+            }
+
+            // Fix parent references using the ID map
+            for (TemplateSection cs : clonedSections) {
+                if (cs.getParentSectionId() != null) {
+                    UUID newParentId = sectionIdMap.get(cs.getParentSectionId());
+                    cs.setParentSectionId(newParentId != null ? newParentId : cs.getParentSectionId());
+                }
+            }
+
+            clone.setSections(clonedSections);
+        }
+
+        // Deep-clone template variables
+        if (source.getVariables() != null) {
+            Set<TemplateVariable> clonedVars = new LinkedHashSet<>();
+            for (TemplateVariable srcVar : source.getVariables()) {
+                TemplateVariable cv = new TemplateVariable();
+                cv.setTemplate(clone);
+                cv.setVariableName(srcVar.getVariableName());
+                cv.setVariableLabel(srcVar.getVariableLabel());
+                cv.setVariableType(srcVar.getVariableType());
+                cv.setDefaultValue(srcVar.getDefaultValue());
+                cv.setRequired(srcVar.isRequired());
+                cv.setSource(srcVar.getSource());
+                cv.setOrderIndex(srcVar.getOrderIndex());
+                clonedVars.add(cv);
+            }
+            clone.setVariables(clonedVars);
+        }
+
+        // Deep-clone global API integrations
+        if (source.getGlobalApiIntegrations() != null) {
+            Set<TemplateGlobalApiIntegration> clonedIntegrations = new LinkedHashSet<>();
+            for (TemplateGlobalApiIntegration srcInt : source.getGlobalApiIntegrations()) {
+                TemplateGlobalApiIntegration ci = new TemplateGlobalApiIntegration();
+                ci.setTemplate(clone);
+                ci.setApiTemplate(srcInt.getApiTemplate());
+                ci.setIntegrationName(srcInt.getIntegrationName());
+                ci.setVariableName(srcInt.getVariableName());
+                ci.setEnabled(srcInt.isEnabled());
+                ci.setParamValues(srcInt.getParamValues());
+                ci.setTransformation(srcInt.getTransformation());
+                ci.setCachedResponse(srcInt.getCachedResponse());
+                ci.setCachedResponseAt(srcInt.getCachedResponseAt());
+                ci.setOrderIndex(srcInt.getOrderIndex());
+                clonedIntegrations.add(ci);
+            }
+            clone.setGlobalApiIntegrations(clonedIntegrations);
+        }
+
+        Template saved = templateRepository.save(clone);
+        return templateMapper.toResponseDTO(saved);
+    }
+
+    /**
+     * Helper: Deep-clone a single TemplateSection.
+     */
+    private TemplateSection cloneSection(TemplateSection src, Template newTemplate,
+                                          UUID parentSectionId, Map<UUID, UUID> idMap) {
+        TemplateSection cloned = new TemplateSection();
+        UUID newId = UUID.randomUUID();
+        idMap.put(src.getId(), newId);
+
+        cloned.setTemplate(newTemplate);
+        cloned.setSectionId(src.getSectionId());
+        cloned.setSectionType(src.getSectionType());
+        cloned.setContent(src.getContent());
+        cloned.setVariables(src.getVariables()); // JSON deep-copy handled by JPA
+        cloned.setStyles(src.getStyles());
+        cloned.setOrderIndex(src.getOrderIndex());
+        cloned.setParentSectionId(parentSectionId);
+        cloned.setLabelEditable(src.isLabelEditable());
+
+        return cloned;
+    }
 }
 
 // === TemplateSectionService ===
@@ -3276,6 +3405,19 @@ public class TemplateController {
     public ResponseEntity<Void> deleteTemplate(@PathVariable UUID id) {
         templateService.deleteTemplate(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/clone")
+    @Operation(summary = "Clone template",
+               description = "Creates a deep copy of an existing template including all sections, " +
+                             "variables, styles, and API integrations with a new name and description")
+    @ApiResponse(responseCode = "201", description = "Template cloned successfully")
+    @ApiResponse(responseCode = "404", description = "Source template not found")
+    public ResponseEntity<TemplateResponseDTO> cloneTemplate(
+            @PathVariable UUID id,
+            @Valid @RequestBody CloneTemplateRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(templateService.cloneTemplate(id, request));
     }
 }
 
