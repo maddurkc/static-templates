@@ -3389,6 +3389,19 @@ public class TemplateController {
         templateService.deleteTemplate(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/clone")
+    @Operation(summary = "Clone template",
+               description = "Creates a deep copy of an existing template including all sections, " +
+                             "variables, styles, and API integrations with a new name and description")
+    @ApiResponse(responseCode = "201", description = "Template cloned successfully")
+    @ApiResponse(responseCode = "404", description = "Source template not found")
+    public ResponseEntity<TemplateResponseDTO> cloneTemplate(
+            @PathVariable UUID id,
+            @Valid @RequestBody CloneTemplateRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(templateService.cloneTemplate(id, request));
+    }
 }
 
 // === TemplateSectionController ===
