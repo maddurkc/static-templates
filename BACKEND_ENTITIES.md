@@ -1604,6 +1604,23 @@ public class SectionVariableRequestDTO {
     private String defaultValue;
 }
 
+// === CloneTemplateRequestDTO ===
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "Request payload for cloning a template")
+public class CloneTemplateRequestDTO {
+
+    @NotBlank(message = "Name is required")
+    @Size(max = 255, message = "Name must not exceed 255 characters")
+    @Schema(description = "Name for the cloned template", example = "Welcome Email (Copy)")
+    private String name;
+
+    @Size(max = 1000, message = "Description must not exceed 1000 characters")
+    @Schema(description = "Description for the cloned template", example = "Cloned from Welcome Email")
+    private String description;
+}
+
 // === TemplateRequestDTO ===
 @Data
 @NoArgsConstructor
