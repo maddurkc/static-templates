@@ -362,19 +362,9 @@
 
 .listItemRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
-  min-width: 0;
-
-  & > :nth-child(2) {
-    flex: 1;
-    min-width: 0;
-  }
-
-  & > span {
-    margin-top: 0.5rem;
-  }
 }
 
 .listItemInput {
