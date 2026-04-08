@@ -2726,7 +2726,7 @@ const RunTemplates = () => {
                                                 }}
                                                 onFocus={() => scrollToSection(section.id)}
                                                 placeholder="List item..."
-                                                
+                                                singleLine
                                                 className="flex-1"
                                               />
                                               <div className="flex flex-col">
@@ -3291,7 +3291,7 @@ const RunTemplates = () => {
                                             }}
                                             onFocus={() => scrollToSection(section.id)}
                                             placeholder={`Item ${index + 1}`}
-                                            
+                                            singleLine
                                             className="flex-1"
                                           />
                                           <div className="flex flex-col">
