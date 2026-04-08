@@ -293,39 +293,121 @@ REST API → templateApi.save() → Backend persistence
 
 ```
 src/
-├── components/
-│   ├── templates/          # 20+ template-specific components
-│   │   ├── EditorView      # Main designer editor
-│   │   ├── PreviewView     # Live preview renderer
-│   │   ├── SectionLibrary  # Drag-and-drop section catalog
-│   │   ├── VariableEditor  # Variable management panel
-│   │   ├── StyleEditor     # Per-section style controls
-│   │   ├── RichTextEditor  # Inline content editing
-│   │   ├── GlobalApiPanel  # API configuration
-│   │   └── ...more
-│   └── ui/                 # 40+ shadcn/ui components
-├── lib/
-│   ├── thymeleafUtils.ts   # Placeholder ↔ Thymeleaf conversion
-│   ├── globalApiResolver.ts# API data resolution
-│   ├── variableExtractor.ts# Auto-detect {{variables}}
-│   ├── templateStorage.ts  # Persistence layer
-│   ├── templateValidation.ts# Template validation rules
-│   └── sanitize.ts         # HTML sanitization (DOMPurify)
-├── types/
-│   ├── section.ts          # Section type definitions
-│   ├── api-config.ts       # API configuration types
-│   ├── template-variable.ts# Variable type definitions
-│   └── global-api-config.ts# Global API types
-├── pages/
-│   ├── Templates.tsx       # Template list + clone
-│   ├── TemplateEditor.tsx  # Full designer experience
-│   ├── RunTemplates.tsx    # Runner experience
-│   ├── Sections.tsx        # Section type catalog
-│   └── Index.tsx           # Landing / dashboard
-└── hooks/
-    ├── useVariableIntellisense.ts  # Autocomplete logic
-    └── useTemplateWalkthrough.ts   # Guided tour
+│
+├── 📄 App.tsx                          # Root component — routing, sidebar, global providers
+├── 📄 main.tsx                         # Entry point — mounts <App /> into the DOM
+├── 📄 index.css                        # Global styles, CSS variables, Tailwind directives
+│
+├── 📁 pages/                           # Route-level page components (one per route)
+│   ├── Index.tsx                       # Landing page / dashboard with quick actions
+│   ├── Templates.tsx                   # Template list — browse, create, clone, delete
+│   ├── TemplateEditor.tsx              # Full designer experience — layout + sections + styles
+│   ├── TemplateSettingsPage.tsx         # Template metadata settings (name, subject, delegates)
+│   ├── RunTemplates.tsx                # Runner experience — fill variables, preview, send
+│   ├── Sections.tsx                    # Section type catalog — browse all 19+ section types
+│   ├── DatabaseSchema.tsx              # Interactive database schema documentation
+│   ├── ERDiagram.tsx                   # Entity relationship diagram visualization
+│   ├── MigrationGenerator.tsx          # SQL migration script generator
+│   ├── SettingsLayoutDemo.tsx          # Settings UI layout reference
+│   └── NotFound.tsx                    # 404 fallback page
+│
+├── 📁 components/
+│   ├── 📁 templates/                   # 🔑 Core business components (20+ files)
+│   │   │
+│   │   │── EditorView.tsx              # Main designer canvas — renders sections in edit mode
+│   │   │── PreviewView.tsx             # Live preview — renders final output with merged data
+│   │   │
+│   │   │── SectionLibrary.tsx          # Drag-and-drop section catalog (19+ types)
+│   │   │── SectionContextMenu.tsx      # Right-click menu for section actions (move, delete, duplicate)
+│   │   │── InlineSectionControls.tsx    # Hover toolbar on sections (edit, style, delete)
+│   │   │── ContainerSection.tsx        # Renders container sections with nested children
+│   │   │
+│   │   │── RichTextEditor.tsx          # Inline contentEditable editor with formatting
+│   │   │── TextSelectionToolbar.tsx     # Floating toolbar on text selection (bold, italic, link)
+│   │   │── TextStylePopover.tsx        # Advanced text styling popover (font, size, color)
+│   │   │── CustomizationToolbar.tsx     # Section-level customization controls
+│   │   │
+│   │   │── VariableEditor.tsx          # Variable management — defaults, labels, types
+│   │   │── VariablesPanel.tsx          # Side panel listing all detected {{variables}}
+│   │   │── VariableIntellisense.tsx     # Autocomplete dropdown when typing {{
+│   │   │
+│   │   │── StyleEditor.tsx             # Per-section style controls (fonts, colors, spacing)
+│   │   │── TableEditor.tsx             # Table section editor — add/remove rows, columns
+│   │   │
+│   │   │── GlobalApiPanel.tsx          # Global API configuration panel
+│   │   │── ApiConfigPopover.tsx        # Per-section API binding popover
+│   │   │── ApiVariablePicker.tsx       # Pick API response fields to map to variables
+│   │   │── DataTransformationEditor.tsx # Transform API data before inserting
+│   │   │
+│   │   │── ThymeleafEditor.tsx         # Raw Thymeleaf syntax editor (advanced users)
+│   │   │── TemplateSettingsPanel.tsx    # Template metadata panel (name, subject)
+│   │   │── DelegatesDialog.tsx         # Share template access with team members
+│   │   │── EmailAutocomplete.tsx       # Email input with autocomplete suggestions
+│   │   │── UserAutocomplete.tsx        # User search with autocomplete
+│   │   └── ValidationErrorsPanel.tsx   # Displays template validation errors
+│   │
+│   ├── 📁 sections/                    # Section-specific components
+│   │   └── SectionPreviewDialog.tsx    # Full-screen section preview modal
+│   │
+│   ├── 📁 ui/                          # 40+ shadcn/ui primitives (button, dialog, tabs, etc.)
+│   │   └── ...                         # Pre-built, accessible, composable UI components
+│   │
+│   ├── AppSidebar.tsx                  # Main navigation sidebar
+│   └── NavLink.tsx                     # Active-aware navigation link component
+│
+├── 📁 lib/                             # 🔧 Utility functions & business logic
+│   │
+│   │── thymeleafUtils.ts               # {{placeholder}} ↔ Thymeleaf <span th:utext> conversion
+│   │── textThymeleafUtils.ts           # Text-specific Thymeleaf helpers (inline text nodes)
+│   │── listThymeleafUtils.ts           # List/loop Thymeleaf helpers (th:each)
+│   │
+│   │── variableExtractor.ts            # Regex scanner — extracts {{variables}} from content
+│   │── globalApiResolver.ts            # Fetches API data, resolves JSONPath, merges into template
+│   │── apiTemplateUtils.ts             # API template configuration helpers
+│   │
+│   │── templateStorage.ts              # Persistence abstraction — localStorage (demo) / REST (prod)
+│   │── templateApi.ts                  # REST API client for backend template CRUD
+│   │── sectionStorage.ts              # Section-level storage operations
+│   │
+│   │── templateValidation.ts           # Validates templates — missing vars, broken refs, errors
+│   │── templateUtils.ts                # General template helpers (clone, merge, transform)
+│   │── tableUtils.ts                   # Table section utilities (add/remove rows/cols)
+│   │
+│   │── sanitize.ts                     # DOMPurify wrapper — XSS protection for user HTML
+│   └── utils.ts                        # Shared utilities (cn, classnames, formatters)
+│
+├── 📁 types/                           # 📋 TypeScript type definitions
+│   ├── section.ts                      # Section interface — type, content, styles, variables
+│   ├── api-config.ts                   # ApiConfig, ApiMapping, ApiParam, ApiTemplate
+│   ├── template-variable.ts            # TemplateVariable — name, label, type, default, source
+│   └── global-api-config.ts            # Global API integration types
+│
+├── 📁 hooks/                           # ⚡ Custom React hooks
+│   ├── useVariableIntellisense.ts      # Powers {{variable}} autocomplete as user types
+│   ├── useTemplateWalkthrough.ts       # Intro.js guided tour logic
+│   ├── use-mobile.tsx                  # Responsive breakpoint detection
+│   └── use-toast.ts                    # Toast notification hook
+│
+├── 📁 contexts/                        # 🌐 React Context providers
+│   └── IntellisenseContext.tsx          # Shares variable intellisense state across components
+│
+└── 📁 data/                            # 📦 Static data & configuration
+    ├── sectionTypes.tsx                # Section type registry — icons, labels, defaults
+    └── apiTemplates.ts                 # Pre-built API template configurations
 ```
+
+#### Folder Responsibilities Summary
+
+| Folder | Purpose | Key Pattern |
+|--------|---------|-------------|
+| `pages/` | One component per route — orchestrates layout and data loading | Each page maps 1:1 to a route in `App.tsx` |
+| `components/templates/` | Core business logic UI — the heart of the editor and runner | Each component has a co-located `.module.scss` file for scoped styles |
+| `components/ui/` | Generic, reusable UI primitives from shadcn/ui | Never contains business logic — pure presentation |
+| `lib/` | Pure functions with zero UI dependencies | Testable in isolation — no React imports |
+| `types/` | Shared TypeScript interfaces and enums | Imported by components, lib, and hooks |
+| `hooks/` | Reusable stateful logic extracted from components | Keeps components lean by externalizing complex state |
+| `contexts/` | Cross-component state sharing without prop drilling | Used sparingly — only for truly global state |
+| `data/` | Static configuration and registry data | Defines "what exists" — section types, API templates |
 
 ### Performance Considerations
 
