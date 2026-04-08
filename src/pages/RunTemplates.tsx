@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid, Info } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid, Info, ChevronUp, ChevronDown } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import { TableEditor } from "@/components/templates/TableEditor";
 import {
@@ -2729,6 +2729,34 @@ const RunTemplates = () => {
                                                 singleLine
                                                 className="flex-1"
                                               />
+                                              <div className="flex flex-col">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-5 w-5 p-0"
+                                                  disabled={itemIdx === 0}
+                                                  onClick={() => {
+                                                    const currentItems = [...(listVariables[listVarName] || section.variables?.items || [''])] as (string | ListItemStyle)[];
+                                                    [currentItems[itemIdx - 1], currentItems[itemIdx]] = [currentItems[itemIdx], currentItems[itemIdx - 1]];
+                                                    setListVariables(prev => ({ ...prev, [listVarName]: currentItems as string[] | ListItemStyle[] }));
+                                                  }}
+                                                >
+                                                  <ChevronUp className="h-3 w-3" />
+                                                </Button>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-5 w-5 p-0"
+                                                  disabled={itemIdx === listItems.length - 1}
+                                                  onClick={() => {
+                                                    const currentItems = [...(listVariables[listVarName] || section.variables?.items || [''])] as (string | ListItemStyle)[];
+                                                    [currentItems[itemIdx], currentItems[itemIdx + 1]] = [currentItems[itemIdx + 1], currentItems[itemIdx]];
+                                                    setListVariables(prev => ({ ...prev, [listVarName]: currentItems as string[] | ListItemStyle[] }));
+                                                  }}
+                                                >
+                                                  <ChevronDown className="h-3 w-3" />
+                                                </Button>
+                                              </div>
                                               <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -3247,6 +3275,7 @@ const RunTemplates = () => {
                                   <div className="space-y-2">
                                     {((listVariables[listVarName] || ['']) as (string | ListItemStyle)[]).map((item, index) => {
                                       const itemValue = typeof item === 'object' && 'text' in item ? item.text : item as string;
+                                      const totalItems = ((listVariables[listVarName] || ['']) as (string | ListItemStyle)[]).length;
                                       
                                       return (
                                         <div key={index} className={styles.listItemRow}>
@@ -3265,6 +3294,38 @@ const RunTemplates = () => {
                                             singleLine
                                             className="flex-1"
                                           />
+                                          <div className="flex flex-col">
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-5 w-5 p-0"
+                                              disabled={index === 0}
+                                              onClick={() => {
+                                                setListVariables(prev => {
+                                                  const items = [...(prev[listVarName] || [])] as (string | ListItemStyle)[];
+                                                  [items[index - 1], items[index]] = [items[index], items[index - 1]];
+                                                  return { ...prev, [listVarName]: items as string[] | ListItemStyle[] };
+                                                });
+                                              }}
+                                            >
+                                              <ChevronUp className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-5 w-5 p-0"
+                                              disabled={index === totalItems - 1}
+                                              onClick={() => {
+                                                setListVariables(prev => {
+                                                  const items = [...(prev[listVarName] || [])] as (string | ListItemStyle)[];
+                                                  [items[index], items[index + 1]] = [items[index + 1], items[index]];
+                                                  return { ...prev, [listVarName]: items as string[] | ListItemStyle[] };
+                                                });
+                                              }}
+                                            >
+                                              <ChevronDown className="h-3 w-3" />
+                                            </Button>
+                                          </div>
                                           <Button
                                             variant="ghost"
                                             size="icon"
