@@ -37,13 +37,23 @@
 
 .singleLine {
   white-space: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
+  text-overflow: ellipsis;
   height: 32px;
   min-height: 32px !important;
   max-height: 32px;
   line-height: 16px;
   padding: 7px 12px;
+  transition: max-height 0.2s ease, height 0.2s ease;
+
+  &:focus {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-y: auto;
+    height: auto;
+    max-height: 120px;
+    min-height: 32px !important;
+  }
 
   a {
     color: hsl(var(--primary));
