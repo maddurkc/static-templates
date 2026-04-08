@@ -273,3 +273,350 @@ A: Server-side rendering. Templates are processed by a Java/Spring backend where
 
 **Q: How long did this take?**
 A: Built iteratively using Lovable AI — rapid prototyping with React + TypeScript + shadcn/ui.
+
+---
+
+## 9. System Architecture
+
+### High-Level Architecture
+
+| Layer | Responsibility | Technology |
+|-------|---------------|------------|
+| Frontend (SPA) | Template builder UI, preview, variable editing | React 18 + TypeScript + Vite |
+| Backend API | REST endpoints, template CRUD, execution | Spring Boot + Java |
+| Template Engine | Server-side rendering of final output | Thymeleaf |
+| Database | Persistent storage of all entities | MS SQL Server |
+| External APIs | Live data for template population | REST (Jira, GitHub, ServiceNow, etc.) |
+
+### Request Flow
+
+```
+User Browser (React SPA)
+    │
+    ├── GET /api/templates ──────────► Spring Boot Controller
+    │                                      │
+    │                                      ▼
+    │                                 Service Layer
+    │                                      │
+    │                                      ▼
+    │                                 JPA Repository
+    │                                      │
+    │                                      ▼
+    │                                 MS SQL Server
+    │
+    ├── POST /api/templates/{id}/run ──► Controller → Service → Thymeleaf Engine
+    │                                                     │
+    │                                                     ▼
+    │                                              Rendered HTML Output
+    │
+    └── External API calls ──────────► REST Client → JSONPath Extraction → Global Variables
+```
+
+### Backend Layered Architecture
+
+The backend follows a strict **layered architecture** pattern:
+
+| Layer | Pattern | Example |
+|-------|---------|---------|
+| Entity | JPA `@Entity` classes mapped to DB tables | `Template.java`, `TemplateSection.java` |
+| Repository | Spring Data JPA interfaces | `TemplateRepository.java` |
+| Service | Business logic, validation, orchestration | `TemplateService.java` |
+| Controller | REST endpoints with Swagger docs | `TemplateController.java` |
+| DTO | Request/Response objects with validation | `TemplateRequest.java`, `TemplateResponse.java` |
+| Mapper | Bidirectional entity ↔ DTO conversion | MapStruct `TemplateMapper.java` |
+
+---
+
+## 10. Data Model & Entity Relationships
+
+### Entity Relationship Diagram
+
+```
+┌─────────────────┐                    ┌────────────────────┐
+│    sections     │◄───────────────────│  section_variables │
+│  (Master Data)  │   FK: section_type │    (Metadata)      │
+└─────────────────┘                    └────────────────────┘
+        │
+        │ (logical reference via section_type)
+        ▼
+┌─────────────────┐      FK: template_id    ┌────────────────────┐
+│   templates     │◄────────────────────────│  template_sections │
+│ (User Docs)     │                         │  (Section Instances)│
+└────────┬────────┘                         └─────────┬──────────┘
+         │                                            │
+         │ FK: template_id                            │ FK: parent_section_id
+         ▼                                            │ (SELF-REFERENCE)
+┌─────────────────┐                                   ▼
+│  template_runs  │                         ┌────────────────────┐
+│ (Execution Log) │                         │  (Nested Sections) │
+└─────────────────┘                         └────────────────────┘
+
+┌─────────────────┐      FK: template_id    ┌─────────────────────────────────┐
+│   templates     │◄────────────────────────│ template_global_api_integrations│
+└─────────────────┘     (1:Many)            │  (Global API Integrations)      │
+                                            └─────────┬───────────────────────┘
+                                                      │ FK: api_template_id
+                                                      ▼
+                                            ┌────────────────────┐
+                                            │   api_templates    │
+                                            │  (API Definitions) │
+                                            └─────────┬──────────┘
+                                                      │ FK: api_template_id
+                                                      ▼
+                                            ┌────────────────────┐
+                                            │ api_template_params│
+                                            │  (API Parameters)  │
+                                            └────────────────────┘
+```
+
+### Table Summary
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `sections` | Master catalog of section types (building blocks) | `type`, `label`, `category`, `icon`, `default_content` |
+| `section_variables` | Dual-purpose: variable definitions (catalog) + instance values | `section_type`, `template_section_id`, `variable_name`, `variable_type`, `default_value` |
+| `templates` | User-created templates with generated HTML | `name`, `subject`, `html`, `user_id` |
+| `template_sections` | Section instances within a template | `template_id`, `section_type`, `content`, `variables` (JSON), `styles` (JSON), `order_index` |
+| `template_runs` | Audit log of every template execution | `template_id`, `to_emails`, `variables` (JSON), `html_output`, `status` |
+| `template_variables` | Template-level placeholder definitions | `template_id`, `variable_name`, `variable_type`, `default_value` |
+| `api_templates` | Pre-configured API endpoint catalog | `name`, `url`, `method`, `category`, `mock_data` |
+| `api_template_params` | Parameters for each API template | `api_template_id`, `param_name`, `param_type`, `location` |
+| `template_global_api_integrations` | Links templates to API integrations | `template_id`, `api_template_id`, `variable_name`, `param_values` (JSON), `transformation` (JSON) |
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Dual-purpose `section_variables`** | One table serves both the master catalog (what variables exist per section type) and instance values (actual data per template section). Differentiated by `CHECK` constraint. |
+| **Self-referencing `template_sections`** | `parent_section_id` enables container/nested sections without a separate junction table. |
+| **JSON columns for `variables` and `styles`** | Flexible schema for section-specific data (lists, tables, styling) without rigid column definitions. |
+| **Cascade deletes** | Deleting a template automatically removes all sections, runs, variables, and API integrations. |
+| **Logical references (not FK) for `section_type`** | `template_sections.section_type` references `sections.type` logically to allow frontend-only section types. |
+
+---
+
+## 11. Database Schema Setup
+
+### Prerequisites
+
+- MS SQL Server 2019+
+- Database created with appropriate collation
+
+### Table Creation Order (respecting FK dependencies)
+
+1. `sections` — No dependencies
+2. `templates` — No dependencies
+3. `api_templates` — No dependencies
+4. `template_sections` — Depends on `templates`
+5. `section_variables` — Depends on `sections`, `template_sections`
+6. `template_runs` — Depends on `templates`
+7. `template_variables` — Depends on `templates`
+8. `api_template_params` — Depends on `api_templates`
+9. `template_global_api_integrations` — Depends on `templates`, `api_templates`
+
+### Core Tables SQL
+
+```sql
+-- 1. Sections (master catalog)
+CREATE TABLE sections (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  type NVARCHAR(50) NOT NULL UNIQUE,
+  label NVARCHAR(100) NOT NULL,
+  description NVARCHAR(MAX),
+  category NVARCHAR(50) NOT NULL,
+  icon NVARCHAR(50),
+  default_content NVARCHAR(MAX),
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  updated_at DATETIME2 DEFAULT GETUTCDATE()
+);
+
+-- 2. Templates
+CREATE TABLE templates (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  name NVARCHAR(255) NOT NULL,
+  subject NVARCHAR(500),
+  html NVARCHAR(MAX) NOT NULL,
+  user_id UNIQUEIDENTIFIER,
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  updated_at DATETIME2 DEFAULT GETUTCDATE()
+);
+
+-- 3. Template Sections (with nesting support)
+CREATE TABLE template_sections (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  template_id UNIQUEIDENTIFIER NOT NULL,
+  section_type NVARCHAR(50) NOT NULL,
+  content NVARCHAR(MAX) NOT NULL,
+  variables NVARCHAR(MAX),       -- JSON
+  styles NVARCHAR(MAX),          -- JSON
+  is_label_editable BIT DEFAULT 1,
+  order_index INT NOT NULL,
+  parent_section_id UNIQUEIDENTIFIER,
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  CONSTRAINT fk_ts_template FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE,
+  CONSTRAINT fk_ts_parent FOREIGN KEY (parent_section_id) REFERENCES template_sections(id)
+);
+
+-- 4. API Templates (endpoint catalog)
+CREATE TABLE api_templates (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  name NVARCHAR(255) NOT NULL,
+  description NVARCHAR(MAX),
+  category NVARCHAR(100),
+  url NVARCHAR(2000) NOT NULL,
+  method NVARCHAR(10) NOT NULL,
+  headers NVARCHAR(MAX),         -- JSON
+  body_template NVARCHAR(MAX),
+  mock_data NVARCHAR(MAX),       -- JSON
+  created_at DATETIME2 DEFAULT GETUTCDATE()
+);
+
+-- 5. Template Global API Integrations
+CREATE TABLE template_global_api_integrations (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  template_id UNIQUEIDENTIFIER NOT NULL,
+  api_template_id UNIQUEIDENTIFIER NOT NULL,
+  integration_name NVARCHAR(255) NOT NULL,
+  variable_name NVARCHAR(100) NOT NULL,
+  param_values NVARCHAR(MAX),    -- JSON
+  transformation NVARCHAR(MAX),  -- JSON
+  enabled BIT DEFAULT 1,
+  created_at DATETIME2 DEFAULT GETUTCDATE(),
+  CONSTRAINT fk_tgai_template FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE,
+  CONSTRAINT fk_tgai_api FOREIGN KEY (api_template_id) REFERENCES api_templates(id)
+);
+
+-- 6. Template Runs (execution audit log)
+CREATE TABLE template_runs (
+  id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  template_id UNIQUEIDENTIFIER NOT NULL,
+  to_emails NVARCHAR(MAX) NOT NULL,
+  cc_emails NVARCHAR(MAX),
+  bcc_emails NVARCHAR(MAX),
+  variables NVARCHAR(MAX),       -- JSON
+  html_output NVARCHAR(MAX) NOT NULL,
+  run_at DATETIME2 DEFAULT GETUTCDATE(),
+  status NVARCHAR(50) DEFAULT 'sent',
+  user_id UNIQUEIDENTIFIER,
+  CONSTRAINT fk_tr_template FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE
+);
+```
+
+### Indexes
+
+```sql
+CREATE INDEX idx_sections_type ON sections(type);
+CREATE INDEX idx_templates_user ON templates(user_id);
+CREATE INDEX idx_ts_template ON template_sections(template_id);
+CREATE INDEX idx_ts_order ON template_sections(template_id, order_index);
+CREATE INDEX idx_ts_parent ON template_sections(parent_section_id);
+CREATE INDEX idx_tr_template ON template_runs(template_id);
+CREATE INDEX idx_tr_run_at ON template_runs(run_at DESC);
+CREATE INDEX idx_tgai_template ON template_global_api_integrations(template_id);
+```
+
+---
+
+## 12. Spring Boot Entity Model (Backend)
+
+### Key Entities
+
+| Entity | Table | Key Relationships |
+|--------|-------|-------------------|
+| `Template` | `templates` | `@OneToMany` → `TemplateSection`, `TemplateRun`, `TemplateGlobalApiIntegration` |
+| `TemplateSection` | `template_sections` | `@ManyToOne` → `Template`, self-reference for nesting |
+| `Section` | `sections` | `@OneToMany` → `SectionVariable` (catalog) |
+| `SectionVariable` | `section_variables` | `@ManyToOne` → `Section` or `TemplateSection` |
+| `ApiTemplate` | `api_templates` | `@OneToMany` → `ApiTemplateParam` |
+| `TemplateGlobalApiIntegration` | `template_global_api_integrations` | `@ManyToOne` → `Template`, `ApiTemplate` |
+| `TemplateRun` | `template_runs` | `@ManyToOne` → `Template` |
+
+### DTO Pattern
+
+Every entity uses a **Request/Response DTO** pattern:
+
+```
+TemplateRequest  ──► MapStruct Mapper ──► Template Entity ──► DB
+DB ──► Template Entity ──► MapStruct Mapper ──► TemplateResponse
+```
+
+| DTO | Purpose |
+|-----|---------|
+| `TemplateRequest` | Incoming data with `@NotBlank`, `@Size` validation |
+| `TemplateResponse` | Outgoing data with nested sections, variables, integrations |
+| `TemplateSectionRequest` | Section creation with content, styles, order |
+| `TemplateSectionResponse` | Section data including resolved children |
+
+### Optimized Query for Full Template Load
+
+```java
+@Query("SELECT t FROM Template t " +
+       "LEFT JOIN FETCH t.sections s " +
+       "LEFT JOIN FETCH t.integrations i " +
+       "LEFT JOIN FETCH i.apiTemplate at " +
+       "LEFT JOIN FETCH at.params " +
+       "WHERE t.id = :id " +
+       "ORDER BY s.orderIndex ASC")
+Optional<Template> findByIdWithFullDetails(@Param("id") UUID id);
+```
+
+This single query loads the entire template graph (sections + API integrations + params) in one database round trip.
+
+---
+
+## 13. Frontend ↔ Backend Data Flow
+
+### Template Save Flow
+
+```
+React Editor State
+    │
+    ├── sections[] with content, styles, variables
+    ├── globalApiConfig with integrations[]
+    └── template metadata (name, subject)
+         │
+         ▼
+    templateApi.saveTemplate()
+         │
+         ▼
+    POST /api/templates
+         │
+         ▼
+    TemplateController → TemplateService → TemplateRepository
+         │
+         ▼
+    DB: templates + template_sections + template_global_api_integrations
+```
+
+### Template Run Flow
+
+```
+Runner fills variables + provides API params
+    │
+    ▼
+POST /api/templates/{id}/run
+    │
+    ├── Fetch template with sections
+    ├── Resolve API integrations (call external APIs)
+    ├── Apply data transformations (filter, sort, map)
+    ├── Merge variables into Thymeleaf placeholders
+    ├── Render final HTML via Thymeleaf engine
+    └── Save to template_runs (audit log)
+         │
+         ▼
+    Return rendered HTML → Display in preview / Send as email
+```
+
+### Storage Abstraction
+
+The frontend uses a storage abstraction layer (`templateStorage.ts`) that:
+
+| Method | Current (Demo) | Production |
+|--------|---------------|------------|
+| `saveTemplate()` | localStorage | `POST /api/templates` |
+| `loadTemplate()` | localStorage | `GET /api/templates/{id}/full` |
+| `listTemplates()` | localStorage | `GET /api/templates` |
+| `deleteTemplate()` | localStorage | `DELETE /api/templates/{id}` |
+| `cloneTemplate()` | localStorage | `POST /api/templates/{id}/clone` |
+
+Fallback: If the backend API call fails, the system automatically falls back to localStorage for offline capability.
