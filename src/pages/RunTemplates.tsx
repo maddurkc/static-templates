@@ -3353,6 +3353,41 @@ const RunTemplates = () => {
                                       );
                                     })}
                                   </div>
+                                  {/* Per-item placeholder inputs for {{vars}} found inside list items */}
+                                  {(() => {
+                                    const itemsForScan = (listVariables[listVarName] || []) as (string | ListItemStyle)[];
+                                    const phSet = new Set<string>();
+                                    itemsForScan.forEach((it) => {
+                                      const txt = typeof it === 'string' ? it : (it?.text || '');
+                                      const plain = txt.replace(/<[^>]*>/g, '');
+                                      const matches = plain.match(/\{\{(\w+)\}\}/g) || [];
+                                      matches.forEach((m) => {
+                                        const mm = m.match(/\{\{(\w+)\}\}/);
+                                        if (mm) phSet.add(mm[1]);
+                                      });
+                                    });
+                                    const placeholders = Array.from(phSet);
+                                    if (placeholders.length === 0) return null;
+                                    return (
+                                      <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                                        <Label className="text-xs font-medium text-muted-foreground">List Item Variables</Label>
+                                        {placeholders.map((ph) => (
+                                          <div key={ph} className="flex items-center gap-2">
+                                            <Label className="text-xs font-mono min-w-[110px]">{`{{${ph}}}`}</Label>
+                                            <Input
+                                              value={(variables[ph] as string) || ''}
+                                              onChange={(e) => {
+                                                setVariables((prev) => ({ ...prev, [ph]: e.target.value }));
+                                              }}
+                                              onFocus={() => scrollToSection(section.id)}
+                                              placeholder={`Value for ${ph}`}
+                                              className="h-8 text-sm flex-1"
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             );
