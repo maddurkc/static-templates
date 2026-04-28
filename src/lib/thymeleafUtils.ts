@@ -227,7 +227,7 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
  * Process subject for display - replaces Thymeleaf tags with provided values
  */
 export const processSubjectWithValues = (subject: string, values: Record<string, string>): string => {
-  let result = subject;
+  let result = normalizePlaceholders(subject);
   
   Object.entries(values).forEach(([key, value]) => {
     // New th:block format for subjects
