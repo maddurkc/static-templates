@@ -3714,6 +3714,38 @@ const RunTemplates = () => {
                         updated = { ...updated, variables: updatedVars };
                           }
                           
+                          // For standalone list sections, resolve {{placeholder}} inside list items
+                          if (['bullet-list-circle', 'bullet-list-disc', 'bullet-list-square', 'number-list-1', 'number-list-i', 'number-list-a'].includes(s.type)) {
+                            const listVarName = (s.variables?.listVariableName as string) || s.id;
+                            const sourceItems = (listVariables[listVarName] !== undefined
+                              ? listVariables[listVarName]
+                              : (s.variables?.items as any[])) as (string | ListItemStyle)[] | undefined;
+                            if (sourceItems && Array.isArray(sourceItems)) {
+                              const resolvedItems = sourceItems.map(item => {
+                                const resolveTxt = (txt: string) => txt.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+                                  if (variables[varName] !== undefined && variables[varName] !== '') {
+                                    const val = variables[varName];
+                                    return typeof val === 'object' ? (val as any).text : String(val);
+                                  }
+                                  return match;
+                                });
+                                if (typeof item === 'string') return resolveTxt(item);
+                                if (item && typeof item === 'object' && 'text' in item) {
+                                  return { ...item, text: resolveTxt(item.text || '') };
+                                }
+                                return item;
+                              });
+                              updated = {
+                                ...updated,
+                                variables: {
+                                  ...updated.variables,
+                                  items: resolvedItems,
+                                  [listVarName]: resolvedItems
+                                }
+                              };
+                            }
+                          }
+                          
                           // For heading/text/paragraph sections, inject edited content
                           if (['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6', 'text', 'paragraph'].includes(s.type)) {
                             if (editedSectionContent[s.id] !== undefined) {
