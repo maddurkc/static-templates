@@ -1,6 +1,31 @@
 // Utility functions for Thymeleaf tag conversion
 
 /**
+ * Normalize {{placeholder}} occurrences that may have been broken up by
+ * inline HTML tags (e.g. when the user applies bold/italic over or inside
+ * a placeholder, the browser may produce strings like:
+ *   "{{<b>varName</b>}}"   or   "<b>{{var</b>Name}}"   or   "{{var<i>Name</i>}}".
+ *
+ * This helper strips any HTML tags that appear *inside* a `{{ ... }}` pair
+ * so that downstream regex-based extraction and replacement keep working.
+ * It only touches the inside of placeholder braces — surrounding markup
+ * (bold/italic/color spans wrapping the placeholder) is preserved.
+ */
+export const normalizePlaceholders = (content: string): string => {
+  if (!content || content.indexOf('{{') === -1) return content;
+  // Match {{ ... }} non-greedily, allowing any chars (including tags) inside,
+  // then strip HTML tags from the captured inner content. If, after stripping,
+  // the inner content is a valid identifier, rewrite it as a clean {{name}}.
+  return content.replace(/\{\{([\s\S]*?)\}\}/g, (match, inner) => {
+    const stripped = String(inner).replace(/<[^>]+>/g, '').trim();
+    if (/^\w+$/.test(stripped)) {
+      return `{{${stripped}}}`;
+    }
+    return match;
+  });
+};
+
+/**
  * Convert Thymeleaf tags to user-friendly placeholders for display
  * Supports both old format <th:utext="${var}"> and new format <span th:utext="${var}"/>
  */
