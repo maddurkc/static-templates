@@ -61,6 +61,7 @@ const RunTemplates = () => {
   const [jsonImportOpen, setJsonImportOpen] = useState<string | null>(null); // Tracks which table is being imported to
   const [jsonImportValue, setJsonImportValue] = useState('');
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editedSectionContent, setEditedSectionContent] = useState<Record<string, string>>({});
@@ -90,6 +91,26 @@ const RunTemplates = () => {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       element.classList.add('highlight-section');
       setTimeout(() => element.classList.remove('highlight-section'), 2000);
+    }
+  };
+
+  // Highlight section in preview on hover (without animation flash)
+  const highlightSectionInPreview = (sectionId: string) => {
+    setHoveredSectionId(sectionId);
+    const element = document.getElementById(`preview-section-${sectionId}`);
+    if (element) {
+      // Smooth-scroll into view if not already visible
+      const rect = element.getBoundingClientRect();
+      const scrollArea = document.getElementById('preview-scroll-area');
+      const containerRect = scrollArea?.getBoundingClientRect();
+      if (containerRect) {
+        const isVisible = rect.top >= containerRect.top && rect.bottom <= containerRect.bottom;
+        if (!isVisible) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } else {
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
   };
 
@@ -2511,7 +2532,10 @@ const RunTemplates = () => {
                             return (
                               <div 
                                 key={section.id} 
-                                className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}
+                                className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors cursor-pointer ${(activeSectionId === section.id || hoveredSectionId === section.id) ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'}`}
+                                onMouseEnter={() => highlightSectionInPreview(section.id)}
+                                onMouseLeave={() => setHoveredSectionId(null)}
+                                onClick={() => scrollToSection(section.id)}
                               >
                                 {/* Label - Jira-style editable with RichTextEditor */}
                                 <div className="mb-2">
@@ -2874,7 +2898,7 @@ const RunTemplates = () => {
                             if (mixedVars.length === 0) return null;
                             
                             return (
-                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors cursor-pointer ${(activeSectionId === section.id || hoveredSectionId === section.id) ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'}`} onMouseEnter={() => highlightSectionInPreview(section.id)} onMouseLeave={() => setHoveredSectionId(null)} onClick={() => scrollToSection(section.id)}>
                                 <div className="text-xs text-muted-foreground mb-2">Mixed Content</div>
                                 {mixedVars.map(varName => (
                                   <div key={varName} className={styles.formField}>
@@ -3073,7 +3097,7 @@ const RunTemplates = () => {
                             const mainVarValue = getMainVarValue();
                             
                             return (
-                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors cursor-pointer ${(activeSectionId === section.id || hoveredSectionId === section.id) ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'}`} onMouseEnter={() => highlightSectionInPreview(section.id)} onMouseLeave={() => setHoveredSectionId(null)} onClick={() => scrollToSection(section.id)}>
                                 {/* Content display - show actual value with edit icon, or editable field when editing */}
                                 {isEditingThisSection && isEditable && mainVarKey ? (
                                   <div>
@@ -3250,7 +3274,7 @@ const RunTemplates = () => {
                             const editable = isLabelEditable(listVarName);
                             
                             return (
-                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors cursor-pointer ${(activeSectionId === section.id || hoveredSectionId === section.id) ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'}`} onMouseEnter={() => highlightSectionInPreview(section.id)} onMouseLeave={() => setHoveredSectionId(null)} onClick={() => scrollToSection(section.id)}>
                                 <Popover>
                                   <PopoverTrigger asChild>
                                     <Label className="text-sm font-medium cursor-help mb-2 inline-block">
@@ -3396,7 +3420,7 @@ const RunTemplates = () => {
                           // Handle standalone table sections
                           if (section.type === 'table') {
                             return (
-                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors cursor-pointer ${(activeSectionId === section.id || hoveredSectionId === section.id) ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'}`} onMouseEnter={() => highlightSectionInPreview(section.id)} onMouseLeave={() => setHoveredSectionId(null)} onClick={() => scrollToSection(section.id)}>
                                 <TableEditor
                                   hideStructuralControls
                                   section={section}
@@ -3418,7 +3442,7 @@ const RunTemplates = () => {
                             const ctaUrl = (variables[`ctaUrl_${section.id}`] as string) || (section.variables?.ctaUrl as string) || '#';
                             
                             return (
-                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors cursor-pointer ${(activeSectionId === section.id || hoveredSectionId === section.id) ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'}`} onMouseEnter={() => highlightSectionInPreview(section.id)} onMouseLeave={() => setHoveredSectionId(null)} onClick={() => scrollToSection(section.id)}>
                                 <div className="text-xs text-muted-foreground mb-2">CTA Text Link</div>
                                 
                                 {/* Preview */}
@@ -3484,7 +3508,7 @@ const RunTemplates = () => {
                             const isEditingThisSection = editingSectionId === section.id;
                             
                             return (
-                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors cursor-pointer ${(activeSectionId === section.id || hoveredSectionId === section.id) ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'}`} onMouseEnter={() => highlightSectionInPreview(section.id)} onMouseLeave={() => setHoveredSectionId(null)} onClick={() => scrollToSection(section.id)}>
                                 {/* Content display with inline editing - same as heading/text/paragraph */}
                                 {isEditingThisSection && isEditable ? (
                                   <div>
@@ -3551,7 +3575,7 @@ const RunTemplates = () => {
                             const isEditingThisSection = editingSectionId === section.id;
                             
                             return (
-                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors ${activeSectionId === section.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/30'}`}>
+                              <div key={section.id} className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors cursor-pointer ${(activeSectionId === section.id || hoveredSectionId === section.id) ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'}`} onMouseEnter={() => highlightSectionInPreview(section.id)} onMouseLeave={() => setHoveredSectionId(null)} onClick={() => scrollToSection(section.id)}>
                                 {/* Content display with inline editing */}
                                 {isEditingThisSection && isEditable ? (
                                   <div>
@@ -3624,7 +3648,17 @@ const RunTemplates = () => {
                   <VariablesPanel 
                     variables={extractedVariables}
                     readOnly={false}
-                    onFocusVariable={() => {}}
+                    onFocusVariable={(variableName) => {
+                      if (!variableName) {
+                        setHoveredSectionId(null);
+                        return;
+                      }
+                      // Find which section uses this placeholder and highlight it
+                      const variable = extractedVariables.find(v => v.variableName === variableName);
+                      if (variable?.sectionId) {
+                        highlightSectionInPreview(variable.sectionId);
+                      }
+                    }}
                     onVariableValueChange={(variableName, value) => {
                       setVariables(prev => ({
                         ...prev,
@@ -3920,10 +3954,12 @@ const RunTemplates = () => {
                         
                         const sectionToRender = applyEditedContent(section);
                         
+                        const isActive = activeSectionId === section.id || hoveredSectionId === section.id;
                         return (
                           <div 
                             key={section.id} 
                             id={`preview-section-${section.id}`}
+                            className={isActive ? 'section-highlight-active' : ''}
                             dangerouslySetInnerHTML={{ __html: resolveGlobalApiThymeleaf(wrapSectionInTable(renderSectionContent(sectionToRender, runtimeVars), sectionIndex === 0), globalApiConfig) }}
                           />
                         );
