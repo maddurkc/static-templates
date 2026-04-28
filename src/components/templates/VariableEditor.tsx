@@ -1630,14 +1630,19 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
           
           {variable.type === 'list' ? (
             <div className={styles.listSection}>
-              {(section.variables?.[variable.name] as string[] || [variable.defaultValue as string]).map((item, index) => (
+              {(section.variables?.[variable.name] as any[] || [variable.defaultValue as string]).map((item, index) => {
+                const itemText = typeof item === 'string' ? item : (item?.text ?? '');
+                return (
                 <div key={index} className={styles.listItemWrapper}>
                   <Input
-                    value={item}
+                    value={itemText}
                     onChange={(e) => {
-                      const items = section.variables?.[variable.name] as string[] || [variable.defaultValue as string];
+                      const items = (section.variables?.[variable.name] as any[]) || [variable.defaultValue as string];
                       const newItems = [...items];
-                      newItems[index] = e.target.value;
+                      const newVal = e.target.value;
+                      newItems[index] = typeof items[index] === 'object' && items[index] !== null
+                        ? { ...items[index], text: newVal }
+                        : newVal;
                       onUpdate({
                         ...section,
                         variables: { ...section.variables, [variable.name]: newItems }
@@ -1649,7 +1654,7 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                     size="icon"
                     variant="ghost"
                     onClick={() => {
-                      const items = section.variables?.[variable.name] as string[] || [variable.defaultValue as string];
+                      const items = (section.variables?.[variable.name] as any[]) || [variable.defaultValue as string];
                       const newItems = items.filter((_, i) => i !== index);
                       onUpdate({
                         ...section,
@@ -1661,12 +1666,13 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              ))}
+                );
+              })}
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  const items = section.variables?.[variable.name] as string[] || [variable.defaultValue as string];
+                  const items = (section.variables?.[variable.name] as any[]) || [variable.defaultValue as string];
                   onUpdate({
                     ...section,
                     variables: { ...section.variables, [variable.name]: [...items, ''] }
@@ -1677,6 +1683,42 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
                 <Plus className="h-4 w-4 mr-2" />
                 Add Item
               </Button>
+
+              {/* Per-item placeholder default-value inputs */}
+              {(() => {
+                const rawItems = (section.variables?.[variable.name] as any[]) || [];
+                const normalized: ListItemStyle[] = rawItems.map((it: any) =>
+                  typeof it === 'string' ? { text: it, children: [] } : { text: it?.text || '', children: it?.children || [] }
+                );
+                const listPlaceholders = extractPlaceholdersFromItems(normalized);
+                if (listPlaceholders.length === 0) return null;
+                return (
+                  <div className="space-y-2 mt-4 pt-4 border-t">
+                    <Label className="text-sm font-medium">List Variables - Default Values</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Set default values for placeholders in your list items:
+                    </p>
+                    {listPlaceholders.map(placeholder => (
+                      <div key={placeholder} className="flex items-center gap-2">
+                        <Label className="text-xs font-mono min-w-[120px]">
+                          {`{{${placeholder}}}`}
+                        </Label>
+                        <Input
+                          value={(section.variables?.[placeholder] as string) || ''}
+                          onChange={(e) => {
+                            onUpdate({
+                              ...section,
+                              variables: { ...section.variables, [placeholder]: e.target.value }
+                            });
+                          }}
+                          placeholder={`Default value for ${placeholder}`}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           ) : variable.type === 'url' ? (
             <Input
