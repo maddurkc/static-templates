@@ -3941,10 +3941,12 @@ const RunTemplates = () => {
                         
                         const sectionToRender = applyEditedContent(section);
                         
+                        const isActive = activeSectionId === section.id || hoveredSectionId === section.id;
                         return (
                           <div 
                             key={section.id} 
                             id={`preview-section-${section.id}`}
+                            className={isActive ? 'section-highlight-active' : ''}
                             dangerouslySetInnerHTML={{ __html: resolveGlobalApiThymeleaf(wrapSectionInTable(renderSectionContent(sectionToRender, runtimeVars), sectionIndex === 0), globalApiConfig) }}
                           />
                         );
