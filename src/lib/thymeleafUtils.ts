@@ -114,7 +114,7 @@ export const extractVariableName = (tag: string): string | null => {
  * Get display-friendly content for preview (shows placeholders instead of raw Thymeleaf)
  */
 export const getDisplayContent = (content: string, variables?: Record<string, any>): string => {
-  let displayContent = content;
+  let displayContent = normalizePlaceholders(content);
   
   // If variables exist, replace with actual values
   if (variables) {
