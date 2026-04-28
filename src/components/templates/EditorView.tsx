@@ -210,9 +210,18 @@ const SortableSection = ({
                     const isNumbered = ['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 'upper-alpha'].includes(listStyle);
                     const tag = isNumbered ? 'ol' : 'ul';
                     
+                    const sectionVars = section.variables || {};
+                    const resolvePlaceholders = (txt: string): string =>
+                      txt.replace(/\{\{(\w+)\}\}/g, (m, varName) => {
+                        const v = (sectionVars as any)[varName];
+                        if (v === undefined || v === null || v === '') return m;
+                        return typeof v === 'object' ? ((v as any).text ?? m) : String(v);
+                      });
+
                     const renderItems = (itemList: any[]): string => {
                       return itemList.map(item => {
-                        const text = typeof item === 'string' ? item : item.text || '';
+                        const rawText = typeof item === 'string' ? item : item.text || '';
+                        const text = resolvePlaceholders(rawText);
                         const styles: string[] = [];
                         if (item.color) styles.push(`color: ${item.color}`);
                         if (item.bold) styles.push('font-weight: bold');
@@ -300,9 +309,18 @@ const SortableSection = ({
                 const isNumbered = ['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 'upper-alpha'].includes(listStyle);
                 const tag = isNumbered ? 'ol' : 'ul';
                 
+                const sectionVars = section.variables || {};
+                const resolvePlaceholders = (txt: string): string =>
+                  txt.replace(/\{\{(\w+)\}\}/g, (m, varName) => {
+                    const v = (sectionVars as any)[varName];
+                    if (v === undefined || v === null || v === '') return m;
+                    return typeof v === 'object' ? ((v as any).text ?? m) : String(v);
+                  });
+
                 const renderItems = (itemList: any[]): string => {
                   return itemList.map(item => {
-                    const text = typeof item === 'string' ? item : item.text || '';
+                    const rawText = typeof item === 'string' ? item : item.text || '';
+                    const text = resolvePlaceholders(rawText);
                     const styles: string[] = [];
                     if (item.color) styles.push(`color: ${item.color}`);
                     if (item.bold) styles.push('font-weight: bold');

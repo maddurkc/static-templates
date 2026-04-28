@@ -890,6 +890,14 @@ const RunTemplates = () => {
   const replaceVariables = (html: string, vars: Record<string, string | TextStyle>, listVars: Record<string, string[] | ListItemStyle[]>): string => {
     let result = html;
     
+    // Helper to resolve {{var}} inside list item text using regular vars map
+    const resolveItemText = (txt: string): string =>
+      txt.replace(/\{\{(\w+)\}\}/g, (m, varName) => {
+        const v = (vars as any)[varName];
+        if (v === undefined || v === null || v === '') return m;
+        return typeof v === 'object' ? ((v as any).text ?? m) : String(v);
+      });
+    
     // Replace list variables
     Object.entries(listVars).forEach(([key, items]) => {
       const listHtml = items.filter((item: any) => typeof item === 'string' ? item.trim() : item.text?.trim()).map((item: any) => {
@@ -902,9 +910,9 @@ const RunTemplates = () => {
           if (item.backgroundColor) styles.push(`background-color: ${item.backgroundColor}`);
           if (item.fontSize) styles.push(`font-size: ${item.fontSize}`);
           const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-          return `<li${styleAttr}>${item.text}</li>`;
+          return `<li${styleAttr}>${resolveItemText(item.text)}</li>`;
         }
-        return `<li>${item}</li>`;
+        return `<li>${resolveItemText(String(item))}</li>`;
       }).join('');
       result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), listHtml);
     });
@@ -3345,6 +3353,41 @@ const RunTemplates = () => {
                                       );
                                     })}
                                   </div>
+                                  {/* Per-item placeholder inputs for {{vars}} found inside list items */}
+                                  {(() => {
+                                    const itemsForScan = (listVariables[listVarName] || []) as (string | ListItemStyle)[];
+                                    const phSet = new Set<string>();
+                                    itemsForScan.forEach((it) => {
+                                      const txt = typeof it === 'string' ? it : (it?.text || '');
+                                      const plain = txt.replace(/<[^>]*>/g, '');
+                                      const matches = plain.match(/\{\{(\w+)\}\}/g) || [];
+                                      matches.forEach((m) => {
+                                        const mm = m.match(/\{\{(\w+)\}\}/);
+                                        if (mm) phSet.add(mm[1]);
+                                      });
+                                    });
+                                    const placeholders = Array.from(phSet);
+                                    if (placeholders.length === 0) return null;
+                                    return (
+                                      <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                                        <Label className="text-xs font-medium text-muted-foreground">List Item Variables</Label>
+                                        {placeholders.map((ph) => (
+                                          <div key={ph} className="flex items-center gap-2">
+                                            <Label className="text-xs font-mono min-w-[110px]">{`{{${ph}}}`}</Label>
+                                            <Input
+                                              value={(variables[ph] as string) || ''}
+                                              onChange={(e) => {
+                                                setVariables((prev) => ({ ...prev, [ph]: e.target.value }));
+                                              }}
+                                              onFocus={() => scrollToSection(section.id)}
+                                              placeholder={`Value for ${ph}`}
+                                              className="h-8 text-sm flex-1"
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             );
@@ -3712,6 +3755,38 @@ const RunTemplates = () => {
                         }
                         
                         updated = { ...updated, variables: updatedVars };
+                          }
+                          
+                          // For standalone list sections, resolve {{placeholder}} inside list items
+                          if (['bullet-list-circle', 'bullet-list-disc', 'bullet-list-square', 'number-list-1', 'number-list-i', 'number-list-a'].includes(s.type)) {
+                            const listVarName = (s.variables?.listVariableName as string) || s.id;
+                            const sourceItems = (listVariables[listVarName] !== undefined
+                              ? listVariables[listVarName]
+                              : (s.variables?.items as any[])) as (string | ListItemStyle)[] | undefined;
+                            if (sourceItems && Array.isArray(sourceItems)) {
+                              const resolvedItems = sourceItems.map(item => {
+                                const resolveTxt = (txt: string) => txt.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+                                  if (variables[varName] !== undefined && variables[varName] !== '') {
+                                    const val = variables[varName];
+                                    return typeof val === 'object' ? (val as any).text : String(val);
+                                  }
+                                  return match;
+                                });
+                                if (typeof item === 'string') return resolveTxt(item);
+                                if (item && typeof item === 'object' && 'text' in item) {
+                                  return { ...item, text: resolveTxt(item.text || '') };
+                                }
+                                return item;
+                              });
+                              updated = {
+                                ...updated,
+                                variables: {
+                                  ...updated.variables,
+                                  items: resolvedItems,
+                                  [listVarName]: resolvedItems
+                                }
+                              };
+                            }
                           }
                           
                           // For heading/text/paragraph sections, inject edited content
