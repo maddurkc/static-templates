@@ -1,6 +1,31 @@
 // Utility functions for Thymeleaf tag conversion
 
 /**
+ * Normalize {{placeholder}} occurrences that may have been broken up by
+ * inline HTML tags (e.g. when the user applies bold/italic over or inside
+ * a placeholder, the browser may produce strings like:
+ *   "{{<b>varName</b>}}"   or   "<b>{{var</b>Name}}"   or   "{{var<i>Name</i>}}".
+ *
+ * This helper strips any HTML tags that appear *inside* a `{{ ... }}` pair
+ * so that downstream regex-based extraction and replacement keep working.
+ * It only touches the inside of placeholder braces — surrounding markup
+ * (bold/italic/color spans wrapping the placeholder) is preserved.
+ */
+export const normalizePlaceholders = (content: string): string => {
+  if (!content || content.indexOf('{{') === -1) return content;
+  // Match {{ ... }} non-greedily, allowing any chars (including tags) inside,
+  // then strip HTML tags from the captured inner content. If, after stripping,
+  // the inner content is a valid identifier, rewrite it as a clean {{name}}.
+  return content.replace(/\{\{([\s\S]*?)\}\}/g, (match, inner) => {
+    const stripped = String(inner).replace(/<[^>]+>/g, '').trim();
+    if (/^\w+$/.test(stripped)) {
+      return `{{${stripped}}}`;
+    }
+    return match;
+  });
+};
+
+/**
  * Convert Thymeleaf tags to user-friendly placeholders for display
  * Supports both old format <th:utext="${var}"> and new format <span th:utext="${var}"/>
  */
@@ -23,7 +48,8 @@ export const thymeleafToPlaceholder = (content: string): string => {
  * Uses <span th:utext="${variableName}"/> format for body content
  */
 export const placeholderToThymeleaf = (content: string): string => {
-  let result = content;
+  // Normalize any placeholders that were broken up by inline formatting tags
+  let result = normalizePlaceholders(content);
   
   // First handle structured tags
   result = result
@@ -88,7 +114,7 @@ export const extractVariableName = (tag: string): string | null => {
  * Get display-friendly content for preview (shows placeholders instead of raw Thymeleaf)
  */
 export const getDisplayContent = (content: string, variables?: Record<string, any>): string => {
-  let displayContent = content;
+  let displayContent = normalizePlaceholders(content);
   
   // If variables exist, replace with actual values
   if (variables) {
@@ -134,11 +160,13 @@ const isEmptyValue = (value: any): boolean => {
  * in the variables object to ensure proper matching.
  */
 export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }> | Record<string, any>, highlightedVariableName?: string | null): string => {
+  // Normalize {{placeholders}} that may have been split by inline formatting tags
+  const normalized = normalizePlaceholders(content);
   if (!variables) {
-    return thymeleafToPlaceholder(content);
+    return thymeleafToPlaceholder(normalized);
   }
 
-  let result = content;
+  let result = normalized;
 
   const getVariableValue = (varName: string): any => {
     if (Array.isArray(variables)) {
@@ -199,7 +227,7 @@ export const replaceWithDefaults = (content: string, variables?: Array<{ name: s
  * Process subject for display - replaces Thymeleaf tags with provided values
  */
 export const processSubjectWithValues = (subject: string, values: Record<string, string>): string => {
-  let result = subject;
+  let result = normalizePlaceholders(subject);
   
   Object.entries(values).forEach(([key, value]) => {
     // New th:block format for subjects

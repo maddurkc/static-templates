@@ -6,11 +6,15 @@
 
 import { Section } from "@/types/section";
 import { TemplateVariable } from "@/types/template-variable";
+import { normalizePlaceholders } from "./thymeleafUtils";
 
-// Extract {{placeholder}} patterns from a string
+// Extract {{placeholder}} patterns from a string.
+// Normalizes first so that placeholders broken by inline formatting tags
+// (e.g. "{{<b>name</b>}}") are still detected.
 const extractPlaceholders = (text: string): string[] => {
+  const normalized = normalizePlaceholders(text);
   const regex = /\{\{(\w+)\}\}/g;
-  const matches = text.matchAll(regex);
+  const matches = normalized.matchAll(regex);
   return Array.from(new Set(Array.from(matches, m => m[1])));
 };
 
