@@ -3648,7 +3648,17 @@ const RunTemplates = () => {
                   <VariablesPanel 
                     variables={extractedVariables}
                     readOnly={false}
-                    onFocusVariable={() => {}}
+                    onFocusVariable={(variableName) => {
+                      if (!variableName) {
+                        setHoveredSectionId(null);
+                        return;
+                      }
+                      // Find which section uses this placeholder and highlight it
+                      const variable = extractedVariables.find(v => v.variableName === variableName);
+                      if (variable?.sectionId) {
+                        highlightSectionInPreview(variable.sectionId);
+                      }
+                    }}
                     onVariableValueChange={(variableName, value) => {
                       setVariables(prev => ({
                         ...prev,
