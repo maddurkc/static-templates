@@ -61,6 +61,7 @@ const RunTemplates = () => {
   const [jsonImportOpen, setJsonImportOpen] = useState<string | null>(null); // Tracks which table is being imported to
   const [jsonImportValue, setJsonImportValue] = useState('');
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editedSectionContent, setEditedSectionContent] = useState<Record<string, string>>({});
@@ -90,6 +91,26 @@ const RunTemplates = () => {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       element.classList.add('highlight-section');
       setTimeout(() => element.classList.remove('highlight-section'), 2000);
+    }
+  };
+
+  // Highlight section in preview on hover (without animation flash)
+  const highlightSectionInPreview = (sectionId: string) => {
+    setHoveredSectionId(sectionId);
+    const element = document.getElementById(`preview-section-${sectionId}`);
+    if (element) {
+      // Smooth-scroll into view if not already visible
+      const rect = element.getBoundingClientRect();
+      const scrollArea = document.getElementById('preview-scroll-area');
+      const containerRect = scrollArea?.getBoundingClientRect();
+      if (containerRect) {
+        const isVisible = rect.top >= containerRect.top && rect.bottom <= containerRect.bottom;
+        if (!isVisible) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } else {
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
   };
 
