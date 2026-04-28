@@ -628,6 +628,15 @@
   border-radius: 4px;
 }
 
+/* Persistent highlight when section is hovered or selected in left panel */
+:global(.section-highlight-active) {
+  position: relative;
+  background-color: rgba(0, 120, 212, 0.08);
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.5);
+  border-radius: 4px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
 @keyframes highlightPulse {
   0% {
     background-color: rgba(0, 120, 212, 0.2);
