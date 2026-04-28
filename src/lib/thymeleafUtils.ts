@@ -160,11 +160,13 @@ const isEmptyValue = (value: any): boolean => {
  * in the variables object to ensure proper matching.
  */
 export const replaceWithDefaults = (content: string, variables?: Array<{ name: string; defaultValue: any }> | Record<string, any>, highlightedVariableName?: string | null): string => {
+  // Normalize {{placeholders}} that may have been split by inline formatting tags
+  const normalized = normalizePlaceholders(content);
   if (!variables) {
-    return thymeleafToPlaceholder(content);
+    return thymeleafToPlaceholder(normalized);
   }
 
-  let result = content;
+  let result = normalized;
 
   const getVariableValue = (varName: string): any => {
     if (Array.isArray(variables)) {
