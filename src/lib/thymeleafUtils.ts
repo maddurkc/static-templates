@@ -48,7 +48,8 @@ export const thymeleafToPlaceholder = (content: string): string => {
  * Uses <span th:utext="${variableName}"/> format for body content
  */
 export const placeholderToThymeleaf = (content: string): string => {
-  let result = content;
+  // Normalize any placeholders that were broken up by inline formatting tags
+  let result = normalizePlaceholders(content);
   
   // First handle structured tags
   result = result
