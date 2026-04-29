@@ -1,5 +1,42 @@
 import { Section } from "@/types/section";
 import { GlobalApiConfig } from "@/types/global-api-config";
+import { API_TEMPLATES } from "@/data/apiTemplates";
+
+/**
+ * Strip secret param values (anything routed through an HTTP header — typically
+ * Authorization tokens) from a GlobalApiConfig before persisting to localStorage.
+ * Runtime/in-memory state still contains the values; only the on-disk copy is
+ * scrubbed. Users will re-enter credentials when reopening the template.
+ */
+const stripSecretsFromGlobalApiConfig = (
+  config?: GlobalApiConfig
+): GlobalApiConfig | undefined => {
+  if (!config) return config;
+  return {
+    ...config,
+    integrations: (config.integrations || []).map((integration) => {
+      const tpl = API_TEMPLATES.find((t) => t.id === integration.templateId);
+      const headerParamNames = new Set(
+        (tpl?.requiredParams || [])
+          .filter((p) => p.location === "header")
+          .map((p) => p.name)
+      );
+      const safeParamValues: Record<string, string> = {};
+      for (const [k, v] of Object.entries(integration.paramValues || {})) {
+        if (!headerParamNames.has(k)) safeParamValues[k] = v;
+      }
+      return { ...integration, paramValues: safeParamValues };
+    }),
+  };
+};
+
+/** Produce a serialization-safe copy of a template (no secrets in headers). */
+const sanitizeTemplateForStorage = <T extends { globalApiConfig?: GlobalApiConfig }>(
+  template: T
+): T => ({
+  ...template,
+  globalApiConfig: stripSecretsFromGlobalApiConfig(template.globalApiConfig),
+});
 
 export interface Template {
   id: string;
