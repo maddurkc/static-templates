@@ -1,4 +1,5 @@
 import { GlobalApiConfig } from "@/types/global-api-config";
+import { sanitizeHTML } from "@/lib/sanitize";
 
 /**
  * Get a nested value from an object using dot notation.
@@ -9,13 +10,23 @@ const getNestedValue = (obj: any, path: string): any => {
 };
 
 /**
+ * Safely convert an arbitrary external API value into an HTML-safe string.
+ * - Objects are JSON-stringified
+ * - All output is run through DOMPurify (sanitizeHTML) to strip <script>,
+ *   event handlers, and other XSS vectors before being injected into HTML
+ *   templates via dangerouslySetInnerHTML downstream.
+ */
+const toSafeString = (value: any): string => {
+  const raw = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  return sanitizeHTML(raw);
+};
+
+/**
  * Resolves all {{variableName}} and {{variableName.field.path}} placeholders
  * in a content string using global API variables.
- * 
- * - If the variable is an object and a field path is provided, returns the field value.
- * - If the variable is an object with no field path, returns JSON stringified.
- * - If the variable is a primitive, returns its string value.
- * - If the variable is not found, returns the original placeholder unchanged.
+ *
+ * All resolved external API values are sanitized to prevent stored XSS
+ * (e.g., a Jira/ServiceNow description containing <script> or onerror attrs).
  */
 export const resolveGlobalApiVariables = (
   content: string,
@@ -36,22 +47,18 @@ export const resolveGlobalApiVariables = (
     if (data === null || data === undefined) return match;
 
     if (fieldPath) {
-      // Dot-notation access: snowDetails.changeNo
       const value = getNestedValue(data, fieldPath);
       if (value === null || value === undefined) return match;
-      if (typeof value === 'object') return JSON.stringify(value);
-      return String(value);
+      return toSafeString(value);
     }
 
-    // No field path - return stringified object or primitive
-    if (typeof data === 'object') return JSON.stringify(data);
-    return String(data);
+    return toSafeString(data);
   });
 };
 
 /**
  * Same as resolveGlobalApiVariables but also resolves Thymeleaf-style
- * <span th:utext="${varName.field}"/> tags.
+ * <span th:utext="${varName.field}"/> tags. All resolved values are sanitized.
  */
 export const resolveGlobalApiThymeleaf = (
   content: string,
@@ -76,12 +83,10 @@ export const resolveGlobalApiThymeleaf = (
       if (fieldPath) {
         const value = getNestedValue(data, fieldPath);
         if (value === null || value === undefined) return match;
-        if (typeof value === 'object') return JSON.stringify(value);
-        return String(value);
+        return toSafeString(value);
       }
 
-      if (typeof data === 'object') return JSON.stringify(data);
-      return String(data);
+      return toSafeString(data);
     }
   );
 
