@@ -59,9 +59,14 @@ export const saveTemplate = (template: Omit<Template, 'id'>): Template => {
     ...template,
     id: `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
   };
-  
+
   templates.push(newTemplate);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(templates.map(sanitizeTemplateForStorage))
+  );
+  // Return the in-memory template (with secrets) so the current session
+  // continues to work without re-prompting for credentials.
   return newTemplate;
 };
 
