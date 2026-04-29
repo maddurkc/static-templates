@@ -820,10 +820,13 @@ export const getTemplates = (): Template[] => {
 
 export const updateTemplate = (id: string, updates: Partial<Template>): void => {
   const templates = getTemplates();
-  const updatedTemplates = templates.map(t => 
+  const updatedTemplates = templates.map(t =>
     t.id === id ? { ...t, ...updates } : t
   );
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTemplates));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(updatedTemplates.map(sanitizeTemplateForStorage))
+  );
 };
 
 export const resetTemplatesToDefault = (): void => {
