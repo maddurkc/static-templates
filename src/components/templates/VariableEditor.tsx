@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2, ChevronRight, ChevronDown, Palette, Bold, Italic, Underline, Info, Database } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { TableEditor } from "./TableEditor";
+import { GifSectionEditor } from "./GifSectionEditor";
 import { ThymeleafEditor } from "./ThymeleafEditor";
 import { ApiVariablePicker } from "./ApiVariablePicker";
 import { RichTextEditor } from "./RichTextEditor";
@@ -435,6 +436,26 @@ export const VariableEditor = ({ section, onUpdate, globalApiConfig }: VariableE
   // Show TableEditor for table sections
   if (section.type === 'table') {
     return <TableEditor section={section} onUpdate={onUpdate} />;
+  }
+
+  // Show GifSectionEditor for GIF/image sections
+  if (section.type === 'gif') {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>GIF / Image</h3>
+        </div>
+        <Separator />
+        <div className={styles.section}>
+          <GifSectionEditor section={section} onUpdate={onUpdate} />
+          <p className={styles.description} style={{ marginTop: 12 }}>
+            The image is embedded inline in the email using a Content-ID
+            (CID) attachment — the same approach Outlook uses when you paste
+            an image into a message.
+          </p>
+        </div>
+      </div>
+    );
   }
   
   // No editor needed for line breaks
