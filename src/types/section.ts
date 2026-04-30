@@ -30,7 +30,8 @@ export type SectionType =
   | 'banner'
   | 'program-name'
   | 'cta-text'
-  | 'date';
+  | 'date'
+  | 'gif';
 
 export interface SectionVariable {
   name: string;
