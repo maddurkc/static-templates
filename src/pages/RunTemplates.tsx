@@ -3652,8 +3652,15 @@ const RunTemplates = () => {
                                   section={section}
                                   onUpdate={(updated) => {
                                     // Update the in-memory template sections so the preview re-renders
-                                    setSections(prev =>
-                                      prev.map(s => (s.id === section.id ? updated : s))
+                                    setSelectedTemplate(prev =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            sections: (prev.sections || []).map(s =>
+                                              s.id === section.id ? updated : s
+                                            ),
+                                          }
+                                        : prev
                                     );
                                     // Also reflect the new src in the variables map so any
                                     // {{gifSrc}} placeholder consumers see the latest value.
