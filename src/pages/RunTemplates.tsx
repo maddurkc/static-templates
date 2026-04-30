@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid, Info, ChevronUp, ChevronDown } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import { TableEditor } from "@/components/templates/TableEditor";
+import { GifSectionEditor } from "@/components/templates/GifSectionEditor";
 import {
   Dialog,
   DialogContent,
@@ -3631,7 +3632,56 @@ const RunTemplates = () => {
                               </div>
                             );
                           }
-                          
+
+                          // Handle GIF / image sections at runtime
+                          if (section.type === 'gif') {
+                            const gifSrc = (section.variables?.gifSrc as string) || '';
+                            const gifFileName = (section.variables?.gifFileName as string) || '';
+                            return (
+                              <div
+                                key={section.id}
+                                className={`mb-4 pb-4 border-b border-border/50 last:border-b-0 rounded-lg p-3 transition-colors cursor-pointer ${(activeSectionId === section.id || hoveredSectionId === section.id) ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'}`}
+                                onMouseEnter={() => highlightSectionInPreview(section.id)}
+                                onMouseLeave={() => setHoveredSectionId(null)}
+                                onClick={() => scrollToSection(section.id)}
+                              >
+                                <div className="text-xs font-medium text-muted-foreground mb-2">
+                                  GIF / Image{gifFileName ? ` · ${gifFileName}` : ''}
+                                </div>
+                                <GifSectionEditor
+                                  section={section}
+                                  onUpdate={(updated) => {
+                                    // Update the in-memory template sections so the preview re-renders
+                                    setSelectedTemplate(prev =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            sections: (prev.sections || []).map(s =>
+                                              s.id === section.id ? updated : s
+                                            ),
+                                          }
+                                        : prev
+                                    );
+                                    // Also reflect the new src in the variables map so any
+                                    // {{gifSrc}} placeholder consumers see the latest value.
+                                    if (updated.variables?.gifSrc !== undefined) {
+                                      setVariables(prev => ({
+                                        ...prev,
+                                        [`gifSrc_${section.id}`]: updated.variables!.gifSrc as string,
+                                      }));
+                                    }
+                                  }}
+                                  compact
+                                />
+                                {!gifSrc && (
+                                  <p className="text-[11px] text-muted-foreground mt-2">
+                                    Drop a GIF or image — it will be sent inline (CID) with the email.
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
+
                           return null;
                         })}
                       </>

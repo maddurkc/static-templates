@@ -20,7 +20,8 @@ import {
   FileText,
   Box,
   Flag,
-  Calendar
+  Calendar,
+  FileImage
 } from "lucide-react";
 import { SectionDefinition } from "@/types/section";
 
@@ -442,6 +443,23 @@ export const sectionTypes: SectionDefinition[] = [
     category: 'text',
     variables: [
       { name: 'dateValue', label: 'Date Value', type: 'text', defaultValue: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' }) }
+    ]
+  },
+  {
+    type: 'gif',
+    label: 'GIF / Image',
+    icon: FileImage,
+    description: 'Drag & drop a GIF or image. Sent inline (CID) like Outlook.',
+    // Use Thymeleaf placeholders for src/alt/width — backend resolves CID at send time
+    defaultContent: `<img th:src="\${gifSrc}" alt="" th:alt="\${gifAlt}" th:width="\${gifWidth}" style="display: block; max-width: 100%; height: auto; border: 0; outline: none; text-decoration: none;" />`,
+    category: 'media',
+    variables: [
+      { name: 'gifSrc', label: 'Image / GIF', type: 'url', defaultValue: '' },
+      { name: 'gifContentId', label: 'Content-ID (CID)', type: 'text', defaultValue: '' },
+      { name: 'gifFileName', label: 'File Name', type: 'text', defaultValue: '' },
+      { name: 'gifMimeType', label: 'MIME Type', type: 'text', defaultValue: '' },
+      { name: 'gifAlt', label: 'Alt Text', type: 'text', defaultValue: 'Inline image' },
+      { name: 'gifWidth', label: 'Display Width (px)', type: 'text', defaultValue: '300' }
     ]
   }
 ];

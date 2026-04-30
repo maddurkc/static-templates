@@ -387,6 +387,43 @@ const SortableSection = ({
                      new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
             })()}
           </div>
+        ) : !isContainer && section.type === 'gif' ? (
+          // Handle GIF/Image sections - inline preview of uploaded image
+          (() => {
+            const gifSrc = (section.variables?.gifSrc as string) || '';
+            const gifAlt = (section.variables?.gifAlt as string) || 'Inline image';
+            const gifWidth = (section.variables?.gifWidth as string) || '300';
+            return (
+              <div style={{ padding: '8px 0' }}>
+                {gifSrc ? (
+                  <img
+                    src={gifSrc}
+                    alt={gifAlt}
+                    style={{
+                      display: 'block',
+                      maxWidth: '100%',
+                      width: `${gifWidth}px`,
+                      height: 'auto',
+                      borderRadius: 4,
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      padding: 24,
+                      textAlign: 'center',
+                      border: '2px dashed hsl(var(--border))',
+                      borderRadius: 8,
+                      color: 'hsl(var(--muted-foreground))',
+                      fontSize: 13,
+                    }}
+                  >
+                    No image uploaded — open the section editor to add a GIF
+                  </div>
+                )}
+              </div>
+            );
+          })()
         ) : !isContainer && (
           <>
             <div

@@ -929,7 +929,39 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   if (section.type === 'line-break') {
     return '<div style="height: 16px;"></div>';
   }
-  
+
+  // Handle GIF / image sections
+  // - In the in-app preview we render the base64 data URL directly so users see the image.
+  // - For email send, the backend swaps the data URL for `cid:<gifContentId>` and attaches
+  //   the binary as an inline MIME part — same pattern Outlook uses (untitled_files/imageNNN.gif).
+  if (section.type === 'gif') {
+    const v = section.variables || {};
+    const runtimeSrc =
+      (variables?.[`gifSrc_${section.id}`] as string) ||
+      (variables?.gifSrc as string) ||
+      (v.gifSrc as string) ||
+      '';
+    const alt = sanitizeInput(
+      (variables?.gifAlt as string) || (v.gifAlt as string) || 'Inline image'
+    );
+    const widthRaw = (variables?.gifWidth as string) || (v.gifWidth as string) || '300';
+    const width = String(widthRaw).replace(/[^0-9]/g, '') || '300';
+    const cid = (v.gifContentId as string) || '';
+
+    if (!runtimeSrc && !cid) {
+      // Empty placeholder — keep email layout intact but visible only in preview.
+      return wrapInOutlookTable(
+        `<div style="padding:16px;border:1px dashed #ccc;color:#999;font-family:${OUTLOOK_FONT_FAMILY};font-size:12px;text-align:center;">[GIF / image placeholder]</div>`
+      );
+    }
+    // We always emit the data URL here for in-app preview rendering. The backend
+    // detects the data URL + companion `gifContentId` from the section payload
+    // and rewrites src to `cid:<gifContentId>` before sending.
+    const src = runtimeSrc || (cid ? `cid:${cid}` : '');
+    const imgHtml = `<img src="${src}" alt="${alt}" width="${width}" style="display:block;max-width:100%;width:${width}px;height:auto;border:0;outline:none;text-decoration:none;" />`;
+    return wrapInOutlookTable(imgHtml);
+  }
+
   // Handle separator-line sections (horizontal rule)
   if (section.type === 'separator-line') {
     return '<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 16px 0;"/>';
