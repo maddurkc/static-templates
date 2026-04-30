@@ -112,7 +112,21 @@ export const PreviewView = ({ headerSection, footerSection, sections, selectedSe
     if (section.type === 'separator-line') {
       return '<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 16px 0;"/>';
     }
-    
+
+    // Handle GIF / image sections — render the uploaded base64 data URL.
+    // (At email send time the backend rewrites this to cid:<gifContentId>.)
+    if (section.type === 'gif') {
+      const v = section.variables || {};
+      const gifSrc = (v.gifSrc as string) || '';
+      const gifAlt = (v.gifAlt as string) || 'Inline image';
+      const widthRaw = (v.gifWidth as string) || '300';
+      const width = String(widthRaw).replace(/[^0-9]/g, '') || '300';
+      if (!gifSrc) {
+        return `<div style="${styleString}; padding:16px; border:1px dashed #ccc; color:#999; font-family:'Wells Fargo Sans', Arial, Helvetica, sans-serif; font-size:12px; text-align:center;">[GIF / image placeholder — drop a file in the editor]</div>`;
+      }
+      return `<div style="${styleString}"><img src="${gifSrc}" alt="${gifAlt}" width="${width}" style="display:block; max-width:100%; width:${width}px; height:auto; border:0; outline:none; text-decoration:none;" /></div>`;
+    }
+
     // Handle standalone table sections and banner sections
     if ((section.type === 'table' || section.type === 'banner') && section.variables?.tableData) {
       const tableData = section.variables.tableData as TableData;
