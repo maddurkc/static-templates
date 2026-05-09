@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle, IndentIncrease, IndentDecrease } from "lucide-react";
+import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle, IndentIncrease, IndentDecrease, HelpCircle } from "lucide-react";
 import { useIntellisenseContext } from "@/contexts/IntellisenseContext";
 import { useVariableIntellisense } from "@/hooks/useVariableIntellisense";
 import { VariableIntellisense } from "./VariableIntellisense";
@@ -49,6 +49,102 @@ export const RichTextEditor = ({
   const intellisense = useVariableIntellisense({ globalApiConfig, enabled: intellisenseEnabled });
   const intellisenseRef = useRef(intellisense);
   intellisenseRef.current = intellisense;
+
+  // ---- Undo/redo stacks for list indent/outdent (browser undo doesn't capture
+  // our manual DOM reparenting). Stacks are cleared on regular typing so the
+  // browser's native undo continues to work for normal edits.
+  type Snapshot = {
+    html: string;
+    range: { startPath: number[]; startOffset: number; endPath: number[]; endOffset: number } | null;
+  };
+  const undoStackRef = useRef<Snapshot[]>([]);
+  const redoStackRef = useRef<Snapshot[]>([]);
+
+  const serializeRange = useCallback(() => {
+    const root = editorRef.current;
+    const sel = window.getSelection();
+    if (!root || !sel || sel.rangeCount === 0) return null;
+    const r = sel.getRangeAt(0);
+    if (!root.contains(r.startContainer) || !root.contains(r.endContainer)) return null;
+    const path = (n: Node): number[] => {
+      const out: number[] = [];
+      let cur: Node | null = n;
+      while (cur && cur !== root) {
+        const parent = cur.parentNode;
+        if (!parent) break;
+        out.unshift(Array.prototype.indexOf.call(parent.childNodes, cur));
+        cur = parent;
+      }
+      return out;
+    };
+    return {
+      startPath: path(r.startContainer),
+      startOffset: r.startOffset,
+      endPath: path(r.endContainer),
+      endOffset: r.endOffset,
+    };
+  }, []);
+
+  const restoreSerializedRange = useCallback((s: Snapshot['range']) => {
+    const root = editorRef.current;
+    if (!s || !root) return;
+    const resolve = (path: number[]): Node | null => {
+      let cur: Node = root;
+      for (const i of path) {
+        if (!cur.childNodes[i]) return null;
+        cur = cur.childNodes[i];
+      }
+      return cur;
+    };
+    const sn = resolve(s.startPath);
+    const en = resolve(s.endPath);
+    if (!sn || !en) return;
+    try {
+      const r = document.createRange();
+      const maxS = sn.nodeType === Node.TEXT_NODE ? (sn as Text).length : sn.childNodes.length;
+      const maxE = en.nodeType === Node.TEXT_NODE ? (en as Text).length : en.childNodes.length;
+      r.setStart(sn, Math.min(s.startOffset, maxS));
+      r.setEnd(en, Math.min(s.endOffset, maxE));
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(r);
+    } catch { /* ignore */ }
+  }, []);
+
+  const takeSnapshot = useCallback((): Snapshot => ({
+    html: editorRef.current?.innerHTML || '',
+    range: serializeRange(),
+  }), [serializeRange]);
+
+  const pushUndo = useCallback(() => {
+    undoStackRef.current.push(takeSnapshot());
+    if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+    redoStackRef.current = [];
+  }, [takeSnapshot]);
+
+  const applySnapshot = useCallback((snap: Snapshot) => {
+    if (!editorRef.current) return;
+    editorRef.current.innerHTML = snap.html;
+    isUserEditingRef.current = true;
+    onChange(snap.html);
+    requestAnimationFrame(() => restoreSerializedRange(snap.range));
+  }, [onChange, restoreSerializedRange]);
+
+  const performUndo = useCallback((): boolean => {
+    if (undoStackRef.current.length === 0) return false;
+    redoStackRef.current.push(takeSnapshot());
+    const prev = undoStackRef.current.pop()!;
+    applySnapshot(prev);
+    return true;
+  }, [takeSnapshot, applySnapshot]);
+
+  const performRedo = useCallback((): boolean => {
+    if (redoStackRef.current.length === 0) return false;
+    undoStackRef.current.push(takeSnapshot());
+    const next = redoStackRef.current.pop()!;
+    applySnapshot(next);
+    return true;
+  }, [takeSnapshot, applySnapshot]);
 
   // Initialize content on mount and update if value changed externally
   useEffect(() => {
@@ -393,6 +489,7 @@ export const RichTextEditor = ({
   }, [findListItemAncestor]);
 
   const applyIndent = useCallback(() => {
+    pushUndo();
     restoreSelection();
     const items = getSelectedListItems();
     if (items.length > 0) {
@@ -402,11 +499,13 @@ export const RichTextEditor = ({
     }
     normalizeIndentForOutlook();
     normalizeListStyles();
+    isUserEditingRef.current = true;
     if (editorRef.current) onChange(editorRef.current.innerHTML);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, indentListItems]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, indentListItems, pushUndo]);
 
   const applyOutdent = useCallback(() => {
+    pushUndo();
     restoreSelection();
     const items = getSelectedListItems();
     if (items.length > 0) {
@@ -416,9 +515,10 @@ export const RichTextEditor = ({
     }
     normalizeIndentForOutlook();
     normalizeListStyles();
+    isUserEditingRef.current = true;
     if (editorRef.current) onChange(editorRef.current.innerHTML);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, outdentListItems]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, outdentListItems, pushUndo]);
 
   const applyLink = useCallback(() => {
     if (!linkUrl.trim()) return;
@@ -462,6 +562,10 @@ export const RichTextEditor = ({
   const handleInput = useCallback(() => {
     if (editorRef.current) {
       isUserEditingRef.current = true;
+      // Regular typing supersedes our list-op undo stack — clear it so the
+      // browser's native undo handles subsequent typing.
+      undoStackRef.current = [];
+      redoStackRef.current = [];
       onChange(editorRef.current.innerHTML);
       // Trigger intellisense via ref to avoid stale closures
       intellisenseRef.current.handleContentEditableInput(editorRef.current);
@@ -496,6 +600,24 @@ export const RichTextEditor = ({
       return;
     }
 
+    // Undo / Redo for our list-indent/outdent operations.
+    // We only intercept when our stacks have entries; otherwise let the browser
+    // handle native undo for normal typing.
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      const isUndo = e.key === 'z' && !e.shiftKey;
+      const isRedo = (e.key === 'y') || (e.key === 'z' && e.shiftKey);
+      if (isUndo && undoStackRef.current.length > 0) {
+        e.preventDefault();
+        performUndo();
+        return;
+      }
+      if (isRedo && redoStackRef.current.length > 0) {
+        e.preventDefault();
+        performRedo();
+        return;
+      }
+    }
+
     // Prevent Enter key in single line mode
     if (singleLine && e.key === 'Enter') {
       e.preventDefault();
@@ -509,6 +631,9 @@ export const RichTextEditor = ({
       const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
       const node = range ? range.commonAncestorContainer : null;
       const inList = !!findListItemAncestor(node);
+
+      // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
+      if (inList) pushUndo();
 
       // Snapshot caret so we can restore it after DOM reparenting
       let caretNode: Node | null = null;
@@ -619,17 +744,67 @@ export const RichTextEditor = ({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
+    const html = e.clipboardData.getData('text/html');
     const text = e.clipboardData.getData('text/plain');
-    // For single line, remove newlines; for multi-line, convert newlines to <br>
+
     if (singleLine) {
       const processedText = text.replace(/[\r\n]+/g, ' ');
       document.execCommand('insertText', false, processedText);
+      if (editorRef.current) onChange(editorRef.current.innerHTML);
+      return;
+    }
+
+    // If we have rich HTML, sanitize/normalize lists before inserting so mixed
+    // UL/OL styles get the Outlook depth cycle and Word/Office gunk is stripped.
+    if (html && /<[a-z][\s\S]*>/i.test(html)) {
+      // Strip MS Office conditional comments + meta + style blocks
+      let cleaned = html
+        .replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, '')
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<\/?(meta|link|style|script|o:p)[^>]*>/gi, '')
+        .replace(/\sclass="[^"]*Mso[^"]*"/gi, '')
+        .replace(/\smso-[a-z-]+:[^;"']+;?/gi, '');
+
+      const tmp = document.createElement('div');
+      tmp.innerHTML = cleaned;
+
+      // Walk every UL/OL inside the pasted fragment and assign list-style-type
+      // per nesting depth using the Outlook cycle (UL: disc/circle/square,
+      // OL: decimal/lower-alpha/lower-roman). Also clear per-LI overrides.
+      const depthOf = (el: HTMLElement): number => {
+        let d = 0;
+        let cur: HTMLElement | null = el.parentElement;
+        while (cur && cur !== tmp) {
+          if (cur.tagName === 'UL' || cur.tagName === 'OL') d++;
+          cur = cur.parentElement;
+        }
+        return d;
+      };
+      tmp.querySelectorAll('ul, ol').forEach((list) => {
+        const el = list as HTMLElement;
+        const depth = depthOf(el);
+        el.style.listStyleType = styleForDepth(el.tagName, depth);
+        if (depth > 0) {
+          el.style.paddingLeft = '20px';
+          el.style.marginLeft = '0';
+        }
+        Array.from(el.children).forEach((c) => {
+          if (c.tagName === 'LI') (c as HTMLElement).style.listStyleType = '';
+        });
+      });
+
+      // Snapshot pre-paste so this can be undone
+      pushUndo();
+      document.execCommand('insertHTML', false, tmp.innerHTML);
     } else {
-      // Convert newlines to <br> tags for multi-line content
       const htmlContent = text.replace(/\r\n/g, '\n').replace(/\n/g, '<br>');
       document.execCommand('insertHTML', false, htmlContent);
     }
+
     if (editorRef.current) {
+      // Re-normalize entire editor in case the paste merged with existing lists
+      normalizeListStyles();
+      isUserEditingRef.current = true;
       onChange(editorRef.current.innerHTML);
     }
   };
@@ -861,6 +1036,62 @@ export const RichTextEditor = ({
           >
             <IndentIncrease className="h-3.5 w-3.5" />
           </Button>
+
+          {/* Keyboard help */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+                title="Keyboard shortcuts"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-3 text-xs" onMouseDown={(e) => e.preventDefault()}>
+              <Label className="text-xs font-semibold mb-2 block">Lists & nesting</Label>
+              <div className="space-y-1.5">
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Inside a list item</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Tab</kbd>
+                </div>
+                <div className="text-[11px] text-muted-foreground -mt-1 mb-1">
+                  Nests one level deeper. Bullet/number style cycles per depth (• ○ ■ / 1 a i).
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Inside a list item</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Shift + Tab</kbd>
+                </div>
+                <div className="text-[11px] text-muted-foreground -mt-1 mb-1">
+                  Outdents one level. At top level, exits the list as a paragraph.
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">On an empty list item</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Enter</kbd>
+                </div>
+                <div className="text-[11px] text-muted-foreground -mt-1 mb-1">
+                  Outdents one level (twice from top-level exits the list — Outlook behavior).
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Undo / Redo indent</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Ctrl+Z / Ctrl+Y</kbd>
+                </div>
+              </div>
+              <Label className="text-xs font-semibold mt-3 mb-2 block">Formatting</Label>
+              <div className="space-y-1.5">
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Bold / Italic / Underline</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Ctrl+B/I/U</kbd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Add link</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Ctrl+K</kbd>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <div className={styles.separator} />
           
