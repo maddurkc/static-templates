@@ -744,17 +744,67 @@ export const RichTextEditor = ({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
+    const html = e.clipboardData.getData('text/html');
     const text = e.clipboardData.getData('text/plain');
-    // For single line, remove newlines; for multi-line, convert newlines to <br>
+
     if (singleLine) {
       const processedText = text.replace(/[\r\n]+/g, ' ');
       document.execCommand('insertText', false, processedText);
+      if (editorRef.current) onChange(editorRef.current.innerHTML);
+      return;
+    }
+
+    // If we have rich HTML, sanitize/normalize lists before inserting so mixed
+    // UL/OL styles get the Outlook depth cycle and Word/Office gunk is stripped.
+    if (html && /<[a-z][\s\S]*>/i.test(html)) {
+      // Strip MS Office conditional comments + meta + style blocks
+      let cleaned = html
+        .replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, '')
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<\/?(meta|link|style|script|o:p)[^>]*>/gi, '')
+        .replace(/\sclass="[^"]*Mso[^"]*"/gi, '')
+        .replace(/\smso-[a-z-]+:[^;"']+;?/gi, '');
+
+      const tmp = document.createElement('div');
+      tmp.innerHTML = cleaned;
+
+      // Walk every UL/OL inside the pasted fragment and assign list-style-type
+      // per nesting depth using the Outlook cycle (UL: disc/circle/square,
+      // OL: decimal/lower-alpha/lower-roman). Also clear per-LI overrides.
+      const depthOf = (el: HTMLElement): number => {
+        let d = 0;
+        let cur: HTMLElement | null = el.parentElement;
+        while (cur && cur !== tmp) {
+          if (cur.tagName === 'UL' || cur.tagName === 'OL') d++;
+          cur = cur.parentElement;
+        }
+        return d;
+      };
+      tmp.querySelectorAll('ul, ol').forEach((list) => {
+        const el = list as HTMLElement;
+        const depth = depthOf(el);
+        el.style.listStyleType = styleForDepth(el.tagName, depth);
+        if (depth > 0) {
+          el.style.paddingLeft = '20px';
+          el.style.marginLeft = '0';
+        }
+        Array.from(el.children).forEach((c) => {
+          if (c.tagName === 'LI') (c as HTMLElement).style.listStyleType = '';
+        });
+      });
+
+      // Snapshot pre-paste so this can be undone
+      pushUndo();
+      document.execCommand('insertHTML', false, tmp.innerHTML);
     } else {
-      // Convert newlines to <br> tags for multi-line content
       const htmlContent = text.replace(/\r\n/g, '\n').replace(/\n/g, '<br>');
       document.execCommand('insertHTML', false, htmlContent);
     }
+
     if (editorRef.current) {
+      // Re-normalize entire editor in case the paste merged with existing lists
+      normalizeListStyles();
+      isUserEditingRef.current = true;
       onChange(editorRef.current.innerHTML);
     }
   };
