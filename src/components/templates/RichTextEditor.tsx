@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle, IndentIncrease, IndentDecrease } from "lucide-react";
+import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle, IndentIncrease, IndentDecrease, HelpCircle } from "lucide-react";
 import { useIntellisenseContext } from "@/contexts/IntellisenseContext";
 import { useVariableIntellisense } from "@/hooks/useVariableIntellisense";
 import { VariableIntellisense } from "./VariableIntellisense";
