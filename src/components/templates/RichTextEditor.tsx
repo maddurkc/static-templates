@@ -562,6 +562,10 @@ export const RichTextEditor = ({
   const handleInput = useCallback(() => {
     if (editorRef.current) {
       isUserEditingRef.current = true;
+      // Regular typing supersedes our list-op undo stack — clear it so the
+      // browser's native undo handles subsequent typing.
+      undoStackRef.current = [];
+      redoStackRef.current = [];
       onChange(editorRef.current.innerHTML);
       // Trigger intellisense via ref to avoid stale closures
       intellisenseRef.current.handleContentEditableInput(editorRef.current);
