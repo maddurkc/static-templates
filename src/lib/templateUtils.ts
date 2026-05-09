@@ -594,7 +594,9 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   // Handle static-text sections - use content variable directly
   if (section.type === 'static-text' && section.variables?.content) {
     // Convert newlines to <br> tags for Outlook compatibility
-    const formattedContent = sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>');
+    let formattedContent = sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>');
+    // Convert any rich-text <ul>/<ol> into Outlook-friendly table-based lists
+    formattedContent = convertHtmlListsToOutlookTables(formattedContent);
     const staticContent = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${formattedContent}</div>`;
     return wrapInOutlookTable(staticContent);
   }
