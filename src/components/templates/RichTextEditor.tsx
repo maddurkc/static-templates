@@ -272,21 +272,108 @@ export const RichTextEditor = ({
     });
   }, []);
 
+  // Custom list-aware indent: nest selected LI(s) inside a sublist of the SAME
+  // type (ul/ol) so the bullet/number style is preserved instead of becoming a
+  // blockquote (which is what document.execCommand('indent') does to a first LI).
+  const indentListItems = useCallback((items: HTMLLIElement[]): boolean => {
+    if (items.length === 0) return false;
+    const first = items[0];
+    const parentList = first.parentElement as HTMLElement | null;
+    if (!parentList || (parentList.tagName !== 'UL' && parentList.tagName !== 'OL')) return false;
+    const prev = first.previousElementSibling as HTMLElement | null;
+    if (!prev || prev.tagName !== 'LI') return false; // need a preceding LI to nest under
+
+    let sublist = prev.lastElementChild as HTMLElement | null;
+    if (!sublist || sublist.tagName !== parentList.tagName) {
+      sublist = document.createElement(parentList.tagName.toLowerCase());
+      const lst = (parentList as HTMLElement).style.listStyleType
+        || getComputedStyle(parentList).listStyleType;
+      if (lst) sublist.style.listStyleType = lst;
+      sublist.style.paddingLeft = '20px';
+      sublist.style.marginLeft = '0';
+      prev.appendChild(sublist);
+    }
+    items.forEach((li) => sublist!.appendChild(li));
+    return true;
+  }, []);
+
+  const outdentListItems = useCallback((items: HTMLLIElement[]): boolean => {
+    if (items.length === 0) return false;
+    const first = items[0];
+    const parentList = first.parentElement as HTMLElement | null;
+    if (!parentList || (parentList.tagName !== 'UL' && parentList.tagName !== 'OL')) return false;
+    const grandparent = parentList.parentElement;
+    if (!grandparent) return false;
+
+    // Nested sublist inside an LI -> promote items to be siblings of that outer LI
+    if (grandparent.tagName === 'LI') {
+      const outerLi = grandparent as HTMLLIElement;
+      const outerList = outerLi.parentElement;
+      if (!outerList) return false;
+      items.slice().reverse().forEach((li) => {
+        outerList.insertBefore(li, outerLi.nextSibling);
+      });
+      if (parentList.children.length === 0) parentList.remove();
+      return true;
+    }
+
+    // Top-level list -> unwrap items as paragraphs after the list
+    items.forEach((li) => {
+      const p = document.createElement('div');
+      p.innerHTML = li.innerHTML || '<br>';
+      parentList.parentElement!.insertBefore(p, parentList.nextSibling);
+      li.remove();
+    });
+    if (parentList.children.length === 0) parentList.remove();
+    return true;
+  }, []);
+
+  const getSelectedListItems = useCallback((): HTMLLIElement[] => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return [];
+    const range = sel.getRangeAt(0);
+    const startLi = findListItemAncestor(range.startContainer);
+    const endLi = findListItemAncestor(range.endContainer);
+    if (!startLi) return [];
+    if (!endLi || startLi === endLi) return [startLi];
+    if (startLi.parentElement === endLi.parentElement) {
+      const items: HTMLLIElement[] = [];
+      let cur: Element | null = startLi;
+      while (cur) {
+        if (cur.tagName === 'LI') items.push(cur as HTMLLIElement);
+        if (cur === endLi) break;
+        cur = cur.nextElementSibling;
+      }
+      return items;
+    }
+    return [startLi];
+  }, [findListItemAncestor]);
+
   const applyIndent = useCallback(() => {
     restoreSelection();
-    document.execCommand('indent', false);
+    const items = getSelectedListItems();
+    if (items.length > 0) {
+      indentListItems(items);
+    } else {
+      document.execCommand('indent', false);
+    }
     normalizeIndentForOutlook();
     if (editorRef.current) onChange(editorRef.current.innerHTML);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, getSelectedListItems, indentListItems]);
 
   const applyOutdent = useCallback(() => {
     restoreSelection();
-    document.execCommand('outdent', false);
+    const items = getSelectedListItems();
+    if (items.length > 0) {
+      outdentListItems(items);
+    } else {
+      document.execCommand('outdent', false);
+    }
     normalizeIndentForOutlook();
     if (editorRef.current) onChange(editorRef.current.innerHTML);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, getSelectedListItems, outdentListItems]);
 
   const applyLink = useCallback(() => {
     if (!linkUrl.trim()) return;
@@ -377,7 +464,9 @@ export const RichTextEditor = ({
       const node = sel && sel.rangeCount ? sel.getRangeAt(0).commonAncestorContainer : null;
       const inList = !!findListItemAncestor(node);
       if (inList) {
-        document.execCommand(e.shiftKey ? 'outdent' : 'indent', false);
+        const items = getSelectedListItems();
+        if (e.shiftKey) outdentListItems(items);
+        else indentListItems(items);
         normalizeIndentForOutlook();
       } else if (e.shiftKey) {
         document.execCommand('outdent', false);
