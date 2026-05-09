@@ -600,6 +600,24 @@ export const RichTextEditor = ({
       return;
     }
 
+    // Undo / Redo for our list-indent/outdent operations.
+    // We only intercept when our stacks have entries; otherwise let the browser
+    // handle native undo for normal typing.
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      const isUndo = e.key === 'z' && !e.shiftKey;
+      const isRedo = (e.key === 'y') || (e.key === 'z' && e.shiftKey);
+      if (isUndo && undoStackRef.current.length > 0) {
+        e.preventDefault();
+        performUndo();
+        return;
+      }
+      if (isRedo && redoStackRef.current.length > 0) {
+        e.preventDefault();
+        performRedo();
+        return;
+      }
+    }
+
     // Prevent Enter key in single line mode
     if (singleLine && e.key === 'Enter') {
       e.preventDefault();
