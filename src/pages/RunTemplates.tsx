@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid, Info, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, Send, Calendar, PlayCircle, Plus, Trash2, Eye, Loader2, FileJson, Pencil, Check, RefreshCw, Database, Variable, LayoutGrid, Info, ChevronUp, ChevronDown, Copy, Code2, Mail } from "lucide-react";
 import { RichTextEditor } from "@/components/templates/RichTextEditor";
 import { TableEditor } from "@/components/templates/TableEditor";
 import { GifSectionEditor } from "@/components/templates/GifSectionEditor";
@@ -4028,55 +4028,87 @@ const RunTemplates = () => {
         </div>
       )}
 
-      {/* Email Preview Dialog */}
+      {/* Send (Outlook) Preview Dialog */}
       <Dialog open={showEmailPreview} onOpenChange={setShowEmailPreview}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Email Preview</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Send (Outlook) Preview
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Exact converted Outlook-compatible HTML (table-based lists, MSO wrappers) that will be sent.
+            </p>
           </DialogHeader>
-          
-          <div className="flex-1 overflow-auto space-y-4">
-            {/* Subject Preview */}
-            <div className="bg-muted/50 rounded-lg p-4 border">
-              <Label className="text-sm font-medium text-muted-foreground">Subject</Label>
-              <p className="text-lg font-semibold mt-1">
-                {getProcessedSubject() || '(No subject)'}
-              </p>
-            </div>
 
-            {/* Recipients Preview */}
-            <div className="bg-muted/50 rounded-lg p-4 border space-y-2">
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">To</Label>
-                <p className="text-sm">{toUsers.length > 0 ? toUsers.map(u => u.email).join(', ') : '(No recipients)'}</p>
+          <div className="flex-1 overflow-auto space-y-3">
+            {/* Subject + Recipients */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-muted/50 rounded-lg p-3 border">
+                <Label className="text-xs font-medium text-muted-foreground">Subject</Label>
+                <p className="text-sm font-semibold mt-1">{getProcessedSubject() || '(No subject)'}</p>
               </div>
-              {ccUsers.length > 0 && (
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">CC</Label>
-                  <p className="text-sm">{ccUsers.map(u => u.email).join(', ')}</p>
+              <div className="bg-muted/50 rounded-lg p-3 border space-y-1">
+                <div className="text-xs">
+                  <span className="text-muted-foreground font-medium">To: </span>
+                  {toUsers.length > 0 ? toUsers.map(u => u.email).join(', ') : '(No recipients)'}
                 </div>
-              )}
-              {bccUsers.length > 0 && (
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">BCC</Label>
-                  <p className="text-sm">{bccUsers.map(u => u.email).join(', ')}</p>
-                </div>
-              )}
+                {ccUsers.length > 0 && (
+                  <div className="text-xs"><span className="text-muted-foreground font-medium">CC: </span>{ccUsers.map(u => u.email).join(', ')}</div>
+                )}
+                {bccUsers.length > 0 && (
+                  <div className="text-xs"><span className="text-muted-foreground font-medium">BCC: </span>{bccUsers.map(u => u.email).join(', ')}</div>
+                )}
+              </div>
             </div>
 
-            {/* Email Body Preview */}
-            <div className="border rounded-lg p-4 bg-white">
-              <Label className="text-sm font-medium text-muted-foreground mb-2 block">Email Body</Label>
-              <ScrollArea className="h-[400px]">
-                <div
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
-                  className={styles.previewContent}
-                />
-              </ScrollArea>
-            </div>
+            {/* Tabbed body: Outlook Rendered vs HTML Source */}
+            <Tabs defaultValue="rendered" className="w-full">
+              <div className="flex items-center justify-between">
+                <TabsList>
+                  <TabsTrigger value="rendered">
+                    <Mail className="h-4 w-4 mr-1" /> Outlook Rendered
+                  </TabsTrigger>
+                  <TabsTrigger value="source">
+                    <Code2 className="h-4 w-4 mr-1" /> HTML Source
+                  </TabsTrigger>
+                </TabsList>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(wrapInEmailHtml(previewHtml));
+                    toast({ title: "Copied", description: "Outlook HTML copied to clipboard." });
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-1" /> Copy HTML
+                </Button>
+              </div>
+
+              <TabsContent value="rendered" className="mt-3">
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  <iframe
+                    title="Outlook Send Preview"
+                    srcDoc={wrapInEmailHtml(previewHtml)}
+                    sandbox="allow-same-origin"
+                    style={{ width: '100%', height: '480px', border: 'none', background: '#ffffff' }}
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="source" className="mt-3">
+                <div className="border rounded-lg bg-muted/30">
+                  <ScrollArea className="h-[480px]">
+                    <pre className="text-xs p-3 whitespace-pre-wrap break-all font-mono leading-relaxed">
+                      {wrapInEmailHtml(previewHtml)}
+                    </pre>
+                  </ScrollArea>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-3">
             <Button variant="outline" onClick={() => setShowEmailPreview(false)}>
               Close
             </Button>
