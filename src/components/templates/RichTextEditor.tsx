@@ -513,9 +513,11 @@ export const RichTextEditor = ({
         if (e.shiftKey) outdentListItems(items);
         else indentListItems(items);
         normalizeIndentForOutlook();
+        normalizeListStyles();
       } else if (e.shiftKey) {
         document.execCommand('outdent', false);
         normalizeIndentForOutlook();
+        normalizeListStyles();
       } else {
         // Insert non-breaking spaces so Outlook preserves indentation
         document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
