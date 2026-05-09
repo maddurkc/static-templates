@@ -438,7 +438,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         });
         
         // Use Outlook-compatible table-based list rendering
-        contentHtml = `<div style="padding-left: 20px; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414;">${renderOutlookCompatibleListWithNesting(resolvedItems, listTag, listStyleType)}</div>`;
+        contentHtml = `<div style="margin-left: 20px; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414;">${renderOutlookCompatibleListWithNesting(resolvedItems, listTag, listStyleType)}</div>`;
       } else if (typeof runtimeValue === 'string') {
         // Resolve any remaining {{placeholder}} patterns with runtime variables
         let resolvedContent = runtimeValue.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
@@ -455,7 +455,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         });
         // Convert newlines to <br> tags for Outlook compatibility
         const formattedContent = sanitizeInput(resolvedContent).replace(/\n/g, '<br/>');
-        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; padding-left: 20px;">${formattedContent}</div>`;
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; margin-left: 20px;">${formattedContent}</div>`;
       } else if (typeof runtimeValue === 'object' && runtimeValue !== null && 'text' in runtimeValue) {
         // Handle TextStyle object with styling properties
         const textStyle = runtimeValue as { text: string; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; backgroundColor?: string; fontSize?: string };
@@ -469,7 +469,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         if (textStyle.fontSize) styles.push(`font-size: ${textStyle.fontSize}`);
         const styleAttr = ` style="${styles.join('; ')}"`;
         const formattedText = sanitizeInput(textStyle.text).replace(/\n/g, '<br/>');
-        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; padding-left: 20px;"><span${styleAttr}>${formattedText}</span></div>`;
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; margin-left: 20px;"><span${styleAttr}>${formattedText}</span></div>`;
       }
     } else {
       // Use default values from section variables
@@ -511,7 +511,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         const listStyleType = getListStyleType(listStyle);
         
         // Use Outlook-compatible table-based list rendering
-        contentHtml = `<div style="padding-left: 20px; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414;">${renderOutlookCompatibleListWithNesting(items, listTag, listStyleType)}</div>`;
+        contentHtml = `<div style="margin-left: 20px; font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414;">${renderOutlookCompatibleListWithNesting(items, listTag, listStyleType)}</div>`;
       } else {
         let content = (section.variables?.content as string) || '';
         
@@ -539,7 +539,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
         
         // Convert newlines to <br> tags for Outlook compatibility
         const formattedContent = content.replace(/\n/g, '<br/>');
-        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; padding-left: 20px;">${formattedContent}</div>`;
+        contentHtml = `<div style="font-family: ${OUTLOOK_FONT_FAMILY}; font-size: 14px; line-height: 21px; color: #141414; mso-line-height-rule: exactly; margin-left: 20px;">${formattedContent}</div>`;
       }
     }
     
