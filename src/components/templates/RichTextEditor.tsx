@@ -272,6 +272,28 @@ export const RichTextEditor = ({
     });
   }, []);
 
+  // Normalize every UL/OL in the editor so siblings share the same type and
+  // each nesting level uses the Outlook-style bullet/number cycle.
+  const normalizeListStyles = useCallback(() => {
+    if (!editorRef.current) return;
+    const lists = editorRef.current.querySelectorAll('ul, ol');
+    lists.forEach((list) => {
+      const el = list as HTMLElement;
+      const depth = getListDepth(el); // 0 = top-level
+      el.style.listStyleType = styleForDepth(el.tagName, depth);
+      if (depth > 0) {
+        el.style.paddingLeft = '20px';
+        el.style.marginLeft = '0';
+      }
+      // Clear per-LI overrides so the list-level style takes effect uniformly
+      Array.from(el.children).forEach((child) => {
+        if (child.tagName === 'LI') {
+          (child as HTMLElement).style.listStyleType = '';
+        }
+      });
+    });
+  }, []);
+
   // Custom list-aware indent: nest selected LI(s) inside a sublist of the SAME
   // type (ul/ol) so the bullet/number style is preserved instead of becoming a
   // blockquote (which is what document.execCommand('indent') does to a first LI).
