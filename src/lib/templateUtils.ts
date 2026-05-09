@@ -910,6 +910,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     
     // Convert newlines to <br> tags for multi-line content (Outlook compatibility)
     processedContent = processedContent.replace(/\n/g, '<br/>');
+    // Convert any nested <ul>/<ol> from RichTextEditor into Outlook-friendly table-based lists
+    processedContent = convertHtmlListsToOutlookTables(processedContent);
     
     // Check if processedContent already has the wrapper tag to avoid double-wrapping
     const tagRegex = new RegExp(`^\\s*<${tag}[^>]*>`, 'i');
