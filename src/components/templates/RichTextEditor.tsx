@@ -50,6 +50,102 @@ export const RichTextEditor = ({
   const intellisenseRef = useRef(intellisense);
   intellisenseRef.current = intellisense;
 
+  // ---- Undo/redo stacks for list indent/outdent (browser undo doesn't capture
+  // our manual DOM reparenting). Stacks are cleared on regular typing so the
+  // browser's native undo continues to work for normal edits.
+  type Snapshot = {
+    html: string;
+    range: { startPath: number[]; startOffset: number; endPath: number[]; endOffset: number } | null;
+  };
+  const undoStackRef = useRef<Snapshot[]>([]);
+  const redoStackRef = useRef<Snapshot[]>([]);
+
+  const serializeRange = useCallback(() => {
+    const root = editorRef.current;
+    const sel = window.getSelection();
+    if (!root || !sel || sel.rangeCount === 0) return null;
+    const r = sel.getRangeAt(0);
+    if (!root.contains(r.startContainer) || !root.contains(r.endContainer)) return null;
+    const path = (n: Node): number[] => {
+      const out: number[] = [];
+      let cur: Node | null = n;
+      while (cur && cur !== root) {
+        const parent = cur.parentNode;
+        if (!parent) break;
+        out.unshift(Array.prototype.indexOf.call(parent.childNodes, cur));
+        cur = parent;
+      }
+      return out;
+    };
+    return {
+      startPath: path(r.startContainer),
+      startOffset: r.startOffset,
+      endPath: path(r.endContainer),
+      endOffset: r.endOffset,
+    };
+  }, []);
+
+  const restoreSerializedRange = useCallback((s: Snapshot['range']) => {
+    const root = editorRef.current;
+    if (!s || !root) return;
+    const resolve = (path: number[]): Node | null => {
+      let cur: Node = root;
+      for (const i of path) {
+        if (!cur.childNodes[i]) return null;
+        cur = cur.childNodes[i];
+      }
+      return cur;
+    };
+    const sn = resolve(s.startPath);
+    const en = resolve(s.endPath);
+    if (!sn || !en) return;
+    try {
+      const r = document.createRange();
+      const maxS = sn.nodeType === Node.TEXT_NODE ? (sn as Text).length : sn.childNodes.length;
+      const maxE = en.nodeType === Node.TEXT_NODE ? (en as Text).length : en.childNodes.length;
+      r.setStart(sn, Math.min(s.startOffset, maxS));
+      r.setEnd(en, Math.min(s.endOffset, maxE));
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(r);
+    } catch { /* ignore */ }
+  }, []);
+
+  const takeSnapshot = useCallback((): Snapshot => ({
+    html: editorRef.current?.innerHTML || '',
+    range: serializeRange(),
+  }), [serializeRange]);
+
+  const pushUndo = useCallback(() => {
+    undoStackRef.current.push(takeSnapshot());
+    if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+    redoStackRef.current = [];
+  }, [takeSnapshot]);
+
+  const applySnapshot = useCallback((snap: Snapshot) => {
+    if (!editorRef.current) return;
+    editorRef.current.innerHTML = snap.html;
+    isUserEditingRef.current = true;
+    onChange(snap.html);
+    requestAnimationFrame(() => restoreSerializedRange(snap.range));
+  }, [onChange, restoreSerializedRange]);
+
+  const performUndo = useCallback((): boolean => {
+    if (undoStackRef.current.length === 0) return false;
+    redoStackRef.current.push(takeSnapshot());
+    const prev = undoStackRef.current.pop()!;
+    applySnapshot(prev);
+    return true;
+  }, [takeSnapshot, applySnapshot]);
+
+  const performRedo = useCallback((): boolean => {
+    if (redoStackRef.current.length === 0) return false;
+    undoStackRef.current.push(takeSnapshot());
+    const next = redoStackRef.current.pop()!;
+    applySnapshot(next);
+    return true;
+  }, [takeSnapshot, applySnapshot]);
+
   // Initialize content on mount and update if value changed externally
   useEffect(() => {
     // Skip if user is actively editing
