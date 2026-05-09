@@ -175,6 +175,101 @@ const toRoman = (num: number): string => {
   return result;
 };
 
+// Convert raw <ul>/<ol> trees from RichTextEditor into Outlook-compatible
+// table-based lists, preserving inline element styles and nesting depth.
+// Operates only when running in a browser environment (uses DOM APIs).
+export const convertHtmlListsToOutlookTables = (html: string): string => {
+  if (!html || typeof document === 'undefined') return html;
+  if (!/(<ul\b|<ol\b)/i.test(html)) return html;
+
+  const escapeText = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const container = document.createElement('div');
+  container.innerHTML = html;
+
+  const renderList = (listEl: HTMLElement, depth: number): string => {
+    const tag = listEl.tagName.toLowerCase();
+    const isOrdered = tag === 'ol';
+    const inlineStyle = listEl.getAttribute('style') || '';
+    const styleMatch = inlineStyle.match(/list-style-type\s*:\s*([a-z\-]+)/i);
+    const styleType = (styleMatch ? styleMatch[1] : (isOrdered ? 'decimal' : 'disc')).toLowerCase();
+    const marginLeft = 20 + depth * 20;
+
+    let counter = 0;
+    let rows = '';
+
+    Array.from(listEl.children).forEach((child) => {
+      if (child.tagName.toLowerCase() !== 'li') return;
+      counter++;
+
+      let bullet = '';
+      if (isOrdered) {
+        if (styleType === 'lower-roman') bullet = toRoman(counter).toLowerCase() + '.';
+        else if (styleType === 'upper-roman') bullet = toRoman(counter) + '.';
+        else if (styleType === 'lower-alpha') bullet = String.fromCharCode(96 + ((counter - 1) % 26) + 1) + '.';
+        else if (styleType === 'upper-alpha') bullet = String.fromCharCode(64 + ((counter - 1) % 26) + 1) + '.';
+        else bullet = counter + '.';
+      } else {
+        if (styleType === 'circle') bullet = '○';
+        else if (styleType === 'square') bullet = '■';
+        else bullet = '•';
+      }
+
+      let inlineHtml = '';
+      let nestedHtml = '';
+      Array.from(child.childNodes).forEach((n) => {
+        if (n.nodeType === 1) {
+          const el = n as HTMLElement;
+          const t = el.tagName.toLowerCase();
+          if (t === 'ul' || t === 'ol') {
+            nestedHtml += renderList(el, depth + 1);
+          } else {
+            // Recurse into element to convert any nested ul/ol inside it
+            const innerWrap = document.createElement('div');
+            innerWrap.innerHTML = el.outerHTML;
+            const innerLists = innerWrap.querySelectorAll('ul, ol');
+            innerLists.forEach((nl) => {
+              const replacement = document.createElement('div');
+              replacement.innerHTML = renderList(nl as HTMLElement, depth + 1);
+              nl.replaceWith(...Array.from(replacement.childNodes));
+            });
+            inlineHtml += innerWrap.innerHTML;
+          }
+        } else if (n.nodeType === 3) {
+          inlineHtml += escapeText(n.textContent || '');
+        }
+      });
+
+      rows += `<tr>` +
+        `<td style="vertical-align: top; padding-right: 8px; width: 20px; font-family: ${OUTLOOK_FONT_FAMILY};">${bullet}</td>` +
+        `<td style="font-family: ${OUTLOOK_FONT_FAMILY};">${inlineHtml}${nestedHtml}</td>` +
+      `</tr>`;
+    });
+
+    return `<table cellpadding="0" cellspacing="0" border="0" style="margin-left: ${marginLeft}px; font-family: ${OUTLOOK_FONT_FAMILY}; mso-table-lspace: 0pt; mso-table-rspace: 0pt;">${rows}</table>`;
+  };
+
+  // Replace only top-level (non-nested) ul/ol; nested ones are handled by renderList recursively.
+  const processNode = (node: Node) => {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType !== 1) return;
+      const el = child as HTMLElement;
+      const t = el.tagName.toLowerCase();
+      if (t === 'ul' || t === 'ol') {
+        const replacement = document.createElement('div');
+        replacement.innerHTML = renderList(el, 0);
+        el.replaceWith(...Array.from(replacement.childNodes));
+      } else {
+        processNode(el);
+      }
+    });
+  };
+  processNode(container);
+
+  return container.innerHTML;
+};
+
 // Email wrapper with proper DOCTYPE, head, and meta tags for email client compatibility
 // Contains a global wrapper table with nested section tables
 export const wrapInEmailHtml = (bodyContent: string): string => {
@@ -499,7 +594,9 @@ export const renderSectionContent = (section: Section, variables?: Record<string
   // Handle static-text sections - use content variable directly
   if (section.type === 'static-text' && section.variables?.content) {
     // Convert newlines to <br> tags for Outlook compatibility
-    const formattedContent = sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>');
+    let formattedContent = sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>');
+    // Convert any rich-text <ul>/<ol> into Outlook-friendly table-based lists
+    formattedContent = convertHtmlListsToOutlookTables(formattedContent);
     const staticContent = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${formattedContent}</div>`;
     return wrapInOutlookTable(staticContent);
   }
@@ -632,7 +729,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     );
     
     // Convert newlines to <br> tags for Outlook compatibility
-    const mixedHtml = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${mixedContent.replace(/\n/g, '<br/>')}</div>`;
+    const mixedConverted = convertHtmlListsToOutlookTables(mixedContent.replace(/\n/g, '<br/>'));
+    const mixedHtml = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${mixedConverted}</div>`;
     return wrapInOutlookTable(mixedHtml);
   }
   
@@ -812,6 +910,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     
     // Convert newlines to <br> tags for multi-line content (Outlook compatibility)
     processedContent = processedContent.replace(/\n/g, '<br/>');
+    // Convert any nested <ul>/<ol> from RichTextEditor into Outlook-friendly table-based lists
+    processedContent = convertHtmlListsToOutlookTables(processedContent);
     
     // Check if processedContent already has the wrapper tag to avoid double-wrapping
     const tagRegex = new RegExp(`^\\s*<${tag}[^>]*>`, 'i');
