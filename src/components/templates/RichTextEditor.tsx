@@ -471,8 +471,33 @@ export const RichTextEditor = ({
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return [];
     const range = sel.getRangeAt(0);
+
     const startLi = findListItemAncestor(range.startContainer);
-    const endLi = findListItemAncestor(range.endContainer);
+    let endLi = findListItemAncestor(range.endContainer);
+
+    // Boundary fix: if the selection ends right at offset 0 of the very first
+    // node inside an LI, the user didn't actually intend to include that LI
+    // (selection just grazed it). Walk back to the previous LI.
+    if (
+      endLi &&
+      startLi !== endLi &&
+      range.endOffset === 0
+    ) {
+      // Determine if endContainer is at the leading edge of endLi
+      let n: Node | null = range.endContainer;
+      let atStart = true;
+      while (n && n !== endLi) {
+        const parent: Node | null = n.parentNode;
+        if (parent && parent.firstChild !== n) { atStart = false; break; }
+        n = parent;
+      }
+      if (atStart) {
+        const prev = endLi.previousElementSibling as HTMLLIElement | null;
+        if (prev && prev.tagName === 'LI') endLi = prev;
+        else endLi = startLi; // collapse to startLi only
+      }
+    }
+
     if (!startLi) return [];
     if (!endLi || startLi === endLi) return [startLi];
     if (startLi.parentElement === endLi.parentElement) {
@@ -629,8 +654,10 @@ export const RichTextEditor = ({
       e.preventDefault();
       const sel = window.getSelection();
       const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
-      const node = range ? range.commonAncestorContainer : null;
-      const inList = !!findListItemAncestor(node);
+      // Use startContainer (caret/anchor) rather than commonAncestor so a
+      // selection that grazes adjacent non-list text still counts as "in list"
+      // when the caret started inside an LI.
+      const inList = !!(range && findListItemAncestor(range.startContainer));
 
       // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
       if (inList) pushUndo();
