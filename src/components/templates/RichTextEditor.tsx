@@ -632,6 +632,9 @@ export const RichTextEditor = ({
       const node = range ? range.commonAncestorContainer : null;
       const inList = !!findListItemAncestor(node);
 
+      // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
+      if (inList) pushUndo();
+
       // Snapshot caret so we can restore it after DOM reparenting
       let caretNode: Node | null = null;
       let caretOffset = 0;
