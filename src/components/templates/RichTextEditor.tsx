@@ -1037,6 +1037,62 @@ export const RichTextEditor = ({
             <IndentIncrease className="h-3.5 w-3.5" />
           </Button>
 
+          {/* Keyboard help */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+                title="Keyboard shortcuts"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-3 text-xs" onMouseDown={(e) => e.preventDefault()}>
+              <Label className="text-xs font-semibold mb-2 block">Lists & nesting</Label>
+              <div className="space-y-1.5">
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Inside a list item</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Tab</kbd>
+                </div>
+                <div className="text-[11px] text-muted-foreground -mt-1 mb-1">
+                  Nests one level deeper. Bullet/number style cycles per depth (• ○ ■ / 1 a i).
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Inside a list item</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Shift + Tab</kbd>
+                </div>
+                <div className="text-[11px] text-muted-foreground -mt-1 mb-1">
+                  Outdents one level. At top level, exits the list as a paragraph.
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">On an empty list item</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Enter</kbd>
+                </div>
+                <div className="text-[11px] text-muted-foreground -mt-1 mb-1">
+                  Outdents one level (twice from top-level exits the list — Outlook behavior).
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Undo / Redo indent</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Ctrl+Z / Ctrl+Y</kbd>
+                </div>
+              </div>
+              <Label className="text-xs font-semibold mt-3 mb-2 block">Formatting</Label>
+              <div className="space-y-1.5">
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Bold / Italic / Underline</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Ctrl+B/I/U</kbd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Add link</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Ctrl+K</kbd>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
           <div className={styles.separator} />
           
           {/* Link Button */}
