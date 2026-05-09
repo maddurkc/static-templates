@@ -275,6 +275,23 @@ export const RichTextEditor = ({
   // Custom list-aware indent: nest selected LI(s) inside a sublist of the SAME
   // type (ul/ol) so the bullet/number style is preserved instead of becoming a
   // blockquote (which is what document.execCommand('indent') does to a first LI).
+  // Outlook-style bullet/number cycling per nesting depth
+  const UL_CYCLE = ['disc', 'circle', 'square'];
+  const OL_CYCLE = ['decimal', 'lower-alpha', 'lower-roman'];
+  const getListDepth = (el: HTMLElement): number => {
+    let depth = 0;
+    let cur: HTMLElement | null = el.parentElement;
+    while (cur && cur !== editorRef.current) {
+      if (cur.tagName === 'UL' || cur.tagName === 'OL') depth++;
+      cur = cur.parentElement;
+    }
+    return depth;
+  };
+  const styleForDepth = (tag: string, depth: number): string => {
+    const cycle = tag === 'OL' ? OL_CYCLE : UL_CYCLE;
+    return cycle[depth % cycle.length];
+  };
+
   const indentListItems = useCallback((items: HTMLLIElement[]): boolean => {
     if (items.length === 0) return false;
     const first = items[0];
@@ -286,14 +303,18 @@ export const RichTextEditor = ({
     let sublist = prev.lastElementChild as HTMLElement | null;
     if (!sublist || sublist.tagName !== parentList.tagName) {
       sublist = document.createElement(parentList.tagName.toLowerCase());
-      const lst = (parentList as HTMLElement).style.listStyleType
-        || getComputedStyle(parentList).listStyleType;
-      if (lst) sublist.style.listStyleType = lst;
+      // Outlook-style: each nested level uses next style in the cycle
+      const newDepth = getListDepth(parentList) + 1;
+      sublist.style.listStyleType = styleForDepth(parentList.tagName, newDepth);
       sublist.style.paddingLeft = '20px';
       sublist.style.marginLeft = '0';
       prev.appendChild(sublist);
     }
-    items.forEach((li) => sublist!.appendChild(li));
+    items.forEach((li) => {
+      // Clear any per-LI list-style override so the sublist style takes effect
+      (li as HTMLElement).style.listStyleType = '';
+      sublist!.appendChild(li);
+    });
     return true;
   }, []);
 
