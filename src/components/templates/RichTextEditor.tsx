@@ -641,7 +641,29 @@ export const RichTextEditor = ({
               </div>
             </PopoverContent>
           </Popover>
-          
+
+          {/* Indent / Outdent */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={() => applyOutdent()}
+            title="Decrease indent (Shift+Tab)"
+          >
+            <IndentDecrease className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={() => applyIndent()}
+            title="Increase indent (Tab)"
+          >
+            <IndentIncrease className="h-3.5 w-3.5" />
+          </Button>
+
           <div className={styles.separator} />
           
           {/* Link Button */}
