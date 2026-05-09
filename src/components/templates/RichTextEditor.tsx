@@ -390,8 +390,36 @@ export const RichTextEditor = ({
       return;
     }
     
-    // For multi-line mode, insert <br> instead of browser default (which may insert <div>)
+    // Multi-line Enter handling
     if (!singleLine && e.key === 'Enter' && !e.shiftKey) {
+      const sel = window.getSelection();
+      const node = sel && sel.rangeCount ? sel.getRangeAt(0).commonAncestorContainer : null;
+      const li = findListItemAncestor(node);
+
+      if (li) {
+        // Inside a list item: if the LI is empty, exit the list (Outlook behavior).
+        // Otherwise let the browser create a new LI of the same type.
+        const isEmpty = li.textContent?.replace(/\u00A0/g, '').trim() === '';
+        if (isEmpty) {
+          e.preventDefault();
+          // Outdent repeatedly until we exit the list, then insert a paragraph break
+          const listEl = li.closest('ul, ol');
+          document.execCommand('outdent', false);
+          // If still inside a list (was nested), let outdent handle it; otherwise insert a break
+          const stillInList = !!findListItemAncestor(window.getSelection()?.getRangeAt(0)?.commonAncestorContainer || null);
+          if (!stillInList) {
+            // Ensure caret is on a fresh line outside the list
+            document.execCommand('insertHTML', false, '<br>');
+          }
+          normalizeIndentForOutlook();
+          if (editorRef.current) onChange(editorRef.current.innerHTML);
+          return;
+        }
+        // Non-empty LI — let the browser handle Enter (creates a new LI)
+        return;
+      }
+
+      // Not in a list — keep existing <br><br> behavior
       e.preventDefault();
       document.execCommand('insertHTML', false, '<br><br>');
       if (editorRef.current) {
