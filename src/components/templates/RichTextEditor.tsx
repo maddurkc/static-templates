@@ -489,6 +489,7 @@ export const RichTextEditor = ({
   }, [findListItemAncestor]);
 
   const applyIndent = useCallback(() => {
+    pushUndo();
     restoreSelection();
     const items = getSelectedListItems();
     if (items.length > 0) {
@@ -498,11 +499,13 @@ export const RichTextEditor = ({
     }
     normalizeIndentForOutlook();
     normalizeListStyles();
+    isUserEditingRef.current = true;
     if (editorRef.current) onChange(editorRef.current.innerHTML);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, indentListItems]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, indentListItems, pushUndo]);
 
   const applyOutdent = useCallback(() => {
+    pushUndo();
     restoreSelection();
     const items = getSelectedListItems();
     if (items.length > 0) {
@@ -512,9 +515,10 @@ export const RichTextEditor = ({
     }
     normalizeIndentForOutlook();
     normalizeListStyles();
+    isUserEditingRef.current = true;
     if (editorRef.current) onChange(editorRef.current.innerHTML);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, outdentListItems]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, outdentListItems, pushUndo]);
 
   const applyLink = useCallback(() => {
     if (!linkUrl.trim()) return;
