@@ -506,8 +506,18 @@ export const RichTextEditor = ({
     if (e.key === 'Tab') {
       e.preventDefault();
       const sel = window.getSelection();
-      const node = sel && sel.rangeCount ? sel.getRangeAt(0).commonAncestorContainer : null;
+      const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+      const node = range ? range.commonAncestorContainer : null;
       const inList = !!findListItemAncestor(node);
+
+      // Snapshot caret so we can restore it after DOM reparenting
+      let caretNode: Node | null = null;
+      let caretOffset = 0;
+      if (range) {
+        caretNode = range.startContainer;
+        caretOffset = range.startOffset;
+      }
+
       if (inList) {
         const items = getSelectedListItems();
         if (e.shiftKey) outdentListItems(items);
@@ -521,7 +531,31 @@ export const RichTextEditor = ({
       } else {
         // Insert non-breaking spaces so Outlook preserves indentation
         document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
+        caretNode = null; // execCommand already moved caret correctly
       }
+
+      // Restore caret to its original text node/offset (nodes were just reparented)
+      if (caretNode && editorRef.current?.contains(caretNode)) {
+        try {
+          const newRange = document.createRange();
+          const maxOffset = caretNode.nodeType === Node.TEXT_NODE
+            ? (caretNode as Text).length
+            : caretNode.childNodes.length;
+          newRange.setStart(caretNode, Math.min(caretOffset, maxOffset));
+          newRange.collapse(true);
+          const s = window.getSelection();
+          if (s) {
+            s.removeAllRanges();
+            s.addRange(newRange);
+          }
+          savedSelectionRef.current = newRange.cloneRange();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      // Mark as user-edit so the value->innerHTML sync effect doesn't wipe the DOM/caret
+      isUserEditingRef.current = true;
       if (editorRef.current) onChange(editorRef.current.innerHTML);
       return;
     }
