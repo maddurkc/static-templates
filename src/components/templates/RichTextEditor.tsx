@@ -654,8 +654,10 @@ export const RichTextEditor = ({
       e.preventDefault();
       const sel = window.getSelection();
       const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
-      const node = range ? range.commonAncestorContainer : null;
-      const inList = !!findListItemAncestor(node);
+      // Use startContainer (caret/anchor) rather than commonAncestor so a
+      // selection that grazes adjacent non-list text still counts as "in list"
+      // when the caret started inside an LI.
+      const inList = !!(range && findListItemAncestor(range.startContainer));
 
       // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
       if (inList) pushUndo();
