@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle } from "lucide-react";
+import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Circle, IndentIncrease, IndentDecrease } from "lucide-react";
 import { useIntellisenseContext } from "@/contexts/IntellisenseContext";
 import { useVariableIntellisense } from "@/hooks/useVariableIntellisense";
 import { VariableIntellisense } from "./VariableIntellisense";
@@ -245,6 +245,49 @@ export const RichTextEditor = ({
     editorRef.current?.focus();
   }, [onChange, restoreSelection]);
 
+  // Find the nearest list item ancestor of a node within the editor
+  const findListItemAncestor = useCallback((node: Node | null): HTMLLIElement | null => {
+    while (node && node !== editorRef.current) {
+      if ((node as HTMLElement).nodeName === 'LI') return node as HTMLLIElement;
+      node = node.parentNode;
+    }
+    return null;
+  }, []);
+
+  // Convert blockquote (browser default for indent) to Outlook-friendly margin-left wrapper
+  const normalizeIndentForOutlook = useCallback(() => {
+    if (!editorRef.current) return;
+    const blockquotes = editorRef.current.querySelectorAll('blockquote');
+    blockquotes.forEach((bq) => {
+      (bq as HTMLElement).style.marginLeft = '40px';
+      (bq as HTMLElement).style.marginRight = '0';
+      (bq as HTMLElement).style.paddingLeft = '0';
+      (bq as HTMLElement).style.borderLeft = 'none';
+    });
+    // Ensure nested ul/ol get inline padding (Outlook needs explicit)
+    const nestedLists = editorRef.current.querySelectorAll('ul ul, ul ol, ol ul, ol ol');
+    nestedLists.forEach((l) => {
+      (l as HTMLElement).style.paddingLeft = '20px';
+      (l as HTMLElement).style.marginLeft = '0';
+    });
+  }, []);
+
+  const applyIndent = useCallback(() => {
+    restoreSelection();
+    document.execCommand('indent', false);
+    normalizeIndentForOutlook();
+    if (editorRef.current) onChange(editorRef.current.innerHTML);
+    editorRef.current?.focus();
+  }, [onChange, restoreSelection, normalizeIndentForOutlook]);
+
+  const applyOutdent = useCallback(() => {
+    restoreSelection();
+    document.execCommand('outdent', false);
+    normalizeIndentForOutlook();
+    if (editorRef.current) onChange(editorRef.current.innerHTML);
+    editorRef.current?.focus();
+  }, [onChange, restoreSelection, normalizeIndentForOutlook]);
+
   const applyLink = useCallback(() => {
     if (!linkUrl.trim()) return;
     
@@ -324,6 +367,26 @@ export const RichTextEditor = ({
     // Prevent Enter key in single line mode
     if (singleLine && e.key === 'Enter') {
       e.preventDefault();
+      return;
+    }
+
+    // Tab / Shift+Tab — indent or nest list
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const sel = window.getSelection();
+      const node = sel && sel.rangeCount ? sel.getRangeAt(0).commonAncestorContainer : null;
+      const inList = !!findListItemAncestor(node);
+      if (inList) {
+        document.execCommand(e.shiftKey ? 'outdent' : 'indent', false);
+        normalizeIndentForOutlook();
+      } else if (e.shiftKey) {
+        document.execCommand('outdent', false);
+        normalizeIndentForOutlook();
+      } else {
+        // Insert non-breaking spaces so Outlook preserves indentation
+        document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
+      }
+      if (editorRef.current) onChange(editorRef.current.innerHTML);
       return;
     }
     
@@ -578,7 +641,29 @@ export const RichTextEditor = ({
               </div>
             </PopoverContent>
           </Popover>
-          
+
+          {/* Indent / Outdent */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={() => applyOutdent()}
+            title="Decrease indent (Shift+Tab)"
+          >
+            <IndentDecrease className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={() => applyIndent()}
+            title="Increase indent (Tab)"
+          >
+            <IndentIncrease className="h-3.5 w-3.5" />
+          </Button>
+
           <div className={styles.separator} />
           
           {/* Link Button */}
