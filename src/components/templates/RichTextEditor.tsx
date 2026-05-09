@@ -401,9 +401,10 @@ export const RichTextEditor = ({
       document.execCommand('indent', false);
     }
     normalizeIndentForOutlook();
+    normalizeListStyles();
     if (editorRef.current) onChange(editorRef.current.innerHTML);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook, getSelectedListItems, indentListItems]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, indentListItems]);
 
   const applyOutdent = useCallback(() => {
     restoreSelection();
@@ -414,9 +415,10 @@ export const RichTextEditor = ({
       document.execCommand('outdent', false);
     }
     normalizeIndentForOutlook();
+    normalizeListStyles();
     if (editorRef.current) onChange(editorRef.current.innerHTML);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook, getSelectedListItems, outdentListItems]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, outdentListItems]);
 
   const applyLink = useCallback(() => {
     if (!linkUrl.trim()) return;
