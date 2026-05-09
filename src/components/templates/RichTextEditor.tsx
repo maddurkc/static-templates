@@ -245,6 +245,49 @@ export const RichTextEditor = ({
     editorRef.current?.focus();
   }, [onChange, restoreSelection]);
 
+  // Find the nearest list item ancestor of a node within the editor
+  const findListItemAncestor = useCallback((node: Node | null): HTMLLIElement | null => {
+    while (node && node !== editorRef.current) {
+      if ((node as HTMLElement).nodeName === 'LI') return node as HTMLLIElement;
+      node = node.parentNode;
+    }
+    return null;
+  }, []);
+
+  // Convert blockquote (browser default for indent) to Outlook-friendly margin-left wrapper
+  const normalizeIndentForOutlook = useCallback(() => {
+    if (!editorRef.current) return;
+    const blockquotes = editorRef.current.querySelectorAll('blockquote');
+    blockquotes.forEach((bq) => {
+      (bq as HTMLElement).style.marginLeft = '40px';
+      (bq as HTMLElement).style.marginRight = '0';
+      (bq as HTMLElement).style.paddingLeft = '0';
+      (bq as HTMLElement).style.borderLeft = 'none';
+    });
+    // Ensure nested ul/ol get inline padding (Outlook needs explicit)
+    const nestedLists = editorRef.current.querySelectorAll('ul ul, ul ol, ol ul, ol ol');
+    nestedLists.forEach((l) => {
+      (l as HTMLElement).style.paddingLeft = '20px';
+      (l as HTMLElement).style.marginLeft = '0';
+    });
+  }, []);
+
+  const applyIndent = useCallback(() => {
+    restoreSelection();
+    document.execCommand('indent', false);
+    normalizeIndentForOutlook();
+    if (editorRef.current) onChange(editorRef.current.innerHTML);
+    editorRef.current?.focus();
+  }, [onChange, restoreSelection, normalizeIndentForOutlook]);
+
+  const applyOutdent = useCallback(() => {
+    restoreSelection();
+    document.execCommand('outdent', false);
+    normalizeIndentForOutlook();
+    if (editorRef.current) onChange(editorRef.current.innerHTML);
+    editorRef.current?.focus();
+  }, [onChange, restoreSelection, normalizeIndentForOutlook]);
+
   const applyLink = useCallback(() => {
     if (!linkUrl.trim()) return;
     
