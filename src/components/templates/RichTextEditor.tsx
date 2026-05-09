@@ -464,7 +464,9 @@ export const RichTextEditor = ({
       const node = sel && sel.rangeCount ? sel.getRangeAt(0).commonAncestorContainer : null;
       const inList = !!findListItemAncestor(node);
       if (inList) {
-        document.execCommand(e.shiftKey ? 'outdent' : 'indent', false);
+        const items = getSelectedListItems();
+        if (e.shiftKey) outdentListItems(items);
+        else indentListItems(items);
         normalizeIndentForOutlook();
       } else if (e.shiftKey) {
         document.execCommand('outdent', false);
