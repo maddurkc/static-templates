@@ -369,6 +369,26 @@ export const RichTextEditor = ({
       e.preventDefault();
       return;
     }
+
+    // Tab / Shift+Tab — indent or nest list
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const sel = window.getSelection();
+      const node = sel && sel.rangeCount ? sel.getRangeAt(0).commonAncestorContainer : null;
+      const inList = !!findListItemAncestor(node);
+      if (inList) {
+        document.execCommand(e.shiftKey ? 'outdent' : 'indent', false);
+        normalizeIndentForOutlook();
+      } else if (e.shiftKey) {
+        document.execCommand('outdent', false);
+        normalizeIndentForOutlook();
+      } else {
+        // Insert non-breaking spaces so Outlook preserves indentation
+        document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
+      }
+      if (editorRef.current) onChange(editorRef.current.innerHTML);
+      return;
+    }
     
     // For multi-line mode, insert <br> instead of browser default (which may insert <div>)
     if (!singleLine && e.key === 'Enter' && !e.shiftKey) {
