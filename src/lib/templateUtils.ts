@@ -729,7 +729,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     );
     
     // Convert newlines to <br> tags for Outlook compatibility
-    const mixedHtml = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${mixedContent.replace(/\n/g, '<br/>')}</div>`;
+    const mixedConverted = convertHtmlListsToOutlookTables(mixedContent.replace(/\n/g, '<br/>'));
+    const mixedHtml = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${mixedConverted}</div>`;
     return wrapInOutlookTable(mixedHtml);
   }
   
