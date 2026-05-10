@@ -4017,7 +4017,7 @@ const RunTemplates = () => {
                     </div>
                   ) : (
                     <div
-                      dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables, listVariables) }}
+                      dangerouslySetInnerHTML={{ __html: normalizeListPaddingToMargin(replaceVariables(selectedTemplate.html, variables, listVariables)) }}
                       className={styles.previewContent}
                     />
                   )}
