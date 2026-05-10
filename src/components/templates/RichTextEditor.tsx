@@ -429,6 +429,7 @@ export const RichTextEditor = ({
       const tag = parentList.tagName.toLowerCase();
       const newDepth = getListDepth(parentList) + 1;
       const wrapperLi = document.createElement('li');
+      wrapperLi.dataset.wrapper = '1';
       wrapperLi.style.listStyleType = 'none'; // hide marker for the wrapper
       const sublist = document.createElement(tag);
       sublist.style.listStyleType = styleForDepth(parentList.tagName, newDepth);
