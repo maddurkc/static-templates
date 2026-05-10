@@ -652,6 +652,8 @@ export const RichTextEditor = ({
     // Tab / Shift+Tab — indent or nest list
     if (e.key === 'Tab') {
       e.preventDefault();
+      // Stop Radix Popover/Dialog FocusScope from stealing the Tab to move focus
+      e.stopPropagation();
       const sel = window.getSelection();
       const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
       // Use startContainer (caret/anchor) rather than commonAncestor so a
