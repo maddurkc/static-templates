@@ -325,7 +325,6 @@ export const RichTextEditor = ({
         lists.forEach(list => {
           list.style.listStyleType = styleType;
           list.style.marginLeft = '20px';
-          list.style.paddingLeft = '0';
         });
       }
     } else {
@@ -336,7 +335,6 @@ export const RichTextEditor = ({
         lists.forEach(list => {
           list.style.listStyleType = styleType;
           list.style.marginLeft = '20px';
-          list.style.paddingLeft = '0';
         });
       }
     }
@@ -363,14 +361,12 @@ export const RichTextEditor = ({
     blockquotes.forEach((bq) => {
       (bq as HTMLElement).style.marginLeft = '40px';
       (bq as HTMLElement).style.marginRight = '0';
-      (bq as HTMLElement).style.paddingLeft = '0';
       (bq as HTMLElement).style.borderLeft = 'none';
     });
     // Ensure nested ul/ol get inline margin (Outlook needs explicit)
     const nestedLists = editorRef.current.querySelectorAll('ul ul, ul ol, ol ul, ol ol');
     nestedLists.forEach((l) => {
       (l as HTMLElement).style.marginLeft = '20px';
-      (l as HTMLElement).style.paddingLeft = '0';
     });
   }, []);
 
@@ -385,7 +381,6 @@ export const RichTextEditor = ({
       el.style.listStyleType = styleForDepth(el.tagName, depth);
       if (depth > 0) {
         el.style.marginLeft = '20px';
-        el.style.paddingLeft = '0';
       }
       // Clear per-LI overrides so the list-level style takes effect uniformly
       Array.from(el.children).forEach((child) => {
@@ -431,7 +426,6 @@ export const RichTextEditor = ({
       const newDepth = getListDepth(parentList) + 1;
       sublist.style.listStyleType = styleForDepth(parentList.tagName, newDepth);
       sublist.style.marginLeft = '20px';
-      sublist.style.paddingLeft = '0';
       prev.appendChild(sublist);
     }
     items.forEach((li) => {
@@ -819,7 +813,6 @@ export const RichTextEditor = ({
         el.style.listStyleType = styleForDepth(el.tagName, depth);
         if (depth > 0) {
           el.style.marginLeft = '20px';
-          el.style.paddingLeft = '0';
         }
         Array.from(el.children).forEach((c) => {
           if (c.tagName === 'LI') (c as HTMLElement).style.listStyleType = '';
