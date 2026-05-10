@@ -714,27 +714,14 @@ export const RichTextEditor = ({
       e.stopPropagation();
       const sel = window.getSelection();
       const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
-      // Use startContainer (caret/anchor) rather than commonAncestor so a
-      // selection that grazes adjacent non-list text still counts as "in list"
-      // when the caret started inside an LI.
-      // For an empty trailing LI, browsers may place the caret on the parent
-      // UL/OL with startOffset = childIndex. Resolve that to the actual LI.
-      let resolvedStart: Node | null = range ? range.startContainer : null;
-      if (
-        range &&
-        resolvedStart &&
-        resolvedStart.nodeType === Node.ELEMENT_NODE &&
-        ((resolvedStart as HTMLElement).tagName === 'UL' ||
-          (resolvedStart as HTMLElement).tagName === 'OL')
-      ) {
-        const kids = (resolvedStart as HTMLElement).childNodes;
-        const idx = Math.min(range.startOffset, kids.length - 1);
-        const candidate = kids[idx] || kids[kids.length - 1];
-        if (candidate && (candidate as HTMLElement).nodeName === 'LI') {
-          resolvedStart = candidate;
-        }
-      }
-      const inList = !!(resolvedStart && findListItemAncestor(resolvedStart));
+      // Resolve caret robustly: handle UL/OL/LI direct caret + anchor fallback.
+      const resolvedStart: Node | null = range
+        ? resolveCaretToLi(range.startContainer, range.startOffset)
+        : null;
+      const liFromRange = resolvedStart ? findListItemAncestor(resolvedStart) : null;
+      const liFromAnchor = sel ? findListItemAncestor(sel.anchorNode) : null;
+      const liFromFocus = sel ? findListItemAncestor(sel.focusNode) : null;
+      const inList = !!(liFromRange || liFromAnchor || liFromFocus);
 
       // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
       if (inList) pushUndo();
