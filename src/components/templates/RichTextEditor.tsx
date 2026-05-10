@@ -416,16 +416,20 @@ export const RichTextEditor = ({
     const first = items[0];
     const parentList = first.parentElement as HTMLElement | null;
     if (!parentList || (parentList.tagName !== 'UL' && parentList.tagName !== 'OL')) return false;
-    const prev = first.previousElementSibling as HTMLElement | null;
+    const prevSibling = first.previousElementSibling as HTMLElement | null;
+    const siblingSublist = prevSibling && prevSibling.tagName === parentList.tagName ? prevSibling : null;
+    const prev = (siblingSublist ? siblingSublist.previousElementSibling : prevSibling) as HTMLElement | null;
     if (!prev || prev.tagName !== 'LI') return false; // need a preceding LI to nest under
 
-    let sublist = prev.lastElementChild as HTMLElement | null;
+    let sublist = siblingSublist || (prev.lastElementChild as HTMLElement | null);
     if (!sublist || sublist.tagName !== parentList.tagName) {
       sublist = document.createElement(parentList.tagName.toLowerCase());
       // Outlook-style: each nested level uses next style in the cycle
       const newDepth = getListDepth(parentList) + 1;
       sublist.style.listStyleType = styleForDepth(parentList.tagName, newDepth);
       sublist.style.marginLeft = '20px';
+      prev.appendChild(sublist);
+    } else if (sublist.parentElement !== prev) {
       prev.appendChild(sublist);
     }
     items.forEach((li) => {
