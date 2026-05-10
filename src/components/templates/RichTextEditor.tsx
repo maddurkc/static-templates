@@ -383,8 +383,9 @@ export const RichTextEditor = ({
         el.style.marginLeft = '20px';
       }
       // Clear per-LI overrides so the list-level style takes effect uniformly
+      // (but keep wrapper LIs which intentionally hide their marker)
       Array.from(el.children).forEach((child) => {
-        if (child.tagName === 'LI') {
+        if (child.tagName === 'LI' && (child as HTMLElement).dataset.wrapper !== '1') {
           (child as HTMLElement).style.listStyleType = '';
         }
       });
