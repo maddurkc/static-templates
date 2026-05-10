@@ -735,7 +735,11 @@ export const RichTextEditor = ({
       }
 
       if (inList) {
-        const items = getSelectedListItems();
+        let items = getSelectedListItems();
+        if (items.length === 0) {
+          const fallback = liFromRange || liFromAnchor || liFromFocus;
+          if (fallback) items = [fallback];
+        }
         if (e.shiftKey) outdentListItems(items);
         else indentListItems(items);
         normalizeIndentForOutlook();
