@@ -496,8 +496,24 @@ export const RichTextEditor = ({
     if (!sel || sel.rangeCount === 0) return [];
     const range = sel.getRangeAt(0);
 
-    const startLi = findListItemAncestor(range.startContainer);
-    let endLi = findListItemAncestor(range.endContainer);
+    // If caret sits directly on a UL/OL (common for empty trailing LIs),
+    // resolve to the LI at that offset.
+    const resolveContainer = (node: Node, offset: number): Node => {
+      if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        ((node as HTMLElement).tagName === 'UL' ||
+          (node as HTMLElement).tagName === 'OL')
+      ) {
+        const kids = (node as HTMLElement).childNodes;
+        const idx = Math.min(offset, kids.length - 1);
+        const candidate = kids[idx] || kids[kids.length - 1];
+        if (candidate && (candidate as HTMLElement).nodeName === 'LI') return candidate;
+      }
+      return node;
+    };
+
+    const startLi = findListItemAncestor(resolveContainer(range.startContainer, range.startOffset));
+    let endLi = findListItemAncestor(resolveContainer(range.endContainer, range.endOffset));
 
     // Boundary fix: if the selection ends right at offset 0 of the very first
     // node inside an LI, the user didn't actually intend to include that LI
@@ -683,7 +699,24 @@ export const RichTextEditor = ({
       // Use startContainer (caret/anchor) rather than commonAncestor so a
       // selection that grazes adjacent non-list text still counts as "in list"
       // when the caret started inside an LI.
-      const inList = !!(range && findListItemAncestor(range.startContainer));
+      // For an empty trailing LI, browsers may place the caret on the parent
+      // UL/OL with startOffset = childIndex. Resolve that to the actual LI.
+      let resolvedStart: Node | null = range ? range.startContainer : null;
+      if (
+        range &&
+        resolvedStart &&
+        resolvedStart.nodeType === Node.ELEMENT_NODE &&
+        ((resolvedStart as HTMLElement).tagName === 'UL' ||
+          (resolvedStart as HTMLElement).tagName === 'OL')
+      ) {
+        const kids = (resolvedStart as HTMLElement).childNodes;
+        const idx = Math.min(range.startOffset, kids.length - 1);
+        const candidate = kids[idx] || kids[kids.length - 1];
+        if (candidate && (candidate as HTMLElement).nodeName === 'LI') {
+          resolvedStart = candidate;
+        }
+      }
+      const inList = !!(resolvedStart && findListItemAncestor(resolvedStart));
 
       // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
       if (inList) pushUndo();
