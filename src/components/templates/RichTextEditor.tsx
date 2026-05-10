@@ -8,6 +8,7 @@ import { Bold, Italic, Underline, Type, Link, Unlink, Strikethrough, AlignLeft, 
 import { useIntellisenseContext } from "@/contexts/IntellisenseContext";
 import { useVariableIntellisense } from "@/hooks/useVariableIntellisense";
 import { VariableIntellisense } from "./VariableIntellisense";
+import { normalizeListPaddingToMargin } from "@/lib/templateUtils";
 import styles from "./RichTextEditor.module.scss";
 
 interface RichTextEditorProps {
