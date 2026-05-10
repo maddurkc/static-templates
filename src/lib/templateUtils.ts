@@ -4,6 +4,25 @@ import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
 import { generateListVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
 
+// Normalize any padding-left on <ul>/<ol> elements to margin-left so Outlook
+// and iframe previews render list indentation consistently.
+export const normalizeListPaddingToMargin = (html: string): string => {
+  if (!html || typeof document === 'undefined') return html;
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  container.querySelectorAll('ul, ol').forEach((list) => {
+    const el = list as HTMLElement;
+    const style = el.getAttribute('style') || '';
+    if (/padding-left\s*:/i.test(style)) {
+      const updated = style
+        .replace(/padding-left\s*:\s*[^;]+;?/gi, '')
+        .trim();
+      el.setAttribute('style', updated + '; margin-left: 20px');
+    }
+  });
+  return container.innerHTML;
+};
+
 // Outlook-compatible font family constant (use single quotes for font names in inline styles)
 export const OUTLOOK_FONT_FAMILY = "'Wells Fargo Sans', Arial, Helvetica, sans-serif";
 
