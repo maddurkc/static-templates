@@ -496,8 +496,24 @@ export const RichTextEditor = ({
     if (!sel || sel.rangeCount === 0) return [];
     const range = sel.getRangeAt(0);
 
-    const startLi = findListItemAncestor(range.startContainer);
-    let endLi = findListItemAncestor(range.endContainer);
+    // If caret sits directly on a UL/OL (common for empty trailing LIs),
+    // resolve to the LI at that offset.
+    const resolveContainer = (node: Node, offset: number): Node => {
+      if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        ((node as HTMLElement).tagName === 'UL' ||
+          (node as HTMLElement).tagName === 'OL')
+      ) {
+        const kids = (node as HTMLElement).childNodes;
+        const idx = Math.min(offset, kids.length - 1);
+        const candidate = kids[idx] || kids[kids.length - 1];
+        if (candidate && (candidate as HTMLElement).nodeName === 'LI') return candidate;
+      }
+      return node;
+    };
+
+    const startLi = findListItemAncestor(resolveContainer(range.startContainer, range.startOffset));
+    let endLi = findListItemAncestor(resolveContainer(range.endContainer, range.endOffset));
 
     // Boundary fix: if the selection ends right at offset 0 of the very first
     // node inside an LI, the user didn't actually intend to include that LI
