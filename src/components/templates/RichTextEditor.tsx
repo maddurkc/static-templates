@@ -419,7 +419,27 @@ export const RichTextEditor = ({
     const prevSibling = first.previousElementSibling as HTMLElement | null;
     const siblingSublist = prevSibling && prevSibling.tagName === parentList.tagName ? prevSibling : null;
     const prev = (siblingSublist ? siblingSublist.previousElementSibling : prevSibling) as HTMLElement | null;
-    if (!prev || prev.tagName !== 'LI') return false; // need a preceding LI to nest under
+
+    // No preceding LI to nest under (e.g. caret is on the first item).
+    // Outlook still indents and cycles the bullet style — wrap the selected
+    // items in a new nested sublist of the SAME tag, hosted in a synthesized
+    // LI inserted at their original position.
+    if (!prev || prev.tagName !== 'LI') {
+      const tag = parentList.tagName.toLowerCase();
+      const newDepth = getListDepth(parentList) + 1;
+      const wrapperLi = document.createElement('li');
+      wrapperLi.style.listStyleType = 'none'; // hide marker for the wrapper
+      const sublist = document.createElement(tag);
+      sublist.style.listStyleType = styleForDepth(parentList.tagName, newDepth);
+      sublist.style.marginLeft = '20px';
+      parentList.insertBefore(wrapperLi, first);
+      wrapperLi.appendChild(sublist);
+      items.forEach((li) => {
+        (li as HTMLElement).style.listStyleType = '';
+        sublist.appendChild(li);
+      });
+      return true;
+    }
 
     let sublist = siblingSublist || (prev.lastElementChild as HTMLElement | null);
     if (!sublist || sublist.tagName !== parentList.tagName) {
