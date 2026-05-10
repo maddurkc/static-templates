@@ -791,7 +791,7 @@ export const RichTextEditor = ({
     // UL/OL styles get the Outlook depth cycle and Word/Office gunk is stripped.
     if (html && /<[a-z][\s\S]*>/i.test(html)) {
       // Strip MS Office conditional comments + meta + style blocks
-      let cleaned = html
+      const cleaned = html
         .replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, '')
         .replace(/<!--[\s\S]*?-->/g, '')
         .replace(/<\/?(meta|link|style|script|o:p)[^>]*>/gi, '')
