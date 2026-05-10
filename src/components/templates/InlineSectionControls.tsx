@@ -48,6 +48,7 @@ export const InlineSectionControls = ({
           style={{ width: '24rem', maxHeight: '500px', overflowY: 'auto' }} 
           align="end"
           onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.stopPropagation()}
           data-walkthrough="variable-editor-popover"
         >
           <VariableEditor section={section} onUpdate={onUpdate} globalApiConfig={globalApiConfig} />
@@ -72,6 +73,7 @@ export const InlineSectionControls = ({
             style={{ width: '32rem', maxHeight: '500px', overflowY: 'auto' }} 
             align="end"
             onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.stopPropagation()}
           >
             <StyleEditor section={section} onUpdate={onUpdate} />
           </PopoverContent>
