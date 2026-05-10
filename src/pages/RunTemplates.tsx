@@ -2145,7 +2145,7 @@ const RunTemplates = () => {
     }
     
     // Otherwise render from html field
-    let html = replaceVariables(selectedTemplate.html, variables, listVariables);
+    let html = normalizeListPaddingToMargin(replaceVariables(selectedTemplate.html, variables, listVariables));
     html = resolveGlobalApiThymeleaf(html, globalApiConfig);
     return html;
   }, [selectedTemplate, variables, listVariables, tableVariables, labelVariables, globalApiConfig]);
