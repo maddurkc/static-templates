@@ -569,7 +569,7 @@ export const RichTextEditor = ({
       return items;
     }
     return [startLi];
-  }, [findListItemAncestor]);
+  }, [findListItemAncestor, resolveCaretToLi]);
 
   const applyIndent = useCallback(() => {
     pushUndo();
