@@ -354,6 +354,28 @@ export const RichTextEditor = ({
     return null;
   }, []);
 
+  // Caret-aware resolver: when caret sits on UL/OL/LI directly (empty trailing
+  // items, after <br>, post-Enter), walk to the actual LI at that offset.
+  const resolveCaretToLi = useCallback((node: Node | null, offset: number): Node | null => {
+    if (!node) return null;
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      if (el.tagName === 'UL' || el.tagName === 'OL') {
+        const kids = el.childNodes;
+        if (kids.length === 0) return node;
+        const idx = Math.min(Math.max(offset, 0), kids.length - 1);
+        for (let i = idx; i < kids.length; i++) {
+          if ((kids[i] as HTMLElement).nodeName === 'LI') return kids[i];
+        }
+        for (let i = idx - 1; i >= 0; i--) {
+          if ((kids[i] as HTMLElement).nodeName === 'LI') return kids[i];
+        }
+      }
+      if (el.tagName === 'LI') return el;
+    }
+    return node;
+  }, []);
+
   // Convert blockquote (browser default for indent) to Outlook-friendly margin-left wrapper
   const normalizeIndentForOutlook = useCallback(() => {
     if (!editorRef.current) return;
