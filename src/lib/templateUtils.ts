@@ -4,6 +4,25 @@ import { generateTableHTML, TableData } from "./tableUtils";
 import { sanitizeHTML, sanitizeInput } from "./sanitize";
 import { generateListVariableName, getListTag, getListStyleType } from "./listThymeleafUtils";
 
+// Normalize any padding-left on <ul>/<ol> elements to margin-left so Outlook
+// and iframe previews render list indentation consistently.
+export const normalizeListPaddingToMargin = (html: string): string => {
+  if (!html || typeof document === 'undefined') return html;
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  container.querySelectorAll('ul, ol').forEach((list) => {
+    const el = list as HTMLElement;
+    const style = el.getAttribute('style') || '';
+    if (/padding-left\s*:/i.test(style)) {
+      const updated = style
+        .replace(/padding-left\s*:\s*[^;]+;?/gi, '')
+        .trim();
+      el.setAttribute('style', updated + '; margin-left: 20px');
+    }
+  });
+  return container.innerHTML;
+};
+
 // Outlook-compatible font family constant (use single quotes for font names in inline styles)
 export const OUTLOOK_FONT_FAMILY = "'Wells Fargo Sans', Arial, Helvetica, sans-serif";
 
@@ -596,6 +615,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     // Convert newlines to <br> tags for Outlook compatibility
     let formattedContent = sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>');
     // Convert any rich-text <ul>/<ol> into Outlook-friendly table-based lists
+    formattedContent = normalizeListPaddingToMargin(formattedContent);
     formattedContent = convertHtmlListsToOutlookTables(formattedContent);
     const staticContent = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${formattedContent}</div>`;
     return wrapInOutlookTable(staticContent);
@@ -728,8 +748,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
     );
     
-    // Convert newlines to <br> tags for Outlook compatibility
-    const mixedConverted = convertHtmlListsToOutlookTables(mixedContent.replace(/\n/g, '<br/>'));
+    // Convert any rich-text <ul>/<ol> into Outlook-friendly table-based lists
+    const mixedConverted = convertHtmlListsToOutlookTables(normalizeListPaddingToMargin(mixedContent.replace(/\n/g, '<br/>')));
     const mixedHtml = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${mixedConverted}</div>`;
     return wrapInOutlookTable(mixedHtml);
   }
@@ -908,9 +928,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     }
     const styleStr = ` style="${styleProps.join('; ')}"`;
     
-    // Convert newlines to <br> tags for multi-line content (Outlook compatibility)
-    processedContent = processedContent.replace(/\n/g, '<br/>');
     // Convert any nested <ul>/<ol> from RichTextEditor into Outlook-friendly table-based lists
+    processedContent = normalizeListPaddingToMargin(processedContent);
     processedContent = convertHtmlListsToOutlookTables(processedContent);
     
     // Check if processedContent already has the wrapper tag to avoid double-wrapping

@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
 import { fetchTemplates, fetchTemplateById, resendDataToTemplate } from "@/lib/templateApi";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
-import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobalTable } from "@/lib/templateUtils";
+import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobalTable, normalizeListPaddingToMargin } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
@@ -2145,7 +2145,7 @@ const RunTemplates = () => {
     }
     
     // Otherwise render from html field
-    let html = replaceVariables(selectedTemplate.html, variables, listVariables);
+    let html = normalizeListPaddingToMargin(replaceVariables(selectedTemplate.html, variables, listVariables));
     html = resolveGlobalApiThymeleaf(html, globalApiConfig);
     return html;
   }, [selectedTemplate, variables, listVariables, tableVariables, labelVariables, globalApiConfig]);
@@ -4017,7 +4017,7 @@ const RunTemplates = () => {
                     </div>
                   ) : (
                     <div
-                      dangerouslySetInnerHTML={{ __html: replaceVariables(selectedTemplate.html, variables, listVariables) }}
+                      dangerouslySetInnerHTML={{ __html: normalizeListPaddingToMargin(replaceVariables(selectedTemplate.html, variables, listVariables)) }}
                       className={styles.previewContent}
                     />
                   )}
