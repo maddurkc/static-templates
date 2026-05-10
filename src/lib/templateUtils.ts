@@ -615,6 +615,7 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     // Convert newlines to <br> tags for Outlook compatibility
     let formattedContent = sanitizeHTML(section.variables.content as string).replace(/\n/g, '<br/>');
     // Convert any rich-text <ul>/<ol> into Outlook-friendly table-based lists
+    formattedContent = normalizeListPaddingToMargin(formattedContent);
     formattedContent = convertHtmlListsToOutlookTables(formattedContent);
     const staticContent = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${formattedContent}</div>`;
     return wrapInOutlookTable(staticContent);
@@ -747,8 +748,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
       }
     );
     
-    // Convert newlines to <br> tags for Outlook compatibility
-    const mixedConverted = convertHtmlListsToOutlookTables(mixedContent.replace(/\n/g, '<br/>'));
+    // Convert any rich-text <ul>/<ol> into Outlook-friendly table-based lists
+    const mixedConverted = convertHtmlListsToOutlookTables(normalizeListPaddingToMargin(mixedContent.replace(/\n/g, '<br/>')));
     const mixedHtml = `<div style="padding: 8px; line-height: 1.5; font-family: ${OUTLOOK_FONT_FAMILY}; mso-line-height-rule: exactly;">${mixedConverted}</div>`;
     return wrapInOutlookTable(mixedHtml);
   }
@@ -927,9 +928,8 @@ export const renderSectionContent = (section: Section, variables?: Record<string
     }
     const styleStr = ` style="${styleProps.join('; ')}"`;
     
-    // Convert newlines to <br> tags for multi-line content (Outlook compatibility)
-    processedContent = processedContent.replace(/\n/g, '<br/>');
     // Convert any nested <ul>/<ol> from RichTextEditor into Outlook-friendly table-based lists
+    processedContent = normalizeListPaddingToMargin(processedContent);
     processedContent = convertHtmlListsToOutlookTables(processedContent);
     
     // Check if processedContent already has the wrapper tag to avoid double-wrapping
