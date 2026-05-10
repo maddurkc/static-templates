@@ -354,6 +354,28 @@ export const RichTextEditor = ({
     return null;
   }, []);
 
+  // Caret-aware resolver: when caret sits on UL/OL/LI directly (empty trailing
+  // items, after <br>, post-Enter), walk to the actual LI at that offset.
+  const resolveCaretToLi = useCallback((node: Node | null, offset: number): Node | null => {
+    if (!node) return null;
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      if (el.tagName === 'UL' || el.tagName === 'OL') {
+        const kids = el.childNodes;
+        if (kids.length === 0) return node;
+        const idx = Math.min(Math.max(offset, 0), kids.length - 1);
+        for (let i = idx; i < kids.length; i++) {
+          if ((kids[i] as HTMLElement).nodeName === 'LI') return kids[i];
+        }
+        for (let i = idx - 1; i >= 0; i--) {
+          if ((kids[i] as HTMLElement).nodeName === 'LI') return kids[i];
+        }
+      }
+      if (el.tagName === 'LI') return el;
+    }
+    return node;
+  }, []);
+
   // Convert blockquote (browser default for indent) to Outlook-friendly margin-left wrapper
   const normalizeIndentForOutlook = useCallback(() => {
     if (!editorRef.current) return;
@@ -504,24 +526,12 @@ export const RichTextEditor = ({
     if (!sel || sel.rangeCount === 0) return [];
     const range = sel.getRangeAt(0);
 
-    // If caret sits directly on a UL/OL (common for empty trailing LIs),
-    // resolve to the LI at that offset.
-    const resolveContainer = (node: Node, offset: number): Node => {
-      if (
-        node.nodeType === Node.ELEMENT_NODE &&
-        ((node as HTMLElement).tagName === 'UL' ||
-          (node as HTMLElement).tagName === 'OL')
-      ) {
-        const kids = (node as HTMLElement).childNodes;
-        const idx = Math.min(offset, kids.length - 1);
-        const candidate = kids[idx] || kids[kids.length - 1];
-        if (candidate && (candidate as HTMLElement).nodeName === 'LI') return candidate;
-      }
-      return node;
-    };
-
-    const startLi = findListItemAncestor(resolveContainer(range.startContainer, range.startOffset));
-    let endLi = findListItemAncestor(resolveContainer(range.endContainer, range.endOffset));
+    const startLi =
+      findListItemAncestor(resolveCaretToLi(range.startContainer, range.startOffset)) ||
+      findListItemAncestor(sel.anchorNode);
+    let endLi =
+      findListItemAncestor(resolveCaretToLi(range.endContainer, range.endOffset)) ||
+      findListItemAncestor(sel.focusNode);
 
     // Boundary fix: if the selection ends right at offset 0 of the very first
     // node inside an LI, the user didn't actually intend to include that LI
@@ -559,7 +569,7 @@ export const RichTextEditor = ({
       return items;
     }
     return [startLi];
-  }, [findListItemAncestor]);
+  }, [findListItemAncestor, resolveCaretToLi]);
 
   const applyIndent = useCallback(() => {
     pushUndo();
@@ -704,27 +714,14 @@ export const RichTextEditor = ({
       e.stopPropagation();
       const sel = window.getSelection();
       const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
-      // Use startContainer (caret/anchor) rather than commonAncestor so a
-      // selection that grazes adjacent non-list text still counts as "in list"
-      // when the caret started inside an LI.
-      // For an empty trailing LI, browsers may place the caret on the parent
-      // UL/OL with startOffset = childIndex. Resolve that to the actual LI.
-      let resolvedStart: Node | null = range ? range.startContainer : null;
-      if (
-        range &&
-        resolvedStart &&
-        resolvedStart.nodeType === Node.ELEMENT_NODE &&
-        ((resolvedStart as HTMLElement).tagName === 'UL' ||
-          (resolvedStart as HTMLElement).tagName === 'OL')
-      ) {
-        const kids = (resolvedStart as HTMLElement).childNodes;
-        const idx = Math.min(range.startOffset, kids.length - 1);
-        const candidate = kids[idx] || kids[kids.length - 1];
-        if (candidate && (candidate as HTMLElement).nodeName === 'LI') {
-          resolvedStart = candidate;
-        }
-      }
-      const inList = !!(resolvedStart && findListItemAncestor(resolvedStart));
+      // Resolve caret robustly: handle UL/OL/LI direct caret + anchor fallback.
+      const resolvedStart: Node | null = range
+        ? resolveCaretToLi(range.startContainer, range.startOffset)
+        : null;
+      const liFromRange = resolvedStart ? findListItemAncestor(resolvedStart) : null;
+      const liFromAnchor = sel ? findListItemAncestor(sel.anchorNode) : null;
+      const liFromFocus = sel ? findListItemAncestor(sel.focusNode) : null;
+      const inList = !!(liFromRange || liFromAnchor || liFromFocus);
 
       // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
       if (inList) pushUndo();
@@ -738,7 +735,11 @@ export const RichTextEditor = ({
       }
 
       if (inList) {
-        const items = getSelectedListItems();
+        let items = getSelectedListItems();
+        if (items.length === 0) {
+          const fallback = liFromRange || liFromAnchor || liFromFocus;
+          if (fallback) items = [fallback];
+        }
         if (e.shiftKey) outdentListItems(items);
         else indentListItems(items);
         normalizeIndentForOutlook();
