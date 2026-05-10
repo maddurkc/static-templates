@@ -158,8 +158,13 @@ export const RichTextEditor = ({
     
     // Update if the value changed from external source OR if this is the first render
     if (editorRef.current && (value !== lastValueRef.current || editorRef.current.innerHTML === '')) {
-      editorRef.current.innerHTML = value || '';
+      const normalized = normalizeListPaddingToMargin(value || '');
+      editorRef.current.innerHTML = normalized;
       lastValueRef.current = value;
+      if (normalized !== value) {
+        isUserEditingRef.current = true;
+        onChange(normalized);
+      }
     }
   }, [value]);
 
