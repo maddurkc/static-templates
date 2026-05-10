@@ -382,11 +382,17 @@ export const RichTextEditor = ({
       if (depth > 0) {
         el.style.marginLeft = '20px';
       }
-      // Clear per-LI overrides so the list-level style takes effect uniformly
-      // (but keep wrapper LIs which intentionally hide their marker)
       Array.from(el.children).forEach((child) => {
-        if (child.tagName === 'LI' && (child as HTMLElement).dataset.wrapper !== '1') {
-          (child as HTMLElement).style.listStyleType = '';
+        if (child.tagName !== 'LI') return;
+        const li = child as HTMLElement;
+        // Auto-detect wrapper LIs whose only child is a nested UL/OL
+        const onlyChild = li.children.length === 1 ? li.children[0] : null;
+        const isEmptyText = !(li.textContent || '').replace(/[\s\u00a0]/g, '').length;
+        if (onlyChild && (onlyChild.tagName === 'UL' || onlyChild.tagName === 'OL') && isEmptyText) {
+          li.dataset.wrapper = '1';
+          li.style.listStyleType = 'none';
+        } else if (li.dataset.wrapper !== '1') {
+          li.style.listStyleType = '';
         }
       });
     });
