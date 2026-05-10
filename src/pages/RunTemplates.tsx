@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getTemplates, Template } from "@/lib/templateStorage";
 import { fetchTemplates, fetchTemplateById, resendDataToTemplate } from "@/lib/templateApi";
 import { Section, ListItemStyle, TextStyle } from "@/types/section";
-import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobalTable } from "@/lib/templateUtils";
+import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobalTable, normalizeListPaddingToMargin } from "@/lib/templateUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
