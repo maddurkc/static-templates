@@ -626,6 +626,86 @@ export const RichTextEditor = ({
     return [startLi];
   }, [findListItemAncestor, resolveCaretToLi]);
 
+  const getCaretOffsetWithinListItem = useCallback((li: HTMLLIElement, range: Range | null): number | null => {
+    if (!range || !li.contains(range.startContainer)) return null;
+    const walker = document.createTreeWalker(
+      li,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          const parentList = (node.parentElement || null)?.closest('ul, ol');
+          return parentList && parentList !== li.parentElement
+            ? NodeFilter.FILTER_REJECT
+            : NodeFilter.FILTER_ACCEPT;
+        },
+      }
+    );
+    let offset = 0;
+    let node = walker.nextNode();
+    while (node) {
+      if (node === range.startContainer) {
+        return offset + Math.min(range.startOffset, node.textContent?.length || 0);
+      }
+      offset += node.textContent?.length || 0;
+      node = walker.nextNode();
+    }
+    return null;
+  }, []);
+
+  const restoreCaretInListItem = useCallback((li: HTMLLIElement, textOffset: number | null) => {
+    const root = editorRef.current;
+    if (!root || !root.contains(li)) return;
+
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(
+      li,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          const parentList = (node.parentElement || null)?.closest('ul, ol');
+          return parentList && parentList !== li.parentElement
+            ? NodeFilter.FILTER_REJECT
+            : NodeFilter.FILTER_ACCEPT;
+        },
+      }
+    );
+    let node = walker.nextNode();
+    while (node) {
+      textNodes.push(node as Text);
+      node = walker.nextNode();
+    }
+
+    if (textNodes.length === 0) {
+      const textNode = document.createTextNode('');
+      const firstNestedList = Array.from(li.childNodes).find(
+        (child) => child.nodeType === Node.ELEMENT_NODE && ['UL', 'OL'].includes((child as HTMLElement).tagName)
+      );
+      li.insertBefore(textNode, firstNestedList || li.firstChild);
+      textNodes.push(textNode);
+    }
+
+    const desiredOffset = textOffset ?? textNodes.reduce((sum, textNode) => sum + textNode.length, 0);
+    let remaining = desiredOffset;
+    let target = textNodes[textNodes.length - 1];
+    let targetOffset = target.length;
+    for (const textNode of textNodes) {
+      if (remaining <= textNode.length) {
+        target = textNode;
+        targetOffset = Math.max(0, remaining);
+        break;
+      }
+      remaining -= textNode.length;
+    }
+
+    const newRange = document.createRange();
+    newRange.setStart(target, targetOffset);
+    newRange.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(newRange);
+    savedSelectionRef.current = newRange.cloneRange();
+  }, []);
+
   const applyIndent = useCallback(() => {
     pushUndo();
     restoreSelection();
