@@ -910,7 +910,7 @@ export const RichTextEditor = ({
 
       // Restore caret from the moved LI + text offset, not the stale browser Range.
       if (caretRestoreItem) {
-        requestAnimationFrame(() => restoreCaretInListItem(caretRestoreItem, caretTextOffset));
+        syncCaretAfterListReparenting(caretRestoreItem, caretTextOffset);
       }
 
       // Mark as user-edit so the value->innerHTML sync effect doesn't wipe the DOM/caret
