@@ -25,6 +25,32 @@ const TEXT_COLORS = ['#000000', '#FF0000', '#0066CC', '#008000', '#FF6600', '#80
 const BG_COLORS = ['#FFFFFF', '#FFFF00', '#90EE90', '#ADD8E6', '#FFB6C1', '#E6E6FA', '#F5F5DC', '#F0F0F0'];
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px'];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Configurable Outlook-style list-style cycle mapping.
+// Each nesting depth (0 = top level) maps to the next style in its tag's cycle.
+// Update these arrays to change the cycle globally — every list creation,
+// indent/outdent, paste-normalization and re-render reads from here.
+// ─────────────────────────────────────────────────────────────────────────────
+export const LIST_STYLE_CYCLE = {
+  UL: ['disc', 'circle', 'square'] as const,
+  OL: ['decimal', 'lower-alpha', 'lower-roman'] as const,
+};
+
+export const getListDepth = (el: HTMLElement, root?: Element | null): number => {
+  let depth = 0;
+  let cur: HTMLElement | null = el.parentElement;
+  while (cur && cur !== root) {
+    if (cur.tagName === 'UL' || cur.tagName === 'OL') depth++;
+    cur = cur.parentElement;
+  }
+  return depth;
+};
+
+export const styleForDepth = (tag: string, depth: number): string => {
+  const cycle = tag === 'OL' ? LIST_STYLE_CYCLE.OL : LIST_STYLE_CYCLE.UL;
+  return cycle[depth % cycle.length];
+};
+
 export const RichTextEditor = ({ 
   value, 
   onChange, 
