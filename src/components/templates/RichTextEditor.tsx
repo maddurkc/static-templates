@@ -704,12 +704,28 @@ export const RichTextEditor = ({
     selection?.removeAllRanges();
     selection?.addRange(newRange);
     savedSelectionRef.current = newRange.cloneRange();
+    root.focus({ preventScroll: true });
   }, []);
+
+  const syncCaretAfterListReparenting = useCallback((li: HTMLLIElement | null, textOffset: number | null) => {
+    if (!li) return;
+
+    // DOM re-parenting can leave Chrome/Radix with a selection pointing at the
+    // old UL/editor boundary. Re-anchor immediately, then again after React and
+    // the browser have processed the DOM mutation so the next Tab sees the LI.
+    restoreCaretInListItem(li, textOffset);
+    queueMicrotask(() => restoreCaretInListItem(li, textOffset));
+    requestAnimationFrame(() => restoreCaretInListItem(li, textOffset));
+  }, [restoreCaretInListItem]);
 
   const applyIndent = useCallback(() => {
     pushUndo();
     restoreSelection();
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
     const items = getSelectedListItems();
+    const caretRestoreItem = items[0] || null;
+    const caretTextOffset = caretRestoreItem ? getCaretOffsetWithinListItem(caretRestoreItem, range) : null;
     if (items.length > 0) {
       indentListItems(items);
     } else {
@@ -719,13 +735,18 @@ export const RichTextEditor = ({
     normalizeListStyles();
     isUserEditingRef.current = true;
     if (editorRef.current) onChange(editorRef.current.innerHTML);
+    syncCaretAfterListReparenting(caretRestoreItem, caretTextOffset);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, indentListItems, pushUndo]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, getCaretOffsetWithinListItem, indentListItems, syncCaretAfterListReparenting, pushUndo]);
 
   const applyOutdent = useCallback(() => {
     pushUndo();
     restoreSelection();
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
     const items = getSelectedListItems();
+    const caretRestoreItem = items[0] || null;
+    const caretTextOffset = caretRestoreItem ? getCaretOffsetWithinListItem(caretRestoreItem, range) : null;
     if (items.length > 0) {
       outdentListItems(items);
     } else {
@@ -735,8 +756,9 @@ export const RichTextEditor = ({
     normalizeListStyles();
     isUserEditingRef.current = true;
     if (editorRef.current) onChange(editorRef.current.innerHTML);
+    syncCaretAfterListReparenting(caretRestoreItem, caretTextOffset);
     editorRef.current?.focus();
-  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, outdentListItems, pushUndo]);
+  }, [onChange, restoreSelection, normalizeIndentForOutlook, normalizeListStyles, getSelectedListItems, getCaretOffsetWithinListItem, outdentListItems, syncCaretAfterListReparenting, pushUndo]);
 
   const applyLink = useCallback(() => {
     if (!linkUrl.trim()) return;
@@ -888,7 +910,7 @@ export const RichTextEditor = ({
 
       // Restore caret from the moved LI + text offset, not the stale browser Range.
       if (caretRestoreItem) {
-        requestAnimationFrame(() => restoreCaretInListItem(caretRestoreItem, caretTextOffset));
+        syncCaretAfterListReparenting(caretRestoreItem, caretTextOffset);
       }
 
       // Mark as user-edit so the value->innerHTML sync effect doesn't wipe the DOM/caret
