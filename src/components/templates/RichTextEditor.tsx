@@ -425,7 +425,7 @@ export const RichTextEditor = ({
     const lists = editorRef.current.querySelectorAll('ul, ol');
     lists.forEach((list) => {
       const el = list as HTMLElement;
-      const depth = getListDepth(el); // 0 = top-level
+      const depth = depthOf(el); // 0 = top-level
       el.style.listStyleType = styleForDepth(el.tagName, depth);
       if (depth > 0) {
         el.style.marginLeft = '20px';
@@ -470,7 +470,7 @@ export const RichTextEditor = ({
     // LI inserted at their original position.
     if (!prev || prev.tagName !== 'LI') {
       const tag = parentList.tagName.toLowerCase();
-      const newDepth = getListDepth(parentList) + 1;
+      const newDepth = depthOf(parentList) + 1;
       const wrapperLi = document.createElement('li');
       wrapperLi.dataset.wrapper = '1';
       wrapperLi.style.listStyleType = 'none'; // hide marker for the wrapper
@@ -490,7 +490,7 @@ export const RichTextEditor = ({
     if (!sublist || sublist.tagName !== parentList.tagName) {
       sublist = document.createElement(parentList.tagName.toLowerCase());
       // Outlook-style: each nested level uses next style in the cycle
-      const newDepth = getListDepth(parentList) + 1;
+      const newDepth = depthOf(parentList) + 1;
       sublist.style.listStyleType = styleForDepth(parentList.tagName, newDepth);
       sublist.style.marginLeft = '20px';
       prev.appendChild(sublist);
