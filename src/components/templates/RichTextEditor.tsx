@@ -380,25 +380,59 @@ export const RichTextEditor = ({
     return null;
   }, []);
 
-  // Caret-aware resolver: when caret sits on UL/OL/LI directly (empty trailing
-  // items, after <br>, post-Enter), walk to the actual LI at that offset.
+  // Caret-aware resolver: when the browser reports the caret on a UL/OL/LI or
+  // on the editor root immediately after the final list, map it back to the LI
+  // the user is visually editing. This is the common case for Tab on the last
+  // list item / empty trailing list item in contentEditable.
   const resolveCaretToLi = useCallback((node: Node | null, offset: number): Node | null => {
     if (!node) return null;
+
+    const boundaryListItem = (candidate: Node | null, fromEnd: boolean): HTMLLIElement | null => {
+      if (!candidate || candidate.nodeType !== Node.ELEMENT_NODE) return null;
+      const el = candidate as HTMLElement;
+      if (el.tagName === 'LI') return el as HTMLLIElement;
+      if (el.tagName === 'UL' || el.tagName === 'OL') {
+        const directItems = Array.from(el.children).filter((child) => child.tagName === 'LI') as HTMLLIElement[];
+        return directItems.length ? directItems[fromEnd ? directItems.length - 1 : 0] : null;
+      }
+      const nestedItems = Array.from(el.querySelectorAll('li')) as HTMLLIElement[];
+      return nestedItems.length ? nestedItems[fromEnd ? nestedItems.length - 1 : 0] : null;
+    };
+
     if (node.nodeType === Node.ELEMENT_NODE) {
       const el = node as HTMLElement;
+      if (el.tagName === 'LI') return el;
+
       if (el.tagName === 'UL' || el.tagName === 'OL') {
         const kids = el.childNodes;
         if (kids.length === 0) return node;
         const idx = Math.min(Math.max(offset, 0), kids.length - 1);
         for (let i = idx; i < kids.length; i++) {
-          if ((kids[i] as HTMLElement).nodeName === 'LI') return kids[i];
+          const li = boundaryListItem(kids[i], false);
+          if (li) return li;
         }
         for (let i = idx - 1; i >= 0; i--) {
-          if ((kids[i] as HTMLElement).nodeName === 'LI') return kids[i];
+          const li = boundaryListItem(kids[i], true);
+          if (li) return li;
         }
       }
-      if (el.tagName === 'LI') return el;
+
+      // Chrome can place a collapsed caret on the editor DIV at offset right
+      // after the list when the user is at the end of the last LI. Search the
+      // previous child first so Tab indents that final LI instead of doing none.
+      if (el === editorRef.current) {
+        const kids = el.childNodes;
+        for (let i = Math.min(offset - 1, kids.length - 1); i >= 0; i--) {
+          const li = boundaryListItem(kids[i], true);
+          if (li) return li;
+        }
+        for (let i = Math.min(Math.max(offset, 0), kids.length - 1); i < kids.length; i++) {
+          const li = boundaryListItem(kids[i], false);
+          if (li) return li;
+        }
+      }
     }
+
     return node;
   }, []);
 
