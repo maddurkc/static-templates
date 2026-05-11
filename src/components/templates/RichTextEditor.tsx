@@ -861,20 +861,17 @@ export const RichTextEditor = ({
       // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
       if (inList) pushUndo();
 
-      // Snapshot caret so we can restore it after DOM reparenting
-      let caretNode: Node | null = null;
-      let caretOffset = 0;
-      if (range) {
-        caretNode = range.startContainer;
-        caretOffset = range.startOffset;
-      }
+      const fallbackItem = liFromRange || liFromAnchor || liFromFocus;
+      let caretRestoreItem: HTMLLIElement | null = fallbackItem;
+      let caretTextOffset = fallbackItem ? getCaretOffsetWithinListItem(fallbackItem, range) : null;
 
       if (inList) {
         let items = getSelectedListItems();
         if (items.length === 0) {
-          const fallback = liFromRange || liFromAnchor || liFromFocus;
-          if (fallback) items = [fallback];
+          if (fallbackItem) items = [fallbackItem];
         }
+        caretRestoreItem = items[0] || fallbackItem;
+        caretTextOffset = caretRestoreItem ? getCaretOffsetWithinListItem(caretRestoreItem, range) : null;
         if (e.shiftKey) outdentListItems(items);
         else indentListItems(items);
         normalizeIndentForOutlook();
@@ -886,27 +883,12 @@ export const RichTextEditor = ({
       } else {
         // Insert non-breaking spaces so Outlook preserves indentation
         document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
-        caretNode = null; // execCommand already moved caret correctly
+        caretRestoreItem = null; // execCommand already moved caret correctly
       }
 
-      // Restore caret to its original text node/offset (nodes were just reparented)
-      if (caretNode && editorRef.current?.contains(caretNode)) {
-        try {
-          const newRange = document.createRange();
-          const maxOffset = caretNode.nodeType === Node.TEXT_NODE
-            ? (caretNode as Text).length
-            : caretNode.childNodes.length;
-          newRange.setStart(caretNode, Math.min(caretOffset, maxOffset));
-          newRange.collapse(true);
-          const s = window.getSelection();
-          if (s) {
-            s.removeAllRanges();
-            s.addRange(newRange);
-          }
-          savedSelectionRef.current = newRange.cloneRange();
-        } catch {
-          /* ignore */
-        }
+      // Restore caret from the moved LI + text offset, not the stale browser Range.
+      if (caretRestoreItem) {
+        requestAnimationFrame(() => restoreCaretInListItem(caretRestoreItem, caretTextOffset));
       }
 
       // Mark as user-edit so the value->innerHTML sync effect doesn't wipe the DOM/caret
