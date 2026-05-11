@@ -25,6 +25,32 @@ const TEXT_COLORS = ['#000000', '#FF0000', '#0066CC', '#008000', '#FF6600', '#80
 const BG_COLORS = ['#FFFFFF', '#FFFF00', '#90EE90', '#ADD8E6', '#FFB6C1', '#E6E6FA', '#F5F5DC', '#F0F0F0'];
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px'];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Configurable Outlook-style list-style cycle mapping.
+// Each nesting depth (0 = top level) maps to the next style in its tag's cycle.
+// Update these arrays to change the cycle globally — every list creation,
+// indent/outdent, paste-normalization and re-render reads from here.
+// ─────────────────────────────────────────────────────────────────────────────
+export const LIST_STYLE_CYCLE = {
+  UL: ['disc', 'circle', 'square'] as const,
+  OL: ['decimal', 'lower-alpha', 'lower-roman'] as const,
+};
+
+export const getListDepth = (el: HTMLElement, root?: Element | null): number => {
+  let depth = 0;
+  let cur: HTMLElement | null = el.parentElement;
+  while (cur && cur !== root) {
+    if (cur.tagName === 'UL' || cur.tagName === 'OL') depth++;
+    cur = cur.parentElement;
+  }
+  return depth;
+};
+
+export const styleForDepth = (tag: string, depth: number): string => {
+  const cycle = tag === 'OL' ? LIST_STYLE_CYCLE.OL : LIST_STYLE_CYCLE.UL;
+  return cycle[depth % cycle.length];
+};
+
 export const RichTextEditor = ({ 
   value, 
   onChange, 
@@ -399,7 +425,7 @@ export const RichTextEditor = ({
     const lists = editorRef.current.querySelectorAll('ul, ol');
     lists.forEach((list) => {
       const el = list as HTMLElement;
-      const depth = getListDepth(el); // 0 = top-level
+      const depth = depthOf(el); // 0 = top-level
       el.style.listStyleType = styleForDepth(el.tagName, depth);
       if (depth > 0) {
         el.style.marginLeft = '20px';
@@ -423,22 +449,11 @@ export const RichTextEditor = ({
   // Custom list-aware indent: nest selected LI(s) inside a sublist of the SAME
   // type (ul/ol) so the bullet/number style is preserved instead of becoming a
   // blockquote (which is what document.execCommand('indent') does to a first LI).
-  // Outlook-style bullet/number cycling per nesting depth
-  const UL_CYCLE = ['disc', 'circle', 'square'];
-  const OL_CYCLE = ['decimal', 'lower-alpha', 'lower-roman'];
-  const getListDepth = (el: HTMLElement): number => {
-    let depth = 0;
-    let cur: HTMLElement | null = el.parentElement;
-    while (cur && cur !== editorRef.current) {
-      if (cur.tagName === 'UL' || cur.tagName === 'OL') depth++;
-      cur = cur.parentElement;
-    }
-    return depth;
-  };
-  const styleForDepth = (tag: string, depth: number): string => {
-    const cycle = tag === 'OL' ? OL_CYCLE : UL_CYCLE;
-    return cycle[depth % cycle.length];
-  };
+  // Outlook-style bullet/number cycling per nesting depth — see LIST_STYLE_CYCLE.
+  const depthOf = useCallback(
+    (el: HTMLElement) => getListDepth(el, editorRef.current),
+    []
+  );
 
   const indentListItems = useCallback((items: HTMLLIElement[]): boolean => {
     if (items.length === 0) return false;
@@ -455,7 +470,7 @@ export const RichTextEditor = ({
     // LI inserted at their original position.
     if (!prev || prev.tagName !== 'LI') {
       const tag = parentList.tagName.toLowerCase();
-      const newDepth = getListDepth(parentList) + 1;
+      const newDepth = depthOf(parentList) + 1;
       const wrapperLi = document.createElement('li');
       wrapperLi.dataset.wrapper = '1';
       wrapperLi.style.listStyleType = 'none'; // hide marker for the wrapper
@@ -475,7 +490,7 @@ export const RichTextEditor = ({
     if (!sublist || sublist.tagName !== parentList.tagName) {
       sublist = document.createElement(parentList.tagName.toLowerCase());
       // Outlook-style: each nested level uses next style in the cycle
-      const newDepth = getListDepth(parentList) + 1;
+      const newDepth = depthOf(parentList) + 1;
       sublist.style.listStyleType = styleForDepth(parentList.tagName, newDepth);
       sublist.style.marginLeft = '20px';
       prev.appendChild(sublist);
