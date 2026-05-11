@@ -449,22 +449,11 @@ export const RichTextEditor = ({
   // Custom list-aware indent: nest selected LI(s) inside a sublist of the SAME
   // type (ul/ol) so the bullet/number style is preserved instead of becoming a
   // blockquote (which is what document.execCommand('indent') does to a first LI).
-  // Outlook-style bullet/number cycling per nesting depth
-  const UL_CYCLE = ['disc', 'circle', 'square'];
-  const OL_CYCLE = ['decimal', 'lower-alpha', 'lower-roman'];
-  const getListDepth = (el: HTMLElement): number => {
-    let depth = 0;
-    let cur: HTMLElement | null = el.parentElement;
-    while (cur && cur !== editorRef.current) {
-      if (cur.tagName === 'UL' || cur.tagName === 'OL') depth++;
-      cur = cur.parentElement;
-    }
-    return depth;
-  };
-  const styleForDepth = (tag: string, depth: number): string => {
-    const cycle = tag === 'OL' ? OL_CYCLE : UL_CYCLE;
-    return cycle[depth % cycle.length];
-  };
+  // Outlook-style bullet/number cycling per nesting depth — see LIST_STYLE_CYCLE.
+  const depthOf = useCallback(
+    (el: HTMLElement) => getListDepth(el, editorRef.current),
+    []
+  );
 
   const indentListItems = useCallback((items: HTMLLIElement[]): boolean => {
     if (items.length === 0) return false;
