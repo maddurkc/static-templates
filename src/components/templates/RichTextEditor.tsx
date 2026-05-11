@@ -460,22 +460,27 @@ export const RichTextEditor = ({
     const first = items[0];
     const parentList = first.parentElement as HTMLElement | null;
     if (!parentList || (parentList.tagName !== 'UL' && parentList.tagName !== 'OL')) return false;
-    const prevSibling = first.previousElementSibling as HTMLElement | null;
-    const siblingSublist = prevSibling && prevSibling.tagName === parentList.tagName ? prevSibling : null;
-    const prev = (siblingSublist ? siblingSublist.previousElementSibling : prevSibling) as HTMLElement | null;
+    const tag = parentList.tagName.toLowerCase();
+    const newDepth = depthOf(parentList) + 1;
+    const newStyle = styleForDepth(parentList.tagName, newDepth);
+
+    // Walk back over any non-LI nodes (whitespace text, stray sublists from a
+    // previous indent op) to find the prior LI we can nest under.
+    let prev: HTMLElement | null = first.previousElementSibling as HTMLElement | null;
+    while (prev && prev.tagName !== 'LI') {
+      prev = prev.previousElementSibling as HTMLElement | null;
+    }
 
     // No preceding LI to nest under (e.g. caret is on the first item).
     // Outlook still indents and cycles the bullet style — wrap the selected
     // items in a new nested sublist of the SAME tag, hosted in a synthesized
-    // LI inserted at their original position.
-    if (!prev || prev.tagName !== 'LI') {
-      const tag = parentList.tagName.toLowerCase();
-      const newDepth = depthOf(parentList) + 1;
+    // wrapper LI inserted at their original position.
+    if (!prev) {
       const wrapperLi = document.createElement('li');
       wrapperLi.dataset.wrapper = '1';
-      wrapperLi.style.listStyleType = 'none'; // hide marker for the wrapper
+      wrapperLi.style.listStyleType = 'none';
       const sublist = document.createElement(tag);
-      sublist.style.listStyleType = styleForDepth(parentList.tagName, newDepth);
+      sublist.style.listStyleType = newStyle;
       sublist.style.marginLeft = '20px';
       parentList.insertBefore(wrapperLi, first);
       wrapperLi.appendChild(sublist);
@@ -486,24 +491,25 @@ export const RichTextEditor = ({
       return true;
     }
 
-    let sublist = siblingSublist || (prev.lastElementChild as HTMLElement | null);
-    if (!sublist || sublist.tagName !== parentList.tagName) {
-      sublist = document.createElement(parentList.tagName.toLowerCase());
-      // Outlook-style: each nested level uses next style in the cycle
-      const newDepth = depthOf(parentList) + 1;
-      sublist.style.listStyleType = styleForDepth(parentList.tagName, newDepth);
+    // Find an existing same-tag sublist already inside prev (search all direct
+    // children, not just lastElementChild — text nodes / spans can come after).
+    let sublist: HTMLElement | null = null;
+    for (let i = prev.children.length - 1; i >= 0; i--) {
+      const c = prev.children[i] as HTMLElement;
+      if (c.tagName === parentList.tagName) { sublist = c; break; }
+    }
+    if (!sublist) {
+      sublist = document.createElement(tag);
+      sublist.style.listStyleType = newStyle;
       sublist.style.marginLeft = '20px';
-      prev.appendChild(sublist);
-    } else if (sublist.parentElement !== prev) {
       prev.appendChild(sublist);
     }
     items.forEach((li) => {
-      // Clear any per-LI list-style override so the sublist style takes effect
       (li as HTMLElement).style.listStyleType = '';
       sublist!.appendChild(li);
     });
     return true;
-  }, []);
+  }, [depthOf]);
 
   const outdentListItems = useCallback((items: HTMLLIElement[]): boolean => {
     if (items.length === 0) return false;
