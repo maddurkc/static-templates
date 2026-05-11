@@ -452,6 +452,11 @@ export const RichTextEditor = ({
     });
   }, []);
 
+  const depthOf = useCallback(
+    (el: HTMLElement) => getListDepth(el, editorRef.current),
+    []
+  );
+
   // Normalize every UL/OL in the editor so siblings share the same type and
   // each nesting level uses the Outlook-style bullet/number cycle.
   const normalizeListStyles = useCallback(() => {
@@ -484,11 +489,6 @@ export const RichTextEditor = ({
   // type (ul/ol) so the bullet/number style is preserved instead of becoming a
   // blockquote (which is what document.execCommand('indent') does to a first LI).
   // Outlook-style bullet/number cycling per nesting depth — see LIST_STYLE_CYCLE.
-  const depthOf = useCallback(
-    (el: HTMLElement) => getListDepth(el, editorRef.current),
-    []
-  );
-
   const indentListItems = useCallback((items: HTMLLIElement[]): boolean => {
     if (items.length === 0) return false;
     const first = items[0];
