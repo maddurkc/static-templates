@@ -626,6 +626,86 @@ export const RichTextEditor = ({
     return [startLi];
   }, [findListItemAncestor, resolveCaretToLi]);
 
+  const getCaretOffsetWithinListItem = useCallback((li: HTMLLIElement, range: Range | null): number | null => {
+    if (!range || !li.contains(range.startContainer)) return null;
+    const walker = document.createTreeWalker(
+      li,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          const parentList = (node.parentElement || null)?.closest('ul, ol');
+          return parentList && parentList !== li.parentElement
+            ? NodeFilter.FILTER_REJECT
+            : NodeFilter.FILTER_ACCEPT;
+        },
+      }
+    );
+    let offset = 0;
+    let node = walker.nextNode();
+    while (node) {
+      if (node === range.startContainer) {
+        return offset + Math.min(range.startOffset, node.textContent?.length || 0);
+      }
+      offset += node.textContent?.length || 0;
+      node = walker.nextNode();
+    }
+    return null;
+  }, []);
+
+  const restoreCaretInListItem = useCallback((li: HTMLLIElement, textOffset: number | null) => {
+    const root = editorRef.current;
+    if (!root || !root.contains(li)) return;
+
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(
+      li,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          const parentList = (node.parentElement || null)?.closest('ul, ol');
+          return parentList && parentList !== li.parentElement
+            ? NodeFilter.FILTER_REJECT
+            : NodeFilter.FILTER_ACCEPT;
+        },
+      }
+    );
+    let node = walker.nextNode();
+    while (node) {
+      textNodes.push(node as Text);
+      node = walker.nextNode();
+    }
+
+    if (textNodes.length === 0) {
+      const textNode = document.createTextNode('');
+      const firstNestedList = Array.from(li.childNodes).find(
+        (child) => child.nodeType === Node.ELEMENT_NODE && ['UL', 'OL'].includes((child as HTMLElement).tagName)
+      );
+      li.insertBefore(textNode, firstNestedList || li.firstChild);
+      textNodes.push(textNode);
+    }
+
+    const desiredOffset = textOffset ?? textNodes.reduce((sum, textNode) => sum + textNode.length, 0);
+    let remaining = desiredOffset;
+    let target = textNodes[textNodes.length - 1];
+    let targetOffset = target.length;
+    for (const textNode of textNodes) {
+      if (remaining <= textNode.length) {
+        target = textNode;
+        targetOffset = Math.max(0, remaining);
+        break;
+      }
+      remaining -= textNode.length;
+    }
+
+    const newRange = document.createRange();
+    newRange.setStart(target, targetOffset);
+    newRange.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(newRange);
+    savedSelectionRef.current = newRange.cloneRange();
+  }, []);
+
   const applyIndent = useCallback(() => {
     pushUndo();
     restoreSelection();
@@ -781,20 +861,17 @@ export const RichTextEditor = ({
       // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
       if (inList) pushUndo();
 
-      // Snapshot caret so we can restore it after DOM reparenting
-      let caretNode: Node | null = null;
-      let caretOffset = 0;
-      if (range) {
-        caretNode = range.startContainer;
-        caretOffset = range.startOffset;
-      }
+      const fallbackItem = liFromRange || liFromAnchor || liFromFocus;
+      let caretRestoreItem: HTMLLIElement | null = fallbackItem;
+      let caretTextOffset = fallbackItem ? getCaretOffsetWithinListItem(fallbackItem, range) : null;
 
       if (inList) {
         let items = getSelectedListItems();
         if (items.length === 0) {
-          const fallback = liFromRange || liFromAnchor || liFromFocus;
-          if (fallback) items = [fallback];
+          if (fallbackItem) items = [fallbackItem];
         }
+        caretRestoreItem = items[0] || fallbackItem;
+        caretTextOffset = caretRestoreItem ? getCaretOffsetWithinListItem(caretRestoreItem, range) : null;
         if (e.shiftKey) outdentListItems(items);
         else indentListItems(items);
         normalizeIndentForOutlook();
@@ -806,27 +883,12 @@ export const RichTextEditor = ({
       } else {
         // Insert non-breaking spaces so Outlook preserves indentation
         document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
-        caretNode = null; // execCommand already moved caret correctly
+        caretRestoreItem = null; // execCommand already moved caret correctly
       }
 
-      // Restore caret to its original text node/offset (nodes were just reparented)
-      if (caretNode && editorRef.current?.contains(caretNode)) {
-        try {
-          const newRange = document.createRange();
-          const maxOffset = caretNode.nodeType === Node.TEXT_NODE
-            ? (caretNode as Text).length
-            : caretNode.childNodes.length;
-          newRange.setStart(caretNode, Math.min(caretOffset, maxOffset));
-          newRange.collapse(true);
-          const s = window.getSelection();
-          if (s) {
-            s.removeAllRanges();
-            s.addRange(newRange);
-          }
-          savedSelectionRef.current = newRange.cloneRange();
-        } catch {
-          /* ignore */
-        }
+      // Restore caret from the moved LI + text offset, not the stale browser Range.
+      if (caretRestoreItem) {
+        requestAnimationFrame(() => restoreCaretInListItem(caretRestoreItem, caretTextOffset));
       }
 
       // Mark as user-edit so the value->innerHTML sync effect doesn't wipe the DOM/caret
