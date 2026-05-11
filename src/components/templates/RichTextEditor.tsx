@@ -478,7 +478,7 @@ export const RichTextEditor = ({
         }
       });
     });
-  }, []);
+  }, [depthOf]);
 
   // Custom list-aware indent: nest selected LI(s) inside a sublist of the SAME
   // type (ul/ol) so the bullet/number style is preserved instead of becoming a
