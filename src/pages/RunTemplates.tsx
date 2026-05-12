@@ -276,9 +276,8 @@ const RunTemplates = () => {
           // Initialize date section variables
           if (section.type === 'date') {
             const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
-            const dateValue = (section.variables?.[dateVarName] as string) ||
-                              (section.variables?.dateValue as string) ||
-                              new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+            // Date sections always show today's date at run time, ignoring configured values
+            const dateValue = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
             initialVars[dateVarName] = dateValue;
           }
         });
