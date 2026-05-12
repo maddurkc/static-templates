@@ -1189,40 +1189,31 @@ export const RichTextEditor = ({
           {/* Bullet List */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} title="Bullet List">
+              <Button
+                variant={listContext.tag === 'UL' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 w-7 p-0"
+                onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+                title="Bullet List"
+              >
                 <List className="h-3.5 w-3.5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
               <Label className="text-xs mb-2 block">Bullet Style</Label>
               <div className="flex gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0 flex flex-col items-center justify-center" 
-                  onClick={() => applyList('bullet', 'disc')} 
-                  title="Disc (•)"
-                >
-                  <span className="text-lg leading-none">•</span>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0 flex flex-col items-center justify-center" 
-                  onClick={() => applyList('bullet', 'circle')} 
-                  title="Circle (○)"
-                >
-                  <span className="text-lg leading-none">○</span>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0 flex flex-col items-center justify-center" 
-                  onClick={() => applyList('bullet', 'square')} 
-                  title="Square (■)"
-                >
-                  <span className="text-lg leading-none">■</span>
-                </Button>
+                {(['disc', 'circle', 'square'] as const).map((s) => (
+                  <Button
+                    key={s}
+                    variant={listContext.tag === 'UL' && listContext.style === s ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-8 w-8 p-0 flex flex-col items-center justify-center"
+                    onClick={() => applyList('bullet', s)}
+                    title={s === 'disc' ? 'Disc (•)' : s === 'circle' ? 'Circle (○)' : 'Square (■)'}
+                  >
+                    <span className="text-lg leading-none">{s === 'disc' ? '•' : s === 'circle' ? '○' : '■'}</span>
+                  </Button>
+                ))}
               </div>
             </PopoverContent>
           </Popover>
@@ -1230,58 +1221,46 @@ export const RichTextEditor = ({
           {/* Number List */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} title="Numbered List">
+              <Button
+                variant={listContext.tag === 'OL' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 w-7 p-0"
+                onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+                title="Numbered List"
+              >
                 <ListOrdered className="h-3.5 w-3.5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-2" onMouseDown={(e) => e.preventDefault()}>
               <Label className="text-xs mb-2 block">Number Style</Label>
               <div className="flex gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 px-2 text-xs" 
-                  onClick={() => applyList('number', 'decimal')} 
-                  title="1, 2, 3..."
-                >
-                  1.
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 px-2 text-xs" 
-                  onClick={() => applyList('number', 'lower-alpha')} 
-                  title="a, b, c..."
-                >
-                  a)
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 px-2 text-xs" 
-                  onClick={() => applyList('number', 'upper-alpha')} 
-                  title="A, B, C..."
-                >
-                  A)
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 px-2 text-xs" 
-                  onClick={() => applyList('number', 'lower-roman')} 
-                  title="i, ii, iii..."
-                >
-                  i.
-                </Button>
+                {([
+                  { s: 'decimal', label: '1.' },
+                  { s: 'lower-alpha', label: 'a)' },
+                  { s: 'upper-alpha', label: 'A)' },
+                  { s: 'lower-roman', label: 'i.' },
+                ] as const).map(({ s, label }) => (
+                  <Button
+                    key={s}
+                    variant={listContext.tag === 'OL' && listContext.style === s ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => applyList('number', s)}
+                    title={label}
+                  >
+                    {label}
+                  </Button>
+                ))}
               </div>
             </PopoverContent>
           </Popover>
 
-          {/* Indent / Outdent */}
+          {/* Indent / Outdent — disabled state mirrors caret depth */}
           <Button
             variant="ghost"
             size="sm"
             className="h-7 w-7 p-0"
+            disabled={!listContext.tag || listContext.depth === 0}
             onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
             onClick={() => applyOutdent()}
             title="Decrease indent (Shift+Tab)"
@@ -1292,6 +1271,7 @@ export const RichTextEditor = ({
             variant="ghost"
             size="sm"
             className="h-7 w-7 p-0"
+            disabled={!listContext.tag}
             onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
             onClick={() => applyIndent()}
             title="Increase indent (Tab)"
