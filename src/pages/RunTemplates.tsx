@@ -276,9 +276,8 @@ const RunTemplates = () => {
           // Initialize date section variables
           if (section.type === 'date') {
             const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
-            const dateValue = (section.variables?.[dateVarName] as string) ||
-                              (section.variables?.dateValue as string) ||
-                              new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+            // Date sections always show today's date at run time, ignoring configured values
+            const dateValue = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
             initialVars[dateVarName] = dateValue;
           }
         });
@@ -1249,11 +1248,8 @@ const RunTemplates = () => {
         // Date sections - add date value to payload
         if (section.type === 'date') {
           const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
-          const dateValue = variables[dateVarName] || 
-                            section.variables?.[dateVarName] ||
-                            section.variables?.dateValue || 
-                            new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
-          bodyData[dateVarName] = typeof dateValue === 'string' ? dateValue : String(dateValue);
+          const dateValue = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+          bodyData[dateVarName] = dateValue;
         }
         
         // Add heading/text/paragraph section variables using textVariableName
@@ -3569,10 +3565,9 @@ const RunTemplates = () => {
                           if (section.type === 'date') {
                             const isEditable = section.isLabelEditable !== false;
                             const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
-                            const dateValue = (variables[dateVarName] as string) || 
-                                              (section.variables?.[dateVarName] as string) ||
-                                              (section.variables?.dateValue as string) || 
-                                              new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+                            // Date sections always show today's date at run time
+                            const dateValue = (variables[dateVarName] as string) ||
+                              new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
                             const isEditingThisSection = editingSectionId === section.id;
                             
                             return (
