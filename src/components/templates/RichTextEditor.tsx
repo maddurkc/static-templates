@@ -238,47 +238,75 @@ export const RichTextEditor = ({
     return false;
   }, [findLinkAncestor]);
 
+  const computeListContext = useCallback((node: Node | null) => {
+    const root = editorRef.current;
+    if (!root || !node) return { tag: null as 'UL' | 'OL' | null, style: null as string | null, depth: 0 };
+    let el: HTMLElement | null = node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement) : node.parentElement;
+    let listEl: HTMLElement | null = null;
+    while (el && el !== root) {
+      if (el.tagName === 'UL' || el.tagName === 'OL') { listEl = el; break; }
+      el = el.parentElement;
+    }
+    if (!listEl) return { tag: null, style: null, depth: 0 };
+    const depth = getListDepth(listEl, root);
+    const style = listEl.style.listStyleType || styleForDepth(listEl.tagName, depth);
+    return { tag: listEl.tagName as 'UL' | 'OL', style, depth };
+  }, []);
+
   const handleSelectionChange = useCallback(() => {
     const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || selection.toString().trim() === "") {
+    if (!selection || selection.rangeCount === 0) {
       setShowToolbar(false);
       setHasSelection(false);
+      setListContext({ tag: null, style: null, depth: 0 });
       return;
     }
 
-    // Check if selection is within our editor
     const range = selection.getRangeAt(0);
     if (!editorRef.current?.contains(range.commonAncestorContainer)) {
       setShowToolbar(false);
       setHasSelection(false);
+      setListContext({ tag: null, style: null, depth: 0 });
       return;
     }
 
-    // Save selection for later restoration
+    // Always recompute list context for the caret position so the list
+    // toolbar buttons (bullet/number/indent/outdent) stay in sync across
+    // nested lists, even with a collapsed caret.
+    const ctx = computeListContext(range.startContainer);
+    setListContext(ctx);
+
+    const collapsed = selection.isCollapsed || selection.toString().trim() === "";
+    const insideList = ctx.tag !== null;
+
+    if (collapsed && !insideList) {
+      setShowToolbar(false);
+      setHasSelection(false);
+      return;
+    }
+
     saveSelection();
     setHasSelection(true);
     checkIfLink();
 
-    // Position toolbar above selection using fixed positioning
+    // Position toolbar above selection/caret using fixed positioning
     const rect = range.getBoundingClientRect();
-    const toolbarWidth = 380; // Approximate toolbar width
+    const toolbarWidth = 380;
     const toolbarHeight = 45;
-    
-    // Calculate left position, keeping toolbar on screen
+
     let left = rect.left + rect.width / 2 - toolbarWidth / 2;
     const minLeft = 10;
     const maxLeft = window.innerWidth - toolbarWidth - 10;
     left = Math.max(minLeft, Math.min(left, maxLeft));
-    
-    // Calculate top position
+
     let top = rect.top - toolbarHeight - 8;
     if (top < 10) {
-      top = rect.bottom + 8; // Show below if not enough space above
+      top = rect.bottom + 8;
     }
-    
+
     setToolbarPosition({ top, left });
     setShowToolbar(true);
-  }, [saveSelection, checkIfLink]);
+  }, [saveSelection, checkIfLink, computeListContext]);
 
   useEffect(() => {
     document.addEventListener("selectionchange", handleSelectionChange);
