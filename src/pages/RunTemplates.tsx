@@ -3565,10 +3565,9 @@ const RunTemplates = () => {
                           if (section.type === 'date') {
                             const isEditable = section.isLabelEditable !== false;
                             const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
-                            const dateValue = (variables[dateVarName] as string) || 
-                                              (section.variables?.[dateVarName] as string) ||
-                                              (section.variables?.dateValue as string) || 
-                                              new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+                            // Date sections always show today's date at run time
+                            const dateValue = (variables[dateVarName] as string) ||
+                              new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
                             const isEditingThisSection = editingSectionId === section.id;
                             
                             return (
