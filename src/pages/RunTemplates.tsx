@@ -1248,11 +1248,8 @@ const RunTemplates = () => {
         // Date sections - add date value to payload
         if (section.type === 'date') {
           const dateVarName = (section.variables?.dateVariableName as string) || `dateValue_${section.id}`;
-          const dateValue = variables[dateVarName] || 
-                            section.variables?.[dateVarName] ||
-                            section.variables?.dateValue || 
-                            new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
-          bodyData[dateVarName] = typeof dateValue === 'string' ? dateValue : String(dateValue);
+          const dateValue = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' });
+          bodyData[dateVarName] = dateValue;
         }
         
         // Add heading/text/paragraph section variables using textVariableName
