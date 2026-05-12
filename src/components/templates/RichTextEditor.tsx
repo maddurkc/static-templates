@@ -64,6 +64,7 @@ export const RichTextEditor = ({
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const [hasSelection, setHasSelection] = useState(false);
+  const [listContext, setListContext] = useState<{ tag: 'UL' | 'OL' | null; style: string | null; depth: number }>({ tag: null, style: null, depth: 0 });
   const savedSelectionRef = useRef<Range | null>(null);
   const [linkUrl, setLinkUrl] = useState("");
   const [showLinkDialog, setShowLinkDialog] = useState(false);
