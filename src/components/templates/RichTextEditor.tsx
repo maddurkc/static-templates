@@ -197,9 +197,34 @@ export const RichTextEditor = ({
 
   const saveSelection = useCallback(() => {
     const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      savedSelectionRef.current = selection.getRangeAt(0).cloneRange();
+    const root = editorRef.current;
+    if (selection && selection.rangeCount > 0 && root) {
+      const range = selection.getRangeAt(0);
+      if (root.contains(range.startContainer) && root.contains(range.endContainer)) {
+        savedSelectionRef.current = range.cloneRange();
+      }
     }
+  }, []);
+
+  const getCurrentEditorRange = useCallback((): Range | null => {
+    const root = editorRef.current;
+    const selection = window.getSelection();
+    if (!root) return null;
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (root.contains(range.startContainer) && root.contains(range.endContainer)) {
+        return range;
+      }
+    }
+    const saved = savedSelectionRef.current;
+    if (saved && root.contains(saved.startContainer) && root.contains(saved.endContainer)) {
+      const liveSelection = window.getSelection();
+      liveSelection?.removeAllRanges();
+      liveSelection?.addRange(saved.cloneRange());
+      root.focus({ preventScroll: true });
+      return saved;
+    }
+    return null;
   }, []);
 
   const restoreSelection = useCallback(() => {
