@@ -197,9 +197,34 @@ export const RichTextEditor = ({
 
   const saveSelection = useCallback(() => {
     const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      savedSelectionRef.current = selection.getRangeAt(0).cloneRange();
+    const root = editorRef.current;
+    if (selection && selection.rangeCount > 0 && root) {
+      const range = selection.getRangeAt(0);
+      if (root.contains(range.startContainer) && root.contains(range.endContainer)) {
+        savedSelectionRef.current = range.cloneRange();
+      }
     }
+  }, []);
+
+  const getCurrentEditorRange = useCallback((): Range | null => {
+    const root = editorRef.current;
+    const selection = window.getSelection();
+    if (!root) return null;
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (root.contains(range.startContainer) && root.contains(range.endContainer)) {
+        return range;
+      }
+    }
+    const saved = savedSelectionRef.current;
+    if (saved && root.contains(saved.startContainer) && root.contains(saved.endContainer)) {
+      const liveSelection = window.getSelection();
+      liveSelection?.removeAllRanges();
+      liveSelection?.addRange(saved.cloneRange());
+      root.focus({ preventScroll: true });
+      return saved;
+    }
+    return null;
   }, []);
 
   const restoreSelection = useCallback(() => {
@@ -898,15 +923,15 @@ export const RichTextEditor = ({
       e.preventDefault();
       // Stop Radix Popover/Dialog FocusScope from stealing the Tab to move focus
       e.stopPropagation();
+      const range = getCurrentEditorRange();
       const sel = window.getSelection();
-      const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
       // Resolve caret robustly: handle UL/OL/LI direct caret + anchor fallback.
       const resolvedStart: Node | null = range
         ? resolveCaretToLi(range.startContainer, range.startOffset)
         : null;
       const liFromRange = resolvedStart ? findListItemAncestor(resolvedStart) : null;
-      const liFromAnchor = sel ? findListItemAncestor(sel.anchorNode) : null;
-      const liFromFocus = sel ? findListItemAncestor(sel.focusNode) : null;
+      const liFromAnchor = sel?.anchorNode && editorRef.current?.contains(sel.anchorNode) ? findListItemAncestor(sel.anchorNode) : null;
+      const liFromFocus = sel?.focusNode && editorRef.current?.contains(sel.focusNode) ? findListItemAncestor(sel.focusNode) : null;
       const inList = !!(liFromRange || liFromAnchor || liFromFocus);
 
       // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
