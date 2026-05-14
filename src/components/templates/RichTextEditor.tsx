@@ -930,8 +930,8 @@ export const RichTextEditor = ({
         ? resolveCaretToLi(range.startContainer, range.startOffset)
         : null;
       const liFromRange = resolvedStart ? findListItemAncestor(resolvedStart) : null;
-      const liFromAnchor = sel && editorRef.current?.contains(sel.anchorNode) ? findListItemAncestor(sel.anchorNode) : null;
-      const liFromFocus = sel && editorRef.current?.contains(sel.focusNode) ? findListItemAncestor(sel.focusNode) : null;
+      const liFromAnchor = sel?.anchorNode && editorRef.current?.contains(sel.anchorNode) ? findListItemAncestor(sel.anchorNode) : null;
+      const liFromFocus = sel?.focusNode && editorRef.current?.contains(sel.focusNode) ? findListItemAncestor(sel.focusNode) : null;
       const inList = !!(liFromRange || liFromAnchor || liFromFocus);
 
       // Snapshot for undo before mutating (only for list ops; plain insert is captured by browser)
