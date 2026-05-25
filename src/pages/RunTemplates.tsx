@@ -1701,7 +1701,8 @@ const RunTemplates = () => {
         templateConfigName: selectedTemplate.name,
         templateId: selectedTemplate.id,
         content: {
-          subjectContent: finalSubject,
+          subjectContent: selectedTemplate.subject || emailSubject,
+          renderedSubject: finalSubject,
           sections: (selectedTemplate.sections || []).map((s, idx) => ({
             templateConfigSectionId: s.id,
             sectionType: s.type,
@@ -1803,13 +1804,23 @@ const RunTemplates = () => {
       if (rawData.templateConfigData && rawData.messageDetails) {
         const { template, bodyData, subjectData, recipients, ccEmails, bccEmails, subject } = resendDataToTemplate(rawData);
 
-        // The rebuilt template from the resend payload does NOT carry globalApiConfig.
-        // Preserve it from the freshly-fetched fallback template so API integrations
-        // (used in subject and body) are re-resolved live instead of being lost,
-        // and so the API DATA tab displays the integrations.
+        // Merge API config from the original template and resend payload so
+        // integrations display in API DATA and cached API values remain available
+        // for subject/body placeholder resolution during the next send.
+        const fallbackApiConfig = fallbackTemplate.globalApiConfig;
+        const resendApiConfig = template.globalApiConfig;
+        const mergedGlobalApiConfig = fallbackApiConfig || resendApiConfig ? {
+          integrations: (fallbackApiConfig?.integrations?.length ? fallbackApiConfig.integrations : resendApiConfig?.integrations) || [],
+          globalVariables: {
+            ...(fallbackApiConfig?.globalVariables || {}),
+            ...(resendApiConfig?.globalVariables || {}),
+          },
+        } : undefined;
+
         const mergedTemplate: Template = {
           ...template,
-          globalApiConfig: fallbackTemplate.globalApiConfig || template.globalApiConfig,
+          subject: fallbackTemplate.subject || template.subject,
+          globalApiConfig: mergedGlobalApiConfig,
         };
 
         // Prevent the useEffect from overwriting restored variables

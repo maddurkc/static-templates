@@ -566,7 +566,7 @@ export const responseToTemplate = (response: TemplateResponse): Template => {
       integrations: response.globalApiIntegrations.map(int => ({
         id: int.id,
         name: int.integrationName,
-        templateId: int.apiTemplateId,
+        templateId: int.apiTemplateId || int.templateId,
         paramValues: int.paramValues || {},
         variableName: int.variableName,
         enabled: int.enabled,
@@ -623,6 +623,9 @@ export const fetchTemplateById = async (id: string): Promise<Template | null> =>
 export const resendDataToTemplate = (data: any): { template: Template; bodyData: Record<string, any>; subjectData: Record<string, any>; recipients: string[]; ccEmails: string[]; bccEmails: string[]; subject: string } => {
   const config = data.templateConfigData;
   const message = data.messageDetails?.messageRequestData;
+  const contentData = message?.contentData || {};
+  const subjectData = contentData.subject_data || {};
+  const bodyData = contentData.body_data || {};
 
   // Convert templateConfigData sections to local Section format
   const sections: Section[] = (config?.content?.sections || []).map((s: any, index: number) => ({
@@ -653,13 +656,18 @@ export const resendDataToTemplate = (data: any): { template: Template; bodyData:
   if (Array.isArray(globalApiIntegrationsRaw) && globalApiIntegrationsRaw.length > 0) {
     const globalVariables: Record<string, import('@/types/global-api-config').GlobalApiVariable> = {};
     globalApiIntegrationsRaw.forEach((int: any) => {
-      if (int.cachedResponse && int.cachedResponse.data !== undefined) {
+      const cachedData = int.cachedResponse?.data !== undefined
+        ? int.cachedResponse.data
+        : subjectData[int.variableName] !== undefined
+          ? subjectData[int.variableName]
+          : bodyData[int.variableName];
+      if (cachedData !== undefined) {
         globalVariables[int.variableName] = {
           name: int.variableName,
-          data: int.cachedResponse.data,
-          rawData: int.cachedResponse.rawData,
-          dataType: int.cachedResponse.dataType || 'object',
-          schema: int.cachedResponse.schema || {},
+          data: cachedData,
+          rawData: int.cachedResponse?.rawData || cachedData,
+          dataType: int.cachedResponse?.dataType || (Array.isArray(cachedData) ? 'list' : 'object'),
+          schema: int.cachedResponse?.schema || {},
           lastFetched: int.cachedResponseAt,
         };
       }
@@ -692,8 +700,8 @@ export const resendDataToTemplate = (data: any): { template: Template; bodyData:
 
   return {
     template,
-    bodyData: message?.contentData?.body_data || {},
-    subjectData: message?.contentData?.subject_data || {},
+    bodyData,
+    subjectData,
     recipients: message?.recipients || [],
     ccEmails: message?.ccEmails || [],
     bccEmails: message?.bccEmails || [],
