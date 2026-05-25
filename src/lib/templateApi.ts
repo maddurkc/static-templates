@@ -566,7 +566,7 @@ export const responseToTemplate = (response: TemplateResponse): Template => {
       integrations: response.globalApiIntegrations.map(int => ({
         id: int.id,
         name: int.integrationName,
-        templateId: int.apiTemplateId,
+        templateId: int.apiTemplateId || int.templateId,
         paramValues: int.paramValues || {},
         variableName: int.variableName,
         enabled: int.enabled,
