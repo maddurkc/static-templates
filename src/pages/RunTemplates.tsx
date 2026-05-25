@@ -1988,7 +1988,16 @@ const RunTemplates = () => {
         }
 
         if (data.subjectData && Object.keys(data.subjectData).length > 0) {
-          setSubjectVariables(data.subjectData);
+          const apiVarNames = new Set(
+            (fallbackTemplate.globalApiConfig?.integrations || []).map(i => i.variableName)
+          );
+          const filteredSubjectData: Record<string, string> = {};
+          Object.entries(data.subjectData).forEach(([key, value]) => {
+            if (apiVarNames.has(key)) return;
+            if (value == null || typeof value === 'object') return;
+            filteredSubjectData[key] = String(value);
+          });
+          setSubjectVariables(filteredSubjectData);
           if (fallbackTemplate.subject) {
             setEmailSubject(subjectThymeleafToPlaceholder(fallbackTemplate.subject));
           }
