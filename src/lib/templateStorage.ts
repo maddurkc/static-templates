@@ -811,6 +811,116 @@ export const getTemplates = (): Template[] => {
           }
         ]
       },
+      {
+        id: "demo-api-subject-body",
+        name: "API in Subject & Body - Rerun Test",
+        description: "Tests that API data resolves fresh on rerun in BOTH subject and body (no stale values).",
+        subject: "[{{snowChange.priority}}] {{snowChange.changeNo}} - {{snowChange.shortDescription}}",
+        html: "",
+        createdAt: new Date().toISOString(),
+        sectionCount: 4,
+        archived: false,
+        globalApiConfig: {
+          integrations: [
+            {
+              id: "integration-snow-change",
+              name: "ServiceNow Change Request",
+              variableName: "snowChange",
+              templateId: "mock-servicenow-change",
+              enabled: true,
+              paramValues: {},
+              transformation: {
+                filters: [],
+                filterLogic: 'and' as const,
+                fieldMappings: [],
+                selectFields: [],
+                limit: undefined,
+                sortField: undefined,
+                sortOrder: 'asc' as const
+              }
+            }
+          ],
+          globalVariables: {
+            snowChange: {
+              name: "snowChange",
+              data: {
+                changeNo: "CHG1234567",
+                changeStDt: "12-12-2024",
+                changeEdDt: "12-15-2024",
+                shortDescription: "Upgrade database server to v12.5",
+                priority: "High",
+                risk: "Moderate",
+                status: "Implement",
+                assignedTo: "John Smith",
+                assignmentGroup: "Database Administration",
+                category: "Software",
+                type: "Standard",
+                requestedBy: "Jane Doe",
+                approvalStatus: "Approved",
+                environment: "Production",
+                impactedCIs: "DB-PROD-01, DB-PROD-02"
+              },
+              dataType: "object" as const,
+              schema: {
+                "changeNo": "string",
+                "priority": "string",
+                "shortDescription": "string",
+                "status": "string",
+                "assignedTo": "string",
+                "changeStDt": "string",
+                "changeEdDt": "string",
+                "environment": "string"
+              }
+            }
+          }
+        },
+        sections: [
+          {
+            id: "section-snow-title",
+            type: "heading1",
+            content: "<h1>Change Request {{snowChange.changeNo}}</h1>",
+            order: 0,
+            isLabelEditable: false,
+            variables: {},
+            styles: { fontSize: '28px', color: '#1a365d' }
+          },
+          {
+            id: "section-snow-summary",
+            type: "paragraph",
+            content: "<p><strong>{{snowChange.shortDescription}}</strong> — Priority: {{snowChange.priority}}, Status: {{snowChange.status}}.</p>",
+            order: 1,
+            isLabelEditable: false,
+            variables: {},
+            styles: { fontSize: '16px', color: '#2d3748' }
+          },
+          {
+            id: "section-snow-window",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 2,
+            isLabelEditable: true,
+            variables: {
+              label: "Change Window",
+              contentType: "text",
+              content: "From {{snowChange.changeStDt}} to {{snowChange.changeEdDt}} in {{snowChange.environment}}"
+            },
+            styles: {}
+          },
+          {
+            id: "section-snow-owner",
+            type: "labeled-content",
+            content: "<div><strong><span th:utext=\"${label}\"/></strong><div><span th:utext=\"${content}\"/></div></div>",
+            order: 3,
+            isLabelEditable: true,
+            variables: {
+              label: "Assigned To",
+              contentType: "text",
+              content: "{{snowChange.assignedTo}} ({{snowChange.assignmentGroup}})"
+            },
+            styles: {}
+          }
+        ]
+      },
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mockTemplates));
     return mockTemplates;
