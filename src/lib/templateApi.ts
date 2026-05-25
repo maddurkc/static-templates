@@ -644,6 +644,40 @@ export const resendDataToTemplate = (data: any): { template: Template; bodyData:
     order: s.orderIndex || index,
   }));
 
+  // Convert global API integrations (mirrors responseToTemplate) so that
+  // the resend-loaded template carries the same globalApiConfig as a freshly
+  // fetched template. Without this, API-driven subject/body placeholders
+  // (e.g. {{snowChange.number}}) cannot be re-resolved on resend.
+  const globalApiIntegrationsRaw = config?.globalApiIntegrations || config?.content?.globalApiIntegrations || [];
+  let globalApiConfig: import('@/types/global-api-config').GlobalApiConfig | undefined;
+  if (Array.isArray(globalApiIntegrationsRaw) && globalApiIntegrationsRaw.length > 0) {
+    const globalVariables: Record<string, import('@/types/global-api-config').GlobalApiVariable> = {};
+    globalApiIntegrationsRaw.forEach((int: any) => {
+      if (int.cachedResponse && int.cachedResponse.data !== undefined) {
+        globalVariables[int.variableName] = {
+          name: int.variableName,
+          data: int.cachedResponse.data,
+          rawData: int.cachedResponse.rawData,
+          dataType: int.cachedResponse.dataType || 'object',
+          schema: int.cachedResponse.schema || {},
+          lastFetched: int.cachedResponseAt,
+        };
+      }
+    });
+    globalApiConfig = {
+      integrations: globalApiIntegrationsRaw.map((int: any) => ({
+        id: int.id || int.integrationId,
+        name: int.integrationName || int.name,
+        templateId: int.apiTemplateId,
+        paramValues: int.paramValues || {},
+        variableName: int.variableName,
+        enabled: int.enabled ?? true,
+        transformation: int.transformation || undefined,
+      })),
+      globalVariables,
+    };
+  }
+
   const template: Template = {
     id: config?.templateId || `resend_${Date.now()}`,
     name: config?.templateConfigName || 'Resent Template',
@@ -653,6 +687,7 @@ export const resendDataToTemplate = (data: any): { template: Template; bodyData:
     sectionCount: sections.length,
     archived: false,
     sections,
+    globalApiConfig,
   };
 
   return {
