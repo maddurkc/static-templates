@@ -1808,10 +1808,20 @@ const RunTemplates = () => {
         // Preserve it from the freshly-fetched fallback template so API integrations
         // (used in subject and body) are re-resolved live instead of being lost,
         // and so the API DATA tab displays the integrations.
+        const fallbackApiConfig = fallbackTemplate.globalApiConfig;
+        const resendApiConfig = template.globalApiConfig;
+        const mergedGlobalApiConfig = fallbackApiConfig || resendApiConfig ? {
+          integrations: (fallbackApiConfig?.integrations?.length ? fallbackApiConfig.integrations : resendApiConfig?.integrations) || [],
+          globalVariables: {
+            ...(resendApiConfig?.globalVariables || {}),
+            ...(fallbackApiConfig?.globalVariables || {}),
+          },
+        } : undefined;
+
         const mergedTemplate: Template = {
           ...template,
           subject: fallbackTemplate.subject || template.subject,
-          globalApiConfig: fallbackTemplate.globalApiConfig || template.globalApiConfig,
+          globalApiConfig: mergedGlobalApiConfig,
         };
 
         // Prevent the useEffect from overwriting restored variables
