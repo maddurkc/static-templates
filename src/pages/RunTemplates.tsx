@@ -1701,7 +1701,8 @@ const RunTemplates = () => {
         templateConfigName: selectedTemplate.name,
         templateId: selectedTemplate.id,
         content: {
-          subjectContent: finalSubject,
+          subjectContent: selectedTemplate.subject || emailSubject,
+          renderedSubject: finalSubject,
           sections: (selectedTemplate.sections || []).map((s, idx) => ({
             templateConfigSectionId: s.id,
             sectionType: s.type,
@@ -1809,6 +1810,7 @@ const RunTemplates = () => {
         // and so the API DATA tab displays the integrations.
         const mergedTemplate: Template = {
           ...template,
+          subject: fallbackTemplate.subject || template.subject,
           globalApiConfig: fallbackTemplate.globalApiConfig || template.globalApiConfig,
         };
 
