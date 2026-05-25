@@ -1777,12 +1777,21 @@ const RunTemplates = () => {
       // Check if data is in new resend format (messageDetails + templateConfigData)
       if (rawData.templateConfigData && rawData.messageDetails) {
         const { template, bodyData, subjectData, recipients, ccEmails, bccEmails, subject } = resendDataToTemplate(rawData);
-        
+
+        // The rebuilt template from the resend payload does NOT carry globalApiConfig.
+        // Preserve it from the freshly-fetched fallback template so API integrations
+        // (used in subject and body) are re-resolved live instead of being lost,
+        // and so the API DATA tab displays the integrations.
+        const mergedTemplate: Template = {
+          ...template,
+          globalApiConfig: fallbackTemplate.globalApiConfig || template.globalApiConfig,
+        };
+
         // Prevent the useEffect from overwriting restored variables
         skipVariableInitRef.current = true;
-        setSelectedTemplate(template);
-        setGlobalApiConfig(template.globalApiConfig || DEFAULT_GLOBAL_API_CONFIG);
-        setEmailTitle(template.name);
+        setSelectedTemplate(mergedTemplate);
+        setGlobalApiConfig(mergedTemplate.globalApiConfig || DEFAULT_GLOBAL_API_CONFIG);
+        setEmailTitle(mergedTemplate.name);
         setExecutedOn(new Date().toLocaleString());
 
         // Restore recipients
@@ -1800,22 +1809,22 @@ const RunTemplates = () => {
         if (subject) {
           setEmailSubject(subject);
         }
+        // Exclude global API variable names — those should be re-resolved live from globalApiConfig,
+        // not restored as stale user-entered subject variables (which would render as [object Object]).
+        // Also defensively skip any non-scalar values.
+        const apiVarNames = new Set(
+          (mergedTemplate.globalApiConfig?.integrations || []).map(i => i.variableName)
+        );
+        const filteredSubjectData: Record<string, string> = {};
         if (subjectData && Object.keys(subjectData).length > 0) {
-          // Exclude global API variable names — those should be re-resolved live from globalApiConfig,
-          // not restored as stale user-entered subject variables.
-          const apiVarNames = new Set(
-            (template.globalApiConfig?.integrations || []).map(i => i.variableName)
-          );
-          const filteredSubjectData: Record<string, any> = {};
           Object.entries(subjectData).forEach(([key, value]) => {
-            if (!apiVarNames.has(key)) {
-              filteredSubjectData[key] = value;
-            }
+            if (apiVarNames.has(key)) return;
+            if (value == null) return;
+            if (typeof value === 'object') return;
+            filteredSubjectData[key] = String(value);
           });
-          if (Object.keys(filteredSubjectData).length > 0) {
-            setSubjectVariables(filteredSubjectData);
-          }
         }
+        setSubjectVariables(filteredSubjectData);
 
         // Categorize body_data into variables, listVariables, labelVariables, tableVariables
         const restoredVars: Record<string, string | TextStyle> = {};
