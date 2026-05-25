@@ -1801,7 +1801,20 @@ const RunTemplates = () => {
           setEmailSubject(subject);
         }
         if (subjectData && Object.keys(subjectData).length > 0) {
-          setSubjectVariables(subjectData);
+          // Exclude global API variable names — those should be re-resolved live from globalApiConfig,
+          // not restored as stale user-entered subject variables.
+          const apiVarNames = new Set(
+            (template.globalApiConfig?.integrations || []).map(i => i.variableName)
+          );
+          const filteredSubjectData: Record<string, any> = {};
+          Object.entries(subjectData).forEach(([key, value]) => {
+            if (!apiVarNames.has(key)) {
+              filteredSubjectData[key] = value;
+            }
+          });
+          if (Object.keys(filteredSubjectData).length > 0) {
+            setSubjectVariables(filteredSubjectData);
+          }
         }
 
         // Categorize body_data into variables, listVariables, labelVariables, tableVariables
