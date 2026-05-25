@@ -1813,8 +1813,8 @@ const RunTemplates = () => {
         const mergedGlobalApiConfig = fallbackApiConfig || resendApiConfig ? {
           integrations: (fallbackApiConfig?.integrations?.length ? fallbackApiConfig.integrations : resendApiConfig?.integrations) || [],
           globalVariables: {
-            ...(resendApiConfig?.globalVariables || {}),
             ...(fallbackApiConfig?.globalVariables || {}),
+            ...(resendApiConfig?.globalVariables || {}),
           },
         } : undefined;
 
