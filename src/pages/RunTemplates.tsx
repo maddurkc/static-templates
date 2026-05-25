@@ -1722,6 +1722,31 @@ const RunTemplates = () => {
             })),
           })),
         },
+        // Persist global API integrations + cached responses so resend can
+        // rehydrate API-driven subject/body placeholders just like a fresh
+        // template load (mirrors backend TemplateResponse.globalApiIntegrations).
+        globalApiIntegrations: (globalApiConfig?.integrations || []).map((int, idx) => {
+          const gv = globalApiConfig?.globalVariables?.[int.variableName];
+          return {
+            id: int.id,
+            integrationId: int.id,
+            integrationName: int.name,
+            name: int.name,
+            apiTemplateId: int.templateId,
+            variableName: int.variableName,
+            enabled: int.enabled,
+            paramValues: int.paramValues || {},
+            transformation: int.transformation,
+            cachedResponse: gv ? {
+              data: gv.data,
+              rawData: gv.rawData,
+              dataType: gv.dataType,
+              schema: gv.schema,
+            } : undefined,
+            cachedResponseAt: gv?.lastFetched,
+            orderIndex: idx,
+          };
+        }),
       },
     };
     localStorage.setItem(`last_sent_${selectedTemplate.id}`, JSON.stringify(resendPayload));
