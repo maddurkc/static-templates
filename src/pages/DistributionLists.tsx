@@ -6,10 +6,12 @@ import {
   updateDistributionList,
   deleteDistributionList,
   getUsersByIds,
+  toSharedRef,
   type DistributionList,
   type DLVisibility,
   type DLMember,
   type DirectoryUser,
+  type SharedUserRef,
 } from "@/lib/distributionListStorage";
 import { SharedUserPicker } from "./SharedUserPicker";
 import { Button } from "@/components/ui/button";
@@ -42,7 +44,7 @@ interface DraftDL {
   description: string;
   visibility: DLVisibility;
   members: DLMember[];
-  sharedWith: string[];
+  sharedWith: SharedUserRef[];
 }
 
 const blankDraft = (): DraftDL => ({
@@ -94,13 +96,13 @@ export default function DistributionLists() {
       sharedWith: [...dl.sharedWith],
     });
     setEmailInput("");
-    setSharedUsers(getUsersByIds(dl.sharedWith));
+    setSharedUsers(getUsersByIds(dl.sharedWith.map((s) => s.id)));
     setDialogOpen(true);
   };
 
   const addEmails = (raw: string) => {
     const emails = raw
-      .split(/[,;\s\n]+/)
+      .split(/[,;:\s\n]+/)
       .map((e) => e.trim().toLowerCase())
       .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
     if (emails.length === 0) return;
@@ -117,8 +119,9 @@ export default function DistributionLists() {
   };
 
   const save = () => {
-    const effectiveSharedWith =
-      draft.visibility === "SHARED" ? sharedUsers.map((u) => u.id) : [];
+    const effectiveSharedWith: SharedUserRef[] =
+      draft.visibility === "SHARED" ? sharedUsers.map(toSharedRef) : [];
+    const membersRaw = draft.members.map((m) => m.email).join(", ");
     try {
       if (draft.id) {
         updateDistributionList(draft.id, {
@@ -127,6 +130,7 @@ export default function DistributionLists() {
           description: draft.description,
           visibility: draft.visibility,
           members: draft.members,
+          membersRaw,
           sharedWith: effectiveSharedWith,
         });
         toast({ title: "Distribution list updated" });
@@ -137,6 +141,7 @@ export default function DistributionLists() {
           description: draft.description,
           visibility: draft.visibility,
           members: draft.members,
+          membersRaw,
           sharedWith: effectiveSharedWith,
         });
         toast({ title: "Distribution list created" });
@@ -337,13 +342,13 @@ export default function DistributionLists() {
                 onChange={(e) => setEmailInput(e.target.value)}
                 onBlur={() => emailInput && addEmails(emailInput)}
                 placeholder={
-                  "Paste or type email addresses separated by commas, semicolons, spaces, or new lines.\n" +
-                  "e.g. alice@company.com, bob@company.com; carol@company.com"
+                  "Paste or type email addresses separated by commas, colons, semicolons, spaces, or new lines.\n" +
+                  "e.g. alice@company.com, bob@company.com; carol@company.com : dan@company.com"
                 }
                 rows={4}
               />
               <span className={styles.fieldHint}>
-                Emails are parsed when you click outside the box. Invalid entries are ignored.
+                Accepts <code>, ; : space newline</code> as separators. Parsed on blur — invalid entries are ignored.
               </span>
               <div className={styles.memberChips}>
                 {draft.members.map((m) => (

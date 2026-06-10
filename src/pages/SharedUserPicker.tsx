@@ -19,7 +19,7 @@ interface Props {
 export const SharedUserPicker: React.FC<Props> = ({
   selected,
   onChange,
-  placeholder = "Search users by name, email, or department...",
+  placeholder = "Search users by name, email, ELID, LANID, or department...",
 }) => {
   const [input, setInput] = useState("");
   const [results, setResults] = useState<DirectoryUser[]>([]);
@@ -96,9 +96,13 @@ export const SharedUserPicker: React.FC<Props> = ({
                   {u.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
                 <div className={styles.shareInfo}>
-                  <span className={styles.shareName}>{u.name}</span>
+                  <span className={styles.shareName}>
+                    {u.name}
+                    {u.lanid ? <span className={styles.shareBadge}>{u.lanid}</span> : null}
+                  </span>
                   <span className={styles.shareSub}>
                     {u.email}
+                    {u.elid ? ` · ELID ${u.elid}` : ""}
                     {u.department ? ` · ${u.department}` : ""}
                   </span>
                 </div>

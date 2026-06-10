@@ -14,16 +14,33 @@ export interface DLMember {
   displayName?: string;
 }
 
+/**
+ * Rich shared-user record persisted on a DL when visibility = SHARED.
+ * We snapshot the full directory record (not just the id) so the UI can
+ * render names/emails without an extra round-trip and so audit history
+ * survives even if the user is later removed from the org directory.
+ */
+export interface SharedUserRef {
+  id: string;          // internal user id
+  elid?: string;       // enterprise id (e.g. AD upn / employee login id)
+  lanid?: string;      // LAN / network id
+  name: string;
+  emailid: string;     // canonical email
+  department?: string;
+}
+
 export interface DistributionList {
   id: string;
-  prefix: string;             // "DSPCH-"
-  name: string;               // "TeamAlpha"
-  displayName: string;        // "DSPCH-TeamAlpha"
+  prefix: string;
+  name: string;
+  displayName: string;
   description?: string;
   visibility: DLVisibility;
   ownerId: string;
+  /** Raw textarea string the user pasted (kept verbatim for audit/round-trip). */
+  membersRaw?: string;
   members: DLMember[];
-  sharedWith: string[];
+  sharedWith: SharedUserRef[];
   createdAt: string;
   updatedAt: string;
 }
@@ -37,7 +54,7 @@ export interface RecipientSuggestion {
   memberCount?: number;       // DL only
 }
 
-const STORAGE_KEY = "smart_distribution_lists";
+const STORAGE_KEY = "smart_distribution_lists_v2";
 const DEFAULT_PREFIX = "DSPCH-";
 const RESERVED_PREFIXES = ["SYS-", "ADMIN-"];
 const CURRENT_USER = "me";   // demo placeholder
@@ -110,7 +127,7 @@ export function listDistributionLists(): DistributionList[] {
     (dl) =>
       dl.ownerId === CURRENT_USER ||
       dl.visibility === "PUBLIC" ||
-      dl.sharedWith.includes(CURRENT_USER),
+      dl.sharedWith.some((s) => s.id === CURRENT_USER),
   );
 }
 
@@ -124,7 +141,8 @@ export interface DLUpsertInput {
   description?: string;
   visibility: DLVisibility;
   members: DLMember[];
-  sharedWith?: string[];
+  membersRaw?: string;
+  sharedWith?: SharedUserRef[];
 }
 
 function validate(input: DLUpsertInput): string | null {
@@ -172,6 +190,7 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
     visibility: input.visibility,
     ownerId: CURRENT_USER,
     members: input.members.map((m) => ({ email: m.email.toLowerCase().trim(), displayName: m.displayName })),
+    membersRaw: input.membersRaw,
     sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
     createdAt: now,
     updatedAt: now,
@@ -205,6 +224,7 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
     description: input.description?.trim() || undefined,
     visibility: input.visibility,
     members: input.members.map((m) => ({ email: m.email.toLowerCase().trim(), displayName: m.displayName })),
+    membersRaw: input.membersRaw,
     sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
     updatedAt: new Date().toISOString(),
   };
@@ -221,25 +241,51 @@ export function deleteDistributionList(id: string): void {
 
 /* ---------- unified recipient search ---------- */
 
-const MOCK_USER_DIRECTORY: { id: string; name: string; email: string; department?: string }[] = [
-  { id: "u-1", name: "John Doe", email: "john.doe@company.com", department: "Engineering" },
-  { id: "u-2", name: "Jane Smith", email: "jane.smith@company.com", department: "Design" },
-  { id: "u-3", name: "Bob Wilson", email: "bob.wilson@company.com", department: "Marketing" },
-  { id: "u-4", name: "Alice Johnson", email: "alice.johnson@company.com", department: "Sales" },
-  { id: "u-5", name: "Mike Brown", email: "mike.brown@company.com", department: "Engineering" },
-  { id: "u-6", name: "Sarah Davis", email: "sarah.davis@company.com", department: "HR" },
-  { id: "u-7", name: "Tom Miller", email: "tom.miller@company.com", department: "Finance" },
-  { id: "u-8", name: "Emma Taylor", email: "emma.taylor@company.com", department: "Engineering" },
-  { id: "u-9", name: "Chris Anderson", email: "chris.anderson@company.com", department: "Product" },
-  { id: "u-10", name: "Lisa Martinez", email: "lisa.martinez@company.com", department: "Legal" },
+const MOCK_USER_DIRECTORY: DirectoryUser[] = [
+  { id: "u-1",  elid: "E10001", lanid: "jdoe",      name: "John Doe",        email: "john.doe@company.com",       department: "Engineering" },
+  { id: "u-2",  elid: "E10002", lanid: "jsmith",    name: "Jane Smith",      email: "jane.smith@company.com",     department: "Design" },
+  { id: "u-3",  elid: "E10003", lanid: "bwilson",   name: "Bob Wilson",      email: "bob.wilson@company.com",     department: "Marketing" },
+  { id: "u-4",  elid: "E10004", lanid: "ajohnson",  name: "Alice Johnson",   email: "alice.johnson@company.com",  department: "Sales" },
+  { id: "u-5",  elid: "E10005", lanid: "mbrown",    name: "Mike Brown",      email: "mike.brown@company.com",     department: "Engineering" },
+  { id: "u-6",  elid: "E10006", lanid: "sdavis",    name: "Sarah Davis",     email: "sarah.davis@company.com",    department: "HR" },
+  { id: "u-7",  elid: "E10007", lanid: "tmiller",   name: "Tom Miller",      email: "tom.miller@company.com",     department: "Finance" },
+  { id: "u-8",  elid: "E10008", lanid: "etaylor",   name: "Emma Taylor",     email: "emma.taylor@company.com",    department: "Engineering" },
+  { id: "u-9",  elid: "E10009", lanid: "canderson", name: "Chris Anderson",  email: "chris.anderson@company.com", department: "Product" },
+  { id: "u-10", elid: "E10010", lanid: "lmartinez", name: "Lisa Martinez",   email: "lisa.martinez@company.com",  department: "Legal" },
 ];
 
 /** Lightweight shape returned by the share-user picker. */
 export interface DirectoryUser {
   id: string;
+  elid?: string;     // enterprise / employee id
+  lanid?: string;    // LAN / network id
   name: string;
-  email: string;
+  email: string;     // canonical email (mapped to `emailid` when persisted)
   department?: string;
+}
+
+/** Convert a directory row → the persistence shape stored on the DL. */
+export function toSharedRef(u: DirectoryUser): SharedUserRef {
+  return {
+    id: u.id,
+    elid: u.elid,
+    lanid: u.lanid,
+    name: u.name,
+    emailid: u.email,
+    department: u.department,
+  };
+}
+
+/** Convert a persisted shared-user record back to the directory shape used by the picker. */
+export function fromSharedRef(s: SharedUserRef): DirectoryUser {
+  return {
+    id: s.id,
+    elid: s.elid,
+    lanid: s.lanid,
+    name: s.name,
+    email: s.emailid,
+    department: s.department,
+  };
 }
 
 /**
@@ -254,6 +300,8 @@ export async function searchUsers(query: string, limit = 8): Promise<DirectoryUs
     (u) =>
       u.name.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) ||
+      (u.elid ?? "").toLowerCase().includes(q) ||
+      (u.lanid ?? "").toLowerCase().includes(q) ||
       (u.department ?? "").toLowerCase().includes(q),
   ).slice(0, limit);
 }
