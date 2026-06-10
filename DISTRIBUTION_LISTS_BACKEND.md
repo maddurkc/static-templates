@@ -125,10 +125,18 @@ public class DistributionList {
     @OneToMany(mappedBy = "distributionList", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<DistributionListMember> members = new ArrayList<>();
 
-    @ElementCollection
-    @CollectionTable(name = "distribution_list_share", joinColumns = @JoinColumn(name = "dl_id"))
-    @Column(name = "user_id")
-    private Set<String> sharedWith = new HashSet<>();
+    /** Verbatim textarea content the user pasted on save (audit / round-trip). */
+    @Column(name = "members_raw", columnDefinition = "NVARCHAR(MAX)")
+    private String membersRaw;
+
+    /**
+     * Snapshot of every directory user the owner shared this DL with.
+     * Stored as full rows (id, elid, lanid, name, emailid, department) so the
+     * UI never has to round-trip back to AD for rendering, and so audit history
+     * survives if the user is later removed from the directory.
+     */
+    @OneToMany(mappedBy = "distributionList", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<DistributionListShare> sharedWith = new ArrayList<>();
 
     @PreUpdate void touch() { this.updatedAt = Instant.now(); }
 
@@ -150,6 +158,32 @@ public class DistributionListMember {
 
     @Column(name = "display_name", length = 150)
     private String displayName;
+}
+
+@Entity @Table(name = "distribution_list_share")
+@IdClass(DistributionListShare.PK.class)
+@Getter @Setter @NoArgsConstructor
+public class DistributionListShare {
+    @Id
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "dl_id", nullable = false)
+    private DistributionList distributionList;
+
+    @Id
+    @Column(name = "user_id", nullable = false, length = 100)
+    private String userId;                  // internal directory id
+
+    @Column(length = 50)                    private String elid;       // enterprise / employee id
+    @Column(length = 50)                    private String lanid;      // LAN / network id
+    @Column(nullable = false, length = 150) private String name;
+    @Column(nullable = false, length = 255) private String emailid;
+    @Column(length = 150)                   private String department;
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class PK implements Serializable {
+        private UUID distributionList;
+        private String userId;
+    }
 }
 ```
 
