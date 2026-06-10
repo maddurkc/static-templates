@@ -806,16 +806,16 @@ The `prefix` field is **server-controlled and readonly** in the UI. It is shown 
 ### Name Input Sanitisation
 The frontend enforces alphanumeric-only in real time (`/[^A-Za-z0-9]/g` stripped on every keystroke). The backend `@Pattern` validation acts as the authoritative guard.
 
-### Members Bulk Import (textarea, free-form)
-The Members field is a **`<textarea>`** — users paste any list of email addresses, separated by **any combination of `, ; : space newline`**. The frontend:
+### Members Bulk Import (textarea, free-form, no member table)
+The Members field is a **`<textarea>`** bound directly to a single string. There
+is **no separate `distribution_list_member` table** — `distribution_list.members_raw`
+(NVARCHAR(MAX)) is the sole source of truth.
 
-1. Splits the textarea on the regex `/[,;:\s\n]+/` on blur.
-2. Lowercases + trims each token, drops anything that doesn't match a basic email regex.
-3. Sends two things to the backend in the upsert payload:
-   - `members`: a structured `List<MemberDto>` (deduped, validated).
-   - `membersRaw`: the **verbatim string** the user pasted (any format), stored in `distribution_list.members_raw` for audit / round-trip. The backend never re-parses this — it is treated as an opaque blob.
-
-This keeps the column model normalised (one row per email, with unique constraints) while still preserving the original free-form input the user supplied.
+1. The user pastes any list of email addresses separated by **any combination of `, ; : space newline`**.
+2. Frontend sends exactly **one field** to the backend: `membersRaw` (the verbatim string). No `members` array, no `MemberDto` list.
+3. Both sides parse on read with the same logic (`parseMembersRaw()` in TS / `DistributionListService.parseMembers()` in Java): split on `[,;:\s\n]+`, lowercase, trim, drop tokens that fail a basic email regex, dedupe.
+4. The chip list under the textarea is a **live preview** of that parse — useful for spotting typos. Removing a chip strips the matching token (and its trailing separator) from `membersRaw`.
+5. The DTO returned to clients includes a derived `memberEmails: string[]` and `memberCount: int` for convenience, but the database row only stores `members_raw`.
 
 ### Shared Users Picker (autocomplete, rich snapshot)
 When `visibility === 'SHARED'`, the dialog renders `SharedUserPicker`, an autocomplete that queries `GET /api/users/search?q=...`. The frontend stores the **full directory record** for each selection (`id`, `elid`, `lanid`, `name`, `emailid`, `department`) — never just the id — and sends that as `sharedWith: SharedUserDto[]` on save. See §12 for the persistence flow.
@@ -823,10 +823,7 @@ When `visibility === 'SHARED'`, the dialog renders `SharedUserPicker`, an autoco
 ### Save Button Guard (frontend)
 The **Create / Save** button is disabled until:
 - `name` is non-empty, alphanumeric, and unique per owner
-- `members` has ≥1 valid email
-- `visibility === 'SHARED'` ⇒ `sharedWith` has ≥1 selected user
-
-This mirrors the server-side validation rules in §9.
+- `parseMembersRaw(membersRaw)` returns ≥1 valid email
 - `visibility === 'SHARED'` ⇒ `sharedWith` has ≥1 selected user
 
 This mirrors the server-side validation rules in §9.
