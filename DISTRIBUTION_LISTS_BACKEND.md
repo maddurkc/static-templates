@@ -156,8 +156,10 @@ public record DistributionListDto(
 public record MemberDto(String email, String displayName) {}
 
 public record DistributionListUpsertDto(
-    @NotBlank @Size(max = 150) String name,
-    @Size(max = 20)             String prefix,        // null -> default DSPCH-
+    @NotBlank @Size(max = 150)
+    @Pattern(regexp = "^[A-Za-z0-9]+$", message = "Name can only contain letters and numbers — no spaces or special characters.")
+    String name,
+    @Size(max = 20)             String prefix,        // typically readonly / server-controlled; null -> default DSPCH-
     @Size(max = 500)            String description,
     @NotNull                    Visibility visibility,
     @NotNull @Size(min = 1)     List<MemberDto> members,
