@@ -75,7 +75,7 @@ const refsToUsers = (refs: RecipientRef[] | undefined): User[] | null => {
         };
       }
       return {
-        id: dl.id, email: "", name: dl.displayName,
+        id: dl.distributionListId, email: "", name: dl.displayName,
         kind: "DL", memberCount: dl.members.length,
         dlMembers: dl.members.map(m => m.email),
       };
