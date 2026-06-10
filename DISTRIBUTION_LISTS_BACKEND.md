@@ -591,7 +591,7 @@ public class DistributionListService {
                 .map(s -> new SharedUserDto(
                     s.getDistributionListShareId(),
                     s.getUserId(), s.getElid(), s.getLanid(),
-                    s.getName(), s.getEmailid(), s.getDepartment()))
+                    s.getName(), s.getEmailid()))
                 .toList(),
             dl.getCreatedAt(),
             dl.getUpdatedAt()
