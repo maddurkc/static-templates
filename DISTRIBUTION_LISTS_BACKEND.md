@@ -629,7 +629,7 @@ public ResendDto resend(String sentMessageId) {
 
 Frontend then:
 
-1. Reads `toRefs` and rebuilds the chip list. For each `DL` ref it calls `GET /api/distribution-lists/{id}` to **re-fetch live members** (count badge updates).
+1. Reads `toRefs` and rebuilds the chip list. For each `DL` ref it calls `GET /api/distribution-lists/{distributionListId}` to **re-fetch live members** (count badge updates).
 2. If the GET 404s / 403s, the chip is rendered in a "broken DL" state and excluded from `Send`.
 3. On the next `Send` the resolver re-expands — picking up any new/removed members since the original send.
 
