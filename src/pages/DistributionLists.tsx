@@ -320,20 +320,41 @@ export default function DistributionLists() {
               </Select>
             </div>
 
+            {draft.visibility === "SHARED" && (
+              <div className={styles.field}>
+                <Label>Share with users *</Label>
+                <SharedUserPicker
+                  selected={sharedUsers}
+                  onChange={setSharedUsers}
+                />
+                {sharedUsers.length === 0 ? (
+                  <span className={styles.fieldError}>
+                    Select at least one user — only they will see this list in Run Templates.
+                  </span>
+                ) : (
+                  <span className={styles.fieldHint}>
+                    {sharedUsers.length} user{sharedUsers.length === 1 ? "" : "s"} will be able to
+                    pick this DL in To / CC / BCC.
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className={styles.field}>
               <Label>Members ({draft.members.length})</Label>
-              <Input
+              <Textarea
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === "," || e.key === ";") {
-                    e.preventDefault();
-                    addEmails(emailInput);
-                  }
-                }}
                 onBlur={() => emailInput && addEmails(emailInput)}
-                placeholder="Type email and press Enter, or paste comma/semicolon-separated"
+                placeholder={
+                  "Paste or type email addresses separated by commas, semicolons, spaces, or new lines.\n" +
+                  "e.g. alice@company.com, bob@company.com; carol@company.com"
+                }
+                rows={4}
               />
+              <span className={styles.fieldHint}>
+                Emails are parsed when you click outside the box. Invalid entries are ignored.
+              </span>
               <div className={styles.memberChips}>
                 {draft.members.map((m) => (
                   <span key={m.email} className={styles.memberChip}>
