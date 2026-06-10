@@ -691,15 +691,15 @@ class RecipientResolverServiceTest {
 
     @Test void resolve_dedupesAcrossDlAndUser() {
         var dl = dlWith("a@x.com","b@x.com");
-        when(dlRepo.findById(dl.getId())).thenReturn(Optional.of(dl));
+        when(dlRepo.findById(dl.getDistributionListId())).thenReturn(Optional.of(dl));
         when(currentUser.id()).thenReturn("owner-1");
 
         var out = svc.resolve(List.of(
             new RecipientRefDto("USER", null, "a@x.com"),
-            new RecipientRefDto("DL",   dl.getId().toString(), null)));
+            new RecipientRefDto("DL",   dl.getDistributionListId(), null)));
 
         assertThat(out.emails()).containsExactly("a@x.com","b@x.com");  // dedup
-        assertThat(out.expandedDlIds()).containsExactly(dl.getId());
+        assertThat(out.expandedDlIds()).containsExactly(dl.getDistributionListId());
     }
 
     @Test void resolve_inactiveDl_skipsWithWarning()    { /* … */ }
