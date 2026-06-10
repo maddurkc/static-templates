@@ -30,7 +30,9 @@ import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobal
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
-import { getDistributionList, type RecipientRef } from "@/lib/distributionListStorage";
+import { getDistributionList, listDistributionLists, type RecipientRef, type DistributionList } from "@/lib/distributionListStorage";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Users as UsersIcon, Lock as LockIcon, Globe as GlobeIcon } from "lucide-react";
 
 /**
  * Convert recipient User[] (which may contain DLs) into:
