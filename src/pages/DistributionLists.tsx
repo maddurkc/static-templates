@@ -5,10 +5,13 @@ import {
   createDistributionList,
   updateDistributionList,
   deleteDistributionList,
+  getUsersByIds,
   type DistributionList,
   type DLVisibility,
   type DLMember,
+  type DirectoryUser,
 } from "@/lib/distributionListStorage";
+import { SharedUserPicker } from "./SharedUserPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
