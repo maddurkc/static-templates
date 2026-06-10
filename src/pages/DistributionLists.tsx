@@ -96,7 +96,7 @@ export default function DistributionLists() {
       sharedWith: [...dl.sharedWith],
     });
     setEmailInput("");
-    setSharedUsers(getUsersByIds(dl.sharedWith));
+    setSharedUsers(getUsersByIds(dl.sharedWith.map((s) => s.id)));
     setDialogOpen(true);
   };
 
