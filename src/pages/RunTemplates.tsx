@@ -2451,6 +2451,93 @@ const RunTemplates = () => {
                   onChange={setToUsers}
                   placeholder="Search and select recipients"
                 />
+                <Sheet open={dlDrawerOpen} onOpenChange={setDlDrawerOpen}>
+                  <SheetTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1">
+                      <UsersIcon size={14} /> DLs
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[420px] sm:max-w-[420px] flex flex-col">
+                    <SheetHeader>
+                      <SheetTitle>Distribution Lists</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-3">
+                      <Input
+                        value={dlDrawerSearch}
+                        onChange={(e) => setDlDrawerSearch(e.target.value)}
+                        placeholder="Search distribution lists..."
+                      />
+                    </div>
+                    <ScrollArea className="flex-1 mt-3 -mx-6 px-6">
+                      <div className="space-y-2 pb-4">
+                        {(() => {
+                          const q = dlDrawerSearch.trim().toLowerCase();
+                          const all = listDistributionLists();
+                          const dls = q
+                            ? all.filter(
+                                (d) =>
+                                  d.displayName.toLowerCase().includes(q) ||
+                                  d.name.toLowerCase().includes(q),
+                              )
+                            : all;
+                          if (dls.length === 0) {
+                            return (
+                              <div className="text-sm text-muted-foreground py-8 text-center">
+                                No distribution lists available.
+                              </div>
+                            );
+                          }
+                          const toUser = (email: string): User => ({
+                            id: email, email, name: email, kind: "USER",
+                          });
+                          const mergeBucket = (existing: User[], emails: string[]) => {
+                            const have = new Set(existing.filter(u => u.kind === "USER" && u.email).map(u => u.email.toLowerCase()));
+                            const adds = emails.filter(e => !have.has(e.toLowerCase())).map(toUser);
+                            return [...existing, ...adds];
+                          };
+                          const applyDL = (dl: DistributionList) => {
+                            setToUsers((cur) => mergeBucket(cur, dl.toMembers.map(m => m.email)));
+                            setCcUsers((cur) => mergeBucket(cur, dl.ccMembers.map(m => m.email)));
+                            setBccUsers((cur) => mergeBucket(cur, dl.bccMembers.map(m => m.email)));
+                            toast({
+                              title: `Applied ${dl.displayName}`,
+                              description: `To +${dl.toMembers.length} · CC +${dl.ccMembers.length} · BCC +${dl.bccMembers.length}`,
+                            });
+                            setDlDrawerOpen(false);
+                          };
+                          return dls.map((dl) => {
+                            const total = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
+                            return (
+                              <button
+                                key={dl.distributionListId}
+                                type="button"
+                                onClick={() => applyDL(dl)}
+                                className="w-full text-left p-3 rounded-md border border-border hover:border-primary hover:bg-accent/50 transition-colors"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-semibold text-sm flex items-center gap-1.5">
+                                    <UsersIcon size={13} />
+                                    {dl.displayName}
+                                  </span>
+                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                                    {dl.visibility === "PUBLIC" ? <GlobeIcon size={10} /> : <LockIcon size={10} />}
+                                    {dl.visibility.toLowerCase()}
+                                  </span>
+                                </div>
+                                {dl.description && (
+                                  <div className="text-xs text-muted-foreground mt-1 line-clamp-1">{dl.description}</div>
+                                )}
+                                <div className="text-[11px] text-muted-foreground mt-1.5">
+                                  {total} member{total === 1 ? "" : "s"} · To {dl.toMembers.length} / CC {dl.ccMembers.length} / BCC {dl.bccMembers.length}
+                                </div>
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
               </div>
 
               {/* CC Field */}
