@@ -84,6 +84,7 @@ export default function DistributionLists() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
   const [managerUsers, setManagerUsers] = useState<DirectoryUser[]>([]);
+  const [detailsDL, setDetailsDL] = useState<DistributionList | null>(null);
 
   const toMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.toRaw),  [draft.toRaw]);
   const ccMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.ccRaw),  [draft.ccRaw]);
