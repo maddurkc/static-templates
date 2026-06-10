@@ -170,7 +170,9 @@ CREATE TABLE dbo.distribution_list_share (
     lanid                       NVARCHAR(50)     NULL,              -- LAN / network id
     name                        NVARCHAR(150)    NOT NULL,
     emailid                     NVARCHAR(255)    NOT NULL,
-    department                  NVARCHAR(150)    NULL,
+    -- v2: `department` column removed. Department is a directory attribute,
+    -- not a snapshot field — it is fetched fresh from the user directory
+    -- when the picker / drawer needs to display it.
     CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one manager row per (DL, user)
     CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
         REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
