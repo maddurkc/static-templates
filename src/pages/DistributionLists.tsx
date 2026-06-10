@@ -7,6 +7,7 @@ import {
   deleteDistributionList,
   getUsersByIds,
   toSharedRef,
+  parseMembersRaw,
   type DistributionList,
   type DLVisibility,
   type DLMember,
@@ -43,7 +44,8 @@ interface DraftDL {
   name: string;
   description: string;
   visibility: DLVisibility;
-  members: DLMember[];
+  /** Verbatim textarea contents — single source of truth for members. */
+  membersRaw: string;
   sharedWith: SharedUserRef[];
 }
 
@@ -52,7 +54,7 @@ const blankDraft = (): DraftDL => ({
   name: "",
   description: "",
   visibility: "PRIVATE",
-  members: [],
+  membersRaw: "",
   sharedWith: [],
 });
 
@@ -62,8 +64,13 @@ export default function DistributionLists() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
-  const [emailInput, setEmailInput] = useState("");
   const [sharedUsers, setSharedUsers] = useState<DirectoryUser[]>([]);
+
+  /** Live-parsed chip preview of whatever is currently in the textarea. */
+  const parsedMembers = useMemo<DLMember[]>(
+    () => parseMembersRaw(draft.membersRaw),
+    [draft.membersRaw],
+  );
 
   const refresh = () => setLists(listDistributionLists());
 
@@ -80,7 +87,6 @@ export default function DistributionLists() {
 
   const openCreate = () => {
     setDraft(blankDraft());
-    setEmailInput("");
     setSharedUsers([]);
     setDialogOpen(true);
   };
@@ -92,58 +98,40 @@ export default function DistributionLists() {
       name: dl.name,
       description: dl.description ?? "",
       visibility: dl.visibility,
-      members: [...dl.members],
+      membersRaw: dl.membersRaw ?? dl.members.map((m) => m.email).join(", "),
       sharedWith: [...dl.sharedWith],
     });
-    setEmailInput("");
     setSharedUsers(getUsersByIds(dl.sharedWith.map((s) => s.id)));
     setDialogOpen(true);
   };
 
-  const addEmails = (raw: string) => {
-    const emails = raw
-      .split(/[,;:\s\n]+/)
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
-    if (emails.length === 0) return;
-    const existing = new Set(draft.members.map((m) => m.email));
-    const fresh = emails
-      .filter((e) => !existing.has(e))
-      .map<DLMember>((email) => ({ email }));
-    setDraft({ ...draft, members: [...draft.members, ...fresh] });
-    setEmailInput("");
-  };
-
   const removeMember = (email: string) => {
-    setDraft({ ...draft, members: draft.members.filter((m) => m.email !== email) });
+    // Strip the email (and any surrounding separators) from the raw blob.
+    const next = draft.membersRaw
+      .split(/([,;:\s\n]+)/)
+      .filter((tok) => tok.trim().toLowerCase() !== email)
+      .join("")
+      .replace(/^[,;:\s\n]+|[,;:\s\n]+$/g, "");
+    setDraft({ ...draft, membersRaw: next });
   };
 
   const save = () => {
     const effectiveSharedWith: SharedUserRef[] =
       draft.visibility === "SHARED" ? sharedUsers.map(toSharedRef) : [];
-    const membersRaw = draft.members.map((m) => m.email).join(", ");
     try {
+      const payload = {
+        name: draft.name,
+        prefix: draft.prefix,
+        description: draft.description,
+        visibility: draft.visibility,
+        membersRaw: draft.membersRaw,
+        sharedWith: effectiveSharedWith,
+      };
       if (draft.id) {
-        updateDistributionList(draft.id, {
-          name: draft.name,
-          prefix: draft.prefix,
-          description: draft.description,
-          visibility: draft.visibility,
-          members: draft.members,
-          membersRaw,
-          sharedWith: effectiveSharedWith,
-        });
+        updateDistributionList(draft.id, payload);
         toast({ title: "Distribution list updated" });
       } else {
-        createDistributionList({
-          name: draft.name,
-          prefix: draft.prefix,
-          description: draft.description,
-          visibility: draft.visibility,
-          members: draft.members,
-          membersRaw,
-          sharedWith: effectiveSharedWith,
-        });
+        createDistributionList(payload);
         toast({ title: "Distribution list created" });
       }
       setDialogOpen(false);
@@ -256,7 +244,7 @@ export default function DistributionLists() {
                   {draft.prefix}
                   {draft.name || "<name>"}
                 </strong>
-                <span className={styles.previewCount}>{draft.members.length} members</span>
+                <span className={styles.previewCount}>{parsedMembers.length} members</span>
               </div>
             </div>
 
@@ -336,22 +324,22 @@ export default function DistributionLists() {
             )}
 
             <div className={styles.field}>
-              <Label>Members ({draft.members.length})</Label>
+              <Label>Members ({parsedMembers.length})</Label>
               <Textarea
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                onBlur={() => emailInput && addEmails(emailInput)}
+                value={draft.membersRaw}
+                onChange={(e) => setDraft({ ...draft, membersRaw: e.target.value })}
                 placeholder={
                   "Paste or type email addresses separated by commas, colons, semicolons, spaces, or new lines.\n" +
                   "e.g. alice@company.com, bob@company.com; carol@company.com : dan@company.com"
                 }
-                rows={4}
+                rows={5}
               />
               <span className={styles.fieldHint}>
-                Accepts <code>, ; : space newline</code> as separators. Parsed on blur — invalid entries are ignored.
+                Stored verbatim as a single text blob. Accepts <code>, ; : space newline</code> as separators —
+                invalid entries are ignored in the chip preview below.
               </span>
               <div className={styles.memberChips}>
-                {draft.members.map((m) => (
+                {parsedMembers.map((m) => (
                   <span key={m.email} className={styles.memberChip}>
                     {m.email}
                     <button onClick={() => removeMember(m.email)} aria-label={`Remove ${m.email}`}>
@@ -371,6 +359,7 @@ export default function DistributionLists() {
               onClick={save}
               disabled={
                 !draft.name.trim() ||
+                parsedMembers.length === 0 ||
                 lists.some(
                   (l) =>
                     l.id !== draft.id &&

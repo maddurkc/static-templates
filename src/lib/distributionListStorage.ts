@@ -29,6 +29,13 @@ export interface SharedUserRef {
   department?: string;
 }
 
+/**
+ * The DL is persisted as a SINGLE row in `distribution_list`.
+ * Member emails live entirely in the `members_raw` NVARCHAR(MAX) column
+ * (verbatim free-form text the user pasted). The structured `members`
+ * array below is **derived** on read via `parseMembersRaw()` and is
+ * never written to storage / the DB.
+ */
 export interface DistributionList {
   id: string;
   prefix: string;
@@ -37,8 +44,9 @@ export interface DistributionList {
   description?: string;
   visibility: DLVisibility;
   ownerId: string;
-  /** Raw textarea string the user pasted (kept verbatim for audit/round-trip). */
-  membersRaw?: string;
+  /** Source of truth — the verbatim textarea string. */
+  membersRaw: string;
+  /** Derived from membersRaw on every read. Not persisted. */
   members: DLMember[];
   sharedWith: SharedUserRef[];
   createdAt: string;
@@ -54,12 +62,37 @@ export interface RecipientSuggestion {
   memberCount?: number;       // DL only
 }
 
-const STORAGE_KEY = "smart_distribution_lists_v2";
+const STORAGE_KEY = "smart_distribution_lists_v3";
 const DEFAULT_PREFIX = "DSPCH-";
 const RESERVED_PREFIXES = ["SYS-", "ADMIN-"];
 const CURRENT_USER = "me";   // demo placeholder
 
 /* ---------- low-level persistence ---------- */
+
+/**
+ * Parse the free-form textarea string into a deduped, validated email list.
+ * Accepts `, ; : space newline` (any combination) as separators. Invalid
+ * tokens are silently dropped.
+ */
+export function parseMembersRaw(raw: string | undefined | null): DLMember[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const out: DLMember[] = [];
+  for (const tok of raw.split(/[,;:\s\n]+/)) {
+    const e = tok.trim().toLowerCase();
+    if (!e) continue;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) continue;
+    if (seen.has(e)) continue;
+    seen.add(e);
+    out.push({ email: e });
+  }
+  return out;
+}
+
+/** Hydrate a stored row → runtime shape (derives `members` from `membersRaw`). */
+function hydrate(row: Omit<DistributionList, "members">): DistributionList {
+  return { ...row, members: parseMembersRaw(row.membersRaw) };
+}
 
 function readAll(): DistributionList[] {
   try {
@@ -69,18 +102,23 @@ function readAll(): DistributionList[] {
       writeAll(seeded);
       return seeded;
     }
-    return JSON.parse(raw) as DistributionList[];
+    const stored = JSON.parse(raw) as Omit<DistributionList, "members">[];
+    return stored.map(hydrate);
   } catch {
     return [];
   }
 }
 
 function writeAll(lists: DistributionList[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(lists));
+  // Strip the derived `members` field — `membersRaw` is the source of truth.
+  const stripped = lists.map(({ members, ...rest }) => rest);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(stripped));
 }
 
 function seedDemoLists(): DistributionList[] {
   const now = new Date().toISOString();
+  const eng = "john.doe@company.com, jane.smith@company.com, mike.brown@company.com, emma.taylor@company.com";
+  const ir  = "bob.wilson@company.com; alice.johnson@company.com; sarah.davis@company.com";
   return [
     {
       id: "dl-demo-eng",
@@ -90,12 +128,8 @@ function seedDemoLists(): DistributionList[] {
       description: "Core engineering distribution",
       visibility: "SHARED",
       ownerId: CURRENT_USER,
-      members: [
-        { email: "john.doe@company.com", displayName: "John Doe" },
-        { email: "jane.smith@company.com", displayName: "Jane Smith" },
-        { email: "mike.brown@company.com", displayName: "Mike Brown" },
-        { email: "emma.taylor@company.com", displayName: "Emma Taylor" },
-      ],
+      membersRaw: eng,
+      members: parseMembersRaw(eng),
       sharedWith: [],
       createdAt: now,
       updatedAt: now,
@@ -108,11 +142,8 @@ function seedDemoLists(): DistributionList[] {
       description: "On-call incident responders",
       visibility: "PRIVATE",
       ownerId: CURRENT_USER,
-      members: [
-        { email: "bob.wilson@company.com", displayName: "Bob Wilson" },
-        { email: "alice.johnson@company.com", displayName: "Alice Johnson" },
-        { email: "sarah.davis@company.com", displayName: "Sarah Davis" },
-      ],
+      membersRaw: ir,
+      members: parseMembersRaw(ir),
       sharedWith: [],
       createdAt: now,
       updatedAt: now,
@@ -140,37 +171,42 @@ export interface DLUpsertInput {
   prefix?: string;
   description?: string;
   visibility: DLVisibility;
-  members: DLMember[];
-  membersRaw?: string;
+  /**
+   * Verbatim textarea content — the ONLY persisted source of members.
+   * Server / storage layer parses this via `parseMembersRaw()`; there is
+   * no separate normalised member table.
+   */
+  membersRaw: string;
   sharedWith?: SharedUserRef[];
 }
 
-function validate(input: DLUpsertInput): string | null {
+function validate(input: DLUpsertInput): { error: string | null; members: DLMember[] } {
   const name = input.name.trim();
-  if (!name) return "Name is required.";
+  if (!name) return { error: "Name is required.", members: [] };
   if (!/^[A-Za-z0-9]+$/.test(name)) {
-    return "Name can only contain letters and numbers — no spaces or special characters.";
+    return {
+      error: "Name can only contain letters and numbers — no spaces or special characters.",
+      members: [],
+    };
   }
-  if (input.members.length === 0) return "At least one member email is required.";
+  const members = parseMembersRaw(input.membersRaw);
+  if (members.length === 0) {
+    return { error: "At least one valid member email is required.", members };
+  }
   const prefix = input.prefix ?? DEFAULT_PREFIX;
   if (RESERVED_PREFIXES.some((p) => prefix.toUpperCase().startsWith(p))) {
-    return `Prefix '${prefix}' is reserved.`;
-  }
-  for (const m of input.members) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.email)) {
-      return `Invalid email: ${m.email}`;
-    }
+    return { error: `Prefix '${prefix}' is reserved.`, members };
   }
   if (input.visibility === "SHARED" && (!input.sharedWith || input.sharedWith.length === 0)) {
-    return "SHARED visibility requires at least one shared user.";
+    return { error: "SHARED visibility requires at least one shared user.", members };
   }
-  return null;
+  return { error: null, members };
 }
 
 
 export function createDistributionList(input: DLUpsertInput): DistributionList {
-  const err = validate(input);
-  if (err) throw new Error(err);
+  const { error, members } = validate(input);
+  if (error) throw new Error(error);
 
   const all = readAll();
   const dupe = all.find(
@@ -189,8 +225,8 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
     description: input.description?.trim() || undefined,
     visibility: input.visibility,
     ownerId: CURRENT_USER,
-    members: input.members.map((m) => ({ email: m.email.toLowerCase().trim(), displayName: m.displayName })),
     membersRaw: input.membersRaw,
+    members,
     sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
     createdAt: now,
     updatedAt: now,
@@ -200,8 +236,8 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
 }
 
 export function updateDistributionList(id: string, input: DLUpsertInput): DistributionList {
-  const err = validate(input);
-  if (err) throw new Error(err);
+  const { error, members } = validate(input);
+  if (error) throw new Error(error);
 
   const all = readAll();
   const idx = all.findIndex((d) => d.id === id);
@@ -223,8 +259,8 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
     displayName: `${prefix}${name}`,
     description: input.description?.trim() || undefined,
     visibility: input.visibility,
-    members: input.members.map((m) => ({ email: m.email.toLowerCase().trim(), displayName: m.displayName })),
     membersRaw: input.membersRaw,
+    members,
     sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
     updatedAt: new Date().toISOString(),
   };
