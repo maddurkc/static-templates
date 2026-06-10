@@ -244,7 +244,7 @@ export default function DistributionLists() {
                   {draft.prefix}
                   {draft.name || "<name>"}
                 </strong>
-                <span className={styles.previewCount}>{draft.members.length} members</span>
+                <span className={styles.previewCount}>{parsedMembers.length} members</span>
               </div>
             </div>
 
