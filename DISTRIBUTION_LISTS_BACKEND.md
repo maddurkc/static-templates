@@ -31,8 +31,9 @@ Display convention: every DL is shown with a configurable prefix (default **`DSP
 -- =============================================================
 
 CREATE TABLE dbo.distribution_list (
-    distribution_list_id  NVARCHAR(64)     NOT NULL CONSTRAINT pk_dl PRIMARY KEY,
-                                                                    -- application-generated string id (e.g. "dl-<ts>-<rand>")
+    distribution_list_id  UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dl PRIMARY KEY DEFAULT NEWID(),
+                                                                    -- DB column type is UNIQUEIDENTIFIER (UUID); the JPA
+                                                                    -- entity maps it to `String` via @GenericGenerator("uuid2").
     name                  NVARCHAR(150)    NOT NULL,                -- "TeamAlpha" (no prefix)
     prefix                NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_prefix DEFAULT 'DSPCH-',
     description           NVARCHAR(500)    NULL,
@@ -61,7 +62,7 @@ CREATE INDEX ix_dl_active    ON dbo.distribution_list(is_active) INCLUDE (owner_
 -- from AD/SCIM, so audit history stays intact.
 -- =============================================================
 CREATE TABLE dbo.distribution_list_share (
-    distribution_list_id  NVARCHAR(64)     NOT NULL,
+    distribution_list_id  UNIQUEIDENTIFIER NOT NULL,    -- FK → distribution_list.distribution_list_id (UUID column)
     user_id               NVARCHAR(100)    NOT NULL,   -- internal directory id
     elid                  NVARCHAR(50)     NULL,       -- enterprise / employee id
     lanid                 NVARCHAR(50)     NULL,       -- LAN / network id
@@ -87,12 +88,15 @@ CREATE INDEX ix_dls_elid  ON dbo.distribution_list_share(elid);
 @Getter @Setter @NoArgsConstructor
 public class DistributionList {
     /**
-     * Application-generated string id (e.g. `"dl-<timestamp>-<rand>"`).
-     * Intentionally NOT `@GeneratedValue` — the frontend generates the id
-     * on create so optimistic UI / offline flows work without a DB round-trip.
+     * Primary key. The DB column is `UNIQUEIDENTIFIER` (UUID), but in JPA we
+     * map it to `String` so DTOs / REST paths / JSON payloads stay portable
+     * (no UUID (de)serialisation quirks). Hibernate generates a v4 UUID on
+     * insert via `@GenericGenerator(strategy = "uuid2")`.
      */
     @Id
-    @Column(name = "distribution_list_id", nullable = false, length = 64)
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "uuid2")
+    @Column(name = "distribution_list_id", nullable = false, updatable = false, length = 36)
     private String distributionListId;
 
     @Column(nullable = false, length = 150)
@@ -298,9 +302,8 @@ public class DistributionListService {
     @Transactional
     public DistributionListDto create(DistributionListUpsertDto in) {
         var dl = new DistributionList();
-        // Application-generated id (matches frontend `dl-<ts>-<rand>` pattern).
-        dl.setDistributionListId("dl-" + System.currentTimeMillis() + "-"
-            + Long.toString((long)(Math.random() * 0xffffff), 36));
+        // distributionListId is assigned by Hibernate (@GenericGenerator "uuid2")
+        // on flush — do NOT set it manually.
         dl.setOwnerId(currentUser.id());
         applyUpsert(dl, in);
         return toDto(repo.save(dl));
