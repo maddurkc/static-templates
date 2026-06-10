@@ -190,6 +190,7 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
     visibility: input.visibility,
     ownerId: CURRENT_USER,
     members: input.members.map((m) => ({ email: m.email.toLowerCase().trim(), displayName: m.displayName })),
+    membersRaw: input.membersRaw,
     sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
     createdAt: now,
     updatedAt: now,
