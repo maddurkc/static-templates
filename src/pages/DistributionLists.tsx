@@ -280,7 +280,7 @@ export default function DistributionLists() {
                   const trimmed = draft.name.trim();
                   const dupe =
                     trimmed &&
-                    lists.some(
+                    allLists.some(
                       (l) =>
                         l.distributionListId !== draft.distributionListId &&
                         l.name.toLowerCase() === trimmed.toLowerCase(),
@@ -372,7 +372,7 @@ export default function DistributionLists() {
               disabled={
                 !draft.name.trim() ||
                 parsedMembers.length === 0 ||
-                lists.some(
+                allLists.some(
                   (l) =>
                     l.distributionListId !== draft.distributionListId &&
                     l.name.toLowerCase() === draft.name.trim().toLowerCase(),
