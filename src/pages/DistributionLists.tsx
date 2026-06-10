@@ -36,6 +36,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import styles from "./DistributionLists.module.scss";
 
@@ -77,6 +84,7 @@ export default function DistributionLists() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
   const [managerUsers, setManagerUsers] = useState<DirectoryUser[]>([]);
+  const [detailsDL, setDetailsDL] = useState<DistributionList | null>(null);
 
   const toMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.toRaw),  [draft.toRaw]);
   const ccMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.ccRaw),  [draft.ccRaw]);
@@ -253,7 +261,20 @@ export default function DistributionLists() {
             const memberCount = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
             const canEdit = canManageDL(dl);
             return (
-              <div key={dl.distributionListId} className={styles.card}>
+              <div
+                key={dl.distributionListId}
+                className={styles.card}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailsDL(dl)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setDetailsDL(dl);
+                  }
+                }}
+                title="Click to view full details"
+              >
                 <div className={styles.cardHead}>
                   <span className={styles.dlName}>
                     <Users size={14} className={styles.dlNameIcon} />
@@ -279,17 +300,10 @@ export default function DistributionLists() {
                   </div>
                 )}
 
-                <ul className={styles.memberPreview}>
-                  {[...dl.toMembers, ...dl.ccMembers, ...dl.bccMembers].slice(0, 4).map((m) => (
-                    <li key={m.email}>{m.email}</li>
-                  ))}
-                  {memberCount > 4 && <li className={styles.more}>+{memberCount - 4} more</li>}
-                </ul>
-
                 <div className={styles.cardActions}>
                   <button
                     className={styles.actionBtn}
-                    onClick={() => openEdit(dl)}
+                    onClick={(e) => { e.stopPropagation(); openEdit(dl); }}
                     disabled={!canEdit}
                     title={canEdit ? "" : "Only the owner and managers can edit"}
                   >
@@ -297,7 +311,7 @@ export default function DistributionLists() {
                   </button>
                   <button
                     className={`${styles.actionBtn} ${styles.danger}`}
-                    onClick={() => remove(dl)}
+                    onClick={(e) => { e.stopPropagation(); remove(dl); }}
                     disabled={!canEdit}
                   >
                     <Trash2 size={14} /> Delete
@@ -308,6 +322,7 @@ export default function DistributionLists() {
           })
         )}
       </div>
+
 
       {paged.total > 0 && (
         <div className={styles.pagination}>
@@ -499,6 +514,68 @@ export default function DistributionLists() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={!!detailsDL} onOpenChange={(o) => !o && setDetailsDL(null)}>
+        <SheetContent side="right" className={styles.detailsSheet}>
+          {detailsDL && (
+            <>
+              <SheetHeader>
+                <SheetTitle className={styles.detailsTitle}>
+                  <Users size={16} /> {detailsDL.displayName}
+                </SheetTitle>
+                <SheetDescription>
+                  <span className={styles.vis}>
+                    {visIcon(detailsDL.visibility)} {detailsDL.visibility.toLowerCase()}
+                  </span>
+                  {" · "}Type: {detailsDL.type}
+                  {detailsDL.ownerLanid && <> · Owner: {detailsDL.ownerLanid}</>}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className={styles.detailsBody}>
+                {detailsDL.description && (
+                  <section className={styles.detailsSection}>
+                    <h4>Description</h4>
+                    <p className={styles.desc}>{detailsDL.description}</p>
+                  </section>
+                )}
+
+                {detailsDL.managers.length > 0 && (
+                  <section className={styles.detailsSection}>
+                    <h4><ShieldCheck size={12} /> Managers ({detailsDL.managers.length})</h4>
+                    <ul className={styles.detailsList}>
+                      {detailsDL.managers.map((m) => (
+                        <li key={m.userId}>
+                          <strong>{m.name}</strong> <span>{m.emailid}</span>
+                          {m.department && <em> · {m.department}</em>}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                {(["toMembers","ccMembers","bccMembers"] as const).map((key) => {
+                  const label = key === "toMembers" ? "To" : key === "ccMembers" ? "CC" : "BCC";
+                  const arr = detailsDL[key];
+                  return (
+                    <section key={key} className={styles.detailsSection}>
+                      <h4>{label} ({arr.length})</h4>
+                      {arr.length === 0 ? (
+                        <p className={styles.detailsEmpty}>No recipients.</p>
+                      ) : (
+                        <ul className={styles.detailsList}>
+                          {arr.map((m) => <li key={m.email}>{m.email}</li>)}
+                        </ul>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
+
