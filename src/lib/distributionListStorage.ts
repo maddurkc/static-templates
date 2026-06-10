@@ -224,6 +224,7 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
     description: input.description?.trim() || undefined,
     visibility: input.visibility,
     members: input.members.map((m) => ({ email: m.email.toLowerCase().trim(), displayName: m.displayName })),
+    membersRaw: input.membersRaw,
     sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
     updatedAt: new Date().toISOString(),
   };
