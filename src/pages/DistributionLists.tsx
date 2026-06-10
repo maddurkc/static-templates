@@ -183,21 +183,46 @@ export default function DistributionLists() {
         </Button>
       </header>
 
-      <div className={styles.searchBar}>
-        <Search size={16} className={styles.searchIcon} />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, DSPCH- prefix, or member email..."
-          className={styles.searchInput}
-        />
+      <div className={styles.toolbar}>
+        <div className={styles.searchBar}>
+          <Search size={16} className={styles.searchIcon} />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, DSPCH- prefix, or member email..."
+            className={styles.searchInput}
+          />
+        </div>
+
+        <div className={styles.filterTabs} role="tablist" aria-label="Visibility filter">
+          {(["ALL", "PUBLIC", "PRIVATE", "SHARED"] as DLVisibilityFilter[]).map((v) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={visibilityFilter === v}
+              className={`${styles.filterTab} ${visibilityFilter === v ? styles.filterTabActive : ""}`}
+              onClick={() => setVisibilityFilter(v)}
+            >
+              {v === "ALL" ? <Users size={12} /> : v === "PUBLIC" ? <Globe size={12} /> : v === "PRIVATE" ? <Lock size={12} /> : <Share2 size={12} />}
+              <span>{v.charAt(0) + v.slice(1).toLowerCase()}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.resultsBar}>
+        <span className={styles.resultsCount}>
+          {paged.total === 0
+            ? "No results"
+            : `Showing ${(paged.page - 1) * paged.pageSize + 1}–${Math.min(paged.page * paged.pageSize, paged.total)} of ${paged.total}`}
+        </span>
       </div>
 
       <div className={styles.grid}>
         {filtered.length === 0 ? (
           <div className={styles.empty}>
             <Users size={32} className={styles.emptyIcon} />
-            <p>No distribution lists yet.</p>
+            <p>No distribution lists match your filters.</p>
             <Button variant="outline" onClick={openCreate}>
               Create your first DL
             </Button>
@@ -240,6 +265,45 @@ export default function DistributionLists() {
           ))
         )}
       </div>
+
+      {paged.total > 0 && (
+        <div className={styles.pagination}>
+          <div className={styles.pageSizeWrap}>
+            <Label className={styles.pageSizeLabel}>Per page</Label>
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger className={styles.pageSizeTrigger}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className={styles.pageNav}>
+            <button
+              className={styles.pageBtn}
+              disabled={paged.page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </button>
+            <span className={styles.pageInfo}>
+              Page {paged.page} of {paged.totalPages}
+            </span>
+            <button
+              className={styles.pageBtn}
+              disabled={paged.page >= paged.totalPages}
+              onClick={() => setPage((p) => Math.min(paged.totalPages, p + 1))}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className={styles.dialog}>
