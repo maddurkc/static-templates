@@ -112,10 +112,12 @@ public class DistributionList {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
-    @OneToMany(mappedBy = "distributionList", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<DistributionListMember> members = new ArrayList<>();
-
-    /** Verbatim textarea content the user pasted on save (audit / round-trip). */
+    /**
+     * Verbatim textarea content the user pasted. SINGLE source of truth for
+     * members — there is intentionally NO normalised `DistributionListMember`
+     * entity. Parse this string on read with `DistributionListService.parseMembers`
+     * (separators: `, ; : space newline`).
+     */
     @Column(name = "members_raw", columnDefinition = "NVARCHAR(MAX)")
     private String membersRaw;
 
@@ -131,23 +133,6 @@ public class DistributionList {
     @PreUpdate void touch() { this.updatedAt = Instant.now(); }
 
     public enum Visibility { PRIVATE, SHARED, PUBLIC }
-}
-
-@Entity @Table(name = "distribution_list_member")
-@Getter @Setter @NoArgsConstructor
-public class DistributionListMember {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "dl_id", nullable = false)
-    private DistributionList distributionList;
-
-    @Column(nullable = false, length = 255)
-    private String email;
-
-    @Column(name = "display_name", length = 150)
-    private String displayName;
 }
 
 @Entity @Table(name = "distribution_list_share")
