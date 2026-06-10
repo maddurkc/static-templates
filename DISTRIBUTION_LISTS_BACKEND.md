@@ -396,6 +396,7 @@ public class DistributionListService {
             dl.getMembersRaw(),
             dl.getSharedWith().stream()
                 .map(s -> new SharedUserDto(
+                    s.getDistributionListShareId(),
                     s.getUserId(), s.getElid(), s.getLanid(),
                     s.getName(), s.getEmailid(), s.getDepartment()))
                 .toList(),
