@@ -552,7 +552,7 @@ public class DistributionListService {
                 row.setLanid(s.lanid());
                 row.setName(s.name());
                 row.setEmailid(s.emailid().toLowerCase().trim());
-                row.setDepartment(s.department());
+                // v2: department no longer persisted on the share row.
                 dl.getManagers().add(row);
             }
         }
