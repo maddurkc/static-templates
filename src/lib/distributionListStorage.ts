@@ -33,7 +33,8 @@ export interface SharedUserRef {
   lanid?: string;
   name: string;
   emailid: string;
-  department?: string;
+  // v2: `department` removed — not stored on distribution_list_share.
+  // UIs that need it look it up live from the directory.
 }
 
 export interface DistributionList {
@@ -404,7 +405,7 @@ export function toSharedRef(u: DirectoryUser): SharedUserRef {
     lanid: u.lanid,
     name: u.name,
     emailid: u.email,
-    department: u.department,
+    // v2: department not part of the share snapshot.
   };
 }
 
@@ -415,7 +416,6 @@ export function fromSharedRef(s: SharedUserRef): DirectoryUser {
     lanid: s.lanid,
     name: s.name,
     email: s.emailid,
-    department: s.department,
   };
 }
 

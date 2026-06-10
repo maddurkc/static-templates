@@ -170,7 +170,9 @@ CREATE TABLE dbo.distribution_list_share (
     lanid                       NVARCHAR(50)     NULL,              -- LAN / network id
     name                        NVARCHAR(150)    NOT NULL,
     emailid                     NVARCHAR(255)    NOT NULL,
-    department                  NVARCHAR(150)    NULL,
+    -- v2: `department` column removed. Department is a directory attribute,
+    -- not a snapshot field — it is fetched fresh from the user directory
+    -- when the picker / drawer needs to display it.
     CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one manager row per (DL, user)
     CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
         REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
@@ -313,7 +315,7 @@ public class DistributionListShareEntity {
     @Column(length = 50)                    private String lanid;      // LAN / network id
     @Column(nullable = false, length = 150) private String name;
     @Column(nullable = false, length = 255) private String emailid;
-    @Column(length = 150)                   private String department;
+    // v2: `department` field removed — see §1 share-table comment.
 }
 ```
 
@@ -353,15 +355,16 @@ public record DistributionListDto(
     LocalDateTime updatedAt
 ) {}
 
-/** Full directory snapshot of a manager. Mirrors `distribution_list_share`. */
+/** Full snapshot of a manager. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
     String distributionListShareId, // surrogate PK (UUID, server-generated); null on create
     String userId,                  // internal directory id (unique per DL)
     String elid,                    // enterprise / employee id  (nullable)
     String lanid,                   // LAN / network id          (nullable)
     String name,
-    String emailid,
-    String department               // nullable
+    String emailid
+    // v2: `department` removed — not persisted on the share row. UIs that
+    // need it should fetch from the directory (DirectoryUserDto / §11).
 ) {}
 
 public record DistributionListUpsertDto(
@@ -549,7 +552,7 @@ public class DistributionListService {
                 row.setLanid(s.lanid());
                 row.setName(s.name());
                 row.setEmailid(s.emailid().toLowerCase().trim());
-                row.setDepartment(s.department());
+                // v2: department no longer persisted on the share row.
                 dl.getManagers().add(row);
             }
         }
@@ -588,7 +591,7 @@ public class DistributionListService {
                 .map(s -> new SharedUserDto(
                     s.getDistributionListShareId(),
                     s.getUserId(), s.getElid(), s.getLanid(),
-                    s.getName(), s.getEmailid(), s.getDepartment()))
+                    s.getName(), s.getEmailid()))
                 .toList(),
             dl.getCreatedAt(),
             dl.getUpdatedAt()
@@ -1387,7 +1390,7 @@ export interface DLMember {
   displayName?: string;
 }
 
-/** Mirrors backend `SharedUserDto`. */
+/** Mirrors backend `SharedUserDto` (v2). */
 export interface SharedUserRef {
   distributionListShareId?: string; // surrogate PK, server-assigned
   userId: string;
@@ -1395,7 +1398,7 @@ export interface SharedUserRef {
   lanid?: string;
   name: string;
   emailid: string;
-  department?: string;
+  // v2: `department` removed — not stored on the share row.
 }
 
 /** Mirrors backend `DistributionListDto` (v2). */
@@ -1542,7 +1545,7 @@ export function toSharedRef(u: DirectoryUser): SharedUserRef {
     lanid: u.lanid,
     name: u.name,
     emailid: u.email,
-    department: u.department,
+    // department intentionally NOT copied — not part of the share snapshot in v2.
   };
 }
 
@@ -1553,7 +1556,7 @@ export function fromSharedRef(s: SharedUserRef): DirectoryUser {
     lanid: s.lanid,
     name: s.name,
     email: s.emailid,
-    department: s.department,
+    // department resolved lazily from the directory if needed.
   };
 }
 
@@ -1811,7 +1814,7 @@ focused) opens a right-side **Details Drawer** (`Sheet` from
 
 - Header: name + visibility + `type` + `ownerLanid`
 - Description (if any)
-- Managers list (name, email, department)
+- Managers list (name, email — LAN id badge from snapshot; department is fetched live from directory only if shown)
 - **To** recipients — full list, scrollable
 - **CC** recipients — full list, scrollable
 - **BCC** recipients — full list, scrollable

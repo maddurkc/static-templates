@@ -547,7 +547,7 @@ export default function DistributionLists() {
                       {detailsDL.managers.map((m) => (
                         <li key={m.userId}>
                           <strong>{m.name}</strong> <span>{m.emailid}</span>
-                          {m.department && <em> · {m.department}</em>}
+                          {m.lanid && <em> · {m.lanid}</em>}
                         </li>
                       ))}
                     </ul>
