@@ -33,7 +33,8 @@ export interface SharedUserRef {
   lanid?: string;
   name: string;
   emailid: string;
-  department?: string;
+  // v2: `department` removed — not stored on distribution_list_share.
+  // UIs that need it look it up live from the directory.
 }
 
 export interface DistributionList {
