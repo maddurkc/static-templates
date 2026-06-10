@@ -31,21 +31,22 @@ Display convention: every DL is shown with a configurable prefix (default **`DSP
 -- =============================================================
 
 CREATE TABLE dbo.distribution_list (
-    id            UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dl PRIMARY KEY DEFAULT NEWID(),
-    name          NVARCHAR(150)    NOT NULL,                       -- "TeamAlpha" (no prefix)
-    prefix        NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_prefix DEFAULT 'DSPCH-',
-    description   NVARCHAR(500)    NULL,
-    owner_id      NVARCHAR(100)    NOT NULL,                       -- AD/SSO user id of creator
-    visibility    NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_vis DEFAULT 'PRIVATE',
+    distribution_list_id  NVARCHAR(64)     NOT NULL CONSTRAINT pk_dl PRIMARY KEY,
+                                                                    -- application-generated string id (e.g. "dl-<ts>-<rand>")
+    name                  NVARCHAR(150)    NOT NULL,                -- "TeamAlpha" (no prefix)
+    prefix                NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_prefix DEFAULT 'DSPCH-',
+    description           NVARCHAR(500)    NULL,
+    owner_id              NVARCHAR(100)    NOT NULL,                -- AD/SSO user id of creator
+    visibility            NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_vis DEFAULT 'PRIVATE',
                                                                     -- PRIVATE | SHARED | PUBLIC
     -- Verbatim textarea blob the user pasted. SINGLE source of truth for members —
     -- there is intentionally NO separate `distribution_list_member` table. The app
     -- parses this string on read via `parseMembersRaw()` (frontend) / the matching
     -- service helper (backend) using separators: , ; : space newline.
-    members_raw   NVARCHAR(MAX)    NULL,
-    is_active     BIT              NOT NULL CONSTRAINT df_dl_act DEFAULT 1,
-    created_at    DATETIME2        NOT NULL CONSTRAINT df_dl_cat DEFAULT SYSUTCDATETIME(),
-    updated_at    DATETIME2        NOT NULL CONSTRAINT df_dl_uat DEFAULT SYSUTCDATETIME(),
+    members_raw           NVARCHAR(MAX)    NULL,
+    is_active             BIT              NOT NULL CONSTRAINT df_dl_act DEFAULT 1,
+    created_at            DATETIME2        NOT NULL CONSTRAINT df_dl_cat DEFAULT SYSUTCDATETIME(),
+    updated_at            DATETIME2        NOT NULL CONSTRAINT df_dl_uat DEFAULT SYSUTCDATETIME(),
     CONSTRAINT uq_dl_owner_name UNIQUE (owner_id, name),
     CONSTRAINT ck_dl_visibility CHECK (visibility IN ('PRIVATE','SHARED','PUBLIC'))
 );
@@ -55,20 +56,21 @@ CREATE INDEX ix_dl_active    ON dbo.distribution_list(is_active) INCLUDE (owner_
 
 -- =============================================================
 -- SHARED visibility: snapshot the FULL directory record for every
--- shared user (id, elid, lanid, name, emailid, department).
+-- shared user (user_id, elid, lanid, name, emailid, department).
 -- Snapshot semantics: rows survive even if a user is later removed
 -- from AD/SCIM, so audit history stays intact.
 -- =============================================================
 CREATE TABLE dbo.distribution_list_share (
-    dl_id        UNIQUEIDENTIFIER NOT NULL,
-    user_id      NVARCHAR(100)    NOT NULL,   -- internal directory id
-    elid         NVARCHAR(50)     NULL,       -- enterprise / employee id
-    lanid        NVARCHAR(50)     NULL,       -- LAN / network id
-    name         NVARCHAR(150)    NOT NULL,
-    emailid      NVARCHAR(255)    NOT NULL,
-    department   NVARCHAR(150)    NULL,
-    CONSTRAINT pk_dls PRIMARY KEY (dl_id, user_id),
-    CONSTRAINT fk_dls_dl FOREIGN KEY (dl_id) REFERENCES dbo.distribution_list(id) ON DELETE CASCADE
+    distribution_list_id  NVARCHAR(64)     NOT NULL,
+    user_id               NVARCHAR(100)    NOT NULL,   -- internal directory id
+    elid                  NVARCHAR(50)     NULL,       -- enterprise / employee id
+    lanid                 NVARCHAR(50)     NULL,       -- LAN / network id
+    name                  NVARCHAR(150)    NOT NULL,
+    emailid               NVARCHAR(255)    NOT NULL,
+    department            NVARCHAR(150)    NULL,
+    CONSTRAINT pk_dls PRIMARY KEY (distribution_list_id, user_id),
+    CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
+        REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
 );
 
 CREATE INDEX ix_dls_user  ON dbo.distribution_list_share(user_id);
