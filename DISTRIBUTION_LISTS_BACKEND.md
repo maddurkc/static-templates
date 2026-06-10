@@ -1005,12 +1005,18 @@ Service:
 ```java
 @Transactional
 public SentMessageDto send(String templateId, SendRequestDto req) {
+    // v2: resolver returns a bucket-split record; fan DL sub-buckets out into
+    // the matching outgoing bucket (mirrors the FE "DLs" drawer behaviour).
     var to  = resolver.resolve(req.to());
     var cc  = resolver.resolve(req.cc());
     var bcc = resolver.resolve(req.bcc());
 
+    List<String> outTo  = mergeDistinct(to.toEmails());
+    List<String> outCc  = mergeDistinct(to.ccEmails(),  cc.toEmails(), cc.ccEmails());
+    List<String> outBcc = mergeDistinct(to.bccEmails(), cc.bccEmails(), bcc.toEmails(), bcc.ccEmails(), bcc.bccEmails());
+
     mailer.send(SendMail.builder()
-        .to(to.emails()).cc(cc.emails()).bcc(bcc.emails())
+        .to(outTo).cc(outCc).bcc(outBcc)
         .subject(req.subjectContent())
         .htmlBody(req.bodyContent())
         .build());
@@ -1018,8 +1024,8 @@ public SentMessageDto send(String templateId, SendRequestDto req) {
     // Persist BOTH the original refs (for resend re-expansion) AND the resolved emails (for audit).
     var sent = SentMessage.builder()
         .templateId(templateId)
-        .toRefs(req.to())      .ccRefs(req.cc())   .bccRefs(req.bcc())
-        .toEmails(to.emails()) .ccEmails(cc.emails()).bccEmails(bcc.emails())
+        .toRefs(req.to())   .ccRefs(req.cc())   .bccRefs(req.bcc())
+        .toEmails(outTo)    .ccEmails(outCc)    .bccEmails(outBcc)
         .expandedDlIds(union(to.expandedDlIds(), cc.expandedDlIds(), bcc.expandedDlIds()))
         .subjectContent(req.subjectContent())
         .renderedSubject(req.subjectContent())
