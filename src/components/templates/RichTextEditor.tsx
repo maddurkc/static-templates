@@ -793,9 +793,12 @@ export const RichTextEditor = ({
     if (!linkUrl.trim()) return;
     
     restoreSelection();
-    const url = linkUrl.startsWith('http://') || linkUrl.startsWith('https://') 
-      ? linkUrl 
-      : `https://${linkUrl}`;
+    // Don't auto-prefix when the URL is (or contains) a placeholder like {{var}};
+    // the placeholder's resolved value already includes its own protocol, and
+    // prefixing here would produce "https://https://..." at render time.
+    const hasPlaceholder = /\{\{\s*[\w.]+\s*\}\}/.test(linkUrl);
+    const hasProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(linkUrl) || linkUrl.startsWith('mailto:') || linkUrl.startsWith('tel:') || linkUrl.startsWith('#') || linkUrl.startsWith('/');
+    const url = hasProtocol || hasPlaceholder ? linkUrl : `https://${linkUrl}`;
     
     // First apply the link color while text is still selected
     document.execCommand('foreColor', false, '#0066CC');
