@@ -565,7 +565,7 @@ Service:
 
 ```java
 @Transactional
-public SentMessageDto send(UUID templateId, SendRequestDto req) {
+public SentMessageDto send(String templateId, SendRequestDto req) {
     var to  = resolver.resolve(req.to());
     var cc  = resolver.resolve(req.cc());
     var bcc = resolver.resolve(req.bcc());
@@ -588,7 +588,7 @@ public SentMessageDto send(UUID templateId, SendRequestDto req) {
         .subjectData(req.subjectData())
         .bodyData(req.bodyData())
         .globalApiIntegrations(req.globalApiIntegrations())   // already cached in existing flow
-        .sentAt(Instant.now())
+        .sentAt(LocalDateTime.now())
         .sentBy(currentUser.id())
         .build();
 
