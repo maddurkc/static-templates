@@ -427,8 +427,8 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
 
     /**
      * Used by the unified search. LIKE pattern must be pre-wrapped with %...%.
-     * Matches name / prefix+name OR a substring of the verbatim members_raw blob
-     * (since there is no per-member row to join on).
+     * Matches name / prefix+name OR a substring of any of the three verbatim
+     * blobs (to_raw / cc_raw / bcc_raw) since there is no per-member row to join on.
      */
     @Query(value = """
         SELECT DISTINCT TOP (:lim) dl.*
@@ -439,7 +439,9 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
           AND (dl.owner_id = :uid OR dl.visibility = 'PUBLIC' OR s.user_id = :uid)
           AND ( LOWER(dl.prefix + dl.name)   LIKE :q
              OR LOWER(dl.name)               LIKE :q
-             OR LOWER(dl.members_raw)        LIKE :q )
+             OR LOWER(dl.to_raw)             LIKE :q
+             OR LOWER(dl.cc_raw)             LIKE :q
+             OR LOWER(dl.bcc_raw)            LIKE :q )
         ORDER BY dl.name
     """, nativeQuery = true)
     List<DistributionListEntity> searchVisibleTo(@Param("uid") String userId,
