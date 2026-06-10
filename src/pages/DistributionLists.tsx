@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Plus, Users, Trash2, Edit3, X, Search, Lock, Globe, Share2 } from "lucide-react";
 import {
   listDistributionLists,
+  listDistributionListsPaged,
   createDistributionList,
   updateDistributionList,
   deleteDistributionList,
@@ -10,6 +11,7 @@ import {
   parseMembersRaw,
   type DistributionList,
   type DLVisibility,
+  type DLVisibilityFilter,
   type DLMember,
   type DirectoryUser,
   type SharedUserRef,
@@ -58,10 +60,16 @@ const blankDraft = (): DraftDL => ({
   sharedWith: [],
 });
 
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
+
 export default function DistributionLists() {
   const { toast } = useToast();
-  const [lists, setLists] = useState<DistributionList[]>(() => listDistributionLists());
   const [search, setSearch] = useState("");
+  const [visibilityFilter, setVisibilityFilter] = useState<DLVisibilityFilter>("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
   const [sharedUsers, setSharedUsers] = useState<DirectoryUser[]>([]);
@@ -72,18 +80,22 @@ export default function DistributionLists() {
     [draft.membersRaw],
   );
 
-  const refresh = () => setLists(listDistributionLists());
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, visibilityFilter, pageSize]);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return lists;
-    const q = search.toLowerCase();
-    return lists.filter(
-      (dl) =>
-        dl.displayName.toLowerCase().includes(q) ||
-        dl.name.toLowerCase().includes(q) ||
-        dl.members.some((m) => m.email.toLowerCase().includes(q)),
-    );
-  }, [lists, search]);
+  const paged = useMemo(
+    () => listDistributionListsPaged({ page, pageSize, visibility: visibilityFilter, search }),
+    [page, pageSize, visibilityFilter, search, refreshKey],
+  );
+  const lists = paged.items;
+  const filtered = lists;
+  const allLists = useMemo(() => listDistributionLists(), [refreshKey]);
+
+  const refresh = () => setRefreshKey((k) => k + 1);
+
+
 
   const openCreate = () => {
     setDraft(blankDraft());
@@ -171,21 +183,46 @@ export default function DistributionLists() {
         </Button>
       </header>
 
-      <div className={styles.searchBar}>
-        <Search size={16} className={styles.searchIcon} />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, DSPCH- prefix, or member email..."
-          className={styles.searchInput}
-        />
+      <div className={styles.toolbar}>
+        <div className={styles.searchBar}>
+          <Search size={16} className={styles.searchIcon} />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, DSPCH- prefix, or member email..."
+            className={styles.searchInput}
+          />
+        </div>
+
+        <div className={styles.filterTabs} role="tablist" aria-label="Visibility filter">
+          {(["ALL", "PUBLIC", "PRIVATE", "SHARED"] as DLVisibilityFilter[]).map((v) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={visibilityFilter === v}
+              className={`${styles.filterTab} ${visibilityFilter === v ? styles.filterTabActive : ""}`}
+              onClick={() => setVisibilityFilter(v)}
+            >
+              {v === "ALL" ? <Users size={12} /> : v === "PUBLIC" ? <Globe size={12} /> : v === "PRIVATE" ? <Lock size={12} /> : <Share2 size={12} />}
+              <span>{v.charAt(0) + v.slice(1).toLowerCase()}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.resultsBar}>
+        <span className={styles.resultsCount}>
+          {paged.total === 0
+            ? "No results"
+            : `Showing ${(paged.page - 1) * paged.pageSize + 1}–${Math.min(paged.page * paged.pageSize, paged.total)} of ${paged.total}`}
+        </span>
       </div>
 
       <div className={styles.grid}>
         {filtered.length === 0 ? (
           <div className={styles.empty}>
             <Users size={32} className={styles.emptyIcon} />
-            <p>No distribution lists yet.</p>
+            <p>No distribution lists match your filters.</p>
             <Button variant="outline" onClick={openCreate}>
               Create your first DL
             </Button>
@@ -229,6 +266,45 @@ export default function DistributionLists() {
         )}
       </div>
 
+      {paged.total > 0 && (
+        <div className={styles.pagination}>
+          <div className={styles.pageSizeWrap}>
+            <Label className={styles.pageSizeLabel}>Per page</Label>
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger className={styles.pageSizeTrigger}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className={styles.pageNav}>
+            <button
+              className={styles.pageBtn}
+              disabled={paged.page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </button>
+            <span className={styles.pageInfo}>
+              Page {paged.page} of {paged.totalPages}
+            </span>
+            <button
+              className={styles.pageBtn}
+              disabled={paged.page >= paged.totalPages}
+              onClick={() => setPage((p) => Math.min(paged.totalPages, p + 1))}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className={styles.dialog}>
           <DialogHeader>
@@ -268,7 +344,7 @@ export default function DistributionLists() {
                   const trimmed = draft.name.trim();
                   const dupe =
                     trimmed &&
-                    lists.some(
+                    allLists.some(
                       (l) =>
                         l.distributionListId !== draft.distributionListId &&
                         l.name.toLowerCase() === trimmed.toLowerCase(),
@@ -360,7 +436,7 @@ export default function DistributionLists() {
               disabled={
                 !draft.name.trim() ||
                 parsedMembers.length === 0 ||
-                lists.some(
+                allLists.some(
                   (l) =>
                     l.distributionListId !== draft.distributionListId &&
                     l.name.toLowerCase() === draft.name.trim().toLowerCase(),

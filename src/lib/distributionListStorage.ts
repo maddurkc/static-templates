@@ -172,6 +172,64 @@ export function listDistributionLists(): DistributionList[] {
   );
 }
 
+/**
+ * Visibility filter for the DL listing page.
+ * `ALL` = no filter (still subject to the visibility predicate above).
+ */
+export type DLVisibilityFilter = "ALL" | DLVisibility;
+
+export interface ListDLsQuery {
+  /** 1-based page index. Default 1. */
+  page?: number;
+  /** Items per page. Default 10. */
+  pageSize?: number;
+  /** Visibility filter. Default "ALL". */
+  visibility?: DLVisibilityFilter;
+  /** Optional free-text search (name / displayName / member email). */
+  search?: string;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Paginated + filtered DL listing.
+ * Mirrors backend `GET /api/distribution-lists?page=&pageSize=&visibility=&search=`.
+ */
+export function listDistributionListsPaged(q: ListDLsQuery = {}): PagedResult<DistributionList> {
+  const page = Math.max(1, q.page ?? 1);
+  const pageSize = Math.max(1, q.pageSize ?? 10);
+  const visibility = q.visibility ?? "ALL";
+  const search = (q.search ?? "").trim().toLowerCase();
+
+  let rows = listDistributionLists();
+  if (visibility !== "ALL") rows = rows.filter((dl) => dl.visibility === visibility);
+  if (search) {
+    rows = rows.filter(
+      (dl) =>
+        dl.displayName.toLowerCase().includes(search) ||
+        dl.name.toLowerCase().includes(search) ||
+        dl.members.some((m) => m.email.toLowerCase().includes(search)),
+    );
+  }
+  const total = rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  return {
+    items: rows.slice(start, start + pageSize),
+    total,
+    page: safePage,
+    pageSize,
+    totalPages,
+  };
+}
+
 export function getDistributionList(id: string): DistributionList | null {
   return readAll().find((dl) => dl.distributionListId === id) ?? null;
 }
