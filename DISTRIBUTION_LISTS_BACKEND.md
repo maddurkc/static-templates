@@ -495,24 +495,24 @@ public class RecipientResolverService {
     private final DistributionListRepository dlRepo;
     private final CurrentUserProvider currentUser;
 
-    public record Resolved(List<String> emails, List<UUID> expandedDlIds, List<String> warnings) {}
+    public record Resolved(List<String> emails, List<String> expandedDlIds, List<String> warnings) {}
 
     /**
      * Expand a mixed list of USER + DL refs into a deduplicated, validated email list.
      * Silently skips DLs the caller cannot access (logs a warning).
      */
     public Resolved resolve(List<RecipientRefDto> refs) {
-        Set<String> emails = new LinkedHashSet<>();
-        List<UUID> dlIds   = new ArrayList<>();
-        List<String> warns = new ArrayList<>();
+        Set<String> emails  = new LinkedHashSet<>();
+        List<String> dlIds  = new ArrayList<>();
+        List<String> warns  = new ArrayList<>();
         String uid = currentUser.id();
 
         for (RecipientRefDto r : refs) {
             if ("DL".equalsIgnoreCase(r.type())) {
-                UUID id = UUID.fromString(r.id());
-                var dl = dlRepo.findById(id).orElse(null);
+                String distributionListId = r.id();
+                var dl = dlRepo.findById(distributionListId).orElse(null);
                 if (dl == null || !dl.isActive()) {
-                    warns.add("Distribution list " + r.id() + " is no longer available — skipped.");
+                    warns.add("Distribution list " + distributionListId + " is no longer available — skipped.");
                     continue;
                 }
                 if (!hasAccess(dl, uid)) {
@@ -525,7 +525,7 @@ public class RecipientResolverService {
                     continue;
                 }
                 emails.addAll(memberEmails);
-                dlIds.add(id);
+                dlIds.add(distributionListId);
             } else {
                 if (StringUtils.hasText(r.email())) emails.add(r.email().toLowerCase().trim());
             }
