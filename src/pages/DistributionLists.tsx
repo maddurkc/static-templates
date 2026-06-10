@@ -248,23 +248,42 @@ export default function DistributionLists() {
             </div>
 
             <div className={styles.row}>
-              <div className={styles.field} style={{ flex: "0 0 130px" }}>
-                <Label>Prefix</Label>
-                <Input
-                  value={draft.prefix}
-                  onChange={(e) => setDraft({ ...draft, prefix: e.target.value })}
-                  placeholder="DSPCH-"
-                />
-              </div>
               <div className={styles.field} style={{ flex: 1 }}>
                 <Label>Name *</Label>
-                <Input
-                  value={draft.name}
-                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                  placeholder="TeamAlpha"
-                />
+                <div className={styles.prefixedInput}>
+                  <span className={styles.prefixAddon}>{draft.prefix}</span>
+                  <Input
+                    value={draft.name}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^A-Za-z0-9]/g, "");
+                      setDraft({ ...draft, name: cleaned });
+                    }}
+                    placeholder="TeamAlpha"
+                    className={styles.prefixedInputControl}
+                    maxLength={50}
+                  />
+                </div>
+                {(() => {
+                  const trimmed = draft.name.trim();
+                  const dupe =
+                    trimmed &&
+                    lists.some(
+                      (l) =>
+                        l.id !== draft.id &&
+                        l.name.toLowerCase() === trimmed.toLowerCase(),
+                    );
+                  if (dupe) {
+                    return <span className={styles.fieldError}>This name is already in use.</span>;
+                  }
+                  return (
+                    <span className={styles.fieldHint}>
+                      Letters and numbers only — no spaces or special characters. Must be unique.
+                    </span>
+                  );
+                })()}
               </div>
             </div>
+
 
             <div className={styles.field}>
               <Label>Description</Label>
