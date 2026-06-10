@@ -1390,7 +1390,7 @@ export interface DLMember {
   displayName?: string;
 }
 
-/** Mirrors backend `SharedUserDto`. */
+/** Mirrors backend `SharedUserDto` (v2). */
 export interface SharedUserRef {
   distributionListShareId?: string; // surrogate PK, server-assigned
   userId: string;
@@ -1398,7 +1398,7 @@ export interface SharedUserRef {
   lanid?: string;
   name: string;
   emailid: string;
-  department?: string;
+  // v2: `department` removed — not stored on the share row.
 }
 
 /** Mirrors backend `DistributionListDto` (v2). */
