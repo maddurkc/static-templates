@@ -616,7 +616,7 @@ Goal: when a user clicks **Resend** on a previously-sent message, DL chips reapp
 `resendDataToTemplate` (already wired in `src/lib/templateApi.ts`) gets two new fields from the persisted message:
 
 ```java
-public ResendDto resend(UUID sentMessageId) {
+public ResendDto resend(String sentMessageId) {
     var msg = sentRepo.findById(sentMessageId).orElseThrow();
     return ResendDto.builder()
         // existing: subject/body/contentData/globalApiIntegrations …
