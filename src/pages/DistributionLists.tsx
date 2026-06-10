@@ -5,10 +5,13 @@ import {
   createDistributionList,
   updateDistributionList,
   deleteDistributionList,
+  getUsersByIds,
   type DistributionList,
   type DLVisibility,
   type DLMember,
+  type DirectoryUser,
 } from "@/lib/distributionListStorage";
+import { SharedUserPicker } from "./SharedUserPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,6 +61,7 @@ export default function DistributionLists() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
   const [emailInput, setEmailInput] = useState("");
+  const [sharedUsers, setSharedUsers] = useState<DirectoryUser[]>([]);
 
   const refresh = () => setLists(listDistributionLists());
 
@@ -75,6 +79,7 @@ export default function DistributionLists() {
   const openCreate = () => {
     setDraft(blankDraft());
     setEmailInput("");
+    setSharedUsers([]);
     setDialogOpen(true);
   };
 
@@ -89,6 +94,7 @@ export default function DistributionLists() {
       sharedWith: [...dl.sharedWith],
     });
     setEmailInput("");
+    setSharedUsers(getUsersByIds(dl.sharedWith));
     setDialogOpen(true);
   };
 
@@ -111,6 +117,8 @@ export default function DistributionLists() {
   };
 
   const save = () => {
+    const effectiveSharedWith =
+      draft.visibility === "SHARED" ? sharedUsers.map((u) => u.id) : [];
     try {
       if (draft.id) {
         updateDistributionList(draft.id, {
@@ -119,7 +127,7 @@ export default function DistributionLists() {
           description: draft.description,
           visibility: draft.visibility,
           members: draft.members,
-          sharedWith: draft.sharedWith,
+          sharedWith: effectiveSharedWith,
         });
         toast({ title: "Distribution list updated" });
       } else {
@@ -129,7 +137,7 @@ export default function DistributionLists() {
           description: draft.description,
           visibility: draft.visibility,
           members: draft.members,
-          sharedWith: draft.sharedWith,
+          sharedWith: effectiveSharedWith,
         });
         toast({ title: "Distribution list created" });
       }
@@ -312,20 +320,41 @@ export default function DistributionLists() {
               </Select>
             </div>
 
+            {draft.visibility === "SHARED" && (
+              <div className={styles.field}>
+                <Label>Share with users *</Label>
+                <SharedUserPicker
+                  selected={sharedUsers}
+                  onChange={setSharedUsers}
+                />
+                {sharedUsers.length === 0 ? (
+                  <span className={styles.fieldError}>
+                    Select at least one user — only they will see this list in Run Templates.
+                  </span>
+                ) : (
+                  <span className={styles.fieldHint}>
+                    {sharedUsers.length} user{sharedUsers.length === 1 ? "" : "s"} will be able to
+                    pick this DL in To / CC / BCC.
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className={styles.field}>
               <Label>Members ({draft.members.length})</Label>
-              <Input
+              <Textarea
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === "," || e.key === ";") {
-                    e.preventDefault();
-                    addEmails(emailInput);
-                  }
-                }}
                 onBlur={() => emailInput && addEmails(emailInput)}
-                placeholder="Type email and press Enter, or paste comma/semicolon-separated"
+                placeholder={
+                  "Paste or type email addresses separated by commas, semicolons, spaces, or new lines.\n" +
+                  "e.g. alice@company.com, bob@company.com; carol@company.com"
+                }
+                rows={4}
               />
+              <span className={styles.fieldHint}>
+                Emails are parsed when you click outside the box. Invalid entries are ignored.
+              </span>
               <div className={styles.memberChips}>
                 {draft.members.map((m) => (
                   <span key={m.email} className={styles.memberChip}>
@@ -343,7 +372,12 @@ export default function DistributionLists() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={save}>{draft.id ? "Save Changes" : "Create"}</Button>
+            <Button
+              onClick={save}
+              disabled={draft.visibility === "SHARED" && sharedUsers.length === 0}
+            >
+              {draft.id ? "Save Changes" : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

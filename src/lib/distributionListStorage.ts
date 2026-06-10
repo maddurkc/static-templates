@@ -234,6 +234,36 @@ const MOCK_USER_DIRECTORY: { id: string; name: string; email: string; department
   { id: "u-10", name: "Lisa Martinez", email: "lisa.martinez@company.com", department: "Legal" },
 ];
 
+/** Lightweight shape returned by the share-user picker. */
+export interface DirectoryUser {
+  id: string;
+  name: string;
+  email: string;
+  department?: string;
+}
+
+/**
+ * Search the org directory for users to share a DL with.
+ * Backend equivalent: GET /api/users/search?q=...
+ */
+export async function searchUsers(query: string, limit = 8): Promise<DirectoryUser[]> {
+  await new Promise((r) => setTimeout(r, 120));
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+  return MOCK_USER_DIRECTORY.filter(
+    (u) =>
+      u.name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      (u.department ?? "").toLowerCase().includes(q),
+  ).slice(0, limit);
+}
+
+/** Resolve a list of user ids back to directory rows (for edit rehydration). */
+export function getUsersByIds(ids: string[]): DirectoryUser[] {
+  const set = new Set(ids);
+  return MOCK_USER_DIRECTORY.filter((u) => set.has(u.id));
+}
+
 /**
  * Unified search across DLs and the user directory.
  * Backend equivalent: GET /api/recipients/search?q=...

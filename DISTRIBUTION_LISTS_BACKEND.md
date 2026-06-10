@@ -621,3 +621,61 @@ class RecipientSearchControllerTest {
 - `/recipients/search` always filters by visibility. Never return DLs the caller can't read; an attacker could otherwise enumerate org structure.
 - `RecipientResolverService` **re-validates access on every send** — a user could have lost access between picking the DL and pressing Send.
 - Audit log: every DL CRUD and every expanded send writes to the existing `audit_event` table with `actor_id`, `dl_id`, `action`.
+
+---
+
+## 11. User Directory Search for SHARED Picker
+
+When a user creates/edits a DL with `visibility = SHARED`, the UI shows a
+second autocomplete to select **which org users** can see and use this DL.
+The picker calls a dedicated endpoint that only returns directory users
+(never DLs) and is scoped by AD/SSO membership.
+
+### Endpoint
+```
+GET /api/users/search?q={query}&limit=8
+```
+
+### Response
+```json
+[
+  { "id": "u-12", "name": "Jane Smith", "email": "jane.smith@company.com", "department": "Design" },
+  ...
+]
+```
+
+### Service Sketch
+```java
+@Service
+public class UserDirectoryService {
+
+    private final UserRepository userRepo;   // backed by AD / SCIM sync table
+
+    public List<DirectoryUserDto> search(String q, int limit) {
+        if (q == null || q.isBlank()) return List.of();
+        String like = "%" + q.toLowerCase() + "%";
+        return userRepo
+            .findTopByNameOrEmailOrDepartment(like, PageRequest.of(0, limit))
+            .stream()
+            .map(u -> new DirectoryUserDto(u.getId(), u.getName(), u.getEmail(), u.getDepartment()))
+            .toList();
+    }
+}
+```
+
+### How `sharedWith` Is Persisted
+1. Frontend sends `sharedWith: ["u-12", "u-34", ...]` (array of user ids) inside the DL upsert payload.
+2. `DistributionListService.upsert` clears the `distribution_list_share` rows for that `dl_id` and re-inserts the new set (collection-sync pattern).
+3. On any subsequent search/list query (§5), the WHERE clause `:uid member of dl.sharedWith` (or the equivalent JOIN on `distribution_list_share`) decides whether the requesting user sees the DL.
+
+### Validation Rules (server)
+| Rule | Code | Status |
+|------|------|--------|
+| `visibility = SHARED` requires non-empty `sharedWith` | `DistributionListService.validate` | 400 |
+| Each id in `sharedWith` must exist in user directory | `UserDirectoryService.assertExists(ids)` | 400 |
+| Owner is implicit — do **not** include `ownerId` in `sharedWith` | filter on save | — |
+
+### Frontend Files
+- `src/pages/SharedUserPicker.tsx` — autocomplete component (org users only).
+- `src/lib/distributionListStorage.ts` — `searchUsers()` + `getUsersByIds()` (swap with `fetch('/api/users/search?...')` for real backend).
+- `src/pages/DistributionLists.tsx` — renders the picker only when `visibility === 'SHARED'` and disables Save until at least one user is selected.
