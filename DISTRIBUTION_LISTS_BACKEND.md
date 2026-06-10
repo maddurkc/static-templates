@@ -150,16 +150,29 @@ public class DistributionList {
     public enum Visibility { PRIVATE, SHARED, PUBLIC }
 }
 
-@Entity @Table(name = "distribution_list_share")
-@IdClass(DistributionListShare.PK.class)
+@Entity @Table(
+    name = "distribution_list_share",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uq_dls_dl_user",
+        columnNames = {"distribution_list_id", "user_id"}))
 @Getter @Setter @NoArgsConstructor
 public class DistributionListShare {
+    /**
+     * Surrogate primary key. DB column is `UNIQUEIDENTIFIER` (UUID); mapped
+     * here as `String` for the same portability reasons as {@link DistributionList}.
+     * Generated server-side by Hibernate `@GenericGenerator("uuid2")` — never
+     * set manually on create.
+     */
     @Id
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "uuid2")
+    @Column(name = "distribution_list_share_id", nullable = false, updatable = false, length = 36)
+    private String distributionListShareId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "distribution_list_id", nullable = false)
     private DistributionList distributionList;
 
-    @Id
     @Column(name = "user_id", nullable = false, length = 100)
     private String userId;                  // internal directory id
 
@@ -168,12 +181,6 @@ public class DistributionListShare {
     @Column(nullable = false, length = 150) private String name;
     @Column(nullable = false, length = 255) private String emailid;
     @Column(length = 150)                   private String department;
-
-    @Data @NoArgsConstructor @AllArgsConstructor
-    public static class PK implements Serializable {
-        private String distributionList;    // matches DistributionList#distributionListId
-        private String userId;
-    }
 }
 ```
 
