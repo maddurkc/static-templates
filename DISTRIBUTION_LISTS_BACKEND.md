@@ -1490,3 +1490,124 @@ The backend's `GlobalExceptionHandler` (§4a) returns:
 Dialogs surface `err.message` via `toast.error(...)`; the Save button
 guards listed in §13 still run client-side first so most validation errors
 never reach the network.
+
+---
+
+## 15. Filtering & Pagination
+
+The DL listing page (`/distribution-lists`) supports a visibility filter
+and dynamic pagination so the table scales beyond the default 10 cards.
+
+### 15.1 Query Contract
+
+`GET /api/distribution-lists`
+
+| Param | Type | Default | Allowed values | Notes |
+|-------|------|---------|----------------|-------|
+| `page`       | int    | `1`     | `>= 1`                          | 1-based page index |
+| `pageSize`   | int    | `10`    | `5, 10, 25, 50, 100`            | Validate server-side; clamp to `<= 100` |
+| `visibility` | string | `ALL`   | `ALL` \| `PUBLIC` \| `PRIVATE` \| `SHARED` | Additional filter applied **on top of** the §0 visibility predicate |
+| `search`     | string | `""`    | free-text                       | Matched against `displayName`, `name`, and `members_raw` (LIKE `%q%`) |
+
+Response shape (matches the frontend `PagedResult<T>` type):
+
+```json
+{
+  "items": [ { /* DistributionListDto */ } ],
+  "total": 137,
+  "page": 1,
+  "pageSize": 10,
+  "totalPages": 14
+}
+```
+
+> The `ALL` filter still excludes DLs the user cannot see — visibility
+> rules from the introductory section are always enforced first.
+
+### 15.2 Repository
+
+```java
+// DistributionListRepository.java
+@Query("""
+   SELECT dl FROM DistributionListEntity dl
+   WHERE dl.isActive = true
+     AND ( dl.ownerId = :uid
+           OR dl.visibility = 'PUBLIC'
+           OR EXISTS (SELECT 1 FROM DistributionListShareEntity s
+                      WHERE s.distributionListId = dl.distributionListId
+                        AND s.userId = :uid) )
+     AND ( :visibility = 'ALL' OR dl.visibility = :visibility )
+     AND ( :search = '' 
+           OR LOWER(dl.name)        LIKE LOWER(CONCAT('%', :search, '%'))
+           OR LOWER(dl.membersRaw)  LIKE LOWER(CONCAT('%', :search, '%')) )
+""")
+Page<DistributionListEntity> findVisibleToFiltered(
+    @Param("uid")        String uid,
+    @Param("visibility") String visibility,
+    @Param("search")     String search,
+    Pageable pageable);
+```
+
+### 15.3 Service
+
+```java
+public PagedResult<DistributionListDto> list(int page, int pageSize,
+                                             String visibility, String search) {
+    int safeSize = Math.min(Math.max(pageSize, 1), 100);
+    int safePage = Math.max(page, 1);
+    String v = (visibility == null || visibility.isBlank()) ? "ALL" : visibility.toUpperCase();
+    String s = (search == null) ? "" : search.trim();
+
+    Page<DistributionListEntity> p = repo.findVisibleToFiltered(
+        currentUser.id(), v, s,
+        PageRequest.of(safePage - 1, safeSize, Sort.by(Sort.Direction.DESC, "updatedAt")));
+
+    return new PagedResult<>(
+        p.getContent().stream().map(mapper::toDto).toList(),
+        p.getTotalElements(),
+        safePage,
+        safeSize,
+        p.getTotalPages());
+}
+```
+
+### 15.4 Controller
+
+```java
+@GetMapping("/api/distribution-lists")
+public PagedResult<DistributionListDto> list(
+        @RequestParam(defaultValue = "1")    int page,
+        @RequestParam(defaultValue = "10")   int pageSize,
+        @RequestParam(defaultValue = "ALL")  String visibility,
+        @RequestParam(defaultValue = "")     String search) {
+    return service.list(page, pageSize, visibility, search);
+}
+```
+
+### 15.5 DTO
+
+```java
+public record PagedResult<T>(
+    List<T> items,
+    long total,
+    int page,
+    int pageSize,
+    int totalPages
+) {}
+```
+
+### 15.6 Frontend Wiring
+
+- `src/lib/distributionListStorage.ts` exposes `listDistributionListsPaged(query)` returning `PagedResult<DistributionList>` — mirrors the backend response 1-for-1.
+- `src/pages/DistributionLists.tsx` holds `page`, `pageSize`, and `visibilityFilter` state, defaults to `ALL` / `10` / `1`, resets to page 1 whenever the filter, search, or page size changes, and renders a segmented control plus Previous/Next pager.
+- When wired to the real backend, replace the local helper with:
+
+  ```ts
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    visibility,
+    search,
+  });
+  return apiFetch<PagedResult<DistributionList>>(`/api/distribution-lists?${params}`);
+  ```
