@@ -86,7 +86,33 @@ CREATE INDEX ix_dls_elid  ON dbo.distribution_list_share(elid);
 
 ## 2. JPA Entities
 
+Two entity classes, suffixed `Entity` to clearly separate them from DTOs and
+the frontend `DistributionList` TS interface.
+
 ```java
+// ===== imports (shared by both entity files) =====
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.GenericGenerator;
+
 @Entity @Table(name = "distribution_list")
 @Getter @Setter @NoArgsConstructor
 public class DistributionListEntity {
