@@ -123,7 +123,7 @@ function seedDemoLists(): DistributionList[] {
   const ir  = "bob.wilson@company.com; alice.johnson@company.com; sarah.davis@company.com";
   return [
     {
-      id: "dl-demo-eng",
+      distributionListId: "dl-demo-eng",
       prefix: DEFAULT_PREFIX,
       name: "EngineeringTeam",
       displayName: `${DEFAULT_PREFIX}EngineeringTeam`,
@@ -137,7 +137,7 @@ function seedDemoLists(): DistributionList[] {
       updatedAt: now,
     },
     {
-      id: "dl-demo-incident",
+      distributionListId: "dl-demo-incident",
       prefix: DEFAULT_PREFIX,
       name: "IncidentResponders",
       displayName: `${DEFAULT_PREFIX}IncidentResponders`,
@@ -160,12 +160,12 @@ export function listDistributionLists(): DistributionList[] {
     (dl) =>
       dl.ownerId === CURRENT_USER ||
       dl.visibility === "PUBLIC" ||
-      dl.sharedWith.some((s) => s.id === CURRENT_USER),
+      dl.sharedWith.some((s) => s.userId === CURRENT_USER),
   );
 }
 
 export function getDistributionList(id: string): DistributionList | null {
-  return readAll().find((dl) => dl.id === id) ?? null;
+  return readAll().find((dl) => dl.distributionListId === id) ?? null;
 }
 
 export interface DLUpsertInput {
@@ -220,7 +220,7 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
   const name = input.name.trim();
   const now = new Date().toISOString();
   const dl: DistributionList = {
-    id: `dl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    distributionListId: `dl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     prefix,
     name,
     displayName: `${prefix}${name}`,
@@ -242,13 +242,13 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
   if (error) throw new Error(error);
 
   const all = readAll();
-  const idx = all.findIndex((d) => d.id === id);
+  const idx = all.findIndex((d) => d.distributionListId === id);
   if (idx === -1) throw new Error("Distribution list not found.");
   if (all[idx].ownerId !== CURRENT_USER) throw new Error("You can only edit your own distribution lists.");
 
   const name = input.name.trim();
   const dupe = all.find(
-    (d) => d.id !== id && d.ownerId === CURRENT_USER && d.name.toLowerCase() === name.toLowerCase(),
+    (d) => d.distributionListId !== id && d.ownerId === CURRENT_USER && d.name.toLowerCase() === name.toLowerCase(),
   );
   if (dupe) throw new Error(`A distribution list named '${name}' already exists.`);
 
@@ -273,7 +273,7 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
 
 export function deleteDistributionList(id: string): void {
   const all = readAll();
-  const filtered = all.filter((d) => d.id !== id);
+  const filtered = all.filter((d) => d.distributionListId !== id);
   writeAll(filtered);
 }
 
