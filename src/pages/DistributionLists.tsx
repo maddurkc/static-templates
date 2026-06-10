@@ -102,7 +102,7 @@ export default function DistributionLists() {
 
   const addEmails = (raw: string) => {
     const emails = raw
-      .split(/[,;\s\n]+/)
+      .split(/[,;:\s\n]+/)
       .map((e) => e.trim().toLowerCase())
       .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
     if (emails.length === 0) return;
@@ -119,8 +119,8 @@ export default function DistributionLists() {
   };
 
   const save = () => {
-    const effectiveSharedWith =
-      draft.visibility === "SHARED" ? sharedUsers.map((u) => u.id) : [];
+    const effectiveSharedWith: SharedUserRef[] =
+      draft.visibility === "SHARED" ? sharedUsers.map(toSharedRef) : [];
     try {
       if (draft.id) {
         updateDistributionList(draft.id, {
