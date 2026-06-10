@@ -43,7 +43,8 @@ interface DraftDL {
   name: string;
   description: string;
   visibility: DLVisibility;
-  members: DLMember[];
+  /** Verbatim textarea contents — single source of truth for members. */
+  membersRaw: string;
   sharedWith: SharedUserRef[];
 }
 
@@ -52,7 +53,7 @@ const blankDraft = (): DraftDL => ({
   name: "",
   description: "",
   visibility: "PRIVATE",
-  members: [],
+  membersRaw: "",
   sharedWith: [],
 });
 
@@ -62,8 +63,13 @@ export default function DistributionLists() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
-  const [emailInput, setEmailInput] = useState("");
   const [sharedUsers, setSharedUsers] = useState<DirectoryUser[]>([]);
+
+  /** Live-parsed chip preview of whatever is currently in the textarea. */
+  const parsedMembers = useMemo<DLMember[]>(
+    () => parseMembersRaw(draft.membersRaw),
+    [draft.membersRaw],
+  );
 
   const refresh = () => setLists(listDistributionLists());
 
@@ -80,7 +86,6 @@ export default function DistributionLists() {
 
   const openCreate = () => {
     setDraft(blankDraft());
-    setEmailInput("");
     setSharedUsers([]);
     setDialogOpen(true);
   };
@@ -92,58 +97,40 @@ export default function DistributionLists() {
       name: dl.name,
       description: dl.description ?? "",
       visibility: dl.visibility,
-      members: [...dl.members],
+      membersRaw: dl.membersRaw ?? dl.members.map((m) => m.email).join(", "),
       sharedWith: [...dl.sharedWith],
     });
-    setEmailInput("");
     setSharedUsers(getUsersByIds(dl.sharedWith.map((s) => s.id)));
     setDialogOpen(true);
   };
 
-  const addEmails = (raw: string) => {
-    const emails = raw
-      .split(/[,;:\s\n]+/)
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
-    if (emails.length === 0) return;
-    const existing = new Set(draft.members.map((m) => m.email));
-    const fresh = emails
-      .filter((e) => !existing.has(e))
-      .map<DLMember>((email) => ({ email }));
-    setDraft({ ...draft, members: [...draft.members, ...fresh] });
-    setEmailInput("");
-  };
-
   const removeMember = (email: string) => {
-    setDraft({ ...draft, members: draft.members.filter((m) => m.email !== email) });
+    // Strip the email (and any surrounding separators) from the raw blob.
+    const next = draft.membersRaw
+      .split(/([,;:\s\n]+)/)
+      .filter((tok) => tok.trim().toLowerCase() !== email)
+      .join("")
+      .replace(/^[,;:\s\n]+|[,;:\s\n]+$/g, "");
+    setDraft({ ...draft, membersRaw: next });
   };
 
   const save = () => {
     const effectiveSharedWith: SharedUserRef[] =
       draft.visibility === "SHARED" ? sharedUsers.map(toSharedRef) : [];
-    const membersRaw = draft.members.map((m) => m.email).join(", ");
     try {
+      const payload = {
+        name: draft.name,
+        prefix: draft.prefix,
+        description: draft.description,
+        visibility: draft.visibility,
+        membersRaw: draft.membersRaw,
+        sharedWith: effectiveSharedWith,
+      };
       if (draft.id) {
-        updateDistributionList(draft.id, {
-          name: draft.name,
-          prefix: draft.prefix,
-          description: draft.description,
-          visibility: draft.visibility,
-          members: draft.members,
-          membersRaw,
-          sharedWith: effectiveSharedWith,
-        });
+        updateDistributionList(draft.id, payload);
         toast({ title: "Distribution list updated" });
       } else {
-        createDistributionList({
-          name: draft.name,
-          prefix: draft.prefix,
-          description: draft.description,
-          visibility: draft.visibility,
-          members: draft.members,
-          membersRaw,
-          sharedWith: effectiveSharedWith,
-        });
+        createDistributionList(payload);
         toast({ title: "Distribution list created" });
       }
       setDialogOpen(false);
