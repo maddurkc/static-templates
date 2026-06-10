@@ -196,16 +196,27 @@ public record DistributionListDto(
     UUID id,
     String prefix,
     String name,
-    String displayName,            // prefix + name -> "DSPCH-TeamAlpha"
+    String displayName,                 // prefix + name -> "DSPCH-TeamAlpha"
     String description,
     String visibility,
     String ownerId,
     int memberCount,
     List<MemberDto> members,
-    Set<String> sharedWith
+    String membersRaw,                  // verbatim textarea blob (nullable)
+    List<SharedUserDto> sharedWith      // FULL directory snapshot
 ) {}
 
 public record MemberDto(String email, String displayName) {}
+
+/** Full directory snapshot stored on a SHARED DL. Mirrors `distribution_list_share`. */
+public record SharedUserDto(
+    String id,            // internal directory id (== user_id PK column)
+    String elid,          // enterprise / employee id  (nullable)
+    String lanid,         // LAN / network id          (nullable)
+    String name,
+    String emailid,
+    String department     // nullable
+) {}
 
 public record DistributionListUpsertDto(
     @NotBlank @Size(max = 150)
@@ -215,7 +226,8 @@ public record DistributionListUpsertDto(
     @Size(max = 500)            String description,
     @NotNull                    Visibility visibility,
     @NotNull @Size(min = 1)     List<MemberDto> members,
-    Set<String>                 sharedWith            // ignored unless visibility=SHARED
+    String                      membersRaw,           // optional verbatim paste blob (any format)
+    List<SharedUserDto>         sharedWith            // ignored unless visibility=SHARED; full rows required
 ) {}
 
 /** Unified result returned by /recipients/search. type=USER | DL. */
