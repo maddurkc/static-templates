@@ -364,7 +364,15 @@ export default function DistributionLists() {
             </Button>
             <Button
               onClick={save}
-              disabled={draft.visibility === "SHARED" && sharedUsers.length === 0}
+              disabled={
+                !draft.name.trim() ||
+                lists.some(
+                  (l) =>
+                    l.id !== draft.id &&
+                    l.name.toLowerCase() === draft.name.trim().toLowerCase(),
+                ) ||
+                (draft.visibility === "SHARED" && sharedUsers.length === 0)
+              }
             >
               {draft.id ? "Save Changes" : "Create"}
             </Button>
