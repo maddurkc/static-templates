@@ -405,7 +405,7 @@ export function toSharedRef(u: DirectoryUser): SharedUserRef {
     lanid: u.lanid,
     name: u.name,
     emailid: u.email,
-    department: u.department,
+    // v2: department not part of the share snapshot.
   };
 }
 
@@ -416,7 +416,6 @@ export function fromSharedRef(s: SharedUserRef): DirectoryUser {
     lanid: s.lanid,
     name: s.name,
     email: s.emailid,
-    department: s.department,
   };
 }
 
