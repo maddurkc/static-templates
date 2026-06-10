@@ -39,7 +39,7 @@ import styles from "./DistributionLists.module.scss";
 const DEFAULT_PREFIX = "DSPCH-";
 
 interface DraftDL {
-  id?: string;
+  distributionListId?: string;
   prefix: string;
   name: string;
   description: string;
@@ -93,7 +93,7 @@ export default function DistributionLists() {
 
   const openEdit = (dl: DistributionList) => {
     setDraft({
-      id: dl.id,
+      distributionListId: dl.distributionListId,
       prefix: dl.prefix,
       name: dl.name,
       description: dl.description ?? "",
@@ -101,7 +101,7 @@ export default function DistributionLists() {
       membersRaw: dl.membersRaw ?? dl.members.map((m) => m.email).join(", "),
       sharedWith: [...dl.sharedWith],
     });
-    setSharedUsers(getUsersByIds(dl.sharedWith.map((s) => s.id)));
+    setSharedUsers(getUsersByIds(dl.sharedWith.map((s) => s.userId)));
     setDialogOpen(true);
   };
 
@@ -127,8 +127,8 @@ export default function DistributionLists() {
         membersRaw: draft.membersRaw,
         sharedWith: effectiveSharedWith,
       };
-      if (draft.id) {
-        updateDistributionList(draft.id, payload);
+      if (draft.distributionListId) {
+        updateDistributionList(draft.distributionListId, payload);
         toast({ title: "Distribution list updated" });
       } else {
         createDistributionList(payload);
@@ -147,7 +147,7 @@ export default function DistributionLists() {
 
   const remove = (dl: DistributionList) => {
     if (!confirm(`Delete distribution list "${dl.displayName}"?`)) return;
-    deleteDistributionList(dl.id);
+    deleteDistributionList(dl.distributionListId);
     refresh();
     toast({ title: "Distribution list deleted" });
   };
@@ -192,7 +192,7 @@ export default function DistributionLists() {
           </div>
         ) : (
           filtered.map((dl) => (
-            <div key={dl.id} className={styles.card}>
+            <div key={dl.distributionListId} className={styles.card}>
               <div className={styles.cardHead}>
                 <span className={styles.dlName}>
                   <Users size={14} className={styles.dlNameIcon} />
@@ -232,7 +232,7 @@ export default function DistributionLists() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className={styles.dialog}>
           <DialogHeader>
-            <DialogTitle>{draft.id ? "Edit Distribution List" : "New Distribution List"}</DialogTitle>
+            <DialogTitle>{draft.distributionListId ? "Edit Distribution List" : "New Distribution List"}</DialogTitle>
           </DialogHeader>
 
           <div className={styles.dialogBody}>
@@ -270,7 +270,7 @@ export default function DistributionLists() {
                     trimmed &&
                     lists.some(
                       (l) =>
-                        l.id !== draft.id &&
+                        l.distributionListId !== draft.distributionListId &&
                         l.name.toLowerCase() === trimmed.toLowerCase(),
                     );
                   if (dupe) {
@@ -362,13 +362,13 @@ export default function DistributionLists() {
                 parsedMembers.length === 0 ||
                 lists.some(
                   (l) =>
-                    l.id !== draft.id &&
+                    l.distributionListId !== draft.distributionListId &&
                     l.name.toLowerCase() === draft.name.trim().toLowerCase(),
                 ) ||
                 (draft.visibility === "SHARED" && sharedUsers.length === 0)
               }
             >
-              {draft.id ? "Save Changes" : "Create"}
+              {draft.distributionListId ? "Save Changes" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
