@@ -261,7 +261,20 @@ export default function DistributionLists() {
             const memberCount = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
             const canEdit = canManageDL(dl);
             return (
-              <div key={dl.distributionListId} className={styles.card}>
+              <div
+                key={dl.distributionListId}
+                className={styles.card}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailsDL(dl)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setDetailsDL(dl);
+                  }
+                }}
+                title="Click to view full details"
+              >
                 <div className={styles.cardHead}>
                   <span className={styles.dlName}>
                     <Users size={14} className={styles.dlNameIcon} />
@@ -287,17 +300,10 @@ export default function DistributionLists() {
                   </div>
                 )}
 
-                <ul className={styles.memberPreview}>
-                  {[...dl.toMembers, ...dl.ccMembers, ...dl.bccMembers].slice(0, 4).map((m) => (
-                    <li key={m.email}>{m.email}</li>
-                  ))}
-                  {memberCount > 4 && <li className={styles.more}>+{memberCount - 4} more</li>}
-                </ul>
-
                 <div className={styles.cardActions}>
                   <button
                     className={styles.actionBtn}
-                    onClick={() => openEdit(dl)}
+                    onClick={(e) => { e.stopPropagation(); openEdit(dl); }}
                     disabled={!canEdit}
                     title={canEdit ? "" : "Only the owner and managers can edit"}
                   >
@@ -305,7 +311,7 @@ export default function DistributionLists() {
                   </button>
                   <button
                     className={`${styles.actionBtn} ${styles.danger}`}
-                    onClick={() => remove(dl)}
+                    onClick={(e) => { e.stopPropagation(); remove(dl); }}
                     disabled={!canEdit}
                   >
                     <Trash2 size={14} /> Delete
@@ -316,6 +322,7 @@ export default function DistributionLists() {
           })
         )}
       </div>
+
 
       {paged.total > 0 && (
         <div className={styles.pagination}>
