@@ -44,7 +44,7 @@ interface DraftDL {
   description: string;
   visibility: DLVisibility;
   members: DLMember[];
-  sharedWith: string[];
+  sharedWith: SharedUserRef[];
 }
 
 const blankDraft = (): DraftDL => ({
