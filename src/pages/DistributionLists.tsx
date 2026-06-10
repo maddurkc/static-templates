@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Plus, Users, Trash2, Edit3, X, Search, Lock, Globe, Share2 } from "lucide-react";
 import {
+  listDistributionLists,
   listDistributionListsPaged,
   createDistributionList,
   updateDistributionList,
