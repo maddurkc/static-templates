@@ -19,7 +19,7 @@ interface Props {
 export const SharedUserPicker: React.FC<Props> = ({
   selected,
   onChange,
-  placeholder = "Search users by name, email, ELID, LANID, or department...",
+  placeholder = "Search users to add as managers (can edit / delete)...",
 }) => {
   const [input, setInput] = useState("");
   const [results, setResults] = useState<DirectoryUser[]>([]);
