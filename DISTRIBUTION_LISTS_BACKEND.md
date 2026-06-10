@@ -1545,7 +1545,7 @@ export function toSharedRef(u: DirectoryUser): SharedUserRef {
     lanid: u.lanid,
     name: u.name,
     emailid: u.email,
-    department: u.department,
+    // department intentionally NOT copied — not part of the share snapshot in v2.
   };
 }
 
@@ -1556,7 +1556,7 @@ export function fromSharedRef(s: SharedUserRef): DirectoryUser {
     lanid: s.lanid,
     name: s.name,
     email: s.emailid,
-    department: s.department,
+    // department resolved lazily from the directory if needed.
   };
 }
 
