@@ -16,6 +16,7 @@ import MigrationGenerator from "./pages/MigrationGenerator";
 import SettingsLayoutDemo from "./pages/SettingsLayoutDemo";
 import TemplateSettingsPage from "./pages/TemplateSettingsPage";
 import NotFound from "./pages/NotFound";
+import DistributionLists from "./pages/DistributionLists";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
                   <Route path="/templates/editor" element={<TemplateEditor />} />
                   <Route path="/run-templates" element={<RunTemplates />} />
                   <Route path="/run-templates/:id" element={<RunTemplates />} />
+                  <Route path="/distribution-lists" element={<DistributionLists />} />
                   <Route path="/database-schema" element={<DatabaseSchema />} />
                   <Route path="/er-diagram" element={<ERDiagram />} />
                   <Route path="/migrations" element={<MigrationGenerator />} />
