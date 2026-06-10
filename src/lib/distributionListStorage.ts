@@ -128,7 +128,11 @@ export interface DLUpsertInput {
 }
 
 function validate(input: DLUpsertInput): string | null {
-  if (!input.name.trim()) return "Name is required.";
+  const name = input.name.trim();
+  if (!name) return "Name is required.";
+  if (!/^[A-Za-z0-9]+$/.test(name)) {
+    return "Name can only contain letters and numbers — no spaces or special characters.";
+  }
   if (input.members.length === 0) return "At least one member email is required.";
   const prefix = input.prefix ?? DEFAULT_PREFIX;
   if (RESERVED_PREFIXES.some((p) => prefix.toUpperCase().startsWith(p))) {
@@ -144,6 +148,7 @@ function validate(input: DLUpsertInput): string | null {
   }
   return null;
 }
+
 
 export function createDistributionList(input: DLUpsertInput): DistributionList {
   const err = validate(input);
