@@ -30,6 +30,61 @@ import { renderSectionContent, wrapInEmailHtml, wrapSectionInTable, wrapInGlobal
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/thymeleafUtils";
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
+import { getDistributionList, type RecipientRef } from "@/lib/distributionListStorage";
+
+/**
+ * Convert recipient User[] (which may contain DLs) into:
+ *   - refs: serialised mixed list for backend / resend re-expansion
+ *   - emails: deduplicated flat list (DL members expanded inline)
+ * Mirrors the backend RecipientResolverService.
+ */
+const buildRecipientPayload = (users: User[]): { refs: RecipientRef[]; emails: string[] } => {
+  const refs: RecipientRef[] = [];
+  const seen = new Set<string>();
+  const emails: string[] = [];
+  for (const u of users) {
+    if (u.kind === "DL") {
+      refs.push({ type: "DL", id: u.id });
+      const members = u.dlMembers && u.dlMembers.length > 0
+        ? u.dlMembers
+        : (getDistributionList(u.id)?.members.map(m => m.email) ?? []);
+      for (const em of members) {
+        const lower = em.toLowerCase();
+        if (!seen.has(lower)) { seen.add(lower); emails.push(lower); }
+      }
+    } else if (u.email) {
+      refs.push({ type: "USER", email: u.email });
+      const lower = u.email.toLowerCase();
+      if (!seen.has(lower)) { seen.add(lower); emails.push(lower); }
+    }
+  }
+  return { refs, emails };
+};
+
+/** Reconstruct recipient User[] from saved refs (resend flow). DL chips re-fetch live membership. */
+const refsToUsers = (refs: RecipientRef[] | undefined): User[] | null => {
+  if (!refs || refs.length === 0) return null;
+  return refs.map<User>(ref => {
+    if (ref.type === "DL" && ref.id) {
+      const dl = getDistributionList(ref.id);
+      if (!dl) {
+        return {
+          id: ref.id, email: "",
+          name: `[DL no longer available]`,
+          kind: "DL", memberCount: 0, dlMembers: [],
+        };
+      }
+      return {
+        id: dl.id, email: "", name: dl.displayName,
+        kind: "DL", memberCount: dl.members.length,
+        dlMembers: dl.members.map(m => m.email),
+      };
+    }
+    const email = ref.email || "";
+    return { id: email, email, name: email, kind: "USER" };
+  });
+};
+
 import { mapJsonToTableData, getValueByPath, resolveColumnWidth as resolveColWidth } from "@/lib/tableUtils";
 import { GlobalApiConfig, DEFAULT_GLOBAL_API_CONFIG } from "@/types/global-api-config";
 import { GlobalApiPanel } from "@/components/templates/GlobalApiPanel";
@@ -1668,12 +1723,20 @@ const RunTemplates = () => {
       });
     }
 
+    const toPayload  = buildRecipientPayload(toUsers);
+    const ccPayload  = buildRecipientPayload(ccUsers);
+    const bccPayload = buildRecipientPayload(bccUsers);
+
     // Build the payload in the requested format
     const payload = {
       templateId: selectedTemplate.id,
-      toEmails: toUsers.map(u => u.email),
-      ccEmails: ccUsers.map(u => u.email),
-      bccEmails: bccUsers.map(u => u.email),
+      toEmails: toPayload.emails,
+      ccEmails: ccPayload.emails,
+      bccEmails: bccPayload.emails,
+      // Smart Distribution List refs — backend RecipientResolverService re-expands these on send.
+      toRefs:  toPayload.refs,
+      ccRefs:  ccPayload.refs,
+      bccRefs: bccPayload.refs,
       contentData: {
         subject_data: subjectData,
         body_data: bodyData
@@ -1687,14 +1750,20 @@ const RunTemplates = () => {
     const resendPayload = {
       messageDetails: {
         messageRequestData: {
-          recipients: toUsers.map(u => u.email),
-          ccEmails: ccUsers.map(u => u.email),
-          bccEmails: bccUsers.map(u => u.email),
+          recipients: toPayload.emails,
+          ccEmails:   ccPayload.emails,
+          bccEmails:  bccPayload.emails,
+          // Persist mixed USER+DL refs so DL chips can be rehydrated on resend
+          // with current (not stale) DL membership.
+          toRefs:  toPayload.refs,
+          ccRefs:  ccPayload.refs,
+          bccRefs: bccPayload.refs,
           contentData: {
             subject_data: subjectData,
             body_data: bodyData,
           },
         },
+
         sentAt: new Date().toISOString(),
       },
       templateConfigData: {
@@ -1830,16 +1899,19 @@ const RunTemplates = () => {
         setEmailTitle(mergedTemplate.name);
         setExecutedOn(new Date().toLocaleString());
 
-        // Restore recipients
-        if (recipients.length) {
-          setToUsers(recipients.map((email: string) => ({ id: email, name: email, email })));
-        }
-        if (ccEmails.length) {
-          setCcUsers(ccEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
-        if (bccEmails.length) {
-          setBccUsers(bccEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
+        // Restore recipients — prefer mixed USER+DL refs (rehydrates DL chips with live membership);
+        // fall back to flat email arrays for legacy payloads.
+        const msgReq = rawData.messageDetails?.messageRequestData || {};
+        const toFromRefs  = refsToUsers(msgReq.toRefs);
+        const ccFromRefs  = refsToUsers(msgReq.ccRefs);
+        const bccFromRefs = refsToUsers(msgReq.bccRefs);
+        if (toFromRefs) setToUsers(toFromRefs);
+        else if (recipients.length) setToUsers(recipients.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+        if (ccFromRefs) setCcUsers(ccFromRefs);
+        else if (ccEmails.length) setCcUsers(ccEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+        if (bccFromRefs) setBccUsers(bccFromRefs);
+        else if (bccEmails.length) setBccUsers(bccEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+
 
         // Restore subject
         if (subject) {
@@ -2013,15 +2085,16 @@ const RunTemplates = () => {
         setEmailTitle(fallbackTemplate.name);
         setExecutedOn(new Date().toLocaleString());
 
-        if (data.toEmails?.length) {
-          setToUsers(data.toEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
-        if (data.ccEmails?.length) {
-          setCcUsers(data.ccEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
-        if (data.bccEmails?.length) {
-          setBccUsers(data.bccEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
+        const legacyTo  = refsToUsers(data.toRefs);
+        const legacyCc  = refsToUsers(data.ccRefs);
+        const legacyBcc = refsToUsers(data.bccRefs);
+        if (legacyTo) setToUsers(legacyTo);
+        else if (data.toEmails?.length) setToUsers(data.toEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+        if (legacyCc) setCcUsers(legacyCc);
+        else if (data.ccEmails?.length) setCcUsers(data.ccEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+        if (legacyBcc) setBccUsers(legacyBcc);
+        else if (data.bccEmails?.length) setBccUsers(data.bccEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+
 
         if (data.subjectData && Object.keys(data.subjectData).length > 0) {
           const apiVarNames = new Set(
@@ -4113,13 +4186,13 @@ const RunTemplates = () => {
               <div className="bg-muted/50 rounded-lg p-3 border space-y-1">
                 <div className="text-xs">
                   <span className="text-muted-foreground font-medium">To: </span>
-                  {toUsers.length > 0 ? toUsers.map(u => u.email).join(', ') : '(No recipients)'}
+                  {toUsers.length > 0 ? toUsers.map(u => u.kind === "DL" ? `${u.name} (${u.memberCount ?? 0})` : u.email).join(', ') : '(No recipients)'}
                 </div>
                 {ccUsers.length > 0 && (
-                  <div className="text-xs"><span className="text-muted-foreground font-medium">CC: </span>{ccUsers.map(u => u.email).join(', ')}</div>
+                  <div className="text-xs"><span className="text-muted-foreground font-medium">CC: </span>{ccUsers.map(u => u.kind === "DL" ? `${u.name} (${u.memberCount ?? 0})` : u.email).join(', ')}</div>
                 )}
                 {bccUsers.length > 0 && (
-                  <div className="text-xs"><span className="text-muted-foreground font-medium">BCC: </span>{bccUsers.map(u => u.email).join(', ')}</div>
+                  <div className="text-xs"><span className="text-muted-foreground font-medium">BCC: </span>{bccUsers.map(u => u.kind === "DL" ? `${u.name} (${u.memberCount ?? 0})` : u.email).join(', ')}</div>
                 )}
               </div>
             </div>
