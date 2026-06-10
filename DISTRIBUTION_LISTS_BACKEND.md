@@ -88,12 +88,15 @@ CREATE INDEX ix_dls_elid  ON dbo.distribution_list_share(elid);
 @Getter @Setter @NoArgsConstructor
 public class DistributionList {
     /**
-     * Application-generated string id (e.g. `"dl-<timestamp>-<rand>"`).
-     * Intentionally NOT `@GeneratedValue` — the frontend generates the id
-     * on create so optimistic UI / offline flows work without a DB round-trip.
+     * Primary key. The DB column is `UNIQUEIDENTIFIER` (UUID), but in JPA we
+     * map it to `String` so DTOs / REST paths / JSON payloads stay portable
+     * (no UUID (de)serialisation quirks). Hibernate generates a v4 UUID on
+     * insert via `@GenericGenerator(strategy = "uuid2")`.
      */
     @Id
-    @Column(name = "distribution_list_id", nullable = false, length = 64)
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "uuid2")
+    @Column(name = "distribution_list_id", nullable = false, updatable = false, length = 36)
     private String distributionListId;
 
     @Column(nullable = false, length = 150)
