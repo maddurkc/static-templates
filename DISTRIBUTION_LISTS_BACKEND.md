@@ -1339,7 +1339,8 @@ import { apiFetch } from "./apiClient";
 
 /* ---------- Types (mirror backend DTOs) ---------- */
 
-export type DLVisibility = "PRIVATE" | "SHARED" | "PUBLIC";
+export type DLVisibility = "PRIVATE" | "PUBLIC";   // v2: SHARED removed
+export type DLType = "CUSTOM";                     // v2
 
 export interface DLMember {
   email: string;
@@ -1357,7 +1358,7 @@ export interface SharedUserRef {
   department?: string;
 }
 
-/** Mirrors backend `DistributionListDto`. */
+/** Mirrors backend `DistributionListDto` (v2). */
 export interface DistributionList {
   distributionListId: string;
   prefix: string;
@@ -1365,10 +1366,19 @@ export interface DistributionList {
   displayName: string;
   description?: string;
   visibility: DLVisibility;
+  type: DLType;
   ownerId: string;
-  membersRaw: string;
-  members: DLMember[];      // derived from membersRaw
-  sharedWith: SharedUserRef[];
+  ownerLanid?: string;
+  /** Verbatim blobs — single source of truth. */
+  toRaw: string;
+  ccRaw: string;
+  bccRaw: string;
+  /** Derived on read. */
+  toMembers: DLMember[];
+  ccMembers: DLMember[];
+  bccMembers: DLMember[];
+  /** Users authorised to edit / delete this DL. */
+  managers: SharedUserRef[];
   createdAt: string;        // ISO LocalDateTime
   updatedAt: string;
 }
@@ -1396,8 +1406,10 @@ export interface DLUpsertInput {
   prefix?: string;
   description?: string;
   visibility: DLVisibility;
-  membersRaw: string;
-  sharedWith?: SharedUserRef[];
+  toRaw: string;
+  ccRaw?: string;
+  bccRaw?: string;
+  managers?: SharedUserRef[];
 }
 
 /* ---------- Shared parser (also used for live chip preview) ---------- */
@@ -1417,14 +1429,17 @@ export function parseMembersRaw(raw: string | undefined | null): DLMember[] {
   return out;
 }
 
-/** Backend returns `memberEmails: string[]`; hydrate to `{ email }[]`. */
-interface RawDLDto extends Omit<DistributionList, "members"> {
-  memberEmails?: string[];
+/** Backend returns `toEmails / ccEmails / bccEmails`; hydrate to `{ email }[]` per bucket. */
+interface RawDLDto extends Omit<DistributionList, "toMembers" | "ccMembers" | "bccMembers"> {
+  toEmails?: string[];
+  ccEmails?: string[];
+  bccEmails?: string[];
 }
 function hydrate(dto: RawDLDto): DistributionList {
-  const members =
-    dto.memberEmails?.map((email) => ({ email })) ?? parseMembersRaw(dto.membersRaw);
-  return { ...dto, members };
+  const toMembers  = dto.toEmails?.map((email) => ({ email }))  ?? parseMembersRaw(dto.toRaw);
+  const ccMembers  = dto.ccEmails?.map((email) => ({ email }))  ?? parseMembersRaw(dto.ccRaw);
+  const bccMembers = dto.bccEmails?.map((email) => ({ email })) ?? parseMembersRaw(dto.bccRaw);
+  return { ...dto, toMembers, ccMembers, bccMembers };
 }
 
 /* ---------- CRUD — REST calls ---------- */
