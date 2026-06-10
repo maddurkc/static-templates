@@ -570,15 +570,21 @@ public class DistributionListService {
     }
 
     private DistributionListDto toDto(DistributionListEntity dl) {
-        List<String> emails = parseMembers(dl.getMembersRaw());
+        List<String> to  = parseMembers(dl.getToRaw());
+        List<String> cc  = parseMembers(dl.getCcRaw());
+        List<String> bcc = parseMembers(dl.getBccRaw());
         return new DistributionListDto(
             dl.getDistributionListId(), dl.getPrefix(), dl.getName(),
             dl.getPrefix() + dl.getName(),
-            dl.getDescription(), dl.getVisibility().name(), dl.getOwnerId(),
-            emails.size(),
-            emails,
-            dl.getMembersRaw(),
-            dl.getSharedWith().stream()
+            dl.getDescription(),
+            dl.getVisibility().name(),
+            dl.getType().name(),
+            dl.getOwnerId(),
+            dl.getOwnerLanid(),
+            to.size() + cc.size() + bcc.size(),
+            to, cc, bcc,
+            dl.getToRaw(), dl.getCcRaw(), dl.getBccRaw(),
+            dl.getManagers().stream()
                 .map(s -> new SharedUserDto(
                     s.getDistributionListShareId(),
                     s.getUserId(), s.getElid(), s.getLanid(),
@@ -589,15 +595,13 @@ public class DistributionListService {
         );
     }
 
-    private void requireOwner(DistributionListEntity dl) {
-        if (!dl.getOwnerId().equals(currentUser.id())) throw new ForbiddenException();
-    }
+    /** v2: any logged-in user can READ a PUBLIC list; otherwise must be owner or manager. */
     private void requireReadAccess(DistributionListEntity dl) {
         var uid = currentUser.id();
-        if (!dl.getOwnerId().equals(uid)
-            && dl.getVisibility() != Visibility.PUBLIC
-            && dl.getSharedWith().stream().noneMatch(s -> uid.equals(s.getUserId())))
-            throw new ForbiddenException();
+        if (dl.getVisibility() == Visibility.PUBLIC) return;
+        if (dl.getOwnerId().equals(uid)) return;
+        if (dl.getManagers().stream().anyMatch(s -> uid.equals(s.getUserId()))) return;
+        throw new ForbiddenException();
     }
 }
 ```
