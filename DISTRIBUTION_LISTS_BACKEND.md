@@ -86,8 +86,14 @@ CREATE INDEX ix_dls_elid  ON dbo.distribution_list_share(elid);
 @Entity @Table(name = "distribution_list")
 @Getter @Setter @NoArgsConstructor
 public class DistributionList {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    /**
+     * Application-generated string id (e.g. `"dl-<timestamp>-<rand>"`).
+     * Intentionally NOT `@GeneratedValue` — the frontend generates the id
+     * on create so optimistic UI / offline flows work without a DB round-trip.
+     */
+    @Id
+    @Column(name = "distribution_list_id", nullable = false, length = 64)
+    private String distributionListId;
 
     @Column(nullable = false, length = 150)
     private String name;
@@ -109,10 +115,10 @@ public class DistributionList {
     private boolean active = true;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt = Instant.now();
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt = Instant.now();
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
     /**
      * Verbatim textarea content the user pasted. SINGLE source of truth for
@@ -125,14 +131,14 @@ public class DistributionList {
 
     /**
      * Snapshot of every directory user the owner shared this DL with.
-     * Stored as full rows (id, elid, lanid, name, emailid, department) so the
-     * UI never has to round-trip back to AD for rendering, and so audit history
-     * survives if the user is later removed from the directory.
+     * Stored as full rows (user_id, elid, lanid, name, emailid, department)
+     * so the UI never has to round-trip back to AD for rendering, and so
+     * audit history survives if the user is later removed from the directory.
      */
     @OneToMany(mappedBy = "distributionList", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<DistributionListShare> sharedWith = new ArrayList<>();
 
-    @PreUpdate void touch() { this.updatedAt = Instant.now(); }
+    @PreUpdate void touch() { this.updatedAt = LocalDateTime.now(); }
 
     public enum Visibility { PRIVATE, SHARED, PUBLIC }
 }
@@ -143,7 +149,7 @@ public class DistributionList {
 public class DistributionListShare {
     @Id
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "dl_id", nullable = false)
+    @JoinColumn(name = "distribution_list_id", nullable = false)
     private DistributionList distributionList;
 
     @Id
@@ -158,7 +164,7 @@ public class DistributionListShare {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class PK implements Serializable {
-        private UUID distributionList;
+        private String distributionList;    // matches DistributionList#distributionListId
         private String userId;
     }
 }
