@@ -4186,13 +4186,13 @@ const RunTemplates = () => {
               <div className="bg-muted/50 rounded-lg p-3 border space-y-1">
                 <div className="text-xs">
                   <span className="text-muted-foreground font-medium">To: </span>
-                  {toUsers.length > 0 ? toUsers.map(u => u.email).join(', ') : '(No recipients)'}
+                  {toUsers.length > 0 ? toUsers.map(u => u.kind === "DL" ? `${u.name} (${u.memberCount ?? 0})` : u.email).join(', ') : '(No recipients)'}
                 </div>
                 {ccUsers.length > 0 && (
-                  <div className="text-xs"><span className="text-muted-foreground font-medium">CC: </span>{ccUsers.map(u => u.email).join(', ')}</div>
+                  <div className="text-xs"><span className="text-muted-foreground font-medium">CC: </span>{ccUsers.map(u => u.kind === "DL" ? `${u.name} (${u.memberCount ?? 0})` : u.email).join(', ')}</div>
                 )}
                 {bccUsers.length > 0 && (
-                  <div className="text-xs"><span className="text-muted-foreground font-medium">BCC: </span>{bccUsers.map(u => u.email).join(', ')}</div>
+                  <div className="text-xs"><span className="text-muted-foreground font-medium">BCC: </span>{bccUsers.map(u => u.kind === "DL" ? `${u.name} (${u.memberCount ?? 0})` : u.email).join(', ')}</div>
                 )}
               </div>
             </div>
