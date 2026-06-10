@@ -14,16 +14,33 @@ export interface DLMember {
   displayName?: string;
 }
 
+/**
+ * Rich shared-user record persisted on a DL when visibility = SHARED.
+ * We snapshot the full directory record (not just the id) so the UI can
+ * render names/emails without an extra round-trip and so audit history
+ * survives even if the user is later removed from the org directory.
+ */
+export interface SharedUserRef {
+  id: string;          // internal user id
+  elid?: string;       // enterprise id (e.g. AD upn / employee login id)
+  lanid?: string;      // LAN / network id
+  name: string;
+  emailid: string;     // canonical email
+  department?: string;
+}
+
 export interface DistributionList {
   id: string;
-  prefix: string;             // "DSPCH-"
-  name: string;               // "TeamAlpha"
-  displayName: string;        // "DSPCH-TeamAlpha"
+  prefix: string;
+  name: string;
+  displayName: string;
   description?: string;
   visibility: DLVisibility;
   ownerId: string;
+  /** Raw textarea string the user pasted (kept verbatim for audit/round-trip). */
+  membersRaw?: string;
   members: DLMember[];
-  sharedWith: string[];
+  sharedWith: SharedUserRef[];
   createdAt: string;
   updatedAt: string;
 }
