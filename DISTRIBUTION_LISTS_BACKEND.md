@@ -62,14 +62,17 @@ CREATE INDEX ix_dl_active    ON dbo.distribution_list(is_active) INCLUDE (owner_
 -- from AD/SCIM, so audit history stays intact.
 -- =============================================================
 CREATE TABLE dbo.distribution_list_share (
-    distribution_list_id  UNIQUEIDENTIFIER NOT NULL,    -- FK → distribution_list.distribution_list_id (UUID column)
-    user_id               NVARCHAR(100)    NOT NULL,   -- internal directory id
-    elid                  NVARCHAR(50)     NULL,       -- enterprise / employee id
-    lanid                 NVARCHAR(50)     NULL,       -- LAN / network id
-    name                  NVARCHAR(150)    NOT NULL,
-    emailid               NVARCHAR(255)    NOT NULL,
-    department            NVARCHAR(150)    NULL,
-    CONSTRAINT pk_dls PRIMARY KEY (distribution_list_id, user_id),
+    distribution_list_share_id  UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dls PRIMARY KEY DEFAULT NEWID(),
+                                                                    -- Surrogate PK. DB type UNIQUEIDENTIFIER (UUID);
+                                                                    -- JPA maps to `String` via @GenericGenerator("uuid2").
+    distribution_list_id        UNIQUEIDENTIFIER NOT NULL,          -- FK → distribution_list.distribution_list_id (UUID column)
+    user_id                     NVARCHAR(100)    NOT NULL,          -- internal directory id
+    elid                        NVARCHAR(50)     NULL,              -- enterprise / employee id
+    lanid                       NVARCHAR(50)     NULL,              -- LAN / network id
+    name                        NVARCHAR(150)    NOT NULL,
+    emailid                     NVARCHAR(255)    NOT NULL,
+    department                  NVARCHAR(150)    NULL,
+    CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one share row per (DL, user)
     CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
         REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
 );
