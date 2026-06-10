@@ -342,13 +342,13 @@ export default function DistributionLists() {
                 onChange={(e) => setEmailInput(e.target.value)}
                 onBlur={() => emailInput && addEmails(emailInput)}
                 placeholder={
-                  "Paste or type email addresses separated by commas, semicolons, spaces, or new lines.\n" +
-                  "e.g. alice@company.com, bob@company.com; carol@company.com"
+                  "Paste or type email addresses separated by commas, colons, semicolons, spaces, or new lines.\n" +
+                  "e.g. alice@company.com, bob@company.com; carol@company.com : dan@company.com"
                 }
                 rows={4}
               />
               <span className={styles.fieldHint}>
-                Emails are parsed when you click outside the box. Invalid entries are ignored.
+                Accepts <code>, ; : space newline</code> as separators. Parsed on blur — invalid entries are ignored.
               </span>
               <div className={styles.memberChips}>
                 {draft.members.map((m) => (
