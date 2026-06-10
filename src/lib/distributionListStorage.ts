@@ -171,37 +171,42 @@ export interface DLUpsertInput {
   prefix?: string;
   description?: string;
   visibility: DLVisibility;
-  members: DLMember[];
-  membersRaw?: string;
+  /**
+   * Verbatim textarea content — the ONLY persisted source of members.
+   * Server / storage layer parses this via `parseMembersRaw()`; there is
+   * no separate normalised member table.
+   */
+  membersRaw: string;
   sharedWith?: SharedUserRef[];
 }
 
-function validate(input: DLUpsertInput): string | null {
+function validate(input: DLUpsertInput): { error: string | null; members: DLMember[] } {
   const name = input.name.trim();
-  if (!name) return "Name is required.";
+  if (!name) return { error: "Name is required.", members: [] };
   if (!/^[A-Za-z0-9]+$/.test(name)) {
-    return "Name can only contain letters and numbers — no spaces or special characters.";
+    return {
+      error: "Name can only contain letters and numbers — no spaces or special characters.",
+      members: [],
+    };
   }
-  if (input.members.length === 0) return "At least one member email is required.";
+  const members = parseMembersRaw(input.membersRaw);
+  if (members.length === 0) {
+    return { error: "At least one valid member email is required.", members };
+  }
   const prefix = input.prefix ?? DEFAULT_PREFIX;
   if (RESERVED_PREFIXES.some((p) => prefix.toUpperCase().startsWith(p))) {
-    return `Prefix '${prefix}' is reserved.`;
-  }
-  for (const m of input.members) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.email)) {
-      return `Invalid email: ${m.email}`;
-    }
+    return { error: `Prefix '${prefix}' is reserved.`, members };
   }
   if (input.visibility === "SHARED" && (!input.sharedWith || input.sharedWith.length === 0)) {
-    return "SHARED visibility requires at least one shared user.";
+    return { error: "SHARED visibility requires at least one shared user.", members };
   }
-  return null;
+  return { error: null, members };
 }
 
 
 export function createDistributionList(input: DLUpsertInput): DistributionList {
-  const err = validate(input);
-  if (err) throw new Error(err);
+  const { error, members } = validate(input);
+  if (error) throw new Error(error);
 
   const all = readAll();
   const dupe = all.find(
@@ -220,8 +225,8 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
     description: input.description?.trim() || undefined,
     visibility: input.visibility,
     ownerId: CURRENT_USER,
-    members: input.members.map((m) => ({ email: m.email.toLowerCase().trim(), displayName: m.displayName })),
     membersRaw: input.membersRaw,
+    members,
     sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
     createdAt: now,
     updatedAt: now,
