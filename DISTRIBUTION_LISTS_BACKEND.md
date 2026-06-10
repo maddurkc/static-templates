@@ -1134,12 +1134,12 @@ class RecipientSearchControllerTest {
 
 ---
 
-## 12. User Directory Search for SHARED Picker
+## 12. User Directory Search for Managers Picker
 
-When a user creates/edits a DL with `visibility = SHARED`, the UI shows a
-second autocomplete to select **which org users** can see and use this DL.
-The picker calls a dedicated endpoint that only returns directory users
-(never DLs) and is scoped by AD/SSO membership.
+v2: A DL can optionally have **managers** — users (besides the owner)
+authorised to edit / delete it. The picker is available on **any** DL
+(public or private). It calls a dedicated endpoint that only returns
+directory users (never DLs) and is scoped by AD/SSO membership.
 
 ### Endpoint
 ```
@@ -1193,10 +1193,10 @@ public record DirectoryUserDto(
 ) {}
 ```
 
-### How `sharedWith` Is Persisted
+### How `managers` Is Persisted
 1. Frontend sends the **full directory snapshot** for each selected user:
    ```jsonc
-   "sharedWith": [
+   "managers": [
      { "id": "u-12", "elid": "E10042", "lanid": "jsmith",
        "name": "Jane Smith", "emailid": "jane.smith@company.com",
        "department": "Design" }
@@ -1205,23 +1205,24 @@ public record DirectoryUserDto(
 2. `DistributionListService.applyUpsert` clears all `distribution_list_share`
    rows for that `dl_id` and re-inserts the new set (collection-sync pattern,
    orphanRemoval handles deletes).
-3. Reads return the same `SharedUserDto` rows in `DistributionListDto.sharedWith`
+3. Reads return the same `SharedUserDto` rows in `DistributionListDto.managers`
    so the UI can render names/elids/lanids without an extra directory call.
-4. Visibility checks (`findVisibleTo`, `requireReadAccess`, `RecipientResolverService.hasAccess`)
-   match against `distribution_list_share.user_id`.
+4. Visibility / management checks (`findVisibleTo`, `requireReadAccess`,
+   `requireManage`, `RecipientResolverService.hasAccess`) match against
+   `distribution_list_share.user_id`.
 
 ### Validation Rules (server)
 | Rule | Code | Status |
 |------|------|--------|
-| `visibility = SHARED` requires non-empty `sharedWith` | `DistributionListService.validate` | 400 |
-| Each `sharedWith[].id` must exist in the user directory | `UserDirectoryService.assertExists(ids)` | 400 |
-| `sharedWith[].emailid` and `name` are required (NVARCHAR NOT NULL) | DB + DTO `@NotBlank` | 400 |
-| Owner is implicit — do **not** include `ownerId` in `sharedWith` | filter on save (skipped silently) | — |
+| Managers are optional on any visibility (PUBLIC or PRIVATE) | — | — |
+| Each `managers[].id` must exist in the user directory | `UserDirectoryService.assertExists(ids)` | 400 |
+| `managers[].emailid` and `name` are required (NVARCHAR NOT NULL) | DB + DTO `@NotBlank` | 400 |
+| Owner is implicit — do **not** include `ownerId` in `managers` | filter on save (skipped silently) | — |
 
 ### Frontend Files
 - `src/pages/SharedUserPicker.tsx` — autocomplete (org users only). Renders LANID badge + ELID/department in subtitle.
 - `src/lib/distributionListStorage.ts` — `DirectoryUser` / `SharedUserRef` types, `searchUsers()`, `toSharedRef()`, `fromSharedRef()` (swap with `fetch('/api/users/search?...')` for real backend).
-- `src/pages/DistributionLists.tsx` — renders the picker only when `visibility === 'SHARED'`, converts picker rows to `SharedUserRef[]` on save, and disables Save until at least one user is selected.
+- `src/pages/DistributionLists.tsx` — renders the picker **always** (independent of visibility); converts picker rows to `SharedUserRef[]` on save.
 
 ---
 
@@ -1233,25 +1234,27 @@ The `prefix` field is **server-controlled and readonly** in the UI. It is shown 
 ### Name Input Sanitisation
 The frontend enforces alphanumeric-only in real time (`/[^A-Za-z0-9]/g` stripped on every keystroke). The backend `@Pattern` validation acts as the authoritative guard.
 
-### Members Bulk Import (textarea, free-form, no member table)
-The Members field is a **`<textarea>`** bound directly to a single string. There
-is **no separate `distribution_list_member` table** — `distribution_list.members_raw`
-(NVARCHAR(MAX)) is the sole source of truth.
+### Recipients Bulk Import — three buckets (no member table)
+v2: The dialog renders **three** `<textarea>`s — **To / CC / BCC** — each
+bound to its own verbatim string. There is **no separate
+`distribution_list_member` table** — the columns
+`distribution_list.to_raw / cc_raw / bcc_raw` (NVARCHAR(MAX)) are the sole
+source of truth.
 
-1. The user pastes any list of email addresses separated by **any combination of `, ; : space newline`**.
-2. Frontend sends exactly **one field** to the backend: `membersRaw` (the verbatim string). No `members` array, no `MemberDto` list.
+1. The user pastes any list of email addresses separated by **any combination of `, ; : space newline`** in any bucket.
+2. Frontend sends exactly three fields to the backend: `toRaw`, `ccRaw`, `bccRaw` (verbatim strings). No `members` array.
 3. Both sides parse on read with the same logic (`parseMembersRaw()` in TS / `DistributionListService.parseMembers()` in Java): split on `[,;:\s\n]+`, lowercase, trim, drop tokens that fail a basic email regex, dedupe.
-4. The chip list under the textarea is a **live preview** of that parse — useful for spotting typos. Removing a chip strips the matching token (and its trailing separator) from `membersRaw`.
-5. The DTO returned to clients includes a derived `memberEmails: string[]` and `memberCount: int` for convenience, but the database row only stores `members_raw`.
+4. The chip list under each textarea is a **live preview** of that parse. Removing a chip strips the matching token from the corresponding raw blob.
+5. The DTO returned to clients includes derived `toEmails / ccEmails / bccEmails` arrays and a combined `memberCount`, but the database row only stores the three raw blobs.
 
-### Shared Users Picker (autocomplete, rich snapshot)
-When `visibility === 'SHARED'`, the dialog renders `SharedUserPicker`, an autocomplete that queries `GET /api/users/search?q=...`. The frontend stores the **full directory record** for each selection (`id`, `elid`, `lanid`, `name`, `emailid`, `department`) — never just the id — and sends that as `sharedWith: SharedUserDto[]` on save. See §12 for the persistence flow.
+### Managers Picker (autocomplete, rich snapshot)
+The dialog always renders `SharedUserPicker` (independent of visibility). The frontend stores the **full directory record** for each selection (`id`, `elid`, `lanid`, `name`, `emailid`, `department`) — never just the id — and sends that as `managers: SharedUserDto[]` on save. See §12 for the persistence flow.
 
 ### Save Button Guard (frontend)
 The **Create / Save** button is disabled until:
 - `name` is non-empty, alphanumeric, and unique per owner
-- `parseMembersRaw(membersRaw)` returns ≥1 valid email
-- `visibility === 'SHARED'` ⇒ `sharedWith` has ≥1 selected user
+- The combined `parseMembersRaw(toRaw|ccRaw|bccRaw)` returns ≥1 valid email
+
 
 This mirrors the server-side validation rules in §9.
 
