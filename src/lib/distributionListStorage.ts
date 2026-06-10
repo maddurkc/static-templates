@@ -16,14 +16,19 @@ export interface DLMember {
 
 /**
  * Rich shared-user record persisted on a DL when visibility = SHARED.
- * Mirrors the `distribution_list_share` row (user_id PK + snapshot columns).
+ * Mirrors a `distribution_list_share` row.
+ *
+ * `distributionListShareId` is the surrogate PK (UUID column, mapped to
+ * `String` in JPA — server-generated). It is `undefined` on rows the user
+ * has just added in the dialog and not yet persisted.
  */
 export interface SharedUserRef {
-  userId: string;      // internal user id (== user_id column / SharedUserDto.userId)
-  elid?: string;       // enterprise id (e.g. AD upn / employee login id)
-  lanid?: string;      // LAN / network id
+  distributionListShareId?: string; // surrogate PK; undefined until server-assigned
+  userId: string;                   // internal user id (unique per DL)
+  elid?: string;                    // enterprise id (e.g. AD upn / employee login id)
+  lanid?: string;                   // LAN / network id
   name: string;
-  emailid: string;     // canonical email
+  emailid: string;                  // canonical email
   department?: string;
 }
 
