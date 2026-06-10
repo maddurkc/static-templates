@@ -141,7 +141,8 @@ export interface DLUpsertInput {
   description?: string;
   visibility: DLVisibility;
   members: DLMember[];
-  sharedWith?: string[];
+  membersRaw?: string;
+  sharedWith?: SharedUserRef[];
 }
 
 function validate(input: DLUpsertInput): string | null {
