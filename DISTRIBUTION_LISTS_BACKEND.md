@@ -38,6 +38,11 @@ CREATE TABLE dbo.distribution_list (
     owner_id      NVARCHAR(100)    NOT NULL,                       -- AD/SSO user id of creator
     visibility    NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_vis DEFAULT 'PRIVATE',
                                                                     -- PRIVATE | SHARED | PUBLIC
+    -- Verbatim textarea blob the user pasted. SINGLE source of truth for members —
+    -- there is intentionally NO separate `distribution_list_member` table. The app
+    -- parses this string on read via `parseMembersRaw()` (frontend) / the matching
+    -- service helper (backend) using separators: , ; : space newline.
+    members_raw   NVARCHAR(MAX)    NULL,
     is_active     BIT              NOT NULL CONSTRAINT df_dl_act DEFAULT 1,
     created_at    DATETIME2        NOT NULL CONSTRAINT df_dl_cat DEFAULT SYSUTCDATETIME(),
     updated_at    DATETIME2        NOT NULL CONSTRAINT df_dl_uat DEFAULT SYSUTCDATETIME(),
@@ -47,21 +52,6 @@ CREATE TABLE dbo.distribution_list (
 
 CREATE INDEX ix_dl_name      ON dbo.distribution_list(name);
 CREATE INDEX ix_dl_active    ON dbo.distribution_list(is_active) INCLUDE (owner_id, visibility);
-
-CREATE TABLE dbo.distribution_list_member (
-    id            UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dlm PRIMARY KEY DEFAULT NEWID(),
-    dl_id         UNIQUEIDENTIFIER NOT NULL,
-    email         NVARCHAR(255)    NOT NULL,
-    display_name  NVARCHAR(150)    NULL,
-    CONSTRAINT fk_dlm_dl FOREIGN KEY (dl_id) REFERENCES dbo.distribution_list(id) ON DELETE CASCADE,
-    CONSTRAINT uq_dlm_email UNIQUE (dl_id, email)
-);
-
-CREATE INDEX ix_dlm_email ON dbo.distribution_list_member(email);
-CREATE INDEX ix_dlm_dl    ON dbo.distribution_list_member(dl_id);
-
--- Raw textarea blob (verbatim list the user pasted). Optional, audit/round-trip only.
-ALTER TABLE dbo.distribution_list ADD members_raw NVARCHAR(MAX) NULL;
 
 -- =============================================================
 -- SHARED visibility: snapshot the FULL directory record for every
