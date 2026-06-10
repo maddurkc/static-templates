@@ -61,6 +61,7 @@ export default function DistributionLists() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
   const [emailInput, setEmailInput] = useState("");
+  const [sharedUsers, setSharedUsers] = useState<DirectoryUser[]>([]);
 
   const refresh = () => setLists(listDistributionLists());
 
