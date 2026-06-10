@@ -359,6 +359,7 @@ export default function DistributionLists() {
               onClick={save}
               disabled={
                 !draft.name.trim() ||
+                parsedMembers.length === 0 ||
                 lists.some(
                   (l) =>
                     l.id !== draft.id &&
