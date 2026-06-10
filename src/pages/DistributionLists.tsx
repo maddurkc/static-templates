@@ -324,22 +324,22 @@ export default function DistributionLists() {
             )}
 
             <div className={styles.field}>
-              <Label>Members ({draft.members.length})</Label>
+              <Label>Members ({parsedMembers.length})</Label>
               <Textarea
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                onBlur={() => emailInput && addEmails(emailInput)}
+                value={draft.membersRaw}
+                onChange={(e) => setDraft({ ...draft, membersRaw: e.target.value })}
                 placeholder={
                   "Paste or type email addresses separated by commas, colons, semicolons, spaces, or new lines.\n" +
                   "e.g. alice@company.com, bob@company.com; carol@company.com : dan@company.com"
                 }
-                rows={4}
+                rows={5}
               />
               <span className={styles.fieldHint}>
-                Accepts <code>, ; : space newline</code> as separators. Parsed on blur — invalid entries are ignored.
+                Stored verbatim as a single text blob. Accepts <code>, ; : space newline</code> as separators —
+                invalid entries are ignored in the chip preview below.
               </span>
               <div className={styles.memberChips}>
-                {draft.members.map((m) => (
+                {parsedMembers.map((m) => (
                   <span key={m.email} className={styles.memberChip}>
                     {m.email}
                     <button onClick={() => removeMember(m.email)} aria-label={`Remove ${m.email}`}>
