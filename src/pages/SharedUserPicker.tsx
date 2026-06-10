@@ -125,12 +125,6 @@ export const SharedUserPicker: React.FC<Props> = ({
         </div>
       )}
 
-      {selected.length === 0 && (
-        <div className={styles.shareInlineError}>
-          <AlertCircle size={14} />
-          <span>Select at least one user — only they will see this list in Run Templates.</span>
-        </div>
-      )}
     </div>
   );
 };
