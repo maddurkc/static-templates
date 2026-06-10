@@ -23,7 +23,7 @@ Display convention: every DL is shown with a configurable prefix (default **`DSP
 
 ## ⚠️ v2 Refactor (canonical — overrides any conflicting detail below)
 
-The following changes are **authoritative**. Where the rest of this document still references the v1 model (single `members_raw` blob, `SHARED` visibility, "shared viewers"), interpret it through the v2 lens below.
+The following changes are **authoritative**. The legacy sections below (DDL, entity, DTOs, service, repository, validation table, §12 picker, §13 contract notes, §14 frontend types, §15 paged query) have been **merged inline** to match v2 — no `members_raw`, no `SHARED` visibility, no "shared viewers" remain in code blocks. References to v1 still appear only in this banner and in the §16 history note for context.
 
 ### 1. Visibility is binary
 | Visibility | Visible to |
