@@ -327,16 +327,6 @@ export default function DistributionLists() {
                   selected={sharedUsers}
                   onChange={setSharedUsers}
                 />
-                {sharedUsers.length === 0 ? (
-                  <span className={styles.fieldError}>
-                    Select at least one user — only they will see this list in Run Templates.
-                  </span>
-                ) : (
-                  <span className={styles.fieldHint}>
-                    {sharedUsers.length} user{sharedUsers.length === 1 ? "" : "s"} will be able to
-                    pick this DL in To / CC / BCC.
-                  </span>
-                )}
               </div>
             )}
 
@@ -374,7 +364,15 @@ export default function DistributionLists() {
             </Button>
             <Button
               onClick={save}
-              disabled={draft.visibility === "SHARED" && sharedUsers.length === 0}
+              disabled={
+                !draft.name.trim() ||
+                lists.some(
+                  (l) =>
+                    l.id !== draft.id &&
+                    l.name.toLowerCase() === draft.name.trim().toLowerCase(),
+                ) ||
+                (draft.visibility === "SHARED" && sharedUsers.length === 0)
+              }
             >
               {draft.id ? "Save Changes" : "Create"}
             </Button>

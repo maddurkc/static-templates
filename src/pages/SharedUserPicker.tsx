@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { X, UserPlus } from "lucide-react";
+import { X, UserPlus, AlertCircle } from "lucide-react";
 import {
   searchUsers,
   type DirectoryUser,
@@ -118,6 +118,13 @@ export const SharedUserPicker: React.FC<Props> = ({
               </button>
             </span>
           ))}
+        </div>
+      )}
+
+      {selected.length === 0 && (
+        <div className={styles.shareInlineError}>
+          <AlertCircle size={14} />
+          <span>Select at least one user — only they will see this list in Run Templates.</span>
         </div>
       )}
     </div>
