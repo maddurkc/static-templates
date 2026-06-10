@@ -552,7 +552,7 @@ The `/api/templates/{id}/send` payload now accepts **mixed** recipients:
   "subjectContent": "...",
   "bodyContent":    "...",
   "to":  [ { "type": "USER", "email": "john@x.com" },
-           { "type": "DL",   "id":    "5c9e...-uuid" } ],
+           { "type": "DL",   "id":    "dl-1717999999999-a8b3c2" } ],
   "cc":  [ ... ],
   "bcc": [ ... ],
   "subjectData":          { ... },
