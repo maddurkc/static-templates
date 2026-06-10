@@ -69,6 +69,31 @@ const CURRENT_USER = "me";   // demo placeholder
 
 /* ---------- low-level persistence ---------- */
 
+/**
+ * Parse the free-form textarea string into a deduped, validated email list.
+ * Accepts `, ; : space newline` (any combination) as separators. Invalid
+ * tokens are silently dropped.
+ */
+export function parseMembersRaw(raw: string | undefined | null): DLMember[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const out: DLMember[] = [];
+  for (const tok of raw.split(/[,;:\s\n]+/)) {
+    const e = tok.trim().toLowerCase();
+    if (!e) continue;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) continue;
+    if (seen.has(e)) continue;
+    seen.add(e);
+    out.push({ email: e });
+  }
+  return out;
+}
+
+/** Hydrate a stored row → runtime shape (derives `members` from `membersRaw`). */
+function hydrate(row: Omit<DistributionList, "members">): DistributionList {
+  return { ...row, members: parseMembersRaw(row.membersRaw) };
+}
+
 function readAll(): DistributionList[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -77,18 +102,23 @@ function readAll(): DistributionList[] {
       writeAll(seeded);
       return seeded;
     }
-    return JSON.parse(raw) as DistributionList[];
+    const stored = JSON.parse(raw) as Omit<DistributionList, "members">[];
+    return stored.map(hydrate);
   } catch {
     return [];
   }
 }
 
 function writeAll(lists: DistributionList[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(lists));
+  // Strip the derived `members` field — `membersRaw` is the source of truth.
+  const stripped = lists.map(({ members, ...rest }) => rest);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(stripped));
 }
 
 function seedDemoLists(): DistributionList[] {
   const now = new Date().toISOString();
+  const eng = "john.doe@company.com, jane.smith@company.com, mike.brown@company.com, emma.taylor@company.com";
+  const ir  = "bob.wilson@company.com; alice.johnson@company.com; sarah.davis@company.com";
   return [
     {
       id: "dl-demo-eng",
@@ -98,12 +128,8 @@ function seedDemoLists(): DistributionList[] {
       description: "Core engineering distribution",
       visibility: "SHARED",
       ownerId: CURRENT_USER,
-      members: [
-        { email: "john.doe@company.com", displayName: "John Doe" },
-        { email: "jane.smith@company.com", displayName: "Jane Smith" },
-        { email: "mike.brown@company.com", displayName: "Mike Brown" },
-        { email: "emma.taylor@company.com", displayName: "Emma Taylor" },
-      ],
+      membersRaw: eng,
+      members: parseMembersRaw(eng),
       sharedWith: [],
       createdAt: now,
       updatedAt: now,
@@ -116,11 +142,8 @@ function seedDemoLists(): DistributionList[] {
       description: "On-call incident responders",
       visibility: "PRIVATE",
       ownerId: CURRENT_USER,
-      members: [
-        { email: "bob.wilson@company.com", displayName: "Bob Wilson" },
-        { email: "alice.johnson@company.com", displayName: "Alice Johnson" },
-        { email: "sarah.davis@company.com", displayName: "Sarah Davis" },
-      ],
+      membersRaw: ir,
+      members: parseMembersRaw(ir),
       sharedWith: [],
       createdAt: now,
       updatedAt: now,
