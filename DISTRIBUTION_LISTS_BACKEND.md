@@ -239,7 +239,7 @@ public record RecipientRefDto(
 ## 4. Repositories, Service, Controller (CRUD)
 
 ```java
-public interface DistributionListRepository extends JpaRepository<DistributionList, UUID> {
+public interface DistributionListRepository extends JpaRepository<DistributionList, String> {
 
     @Query("""
         select dl from DistributionList dl
@@ -260,7 +260,8 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
     @Query(value = """
         SELECT DISTINCT TOP (:lim) dl.*
         FROM distribution_list dl
-        LEFT JOIN distribution_list_share s ON s.dl_id = dl.id
+        LEFT JOIN distribution_list_share s
+          ON s.distribution_list_id = dl.distribution_list_id
         WHERE dl.is_active = 1
           AND (dl.owner_id = :uid OR dl.visibility = 'PUBLIC' OR s.user_id = :uid)
           AND ( LOWER(dl.prefix + dl.name)   LIKE :q
@@ -288,8 +289,8 @@ public class DistributionListService {
     }
 
     @Transactional(readOnly = true)
-    public DistributionListDto get(UUID id) {
-        var dl = repo.findById(id).orElseThrow(() -> new NotFoundException("DL not found"));
+    public DistributionListDto get(String distributionListId) {
+        var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
         requireReadAccess(dl);
         return toDto(dl);
     }
@@ -297,22 +298,25 @@ public class DistributionListService {
     @Transactional
     public DistributionListDto create(DistributionListUpsertDto in) {
         var dl = new DistributionList();
+        // Application-generated id (matches frontend `dl-<ts>-<rand>` pattern).
+        dl.setDistributionListId("dl-" + System.currentTimeMillis() + "-"
+            + Long.toString((long)(Math.random() * 0xffffff), 36));
         dl.setOwnerId(currentUser.id());
         applyUpsert(dl, in);
         return toDto(repo.save(dl));
     }
 
     @Transactional
-    public DistributionListDto update(UUID id, DistributionListUpsertDto in) {
-        var dl = repo.findById(id).orElseThrow(() -> new NotFoundException("DL not found"));
+    public DistributionListDto update(String distributionListId, DistributionListUpsertDto in) {
+        var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
         requireOwner(dl);
         applyUpsert(dl, in);
         return toDto(repo.save(dl));
     }
 
     @Transactional
-    public void delete(UUID id) {
-        var dl = repo.findById(id).orElseThrow(() -> new NotFoundException("DL not found"));
+    public void delete(String distributionListId) {
+        var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
         requireOwner(dl);
         dl.setActive(false);                 // soft delete preserves audit trail of past sends
         repo.save(dl);
@@ -338,10 +342,10 @@ public class DistributionListService {
         if (in.visibility() == Visibility.SHARED && in.sharedWith() != null) {
             String ownerId = dl.getOwnerId();
             for (SharedUserDto s : in.sharedWith()) {
-                if (s.id() == null || s.id().equals(ownerId)) continue;  // owner is implicit
+                if (s.userId() == null || s.userId().equals(ownerId)) continue;  // owner is implicit
                 var row = new DistributionListShare();
                 row.setDistributionList(dl);
-                row.setUserId(s.id());
+                row.setUserId(s.userId());
                 row.setElid(s.elid());
                 row.setLanid(s.lanid());
                 row.setName(s.name());
@@ -370,7 +374,7 @@ public class DistributionListService {
     private DistributionListDto toDto(DistributionList dl) {
         List<String> emails = parseMembers(dl.getMembersRaw());
         return new DistributionListDto(
-            dl.getId(), dl.getPrefix(), dl.getName(),
+            dl.getDistributionListId(), dl.getPrefix(), dl.getName(),
             dl.getPrefix() + dl.getName(),
             dl.getDescription(), dl.getVisibility().name(), dl.getOwnerId(),
             emails.size(),
@@ -380,7 +384,9 @@ public class DistributionListService {
                 .map(s -> new SharedUserDto(
                     s.getUserId(), s.getElid(), s.getLanid(),
                     s.getName(), s.getEmailid(), s.getDepartment()))
-                .toList()
+                .toList(),
+            dl.getCreatedAt(),
+            dl.getUpdatedAt()
         );
     }
 
@@ -404,11 +410,12 @@ public class DistributionListService {
 public class DistributionListController {
     private final DistributionListService service;
 
-    @GetMapping                          public List<DistributionListDto>  list()                                      { return service.listMine(); }
-    @GetMapping("/{id}")                 public DistributionListDto         get(@PathVariable UUID id)                  { return service.get(id); }
-    @PostMapping                         public DistributionListDto         create(@Valid @RequestBody DistributionListUpsertDto in) { return service.create(in); }
-    @PutMapping("/{id}")                 public DistributionListDto         update(@PathVariable UUID id, @Valid @RequestBody DistributionListUpsertDto in) { return service.update(id, in); }
-    @DeleteMapping("/{id}")              public void                        delete(@PathVariable UUID id)               { service.delete(id); }
+    @GetMapping                          public List<DistributionListDto>  list()                                                              { return service.listMine(); }
+    @GetMapping("/{distributionListId}") public DistributionListDto         get(@PathVariable String distributionListId)                       { return service.get(distributionListId); }
+    @PostMapping                         public DistributionListDto         create(@Valid @RequestBody DistributionListUpsertDto in)           { return service.create(in); }
+    @PutMapping("/{distributionListId}") public DistributionListDto         update(@PathVariable String distributionListId,
+                                                                                   @Valid @RequestBody DistributionListUpsertDto in)          { return service.update(distributionListId, in); }
+    @DeleteMapping("/{distributionListId}") public void                     delete(@PathVariable String distributionListId)                    { service.delete(distributionListId); }
 }
 ```
 
