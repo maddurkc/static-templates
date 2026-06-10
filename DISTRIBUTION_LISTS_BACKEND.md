@@ -242,17 +242,20 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
     """)
     List<DistributionList> findVisibleTo(@Param("uid") String userId);
 
-    /** Used by the unified search. LIKE pattern must be pre-wrapped with %...%. */
+    /**
+     * Used by the unified search. LIKE pattern must be pre-wrapped with %...%.
+     * Matches name / prefix+name OR a substring of the verbatim members_raw blob
+     * (since there is no per-member row to join on).
+     */
     @Query(value = """
         SELECT DISTINCT TOP (:lim) dl.*
         FROM distribution_list dl
-        LEFT JOIN distribution_list_member m ON m.dl_id = dl.id
-        LEFT JOIN distribution_list_share  s ON s.dl_id = dl.id
+        LEFT JOIN distribution_list_share s ON s.dl_id = dl.id
         WHERE dl.is_active = 1
           AND (dl.owner_id = :uid OR dl.visibility = 'PUBLIC' OR s.user_id = :uid)
-          AND ( LOWER(dl.prefix + dl.name) LIKE :q
-             OR LOWER(dl.name)             LIKE :q
-             OR LOWER(m.email)             LIKE :q )
+          AND ( LOWER(dl.prefix + dl.name)   LIKE :q
+             OR LOWER(dl.name)               LIKE :q
+             OR LOWER(dl.members_raw)        LIKE :q )
         ORDER BY dl.name
     """, nativeQuery = true)
     List<DistributionList> searchVisibleTo(@Param("uid") String userId,
