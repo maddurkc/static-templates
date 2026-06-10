@@ -199,6 +199,56 @@
   gap: 0.375rem;
 }
 
+.prefixedInput {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid hsl(var(--input));
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+
+  &:focus-within {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+.prefixAddon {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.625rem;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  border-right: 1px solid #e2e8f0;
+  user-select: none;
+}
+
+.prefixedInputControl {
+  flex: 1;
+  border: none !important;
+  border-radius: 0 !important;
+  height: 40px;
+
+  &:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    ring: 0 !important;
+  }
+}
+
+.fieldHint {
+  font-size: 0.6875rem;
+  color: #94a3b8;
+}
+
+.fieldError {
+  font-size: 0.6875rem;
+  color: #dc2626;
+}
+
+
 .previewBox {
   display: inline-flex;
   align-items: center;
