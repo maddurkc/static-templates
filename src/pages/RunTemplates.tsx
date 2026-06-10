@@ -1899,16 +1899,19 @@ const RunTemplates = () => {
         setEmailTitle(mergedTemplate.name);
         setExecutedOn(new Date().toLocaleString());
 
-        // Restore recipients
-        if (recipients.length) {
-          setToUsers(recipients.map((email: string) => ({ id: email, name: email, email })));
-        }
-        if (ccEmails.length) {
-          setCcUsers(ccEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
-        if (bccEmails.length) {
-          setBccUsers(bccEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
+        // Restore recipients — prefer mixed USER+DL refs (rehydrates DL chips with live membership);
+        // fall back to flat email arrays for legacy payloads.
+        const msgReq = rawData.messageDetails?.messageRequestData || {};
+        const toFromRefs  = refsToUsers(msgReq.toRefs);
+        const ccFromRefs  = refsToUsers(msgReq.ccRefs);
+        const bccFromRefs = refsToUsers(msgReq.bccRefs);
+        if (toFromRefs) setToUsers(toFromRefs);
+        else if (recipients.length) setToUsers(recipients.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+        if (ccFromRefs) setCcUsers(ccFromRefs);
+        else if (ccEmails.length) setCcUsers(ccEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+        if (bccFromRefs) setBccUsers(bccFromRefs);
+        else if (bccEmails.length) setBccUsers(bccEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+
 
         // Restore subject
         if (subject) {
@@ -2082,15 +2085,16 @@ const RunTemplates = () => {
         setEmailTitle(fallbackTemplate.name);
         setExecutedOn(new Date().toLocaleString());
 
-        if (data.toEmails?.length) {
-          setToUsers(data.toEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
-        if (data.ccEmails?.length) {
-          setCcUsers(data.ccEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
-        if (data.bccEmails?.length) {
-          setBccUsers(data.bccEmails.map((email: string) => ({ id: email, name: email, email })));
-        }
+        const legacyTo  = refsToUsers(data.toRefs);
+        const legacyCc  = refsToUsers(data.ccRefs);
+        const legacyBcc = refsToUsers(data.bccRefs);
+        if (legacyTo) setToUsers(legacyTo);
+        else if (data.toEmails?.length) setToUsers(data.toEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+        if (legacyCc) setCcUsers(legacyCc);
+        else if (data.ccEmails?.length) setCcUsers(data.ccEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+        if (legacyBcc) setBccUsers(legacyBcc);
+        else if (data.bccEmails?.length) setBccUsers(data.bccEmails.map((email: string) => ({ id: email, name: email, email, kind: "USER" })));
+
 
         if (data.subjectData && Object.keys(data.subjectData).length > 0) {
           const apiVarNames = new Set(
