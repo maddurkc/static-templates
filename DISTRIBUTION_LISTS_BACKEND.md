@@ -1678,3 +1678,48 @@ public record PagedResult<T>(
   });
   return apiFetch<PagedResult<DistributionList>>(`/api/distribution-lists?${params}`);
   ```
+
+---
+
+## 16. Distribution List Card UX — Details Drawer
+
+To keep the listing page scannable when DLs contain hundreds of recipients,
+the DL **card preview no longer renders any member emails**. Each card
+shows only:
+
+- Display name (`{prefix}{name}`) and visibility chip (Public / Private)
+- Optional description
+- Aggregate stats: `<total> members · To <n> / CC <n> / BCC <n>`
+- Managers badge (count only)
+- Edit / Delete action buttons
+
+### Interaction
+
+Clicking anywhere on the card body (or pressing `Enter` / `Space` while
+focused) opens a right-side **Details Drawer** (`Sheet` from
+`@/components/ui/sheet`) that renders the full DL detail set:
+
+- Header: name + visibility + `type` + `ownerLanid`
+- Description (if any)
+- Managers list (name, email, department)
+- **To** recipients — full list, scrollable
+- **CC** recipients — full list, scrollable
+- **BCC** recipients — full list, scrollable
+
+Edit / Delete buttons inside the card call `event.stopPropagation()` so
+that activating them does not also open the drawer.
+
+### Backend impact — none
+
+The drawer reads from the same `DistributionListDto` already returned by
+`GET /api/distribution-lists/{id}` and `GET /api/distribution-lists`
+(paged). No new endpoints, DTO fields, or repository methods are
+required — the change is purely a frontend rendering optimisation.
+
+### Frontend files touched
+
+| File | Change |
+|---|---|
+| `src/pages/DistributionLists.tsx` | Card is now a clickable `role="button"`; removed `<ul>` of member emails; added `Sheet`-based details drawer driven by `detailsDL` state. |
+| `src/pages/DistributionLists.module.scss` | Added `.detailsSheet`, `.detailsTitle`, `.detailsBody`, `.detailsSection`, `.detailsList`, `.detailsEmpty`; set `.card { cursor: pointer; }`. |
+
