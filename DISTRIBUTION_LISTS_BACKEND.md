@@ -469,6 +469,12 @@ public class DistributionListService {
 ```
 
 ```java
+// ===== imports =====
+import java.util.List;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
 @RestController
 @RequestMapping("/api/distribution-lists")
 @RequiredArgsConstructor
