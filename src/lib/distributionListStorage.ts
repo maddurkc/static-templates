@@ -236,8 +236,8 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
 }
 
 export function updateDistributionList(id: string, input: DLUpsertInput): DistributionList {
-  const err = validate(input);
-  if (err) throw new Error(err);
+  const { error, members } = validate(input);
+  if (error) throw new Error(error);
 
   const all = readAll();
   const idx = all.findIndex((d) => d.id === id);
@@ -259,8 +259,8 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
     displayName: `${prefix}${name}`,
     description: input.description?.trim() || undefined,
     visibility: input.visibility,
-    members: input.members.map((m) => ({ email: m.email.toLowerCase().trim(), displayName: m.displayName })),
     membersRaw: input.membersRaw,
+    members,
     sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
     updatedAt: new Date().toISOString(),
   };
