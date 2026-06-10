@@ -29,6 +29,13 @@ export interface SharedUserRef {
   department?: string;
 }
 
+/**
+ * The DL is persisted as a SINGLE row in `distribution_list`.
+ * Member emails live entirely in the `members_raw` NVARCHAR(MAX) column
+ * (verbatim free-form text the user pasted). The structured `members`
+ * array below is **derived** on read via `parseMembersRaw()` and is
+ * never written to storage / the DB.
+ */
 export interface DistributionList {
   id: string;
   prefix: string;
@@ -37,8 +44,9 @@ export interface DistributionList {
   description?: string;
   visibility: DLVisibility;
   ownerId: string;
-  /** Raw textarea string the user pasted (kept verbatim for audit/round-trip). */
-  membersRaw?: string;
+  /** Source of truth — the verbatim textarea string. */
+  membersRaw: string;
+  /** Derived from membersRaw on every read. Not persisted. */
   members: DLMember[];
   sharedWith: SharedUserRef[];
   createdAt: string;
