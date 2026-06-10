@@ -1634,8 +1634,8 @@ and dynamic pagination so the table scales beyond the default 10 cards.
 |-------|------|---------|----------------|-------|
 | `page`       | int    | `1`     | `>= 1`                          | 1-based page index |
 | `pageSize`   | int    | `10`    | `5, 10, 25, 50, 100`            | Validate server-side; clamp to `<= 100` |
-| `visibility` | string | `ALL`   | `ALL` \| `PUBLIC` \| `PRIVATE` \| `SHARED` | Additional filter applied **on top of** the §0 visibility predicate |
-| `search`     | string | `""`    | free-text                       | Matched against `displayName`, `name`, and `members_raw` (LIKE `%q%`) |
+| `visibility` | string | `ALL`   | `ALL` \| `PUBLIC` \| `PRIVATE`  | v2: `SHARED` removed. Filter applied **on top of** the §0 visibility predicate |
+| `search`     | string | `""`    | free-text                       | Matched against `displayName`, `name`, and `to_raw / cc_raw / bcc_raw` (LIKE `%q%`) |
 
 Response shape (matches the frontend `PagedResult<T>` type):
 
@@ -1665,9 +1665,12 @@ Response shape (matches the frontend `PagedResult<T>` type):
                       WHERE s.distributionListId = dl.distributionListId
                         AND s.userId = :uid) )
      AND ( :visibility = 'ALL' OR dl.visibility = :visibility )
-     AND ( :search = '' 
-           OR LOWER(dl.name)        LIKE LOWER(CONCAT('%', :search, '%'))
-           OR LOWER(dl.membersRaw)  LIKE LOWER(CONCAT('%', :search, '%')) )
+     AND ( :search = ''
+           OR LOWER(dl.name)    LIKE LOWER(CONCAT('%', :search, '%'))
+           OR LOWER(dl.toRaw)   LIKE LOWER(CONCAT('%', :search, '%'))
+           OR LOWER(dl.ccRaw)   LIKE LOWER(CONCAT('%', :search, '%'))
+           OR LOWER(dl.bccRaw)  LIKE LOWER(CONCAT('%', :search, '%')) )
+""")
 """)
 Page<DistributionListEntity> findVisibleToFiltered(
     @Param("uid")        String uid,
