@@ -23,7 +23,7 @@ Display convention: every DL is shown with a configurable prefix (default **`DSP
 
 ## ⚠️ v2 Refactor (canonical — overrides any conflicting detail below)
 
-The following changes are **authoritative**. Where the rest of this document still references the v1 model (single `members_raw` blob, `SHARED` visibility, "shared viewers"), interpret it through the v2 lens below.
+The following changes are **authoritative**. The legacy sections below (DDL, entity, DTOs, service, repository, validation table, §12 picker, §13 contract notes, §14 frontend types, §15 paged query) have been **merged inline** to match v2 — no `members_raw`, no `SHARED` visibility, no "shared viewers" remain in code blocks. References to v1 still appear only in this banner and in the §16 history note for context.
 
 ### 1. Visibility is binary
 | Visibility | Visible to |
@@ -129,47 +129,49 @@ ALTER TABLE dbo.distribution_list DROP COLUMN members_raw;
 
 CREATE TABLE dbo.distribution_list (
     distribution_list_id  UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dl PRIMARY KEY DEFAULT NEWID(),
-                                                                    -- DB column type is UNIQUEIDENTIFIER (UUID); the JPA
-                                                                    -- entity maps it to `String` via @GenericGenerator("uuid2").
+                                                                    -- JPA maps to `String` via @GenericGenerator("uuid2").
     name                  NVARCHAR(150)    NOT NULL,                -- "TeamAlpha" (no prefix)
     prefix                NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_prefix DEFAULT 'DSPCH-',
     description           NVARCHAR(500)    NULL,
-    owner_id              NVARCHAR(100)    NOT NULL,                -- AD/SSO user id of creator
+    owner_id              NVARCHAR(100)    NOT NULL,                -- AD enterprise id of creator
+    owner_lanid           NVARCHAR(50)     NULL,                    -- LAN id of creator (v2)
     visibility            NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_vis DEFAULT 'PRIVATE',
-                                                                    -- PRIVATE | SHARED | PUBLIC
-    -- Verbatim textarea blob the user pasted. SINGLE source of truth for members —
-    -- there is intentionally NO separate `distribution_list_member` table. The app
-    -- parses this string on read via `parseMembersRaw()` (frontend) / the matching
-    -- service helper (backend) using separators: , ; : space newline.
-    members_raw           NVARCHAR(MAX)    NULL,
+                                                                    -- v2: PRIVATE | PUBLIC (SHARED removed)
+    type                  NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_type DEFAULT 'CUSTOM',
+                                                                    -- v2: CUSTOM (reserved for future system DLs)
+    -- Verbatim textarea blobs — SINGLE source of truth for recipients.
+    -- Parsed on read via parseMembersRaw() using separators , ; : space newline.
+    to_raw                NVARCHAR(MAX)    NULL,
+    cc_raw                NVARCHAR(MAX)    NULL,
+    bcc_raw               NVARCHAR(MAX)    NULL,
     is_active             BIT              NOT NULL CONSTRAINT df_dl_act DEFAULT 1,
     created_at            DATETIME2        NOT NULL CONSTRAINT df_dl_cat DEFAULT SYSUTCDATETIME(),
     updated_at            DATETIME2        NOT NULL CONSTRAINT df_dl_uat DEFAULT SYSUTCDATETIME(),
     CONSTRAINT uq_dl_owner_name UNIQUE (owner_id, name),
-    CONSTRAINT ck_dl_visibility CHECK (visibility IN ('PRIVATE','SHARED','PUBLIC'))
+    CONSTRAINT ck_dl_visibility CHECK (visibility IN ('PRIVATE','PUBLIC')),
+    CONSTRAINT ck_dl_type       CHECK (type IN ('CUSTOM'))
 );
 
 CREATE INDEX ix_dl_name      ON dbo.distribution_list(name);
 CREATE INDEX ix_dl_active    ON dbo.distribution_list(is_active) INCLUDE (owner_id, visibility);
 
 -- =============================================================
--- SHARED visibility: snapshot the FULL directory record for every
--- shared user (user_id, elid, lanid, name, emailid, department).
+-- v2: distribution_list_share rows now represent MANAGERS — users
+-- (besides the owner) authorised to EDIT / DELETE the DL. Managers
+-- can be attached to any visibility (PUBLIC or PRIVATE).
 -- Snapshot semantics: rows survive even if a user is later removed
 -- from AD/SCIM, so audit history stays intact.
 -- =============================================================
 CREATE TABLE dbo.distribution_list_share (
     distribution_list_share_id  UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dls PRIMARY KEY DEFAULT NEWID(),
-                                                                    -- Surrogate PK. DB type UNIQUEIDENTIFIER (UUID);
-                                                                    -- JPA maps to `String` via @GenericGenerator("uuid2").
-    distribution_list_id        UNIQUEIDENTIFIER NOT NULL,          -- FK → distribution_list.distribution_list_id (UUID column)
+    distribution_list_id        UNIQUEIDENTIFIER NOT NULL,          -- FK → distribution_list.distribution_list_id
     user_id                     NVARCHAR(100)    NOT NULL,          -- internal directory id
     elid                        NVARCHAR(50)     NULL,              -- enterprise / employee id
     lanid                       NVARCHAR(50)     NULL,              -- LAN / network id
     name                        NVARCHAR(150)    NOT NULL,
     emailid                     NVARCHAR(255)    NOT NULL,
     department                  NVARCHAR(150)    NULL,
-    CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one share row per (DL, user)
+    CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one manager row per (DL, user)
     CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
         REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
 );
@@ -237,9 +239,16 @@ public class DistributionListEntity {
     @Column(name = "owner_id", nullable = false, length = 100)
     private String ownerId;
 
+    @Column(name = "owner_lanid", length = 50)
+    private String ownerLanid;                              // v2
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Visibility visibility = Visibility.PRIVATE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Type type = Type.CUSTOM;                        // v2
 
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
@@ -251,26 +260,27 @@ public class DistributionListEntity {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     /**
-     * Verbatim textarea content the user pasted. SINGLE source of truth for
-     * members — there is intentionally NO normalised `DistributionListMember`
-     * entity. Parse this string on read with `DistributionListService.parseMembers`
+     * v2: Verbatim textarea content split into three buckets (To / CC / BCC).
+     * SINGLE source of truth for recipients — no normalised member entity.
+     * Parse on read with `DistributionListService.parseMembers`
      * (separators: `, ; : space newline`).
      */
-    @Column(name = "members_raw", columnDefinition = "NVARCHAR(MAX)")
-    private String membersRaw;
+    @Column(name = "to_raw",  columnDefinition = "NVARCHAR(MAX)") private String toRaw;
+    @Column(name = "cc_raw",  columnDefinition = "NVARCHAR(MAX)") private String ccRaw;
+    @Column(name = "bcc_raw", columnDefinition = "NVARCHAR(MAX)") private String bccRaw;
 
     /**
-     * Snapshot of every directory user the owner shared this DL with.
-     * Stored as full rows (user_id, elid, lanid, name, emailid, department)
-     * so the UI never has to round-trip back to AD for rendering, and so
-     * audit history survives if the user is later removed from the directory.
+     * v2: Managers — users (besides the owner) authorised to edit / delete
+     * this DL. Stored as full directory snapshots so the UI never has to
+     * round-trip back to AD for rendering, and so audit history survives.
      */
     @OneToMany(mappedBy = "distributionList", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<DistributionListShareEntity> sharedWith = new ArrayList<>();
+    private List<DistributionListShareEntity> managers = new ArrayList<>();
 
     @PreUpdate void touch() { this.updatedAt = LocalDateTime.now(); }
 
-    public enum Visibility { PRIVATE, SHARED, PUBLIC }
+    public enum Visibility { PRIVATE, PUBLIC }              // v2: SHARED removed
+    public enum Type       { CUSTOM }                       // v2
 }
 
 @Entity @Table(
@@ -327,17 +337,23 @@ public record DistributionListDto(
     String name,
     String displayName,                 // prefix + name -> "DSPCH-TeamAlpha"
     String description,
-    String visibility,
+    String visibility,                  // v2: PRIVATE | PUBLIC
+    String type,                        // v2: CUSTOM
     String ownerId,
-    int memberCount,                    // derived: parseMembers(membersRaw).size()
-    List<String> memberEmails,          // derived: parsed, deduped, validated emails
-    String membersRaw,                  // SOURCE OF TRUTH — verbatim textarea blob
-    List<SharedUserDto> sharedWith,     // FULL directory snapshot
+    String ownerLanid,                  // v2
+    int memberCount,                    // derived: sum of parseMembers across to/cc/bcc
+    List<String> toEmails,              // v2: derived from toRaw
+    List<String> ccEmails,              // v2: derived from ccRaw
+    List<String> bccEmails,             // v2: derived from bccRaw
+    String toRaw,                       // v2: SOURCE OF TRUTH — verbatim To blob
+    String ccRaw,                       // v2: SOURCE OF TRUTH — verbatim CC blob
+    String bccRaw,                      // v2: SOURCE OF TRUTH — verbatim BCC blob
+    List<SharedUserDto> managers,       // v2: full directory snapshot (was sharedWith)
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {}
 
-/** Full directory snapshot stored on a SHARED DL. Mirrors `distribution_list_share`. */
+/** Full directory snapshot of a manager. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
     String distributionListShareId, // surrogate PK (UUID, server-generated); null on create
     String userId,                  // internal directory id (unique per DL)
@@ -354,13 +370,16 @@ public record DistributionListUpsertDto(
     String name,
     @Size(max = 20)             String prefix,        // typically readonly / server-controlled; null -> default DSPCH-
     @Size(max = 500)            String description,
-    @NotNull                    Visibility visibility,
+    @NotNull                    Visibility visibility,// v2: PRIVATE | PUBLIC
     /**
-     * Verbatim textarea blob — the ONLY accepted form of members on upsert.
-     * Server parses with `parseMembers()` and rejects when the parsed list is empty.
+     * v2: Verbatim textarea blobs split into three buckets. The service requires
+     * at least ONE valid email across the three combined; individual buckets
+     * may be blank. `type` defaults to CUSTOM on the server.
      */
-    @NotBlank                   String membersRaw,
-    List<SharedUserDto>         sharedWith            // ignored unless visibility=SHARED; full rows required
+                                String toRaw,
+                                String ccRaw,
+                                String bccRaw,
+    List<SharedUserDto>         managers              // v2: optional on ANY visibility (was sharedWith)
 ) {}
 
 /** Unified result returned by /recipients/search. type=USER | DL. */
@@ -369,9 +388,10 @@ public record RecipientSuggestionDto(
     String id,              // distributionListId for DL, directory user id for USER
     String email,           // USER only
     String displayName,     // user name OR "DSPCH-TeamAlpha"
-    String subtitle,        // user email/department OR "12 members · shared"
+    String subtitle,        // user email/department OR "12 members · public"
     Integer memberCount     // DL only
 ) {}
+
 
 /** Payload entry sent by frontend in to/cc/bcc lists. */
 public record RecipientRefDto(
@@ -407,8 +427,8 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
 
     /**
      * Used by the unified search. LIKE pattern must be pre-wrapped with %...%.
-     * Matches name / prefix+name OR a substring of the verbatim members_raw blob
-     * (since there is no per-member row to join on).
+     * Matches name / prefix+name OR a substring of any of the three verbatim
+     * blobs (to_raw / cc_raw / bcc_raw) since there is no per-member row to join on.
      */
     @Query(value = """
         SELECT DISTINCT TOP (:lim) dl.*
@@ -419,7 +439,9 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
           AND (dl.owner_id = :uid OR dl.visibility = 'PUBLIC' OR s.user_id = :uid)
           AND ( LOWER(dl.prefix + dl.name)   LIKE :q
              OR LOWER(dl.name)               LIKE :q
-             OR LOWER(dl.members_raw)        LIKE :q )
+             OR LOWER(dl.to_raw)             LIKE :q
+             OR LOWER(dl.cc_raw)             LIKE :q
+             OR LOWER(dl.bcc_raw)            LIKE :q )
         ORDER BY dl.name
     """, nativeQuery = true)
     List<DistributionListEntity> searchVisibleTo(@Param("uid") String userId,
@@ -470,7 +492,7 @@ public class DistributionListService {
     @Transactional
     public DistributionListDto update(String distributionListId, DistributionListUpsertDto in) {
         var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
-        requireOwner(dl);
+        requireManage(dl);                          // v2: owner OR manager
         applyUpsert(dl, in);
         return toDto(repo.save(dl));
     }
@@ -478,31 +500,47 @@ public class DistributionListService {
     @Transactional
     public void delete(String distributionListId) {
         var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
-        requireOwner(dl);
-        dl.setActive(false);                 // soft delete preserves audit trail of past sends
+        requireManage(dl);                          // v2: owner OR manager
+        dl.setActive(false);                        // soft delete preserves audit trail of past sends
         repo.save(dl);
     }
 
     /* ------------- helpers ------------- */
 
+    /** v2 permission gate: owner or one of the managers. */
+    private void requireManage(DistributionListEntity dl) {
+        String uid = currentUser.id();
+        boolean ok = dl.getOwnerId().equals(uid)
+                  || dl.getManagers().stream().anyMatch(m -> uid.equals(m.getUserId()));
+        if (!ok) throw new ForbiddenException("You don't have permission to modify this distribution list.");
+    }
+
     private void applyUpsert(DistributionListEntity dl, DistributionListUpsertDto in) {
         // Parse + validate members BEFORE persisting so we never store junk.
-        List<String> parsed = parseMembers(in.membersRaw());
+        List<String> parsed = new java.util.ArrayList<>();
+        parsed.addAll(parseMembers(in.toRaw()));
+        parsed.addAll(parseMembers(in.ccRaw()));
+        parsed.addAll(parseMembers(in.bccRaw()));
         if (parsed.isEmpty()) {
-            throw new BadRequestException("At least one valid member email is required.");
+            throw new BadRequestException("At least one valid email across To / CC / BCC is required.");
         }
 
         dl.setName(in.name().trim());
         dl.setPrefix(StringUtils.hasText(in.prefix()) ? in.prefix() : "DSPCH-");
         dl.setDescription(in.description());
-        dl.setVisibility(in.visibility());
-        dl.setMembersRaw(in.membersRaw());      // stored VERBATIM — no normalisation
+        dl.setVisibility(in.visibility());          // v2: PRIVATE | PUBLIC
+        dl.setType(DistributionListEntity.Type.CUSTOM);
+        dl.setOwnerLanid(currentUser.lanid());      // v2
+        dl.setToRaw(in.toRaw());                    // stored VERBATIM
+        dl.setCcRaw(in.ccRaw());
+        dl.setBccRaw(in.bccRaw());
 
-        // ---- sharedWith: clear/addAll sync; orphanRemoval drops detached rows ----
-        dl.getSharedWith().clear();
-        if (in.visibility() == Visibility.SHARED && in.sharedWith() != null) {
+        // ---- managers: clear/addAll sync; orphanRemoval drops detached rows.
+        // v2: managers are optional and allowed on ANY visibility.
+        dl.getManagers().clear();
+        if (in.managers() != null) {
             String ownerId = dl.getOwnerId();
-            for (SharedUserDto s : in.sharedWith()) {
+            for (SharedUserDto s : in.managers()) {
                 if (s.userId() == null || s.userId().equals(ownerId)) continue;  // owner is implicit
                 var row = new DistributionListShareEntity();
                 row.setDistributionList(dl);
@@ -512,15 +550,14 @@ public class DistributionListService {
                 row.setName(s.name());
                 row.setEmailid(s.emailid().toLowerCase().trim());
                 row.setDepartment(s.department());
-                dl.getSharedWith().add(row);
+                dl.getManagers().add(row);
             }
         }
     }
 
     /**
-     * Single authoritative parser for the verbatim members_raw blob.
+     * Single authoritative parser for any verbatim recipient blob (to/cc/bcc).
      * Splits on `, ; : whitespace newline`, lowercases, dedupes, validates.
-     * Used by both `applyUpsert` (validation) and `toDto` (read projection).
      */
     public static List<String> parseMembers(String raw) {
         if (raw == null || raw.isBlank()) return List.of();
@@ -533,15 +570,21 @@ public class DistributionListService {
     }
 
     private DistributionListDto toDto(DistributionListEntity dl) {
-        List<String> emails = parseMembers(dl.getMembersRaw());
+        List<String> to  = parseMembers(dl.getToRaw());
+        List<String> cc  = parseMembers(dl.getCcRaw());
+        List<String> bcc = parseMembers(dl.getBccRaw());
         return new DistributionListDto(
             dl.getDistributionListId(), dl.getPrefix(), dl.getName(),
             dl.getPrefix() + dl.getName(),
-            dl.getDescription(), dl.getVisibility().name(), dl.getOwnerId(),
-            emails.size(),
-            emails,
-            dl.getMembersRaw(),
-            dl.getSharedWith().stream()
+            dl.getDescription(),
+            dl.getVisibility().name(),
+            dl.getType().name(),
+            dl.getOwnerId(),
+            dl.getOwnerLanid(),
+            to.size() + cc.size() + bcc.size(),
+            to, cc, bcc,
+            dl.getToRaw(), dl.getCcRaw(), dl.getBccRaw(),
+            dl.getManagers().stream()
                 .map(s -> new SharedUserDto(
                     s.getDistributionListShareId(),
                     s.getUserId(), s.getElid(), s.getLanid(),
@@ -552,15 +595,13 @@ public class DistributionListService {
         );
     }
 
-    private void requireOwner(DistributionListEntity dl) {
-        if (!dl.getOwnerId().equals(currentUser.id())) throw new ForbiddenException();
-    }
+    /** v2: any logged-in user can READ a PUBLIC list; otherwise must be owner or manager. */
     private void requireReadAccess(DistributionListEntity dl) {
         var uid = currentUser.id();
-        if (!dl.getOwnerId().equals(uid)
-            && dl.getVisibility() != Visibility.PUBLIC
-            && dl.getSharedWith().stream().noneMatch(s -> uid.equals(s.getUserId())))
-            throw new ForbiddenException();
+        if (dl.getVisibility() == Visibility.PUBLIC) return;
+        if (dl.getOwnerId().equals(uid)) return;
+        if (dl.getManagers().stream().anyMatch(s -> uid.equals(s.getUserId()))) return;
+        throw new ForbiddenException();
     }
 }
 ```
@@ -813,9 +854,10 @@ public class RecipientSearchController {
         List<RecipientSuggestionDto> out = new ArrayList<>(dls.size() + found.size());
         // DLs ranked first so prefix matches surface above identically-named people
         for (var dl : dls) {
-            int count = DistributionListService.parseMembers(dl.getMembersRaw()).size();
-            String visBadge = dl.getVisibility() == Visibility.SHARED ? " · shared"
-                            : dl.getVisibility() == Visibility.PUBLIC ? " · public" : "";
+            int count = DistributionListService.parseMembers(dl.getToRaw()).size()
+                      + DistributionListService.parseMembers(dl.getCcRaw()).size()
+                      + DistributionListService.parseMembers(dl.getBccRaw()).size();
+            String visBadge = dl.getVisibility() == Visibility.PUBLIC ? " · public" : " · private";
             out.add(new RecipientSuggestionDto(
                 "DL", dl.getDistributionListId(), null,
                 dl.getPrefix() + dl.getName(),
@@ -1007,9 +1049,10 @@ Frontend then:
 |------|-------|----------|
 | DL name alphanumeric only (letters + numbers, no spaces/special chars) | `@Pattern` on DTO + service pre-check | 400 BAD_REQUEST |
 | DL name unique per owner | DB `uq_dl_owner_name` + service pre-check | 409 Conflict, friendly message |
-| `membersRaw` non-blank AND `parseMembers(raw)` returns ≥1 valid email | `@NotBlank` on DTO + `applyUpsert` guard | 400 BAD_REQUEST |
-| Email format (per token in `members_raw`) | `parseMembers()` regex filter — invalid tokens silently dropped | Soft (drop) |
-| `visibility=SHARED` ⇒ `sharedWith` non-empty | Service guard | 400 |
+| At least one valid email across `toRaw` / `ccRaw` / `bccRaw` combined | `applyUpsert` service guard | 400 BAD_REQUEST |
+| Email format (per token in to/cc/bcc blobs) | `parseMembers()` regex filter — invalid tokens silently dropped | Soft (drop) |
+| v2: `visibility ∈ {PRIVATE, PUBLIC}` only (SHARED removed) | DB CHECK + enum | 400 |
+| v2: Edit / Delete requires owner OR listed manager | `requireManage` service guard | 403 FORBIDDEN |
 | Reserved prefixes (`SYS-`, `ADMIN-`) | Service guard | 400 |
 | DL > 500 members | Soft warning returned in response | UI shows confirm dialog before send |
 | Cross-DL duplicate emails on send | `RecipientResolverService` LinkedHashSet | Silent dedupe; warning in response |
@@ -1091,12 +1134,12 @@ class RecipientSearchControllerTest {
 
 ---
 
-## 12. User Directory Search for SHARED Picker
+## 12. User Directory Search for Managers Picker
 
-When a user creates/edits a DL with `visibility = SHARED`, the UI shows a
-second autocomplete to select **which org users** can see and use this DL.
-The picker calls a dedicated endpoint that only returns directory users
-(never DLs) and is scoped by AD/SSO membership.
+v2: A DL can optionally have **managers** — users (besides the owner)
+authorised to edit / delete it. The picker is available on **any** DL
+(public or private). It calls a dedicated endpoint that only returns
+directory users (never DLs) and is scoped by AD/SSO membership.
 
 ### Endpoint
 ```
@@ -1150,10 +1193,10 @@ public record DirectoryUserDto(
 ) {}
 ```
 
-### How `sharedWith` Is Persisted
+### How `managers` Is Persisted
 1. Frontend sends the **full directory snapshot** for each selected user:
    ```jsonc
-   "sharedWith": [
+   "managers": [
      { "id": "u-12", "elid": "E10042", "lanid": "jsmith",
        "name": "Jane Smith", "emailid": "jane.smith@company.com",
        "department": "Design" }
@@ -1162,23 +1205,24 @@ public record DirectoryUserDto(
 2. `DistributionListService.applyUpsert` clears all `distribution_list_share`
    rows for that `dl_id` and re-inserts the new set (collection-sync pattern,
    orphanRemoval handles deletes).
-3. Reads return the same `SharedUserDto` rows in `DistributionListDto.sharedWith`
+3. Reads return the same `SharedUserDto` rows in `DistributionListDto.managers`
    so the UI can render names/elids/lanids without an extra directory call.
-4. Visibility checks (`findVisibleTo`, `requireReadAccess`, `RecipientResolverService.hasAccess`)
-   match against `distribution_list_share.user_id`.
+4. Visibility / management checks (`findVisibleTo`, `requireReadAccess`,
+   `requireManage`, `RecipientResolverService.hasAccess`) match against
+   `distribution_list_share.user_id`.
 
 ### Validation Rules (server)
 | Rule | Code | Status |
 |------|------|--------|
-| `visibility = SHARED` requires non-empty `sharedWith` | `DistributionListService.validate` | 400 |
-| Each `sharedWith[].id` must exist in the user directory | `UserDirectoryService.assertExists(ids)` | 400 |
-| `sharedWith[].emailid` and `name` are required (NVARCHAR NOT NULL) | DB + DTO `@NotBlank` | 400 |
-| Owner is implicit — do **not** include `ownerId` in `sharedWith` | filter on save (skipped silently) | — |
+| Managers are optional on any visibility (PUBLIC or PRIVATE) | — | — |
+| Each `managers[].id` must exist in the user directory | `UserDirectoryService.assertExists(ids)` | 400 |
+| `managers[].emailid` and `name` are required (NVARCHAR NOT NULL) | DB + DTO `@NotBlank` | 400 |
+| Owner is implicit — do **not** include `ownerId` in `managers` | filter on save (skipped silently) | — |
 
 ### Frontend Files
 - `src/pages/SharedUserPicker.tsx` — autocomplete (org users only). Renders LANID badge + ELID/department in subtitle.
 - `src/lib/distributionListStorage.ts` — `DirectoryUser` / `SharedUserRef` types, `searchUsers()`, `toSharedRef()`, `fromSharedRef()` (swap with `fetch('/api/users/search?...')` for real backend).
-- `src/pages/DistributionLists.tsx` — renders the picker only when `visibility === 'SHARED'`, converts picker rows to `SharedUserRef[]` on save, and disables Save until at least one user is selected.
+- `src/pages/DistributionLists.tsx` — renders the picker **always** (independent of visibility); converts picker rows to `SharedUserRef[]` on save.
 
 ---
 
@@ -1190,25 +1234,27 @@ The `prefix` field is **server-controlled and readonly** in the UI. It is shown 
 ### Name Input Sanitisation
 The frontend enforces alphanumeric-only in real time (`/[^A-Za-z0-9]/g` stripped on every keystroke). The backend `@Pattern` validation acts as the authoritative guard.
 
-### Members Bulk Import (textarea, free-form, no member table)
-The Members field is a **`<textarea>`** bound directly to a single string. There
-is **no separate `distribution_list_member` table** — `distribution_list.members_raw`
-(NVARCHAR(MAX)) is the sole source of truth.
+### Recipients Bulk Import — three buckets (no member table)
+v2: The dialog renders **three** `<textarea>`s — **To / CC / BCC** — each
+bound to its own verbatim string. There is **no separate
+`distribution_list_member` table** — the columns
+`distribution_list.to_raw / cc_raw / bcc_raw` (NVARCHAR(MAX)) are the sole
+source of truth.
 
-1. The user pastes any list of email addresses separated by **any combination of `, ; : space newline`**.
-2. Frontend sends exactly **one field** to the backend: `membersRaw` (the verbatim string). No `members` array, no `MemberDto` list.
+1. The user pastes any list of email addresses separated by **any combination of `, ; : space newline`** in any bucket.
+2. Frontend sends exactly three fields to the backend: `toRaw`, `ccRaw`, `bccRaw` (verbatim strings). No `members` array.
 3. Both sides parse on read with the same logic (`parseMembersRaw()` in TS / `DistributionListService.parseMembers()` in Java): split on `[,;:\s\n]+`, lowercase, trim, drop tokens that fail a basic email regex, dedupe.
-4. The chip list under the textarea is a **live preview** of that parse — useful for spotting typos. Removing a chip strips the matching token (and its trailing separator) from `membersRaw`.
-5. The DTO returned to clients includes a derived `memberEmails: string[]` and `memberCount: int` for convenience, but the database row only stores `members_raw`.
+4. The chip list under each textarea is a **live preview** of that parse. Removing a chip strips the matching token from the corresponding raw blob.
+5. The DTO returned to clients includes derived `toEmails / ccEmails / bccEmails` arrays and a combined `memberCount`, but the database row only stores the three raw blobs.
 
-### Shared Users Picker (autocomplete, rich snapshot)
-When `visibility === 'SHARED'`, the dialog renders `SharedUserPicker`, an autocomplete that queries `GET /api/users/search?q=...`. The frontend stores the **full directory record** for each selection (`id`, `elid`, `lanid`, `name`, `emailid`, `department`) — never just the id — and sends that as `sharedWith: SharedUserDto[]` on save. See §12 for the persistence flow.
+### Managers Picker (autocomplete, rich snapshot)
+The dialog always renders `SharedUserPicker` (independent of visibility). The frontend stores the **full directory record** for each selection (`id`, `elid`, `lanid`, `name`, `emailid`, `department`) — never just the id — and sends that as `managers: SharedUserDto[]` on save. See §12 for the persistence flow.
 
 ### Save Button Guard (frontend)
 The **Create / Save** button is disabled until:
 - `name` is non-empty, alphanumeric, and unique per owner
-- `parseMembersRaw(membersRaw)` returns ≥1 valid email
-- `visibility === 'SHARED'` ⇒ `sharedWith` has ≥1 selected user
+- The combined `parseMembersRaw(toRaw|ccRaw|bccRaw)` returns ≥1 valid email
+
 
 This mirrors the server-side validation rules in §9.
 
@@ -1293,7 +1339,8 @@ import { apiFetch } from "./apiClient";
 
 /* ---------- Types (mirror backend DTOs) ---------- */
 
-export type DLVisibility = "PRIVATE" | "SHARED" | "PUBLIC";
+export type DLVisibility = "PRIVATE" | "PUBLIC";   // v2: SHARED removed
+export type DLType = "CUSTOM";                     // v2
 
 export interface DLMember {
   email: string;
@@ -1311,7 +1358,7 @@ export interface SharedUserRef {
   department?: string;
 }
 
-/** Mirrors backend `DistributionListDto`. */
+/** Mirrors backend `DistributionListDto` (v2). */
 export interface DistributionList {
   distributionListId: string;
   prefix: string;
@@ -1319,10 +1366,19 @@ export interface DistributionList {
   displayName: string;
   description?: string;
   visibility: DLVisibility;
+  type: DLType;
   ownerId: string;
-  membersRaw: string;
-  members: DLMember[];      // derived from membersRaw
-  sharedWith: SharedUserRef[];
+  ownerLanid?: string;
+  /** Verbatim blobs — single source of truth. */
+  toRaw: string;
+  ccRaw: string;
+  bccRaw: string;
+  /** Derived on read. */
+  toMembers: DLMember[];
+  ccMembers: DLMember[];
+  bccMembers: DLMember[];
+  /** Users authorised to edit / delete this DL. */
+  managers: SharedUserRef[];
   createdAt: string;        // ISO LocalDateTime
   updatedAt: string;
 }
@@ -1350,8 +1406,10 @@ export interface DLUpsertInput {
   prefix?: string;
   description?: string;
   visibility: DLVisibility;
-  membersRaw: string;
-  sharedWith?: SharedUserRef[];
+  toRaw: string;
+  ccRaw?: string;
+  bccRaw?: string;
+  managers?: SharedUserRef[];
 }
 
 /* ---------- Shared parser (also used for live chip preview) ---------- */
@@ -1371,14 +1429,17 @@ export function parseMembersRaw(raw: string | undefined | null): DLMember[] {
   return out;
 }
 
-/** Backend returns `memberEmails: string[]`; hydrate to `{ email }[]`. */
-interface RawDLDto extends Omit<DistributionList, "members"> {
-  memberEmails?: string[];
+/** Backend returns `toEmails / ccEmails / bccEmails`; hydrate to `{ email }[]` per bucket. */
+interface RawDLDto extends Omit<DistributionList, "toMembers" | "ccMembers" | "bccMembers"> {
+  toEmails?: string[];
+  ccEmails?: string[];
+  bccEmails?: string[];
 }
 function hydrate(dto: RawDLDto): DistributionList {
-  const members =
-    dto.memberEmails?.map((email) => ({ email })) ?? parseMembersRaw(dto.membersRaw);
-  return { ...dto, members };
+  const toMembers  = dto.toEmails?.map((email) => ({ email }))  ?? parseMembersRaw(dto.toRaw);
+  const ccMembers  = dto.ccEmails?.map((email) => ({ email }))  ?? parseMembersRaw(dto.ccRaw);
+  const bccMembers = dto.bccEmails?.map((email) => ({ email })) ?? parseMembersRaw(dto.bccRaw);
+  return { ...dto, toMembers, ccMembers, bccMembers };
 }
 
 /* ---------- CRUD — REST calls ---------- */
@@ -1573,8 +1634,8 @@ and dynamic pagination so the table scales beyond the default 10 cards.
 |-------|------|---------|----------------|-------|
 | `page`       | int    | `1`     | `>= 1`                          | 1-based page index |
 | `pageSize`   | int    | `10`    | `5, 10, 25, 50, 100`            | Validate server-side; clamp to `<= 100` |
-| `visibility` | string | `ALL`   | `ALL` \| `PUBLIC` \| `PRIVATE` \| `SHARED` | Additional filter applied **on top of** the §0 visibility predicate |
-| `search`     | string | `""`    | free-text                       | Matched against `displayName`, `name`, and `members_raw` (LIKE `%q%`) |
+| `visibility` | string | `ALL`   | `ALL` \| `PUBLIC` \| `PRIVATE`  | v2: `SHARED` removed. Filter applied **on top of** the §0 visibility predicate |
+| `search`     | string | `""`    | free-text                       | Matched against `displayName`, `name`, and `to_raw / cc_raw / bcc_raw` (LIKE `%q%`) |
 
 Response shape (matches the frontend `PagedResult<T>` type):
 
@@ -1604,9 +1665,12 @@ Response shape (matches the frontend `PagedResult<T>` type):
                       WHERE s.distributionListId = dl.distributionListId
                         AND s.userId = :uid) )
      AND ( :visibility = 'ALL' OR dl.visibility = :visibility )
-     AND ( :search = '' 
-           OR LOWER(dl.name)        LIKE LOWER(CONCAT('%', :search, '%'))
-           OR LOWER(dl.membersRaw)  LIKE LOWER(CONCAT('%', :search, '%')) )
+     AND ( :search = ''
+           OR LOWER(dl.name)    LIKE LOWER(CONCAT('%', :search, '%'))
+           OR LOWER(dl.toRaw)   LIKE LOWER(CONCAT('%', :search, '%'))
+           OR LOWER(dl.ccRaw)   LIKE LOWER(CONCAT('%', :search, '%'))
+           OR LOWER(dl.bccRaw)  LIKE LOWER(CONCAT('%', :search, '%')) )
+""")
 """)
 Page<DistributionListEntity> findVisibleToFiltered(
     @Param("uid")        String uid,
