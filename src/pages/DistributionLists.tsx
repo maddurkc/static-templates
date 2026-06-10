@@ -514,6 +514,68 @@ export default function DistributionLists() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={!!detailsDL} onOpenChange={(o) => !o && setDetailsDL(null)}>
+        <SheetContent side="right" className={styles.detailsSheet}>
+          {detailsDL && (
+            <>
+              <SheetHeader>
+                <SheetTitle className={styles.detailsTitle}>
+                  <Users size={16} /> {detailsDL.displayName}
+                </SheetTitle>
+                <SheetDescription>
+                  <span className={styles.vis}>
+                    {visIcon(detailsDL.visibility)} {detailsDL.visibility.toLowerCase()}
+                  </span>
+                  {" · "}Type: {detailsDL.type}
+                  {detailsDL.ownerLanid && <> · Owner: {detailsDL.ownerLanid}</>}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className={styles.detailsBody}>
+                {detailsDL.description && (
+                  <section className={styles.detailsSection}>
+                    <h4>Description</h4>
+                    <p className={styles.desc}>{detailsDL.description}</p>
+                  </section>
+                )}
+
+                {detailsDL.managers.length > 0 && (
+                  <section className={styles.detailsSection}>
+                    <h4><ShieldCheck size={12} /> Managers ({detailsDL.managers.length})</h4>
+                    <ul className={styles.detailsList}>
+                      {detailsDL.managers.map((m) => (
+                        <li key={m.userId}>
+                          <strong>{m.name}</strong> <span>{m.emailid}</span>
+                          {m.department && <em> · {m.department}</em>}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                {(["toMembers","ccMembers","bccMembers"] as const).map((key) => {
+                  const label = key === "toMembers" ? "To" : key === "ccMembers" ? "CC" : "BCC";
+                  const arr = detailsDL[key];
+                  return (
+                    <section key={key} className={styles.detailsSection}>
+                      <h4>{label} ({arr.length})</h4>
+                      {arr.length === 0 ? (
+                        <p className={styles.detailsEmpty}>No recipients.</p>
+                      ) : (
+                        <ul className={styles.detailsList}>
+                          {arr.map((m) => <li key={m.email}>{m.email}</li>)}
+                        </ul>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
+
