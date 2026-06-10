@@ -355,15 +355,16 @@ public record DistributionListDto(
     LocalDateTime updatedAt
 ) {}
 
-/** Full directory snapshot of a manager. Mirrors `distribution_list_share`. */
+/** Full snapshot of a manager. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
     String distributionListShareId, // surrogate PK (UUID, server-generated); null on create
     String userId,                  // internal directory id (unique per DL)
     String elid,                    // enterprise / employee id  (nullable)
     String lanid,                   // LAN / network id          (nullable)
     String name,
-    String emailid,
-    String department               // nullable
+    String emailid
+    // v2: `department` removed — not persisted on the share row. UIs that
+    // need it should fetch from the directory (DirectoryUserDto / §11).
 ) {}
 
 public record DistributionListUpsertDto(
