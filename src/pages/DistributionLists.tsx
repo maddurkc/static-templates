@@ -91,8 +91,10 @@ export default function DistributionLists() {
   );
   const lists = paged.items;
   const filtered = lists;
+  const allLists = useMemo(() => listDistributionLists(), [refreshKey]);
 
   const refresh = () => setRefreshKey((k) => k + 1);
+
 
 
   const openCreate = () => {
