@@ -542,6 +542,7 @@ Frontend then:
 
 | Rule | Where | Behavior |
 |------|-------|----------|
+| DL name alphanumeric only (letters + numbers, no spaces/special chars) | `@Pattern` on DTO + service pre-check | 400 BAD_REQUEST |
 | DL name unique per owner | DB `uq_dl_owner_name` + service pre-check | 409 Conflict, friendly message |
 | Members required (≥1) | `@Size(min=1)` on DTO + service | 400 BAD_REQUEST |
 | Email format | `@Email` on `MemberDto.email` | 400 |
