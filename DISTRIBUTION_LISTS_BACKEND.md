@@ -854,9 +854,10 @@ public class RecipientSearchController {
         List<RecipientSuggestionDto> out = new ArrayList<>(dls.size() + found.size());
         // DLs ranked first so prefix matches surface above identically-named people
         for (var dl : dls) {
-            int count = DistributionListService.parseMembers(dl.getMembersRaw()).size();
-            String visBadge = dl.getVisibility() == Visibility.SHARED ? " · shared"
-                            : dl.getVisibility() == Visibility.PUBLIC ? " · public" : "";
+            int count = DistributionListService.parseMembers(dl.getToRaw()).size()
+                      + DistributionListService.parseMembers(dl.getCcRaw()).size()
+                      + DistributionListService.parseMembers(dl.getBccRaw()).size();
+            String visBadge = dl.getVisibility() == Visibility.PUBLIC ? " · public" : " · private";
             out.add(new RecipientSuggestionDto(
                 "DL", dl.getDistributionListId(), null,
                 dl.getPrefix() + dl.getName(),
