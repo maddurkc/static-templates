@@ -260,7 +260,8 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
         where dl.active = true
           and (dl.ownerId = :uid
                or dl.visibility = 'PUBLIC'
-               or :uid member of dl.sharedWith)
+               or exists (select 1 from DistributionListShare s
+                            where s.distributionList = dl and s.userId = :uid))
         order by dl.name
     """)
     List<DistributionList> findVisibleTo(@Param("uid") String userId);
@@ -335,10 +336,27 @@ public class DistributionListService {
         dl.setPrefix(StringUtils.hasText(in.prefix()) ? in.prefix() : "DSPCH-");
         dl.setDescription(in.description());
         dl.setVisibility(in.visibility());
-        dl.setSharedWith(in.visibility() == Visibility.SHARED && in.sharedWith() != null
-            ? new HashSet<>(in.sharedWith()) : new HashSet<>());
+        dl.setMembersRaw(in.membersRaw());
 
-        // clear/addAll sync pattern — orphanRemoval drops detached members
+        // ---- sharedWith: clear/addAll sync; orphanRemoval drops detached rows ----
+        dl.getSharedWith().clear();
+        if (in.visibility() == Visibility.SHARED && in.sharedWith() != null) {
+            String ownerId = dl.getOwnerId();
+            for (SharedUserDto s : in.sharedWith()) {
+                if (s.id() == null || s.id().equals(ownerId)) continue;  // owner is implicit
+                var row = new DistributionListShare();
+                row.setDistributionList(dl);
+                row.setUserId(s.id());
+                row.setElid(s.elid());
+                row.setLanid(s.lanid());
+                row.setName(s.name());
+                row.setEmailid(s.emailid().toLowerCase().trim());
+                row.setDepartment(s.department());
+                dl.getSharedWith().add(row);
+            }
+        }
+
+        // ---- members: same clear/addAll pattern ----
         dl.getMembers().clear();
         for (MemberDto m : in.members()) {
             var entity = new DistributionListMember();
@@ -357,7 +375,12 @@ public class DistributionListService {
             dl.getMembers().size(),
             dl.getMembers().stream()
                 .map(m -> new MemberDto(m.getEmail(), m.getDisplayName())).toList(),
-            dl.getSharedWith()
+            dl.getMembersRaw(),
+            dl.getSharedWith().stream()
+                .map(s -> new SharedUserDto(
+                    s.getUserId(), s.getElid(), s.getLanid(),
+                    s.getName(), s.getEmailid(), s.getDepartment()))
+                .toList()
         );
     }
 
@@ -368,7 +391,8 @@ public class DistributionListService {
         var uid = currentUser.id();
         if (!dl.getOwnerId().equals(uid)
             && dl.getVisibility() != Visibility.PUBLIC
-            && !dl.getSharedWith().contains(uid)) throw new ForbiddenException();
+            && dl.getSharedWith().stream().noneMatch(s -> uid.equals(s.getUserId())))
+            throw new ForbiddenException();
     }
 }
 ```
