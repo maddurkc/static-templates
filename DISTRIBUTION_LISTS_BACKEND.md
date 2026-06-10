@@ -624,8 +624,8 @@ Frontend then:
 |------|-------|----------|
 | DL name alphanumeric only (letters + numbers, no spaces/special chars) | `@Pattern` on DTO + service pre-check | 400 BAD_REQUEST |
 | DL name unique per owner | DB `uq_dl_owner_name` + service pre-check | 409 Conflict, friendly message |
-| Members required (≥1) | `@Size(min=1)` on DTO + service | 400 BAD_REQUEST |
-| Email format | `@Email` on `MemberDto.email` | 400 |
+| `membersRaw` non-blank AND `parseMembers(raw)` returns ≥1 valid email | `@NotBlank` on DTO + `applyUpsert` guard | 400 BAD_REQUEST |
+| Email format (per token in `members_raw`) | `parseMembers()` regex filter — invalid tokens silently dropped | Soft (drop) |
 | `visibility=SHARED` ⇒ `sharedWith` non-empty | Service guard | 400 |
 | Reserved prefixes (`SYS-`, `ADMIN-`) | Service guard | 400 |
 | DL > 500 members | Soft warning returned in response | UI shows confirm dialog before send |
