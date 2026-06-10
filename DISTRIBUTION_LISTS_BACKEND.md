@@ -175,13 +175,11 @@ public record DistributionListDto(
     String description,
     String visibility,
     String ownerId,
-    int memberCount,
-    List<MemberDto> members,
-    String membersRaw,                  // verbatim textarea blob (nullable)
+    int memberCount,                    // derived: parseMembers(membersRaw).size()
+    List<String> memberEmails,          // derived: parsed, deduped, validated emails
+    String membersRaw,                  // SOURCE OF TRUTH — verbatim textarea blob
     List<SharedUserDto> sharedWith      // FULL directory snapshot
 ) {}
-
-public record MemberDto(String email, String displayName) {}
 
 /** Full directory snapshot stored on a SHARED DL. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
@@ -200,8 +198,11 @@ public record DistributionListUpsertDto(
     @Size(max = 20)             String prefix,        // typically readonly / server-controlled; null -> default DSPCH-
     @Size(max = 500)            String description,
     @NotNull                    Visibility visibility,
-    @NotNull @Size(min = 1)     List<MemberDto> members,
-    String                      membersRaw,           // optional verbatim paste blob (any format)
+    /**
+     * Verbatim textarea blob — the ONLY accepted form of members on upsert.
+     * Server parses with `parseMembers()` and rejects when the parsed list is empty.
+     */
+    @NotBlank                   String membersRaw,
     List<SharedUserDto>         sharedWith            // ignored unless visibility=SHARED; full rows required
 ) {}
 
