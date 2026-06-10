@@ -372,7 +372,12 @@ export default function DistributionLists() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={save}>{draft.id ? "Save Changes" : "Create"}</Button>
+            <Button
+              onClick={save}
+              disabled={draft.visibility === "SHARED" && sharedUsers.length === 0}
+            >
+              {draft.id ? "Save Changes" : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
