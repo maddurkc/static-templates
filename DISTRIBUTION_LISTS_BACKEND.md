@@ -492,7 +492,7 @@ public class DistributionListService {
     @Transactional
     public DistributionListDto update(String distributionListId, DistributionListUpsertDto in) {
         var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
-        requireOwner(dl);
+        requireManage(dl);                          // v2: owner OR manager
         applyUpsert(dl, in);
         return toDto(repo.save(dl));
     }
@@ -500,31 +500,47 @@ public class DistributionListService {
     @Transactional
     public void delete(String distributionListId) {
         var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
-        requireOwner(dl);
-        dl.setActive(false);                 // soft delete preserves audit trail of past sends
+        requireManage(dl);                          // v2: owner OR manager
+        dl.setActive(false);                        // soft delete preserves audit trail of past sends
         repo.save(dl);
     }
 
     /* ------------- helpers ------------- */
 
+    /** v2 permission gate: owner or one of the managers. */
+    private void requireManage(DistributionListEntity dl) {
+        String uid = currentUser.id();
+        boolean ok = dl.getOwnerId().equals(uid)
+                  || dl.getManagers().stream().anyMatch(m -> uid.equals(m.getUserId()));
+        if (!ok) throw new ForbiddenException("You don't have permission to modify this distribution list.");
+    }
+
     private void applyUpsert(DistributionListEntity dl, DistributionListUpsertDto in) {
         // Parse + validate members BEFORE persisting so we never store junk.
-        List<String> parsed = parseMembers(in.membersRaw());
+        List<String> parsed = new java.util.ArrayList<>();
+        parsed.addAll(parseMembers(in.toRaw()));
+        parsed.addAll(parseMembers(in.ccRaw()));
+        parsed.addAll(parseMembers(in.bccRaw()));
         if (parsed.isEmpty()) {
-            throw new BadRequestException("At least one valid member email is required.");
+            throw new BadRequestException("At least one valid email across To / CC / BCC is required.");
         }
 
         dl.setName(in.name().trim());
         dl.setPrefix(StringUtils.hasText(in.prefix()) ? in.prefix() : "DSPCH-");
         dl.setDescription(in.description());
-        dl.setVisibility(in.visibility());
-        dl.setMembersRaw(in.membersRaw());      // stored VERBATIM — no normalisation
+        dl.setVisibility(in.visibility());          // v2: PRIVATE | PUBLIC
+        dl.setType(DistributionListEntity.Type.CUSTOM);
+        dl.setOwnerLanid(currentUser.lanid());      // v2
+        dl.setToRaw(in.toRaw());                    // stored VERBATIM
+        dl.setCcRaw(in.ccRaw());
+        dl.setBccRaw(in.bccRaw());
 
-        // ---- sharedWith: clear/addAll sync; orphanRemoval drops detached rows ----
-        dl.getSharedWith().clear();
-        if (in.visibility() == Visibility.SHARED && in.sharedWith() != null) {
+        // ---- managers: clear/addAll sync; orphanRemoval drops detached rows.
+        // v2: managers are optional and allowed on ANY visibility.
+        dl.getManagers().clear();
+        if (in.managers() != null) {
             String ownerId = dl.getOwnerId();
-            for (SharedUserDto s : in.sharedWith()) {
+            for (SharedUserDto s : in.managers()) {
                 if (s.userId() == null || s.userId().equals(ownerId)) continue;  // owner is implicit
                 var row = new DistributionListShareEntity();
                 row.setDistributionList(dl);
@@ -534,15 +550,14 @@ public class DistributionListService {
                 row.setName(s.name());
                 row.setEmailid(s.emailid().toLowerCase().trim());
                 row.setDepartment(s.department());
-                dl.getSharedWith().add(row);
+                dl.getManagers().add(row);
             }
         }
     }
 
     /**
-     * Single authoritative parser for the verbatim members_raw blob.
+     * Single authoritative parser for any verbatim recipient blob (to/cc/bcc).
      * Splits on `, ; : whitespace newline`, lowercases, dedupes, validates.
-     * Used by both `applyUpsert` (validation) and `toDto` (read projection).
      */
     public static List<String> parseMembers(String raw) {
         if (raw == null || raw.isBlank()) return List.of();
