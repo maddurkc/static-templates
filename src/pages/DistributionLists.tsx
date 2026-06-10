@@ -79,6 +79,7 @@ export default function DistributionLists() {
   const openCreate = () => {
     setDraft(blankDraft());
     setEmailInput("");
+    setSharedUsers([]);
     setDialogOpen(true);
   };
 
@@ -93,6 +94,7 @@ export default function DistributionLists() {
       sharedWith: [...dl.sharedWith],
     });
     setEmailInput("");
+    setSharedUsers(getUsersByIds(dl.sharedWith));
     setDialogOpen(true);
   };
 
