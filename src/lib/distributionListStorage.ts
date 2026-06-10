@@ -16,12 +16,10 @@ export interface DLMember {
 
 /**
  * Rich shared-user record persisted on a DL when visibility = SHARED.
- * We snapshot the full directory record (not just the id) so the UI can
- * render names/emails without an extra round-trip and so audit history
- * survives even if the user is later removed from the org directory.
+ * Mirrors the `distribution_list_share` row (user_id PK + snapshot columns).
  */
 export interface SharedUserRef {
-  id: string;          // internal user id
+  userId: string;      // internal user id (== user_id column / SharedUserDto.userId)
   elid?: string;       // enterprise id (e.g. AD upn / employee login id)
   lanid?: string;      // LAN / network id
   name: string;
@@ -35,9 +33,12 @@ export interface SharedUserRef {
  * (verbatim free-form text the user pasted). The structured `members`
  * array below is **derived** on read via `parseMembersRaw()` and is
  * never written to storage / the DB.
+ *
+ * `distributionListId` matches the backend PK column `distribution_list_id`
+ * (string, application-generated — NOT a UUID/@GeneratedValue).
  */
 export interface DistributionList {
-  id: string;
+  distributionListId: string;
   prefix: string;
   name: string;
   displayName: string;
@@ -49,6 +50,7 @@ export interface DistributionList {
   /** Derived from membersRaw on every read. Not persisted. */
   members: DLMember[];
   sharedWith: SharedUserRef[];
+  /** ISO LocalDateTime string (matches backend `LocalDateTime`). */
   createdAt: string;
   updatedAt: string;
 }
@@ -121,7 +123,7 @@ function seedDemoLists(): DistributionList[] {
   const ir  = "bob.wilson@company.com; alice.johnson@company.com; sarah.davis@company.com";
   return [
     {
-      id: "dl-demo-eng",
+      distributionListId: "dl-demo-eng",
       prefix: DEFAULT_PREFIX,
       name: "EngineeringTeam",
       displayName: `${DEFAULT_PREFIX}EngineeringTeam`,
@@ -135,7 +137,7 @@ function seedDemoLists(): DistributionList[] {
       updatedAt: now,
     },
     {
-      id: "dl-demo-incident",
+      distributionListId: "dl-demo-incident",
       prefix: DEFAULT_PREFIX,
       name: "IncidentResponders",
       displayName: `${DEFAULT_PREFIX}IncidentResponders`,
@@ -158,12 +160,12 @@ export function listDistributionLists(): DistributionList[] {
     (dl) =>
       dl.ownerId === CURRENT_USER ||
       dl.visibility === "PUBLIC" ||
-      dl.sharedWith.some((s) => s.id === CURRENT_USER),
+      dl.sharedWith.some((s) => s.userId === CURRENT_USER),
   );
 }
 
 export function getDistributionList(id: string): DistributionList | null {
-  return readAll().find((dl) => dl.id === id) ?? null;
+  return readAll().find((dl) => dl.distributionListId === id) ?? null;
 }
 
 export interface DLUpsertInput {
@@ -218,7 +220,7 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
   const name = input.name.trim();
   const now = new Date().toISOString();
   const dl: DistributionList = {
-    id: `dl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    distributionListId: `dl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     prefix,
     name,
     displayName: `${prefix}${name}`,
@@ -240,13 +242,13 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
   if (error) throw new Error(error);
 
   const all = readAll();
-  const idx = all.findIndex((d) => d.id === id);
+  const idx = all.findIndex((d) => d.distributionListId === id);
   if (idx === -1) throw new Error("Distribution list not found.");
   if (all[idx].ownerId !== CURRENT_USER) throw new Error("You can only edit your own distribution lists.");
 
   const name = input.name.trim();
   const dupe = all.find(
-    (d) => d.id !== id && d.ownerId === CURRENT_USER && d.name.toLowerCase() === name.toLowerCase(),
+    (d) => d.distributionListId !== id && d.ownerId === CURRENT_USER && d.name.toLowerCase() === name.toLowerCase(),
   );
   if (dupe) throw new Error(`A distribution list named '${name}' already exists.`);
 
@@ -271,7 +273,7 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
 
 export function deleteDistributionList(id: string): void {
   const all = readAll();
-  const filtered = all.filter((d) => d.id !== id);
+  const filtered = all.filter((d) => d.distributionListId !== id);
   writeAll(filtered);
 }
 
@@ -303,7 +305,7 @@ export interface DirectoryUser {
 /** Convert a directory row → the persistence shape stored on the DL. */
 export function toSharedRef(u: DirectoryUser): SharedUserRef {
   return {
-    id: u.id,
+    userId: u.id,
     elid: u.elid,
     lanid: u.lanid,
     name: u.name,
@@ -315,7 +317,7 @@ export function toSharedRef(u: DirectoryUser): SharedUserRef {
 /** Convert a persisted shared-user record back to the directory shape used by the picker. */
 export function fromSharedRef(s: SharedUserRef): DirectoryUser {
   return {
-    id: s.id,
+    id: s.userId,
     elid: s.elid,
     lanid: s.lanid,
     name: s.name,
@@ -374,7 +376,7 @@ export async function searchRecipients(query: string, limit = 10): Promise<Recip
       dl.visibility === "SHARED" ? " · shared" : dl.visibility === "PUBLIC" ? " · public" : "";
     out.push({
       type: "DL",
-      id: dl.id,
+      id: dl.distributionListId,
       displayName: dl.displayName,
       subtitle: `${dl.members.length} members${visBadge}`,
       memberCount: dl.members.length,
@@ -434,7 +436,7 @@ export function resolveRecipients(refs: RecipientRef[]): ResolvedRecipients {
         continue;
       }
       dl.members.forEach((m) => emails.add(m.email.toLowerCase()));
-      expandedDlIds.push(dl.id);
+      expandedDlIds.push(dl.distributionListId);
     } else if (ref.email) {
       emails.add(ref.email.toLowerCase().trim());
     }

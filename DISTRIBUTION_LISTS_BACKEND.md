@@ -31,21 +31,22 @@ Display convention: every DL is shown with a configurable prefix (default **`DSP
 -- =============================================================
 
 CREATE TABLE dbo.distribution_list (
-    id            UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dl PRIMARY KEY DEFAULT NEWID(),
-    name          NVARCHAR(150)    NOT NULL,                       -- "TeamAlpha" (no prefix)
-    prefix        NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_prefix DEFAULT 'DSPCH-',
-    description   NVARCHAR(500)    NULL,
-    owner_id      NVARCHAR(100)    NOT NULL,                       -- AD/SSO user id of creator
-    visibility    NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_vis DEFAULT 'PRIVATE',
+    distribution_list_id  NVARCHAR(64)     NOT NULL CONSTRAINT pk_dl PRIMARY KEY,
+                                                                    -- application-generated string id (e.g. "dl-<ts>-<rand>")
+    name                  NVARCHAR(150)    NOT NULL,                -- "TeamAlpha" (no prefix)
+    prefix                NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_prefix DEFAULT 'DSPCH-',
+    description           NVARCHAR(500)    NULL,
+    owner_id              NVARCHAR(100)    NOT NULL,                -- AD/SSO user id of creator
+    visibility            NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_vis DEFAULT 'PRIVATE',
                                                                     -- PRIVATE | SHARED | PUBLIC
     -- Verbatim textarea blob the user pasted. SINGLE source of truth for members —
     -- there is intentionally NO separate `distribution_list_member` table. The app
     -- parses this string on read via `parseMembersRaw()` (frontend) / the matching
     -- service helper (backend) using separators: , ; : space newline.
-    members_raw   NVARCHAR(MAX)    NULL,
-    is_active     BIT              NOT NULL CONSTRAINT df_dl_act DEFAULT 1,
-    created_at    DATETIME2        NOT NULL CONSTRAINT df_dl_cat DEFAULT SYSUTCDATETIME(),
-    updated_at    DATETIME2        NOT NULL CONSTRAINT df_dl_uat DEFAULT SYSUTCDATETIME(),
+    members_raw           NVARCHAR(MAX)    NULL,
+    is_active             BIT              NOT NULL CONSTRAINT df_dl_act DEFAULT 1,
+    created_at            DATETIME2        NOT NULL CONSTRAINT df_dl_cat DEFAULT SYSUTCDATETIME(),
+    updated_at            DATETIME2        NOT NULL CONSTRAINT df_dl_uat DEFAULT SYSUTCDATETIME(),
     CONSTRAINT uq_dl_owner_name UNIQUE (owner_id, name),
     CONSTRAINT ck_dl_visibility CHECK (visibility IN ('PRIVATE','SHARED','PUBLIC'))
 );
@@ -55,20 +56,21 @@ CREATE INDEX ix_dl_active    ON dbo.distribution_list(is_active) INCLUDE (owner_
 
 -- =============================================================
 -- SHARED visibility: snapshot the FULL directory record for every
--- shared user (id, elid, lanid, name, emailid, department).
+-- shared user (user_id, elid, lanid, name, emailid, department).
 -- Snapshot semantics: rows survive even if a user is later removed
 -- from AD/SCIM, so audit history stays intact.
 -- =============================================================
 CREATE TABLE dbo.distribution_list_share (
-    dl_id        UNIQUEIDENTIFIER NOT NULL,
-    user_id      NVARCHAR(100)    NOT NULL,   -- internal directory id
-    elid         NVARCHAR(50)     NULL,       -- enterprise / employee id
-    lanid        NVARCHAR(50)     NULL,       -- LAN / network id
-    name         NVARCHAR(150)    NOT NULL,
-    emailid      NVARCHAR(255)    NOT NULL,
-    department   NVARCHAR(150)    NULL,
-    CONSTRAINT pk_dls PRIMARY KEY (dl_id, user_id),
-    CONSTRAINT fk_dls_dl FOREIGN KEY (dl_id) REFERENCES dbo.distribution_list(id) ON DELETE CASCADE
+    distribution_list_id  NVARCHAR(64)     NOT NULL,
+    user_id               NVARCHAR(100)    NOT NULL,   -- internal directory id
+    elid                  NVARCHAR(50)     NULL,       -- enterprise / employee id
+    lanid                 NVARCHAR(50)     NULL,       -- LAN / network id
+    name                  NVARCHAR(150)    NOT NULL,
+    emailid               NVARCHAR(255)    NOT NULL,
+    department            NVARCHAR(150)    NULL,
+    CONSTRAINT pk_dls PRIMARY KEY (distribution_list_id, user_id),
+    CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
+        REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
 );
 
 CREATE INDEX ix_dls_user  ON dbo.distribution_list_share(user_id);
@@ -84,8 +86,14 @@ CREATE INDEX ix_dls_elid  ON dbo.distribution_list_share(elid);
 @Entity @Table(name = "distribution_list")
 @Getter @Setter @NoArgsConstructor
 public class DistributionList {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    /**
+     * Application-generated string id (e.g. `"dl-<timestamp>-<rand>"`).
+     * Intentionally NOT `@GeneratedValue` — the frontend generates the id
+     * on create so optimistic UI / offline flows work without a DB round-trip.
+     */
+    @Id
+    @Column(name = "distribution_list_id", nullable = false, length = 64)
+    private String distributionListId;
 
     @Column(nullable = false, length = 150)
     private String name;
@@ -107,10 +115,10 @@ public class DistributionList {
     private boolean active = true;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt = Instant.now();
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt = Instant.now();
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
     /**
      * Verbatim textarea content the user pasted. SINGLE source of truth for
@@ -123,14 +131,14 @@ public class DistributionList {
 
     /**
      * Snapshot of every directory user the owner shared this DL with.
-     * Stored as full rows (id, elid, lanid, name, emailid, department) so the
-     * UI never has to round-trip back to AD for rendering, and so audit history
-     * survives if the user is later removed from the directory.
+     * Stored as full rows (user_id, elid, lanid, name, emailid, department)
+     * so the UI never has to round-trip back to AD for rendering, and so
+     * audit history survives if the user is later removed from the directory.
      */
     @OneToMany(mappedBy = "distributionList", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<DistributionListShare> sharedWith = new ArrayList<>();
 
-    @PreUpdate void touch() { this.updatedAt = Instant.now(); }
+    @PreUpdate void touch() { this.updatedAt = LocalDateTime.now(); }
 
     public enum Visibility { PRIVATE, SHARED, PUBLIC }
 }
@@ -141,7 +149,7 @@ public class DistributionList {
 public class DistributionListShare {
     @Id
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "dl_id", nullable = false)
+    @JoinColumn(name = "distribution_list_id", nullable = false)
     private DistributionList distributionList;
 
     @Id
@@ -156,7 +164,7 @@ public class DistributionListShare {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class PK implements Serializable {
-        private UUID distributionList;
+        private String distributionList;    // matches DistributionList#distributionListId
         private String userId;
     }
 }
@@ -168,7 +176,7 @@ public class DistributionListShare {
 
 ```java
 public record DistributionListDto(
-    UUID id,
+    String distributionListId,
     String prefix,
     String name,
     String displayName,                 // prefix + name -> "DSPCH-TeamAlpha"
@@ -178,12 +186,14 @@ public record DistributionListDto(
     int memberCount,                    // derived: parseMembers(membersRaw).size()
     List<String> memberEmails,          // derived: parsed, deduped, validated emails
     String membersRaw,                  // SOURCE OF TRUTH — verbatim textarea blob
-    List<SharedUserDto> sharedWith      // FULL directory snapshot
+    List<SharedUserDto> sharedWith,     // FULL directory snapshot
+    LocalDateTime createdAt,
+    LocalDateTime updatedAt
 ) {}
 
 /** Full directory snapshot stored on a SHARED DL. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
-    String id,            // internal directory id (== user_id PK column)
+    String userId,        // internal directory id (== user_id PK column)
     String elid,          // enterprise / employee id  (nullable)
     String lanid,         // LAN / network id          (nullable)
     String name,
@@ -209,7 +219,7 @@ public record DistributionListUpsertDto(
 /** Unified result returned by /recipients/search. type=USER | DL. */
 public record RecipientSuggestionDto(
     String type,
-    String id,
+    String id,              // distributionListId for DL, directory user id for USER
     String email,           // USER only
     String displayName,     // user name OR "DSPCH-TeamAlpha"
     String subtitle,        // user email/department OR "12 members · shared"
@@ -219,7 +229,7 @@ public record RecipientSuggestionDto(
 /** Payload entry sent by frontend in to/cc/bcc lists. */
 public record RecipientRefDto(
     String type,            // "USER" | "DL"
-    String id,              // DL uuid (for DL)
+    String id,              // distributionListId (for DL)
     String email            // raw email (for USER) — falls back to id for free-typed entries
 ) {}
 ```
@@ -229,7 +239,7 @@ public record RecipientRefDto(
 ## 4. Repositories, Service, Controller (CRUD)
 
 ```java
-public interface DistributionListRepository extends JpaRepository<DistributionList, UUID> {
+public interface DistributionListRepository extends JpaRepository<DistributionList, String> {
 
     @Query("""
         select dl from DistributionList dl
@@ -250,7 +260,8 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
     @Query(value = """
         SELECT DISTINCT TOP (:lim) dl.*
         FROM distribution_list dl
-        LEFT JOIN distribution_list_share s ON s.dl_id = dl.id
+        LEFT JOIN distribution_list_share s
+          ON s.distribution_list_id = dl.distribution_list_id
         WHERE dl.is_active = 1
           AND (dl.owner_id = :uid OR dl.visibility = 'PUBLIC' OR s.user_id = :uid)
           AND ( LOWER(dl.prefix + dl.name)   LIKE :q
@@ -278,8 +289,8 @@ public class DistributionListService {
     }
 
     @Transactional(readOnly = true)
-    public DistributionListDto get(UUID id) {
-        var dl = repo.findById(id).orElseThrow(() -> new NotFoundException("DL not found"));
+    public DistributionListDto get(String distributionListId) {
+        var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
         requireReadAccess(dl);
         return toDto(dl);
     }
@@ -287,22 +298,25 @@ public class DistributionListService {
     @Transactional
     public DistributionListDto create(DistributionListUpsertDto in) {
         var dl = new DistributionList();
+        // Application-generated id (matches frontend `dl-<ts>-<rand>` pattern).
+        dl.setDistributionListId("dl-" + System.currentTimeMillis() + "-"
+            + Long.toString((long)(Math.random() * 0xffffff), 36));
         dl.setOwnerId(currentUser.id());
         applyUpsert(dl, in);
         return toDto(repo.save(dl));
     }
 
     @Transactional
-    public DistributionListDto update(UUID id, DistributionListUpsertDto in) {
-        var dl = repo.findById(id).orElseThrow(() -> new NotFoundException("DL not found"));
+    public DistributionListDto update(String distributionListId, DistributionListUpsertDto in) {
+        var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
         requireOwner(dl);
         applyUpsert(dl, in);
         return toDto(repo.save(dl));
     }
 
     @Transactional
-    public void delete(UUID id) {
-        var dl = repo.findById(id).orElseThrow(() -> new NotFoundException("DL not found"));
+    public void delete(String distributionListId) {
+        var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
         requireOwner(dl);
         dl.setActive(false);                 // soft delete preserves audit trail of past sends
         repo.save(dl);
@@ -328,10 +342,10 @@ public class DistributionListService {
         if (in.visibility() == Visibility.SHARED && in.sharedWith() != null) {
             String ownerId = dl.getOwnerId();
             for (SharedUserDto s : in.sharedWith()) {
-                if (s.id() == null || s.id().equals(ownerId)) continue;  // owner is implicit
+                if (s.userId() == null || s.userId().equals(ownerId)) continue;  // owner is implicit
                 var row = new DistributionListShare();
                 row.setDistributionList(dl);
-                row.setUserId(s.id());
+                row.setUserId(s.userId());
                 row.setElid(s.elid());
                 row.setLanid(s.lanid());
                 row.setName(s.name());
@@ -360,7 +374,7 @@ public class DistributionListService {
     private DistributionListDto toDto(DistributionList dl) {
         List<String> emails = parseMembers(dl.getMembersRaw());
         return new DistributionListDto(
-            dl.getId(), dl.getPrefix(), dl.getName(),
+            dl.getDistributionListId(), dl.getPrefix(), dl.getName(),
             dl.getPrefix() + dl.getName(),
             dl.getDescription(), dl.getVisibility().name(), dl.getOwnerId(),
             emails.size(),
@@ -370,7 +384,9 @@ public class DistributionListService {
                 .map(s -> new SharedUserDto(
                     s.getUserId(), s.getElid(), s.getLanid(),
                     s.getName(), s.getEmailid(), s.getDepartment()))
-                .toList()
+                .toList(),
+            dl.getCreatedAt(),
+            dl.getUpdatedAt()
         );
     }
 
@@ -394,11 +410,12 @@ public class DistributionListService {
 public class DistributionListController {
     private final DistributionListService service;
 
-    @GetMapping                          public List<DistributionListDto>  list()                                      { return service.listMine(); }
-    @GetMapping("/{id}")                 public DistributionListDto         get(@PathVariable UUID id)                  { return service.get(id); }
-    @PostMapping                         public DistributionListDto         create(@Valid @RequestBody DistributionListUpsertDto in) { return service.create(in); }
-    @PutMapping("/{id}")                 public DistributionListDto         update(@PathVariable UUID id, @Valid @RequestBody DistributionListUpsertDto in) { return service.update(id, in); }
-    @DeleteMapping("/{id}")              public void                        delete(@PathVariable UUID id)               { service.delete(id); }
+    @GetMapping                          public List<DistributionListDto>  list()                                                              { return service.listMine(); }
+    @GetMapping("/{distributionListId}") public DistributionListDto         get(@PathVariable String distributionListId)                       { return service.get(distributionListId); }
+    @PostMapping                         public DistributionListDto         create(@Valid @RequestBody DistributionListUpsertDto in)           { return service.create(in); }
+    @PutMapping("/{distributionListId}") public DistributionListDto         update(@PathVariable String distributionListId,
+                                                                                   @Valid @RequestBody DistributionListUpsertDto in)          { return service.update(distributionListId, in); }
+    @DeleteMapping("/{distributionListId}") public void                     delete(@PathVariable String distributionListId)                    { service.delete(distributionListId); }
 }
 ```
 
@@ -444,7 +461,7 @@ public class RecipientSearchController {
             String visBadge = dl.getVisibility() == Visibility.SHARED ? " · shared"
                             : dl.getVisibility() == Visibility.PUBLIC ? " · public" : "";
             out.add(new RecipientSuggestionDto(
-                "DL", dl.getId().toString(), null,
+                "DL", dl.getDistributionListId(), null,
                 dl.getPrefix() + dl.getName(),
                 count + " members" + visBadge,
                 count));
@@ -478,24 +495,24 @@ public class RecipientResolverService {
     private final DistributionListRepository dlRepo;
     private final CurrentUserProvider currentUser;
 
-    public record Resolved(List<String> emails, List<UUID> expandedDlIds, List<String> warnings) {}
+    public record Resolved(List<String> emails, List<String> expandedDlIds, List<String> warnings) {}
 
     /**
      * Expand a mixed list of USER + DL refs into a deduplicated, validated email list.
      * Silently skips DLs the caller cannot access (logs a warning).
      */
     public Resolved resolve(List<RecipientRefDto> refs) {
-        Set<String> emails = new LinkedHashSet<>();
-        List<UUID> dlIds   = new ArrayList<>();
-        List<String> warns = new ArrayList<>();
+        Set<String> emails  = new LinkedHashSet<>();
+        List<String> dlIds  = new ArrayList<>();
+        List<String> warns  = new ArrayList<>();
         String uid = currentUser.id();
 
         for (RecipientRefDto r : refs) {
             if ("DL".equalsIgnoreCase(r.type())) {
-                UUID id = UUID.fromString(r.id());
-                var dl = dlRepo.findById(id).orElse(null);
+                String distributionListId = r.id();
+                var dl = dlRepo.findById(distributionListId).orElse(null);
                 if (dl == null || !dl.isActive()) {
-                    warns.add("Distribution list " + r.id() + " is no longer available — skipped.");
+                    warns.add("Distribution list " + distributionListId + " is no longer available — skipped.");
                     continue;
                 }
                 if (!hasAccess(dl, uid)) {
@@ -508,7 +525,7 @@ public class RecipientResolverService {
                     continue;
                 }
                 emails.addAll(memberEmails);
-                dlIds.add(id);
+                dlIds.add(distributionListId);
             } else {
                 if (StringUtils.hasText(r.email())) emails.add(r.email().toLowerCase().trim());
             }
@@ -535,7 +552,7 @@ The `/api/templates/{id}/send` payload now accepts **mixed** recipients:
   "subjectContent": "...",
   "bodyContent":    "...",
   "to":  [ { "type": "USER", "email": "john@x.com" },
-           { "type": "DL",   "id":    "5c9e...-uuid" } ],
+           { "type": "DL",   "id":    "dl-1717999999999-a8b3c2" } ],
   "cc":  [ ... ],
   "bcc": [ ... ],
   "subjectData":          { ... },
@@ -548,7 +565,7 @@ Service:
 
 ```java
 @Transactional
-public SentMessageDto send(UUID templateId, SendRequestDto req) {
+public SentMessageDto send(String templateId, SendRequestDto req) {
     var to  = resolver.resolve(req.to());
     var cc  = resolver.resolve(req.cc());
     var bcc = resolver.resolve(req.bcc());
@@ -571,7 +588,7 @@ public SentMessageDto send(UUID templateId, SendRequestDto req) {
         .subjectData(req.subjectData())
         .bodyData(req.bodyData())
         .globalApiIntegrations(req.globalApiIntegrations())   // already cached in existing flow
-        .sentAt(Instant.now())
+        .sentAt(LocalDateTime.now())
         .sentBy(currentUser.id())
         .build();
 
@@ -599,7 +616,7 @@ Goal: when a user clicks **Resend** on a previously-sent message, DL chips reapp
 `resendDataToTemplate` (already wired in `src/lib/templateApi.ts`) gets two new fields from the persisted message:
 
 ```java
-public ResendDto resend(UUID sentMessageId) {
+public ResendDto resend(String sentMessageId) {
     var msg = sentRepo.findById(sentMessageId).orElseThrow();
     return ResendDto.builder()
         // existing: subject/body/contentData/globalApiIntegrations …
@@ -612,7 +629,7 @@ public ResendDto resend(UUID sentMessageId) {
 
 Frontend then:
 
-1. Reads `toRefs` and rebuilds the chip list. For each `DL` ref it calls `GET /api/distribution-lists/{id}` to **re-fetch live members** (count badge updates).
+1. Reads `toRefs` and rebuilds the chip list. For each `DL` ref it calls `GET /api/distribution-lists/{distributionListId}` to **re-fetch live members** (count badge updates).
 2. If the GET 404s / 403s, the chip is rendered in a "broken DL" state and excluded from `Send`.
 3. On the next `Send` the resolver re-expands — picking up any new/removed members since the original send.
 
@@ -647,7 +664,7 @@ class DistributionListRepositoryTest {
         var dl = saveDl("TeamAlpha", "DSPCH-", "owner-1", Visibility.PRIVATE,
                         List.of("a@x.com","b@x.com"));
         var hits = repo.searchVisibleTo("owner-1", "%dspch-team%", 10);
-        assertThat(hits).extracting(DistributionList::getId).contains(dl.getId());
+        assertThat(hits).extracting(DistributionList::getDistributionListId).contains(dl.getDistributionListId());
     }
     @Test void searchVisibleTo_matchesMemberEmail() { /* … */ }
     @Test void searchVisibleTo_excludesOthersPrivate() { /* … */ }
@@ -674,15 +691,15 @@ class RecipientResolverServiceTest {
 
     @Test void resolve_dedupesAcrossDlAndUser() {
         var dl = dlWith("a@x.com","b@x.com");
-        when(dlRepo.findById(dl.getId())).thenReturn(Optional.of(dl));
+        when(dlRepo.findById(dl.getDistributionListId())).thenReturn(Optional.of(dl));
         when(currentUser.id()).thenReturn("owner-1");
 
         var out = svc.resolve(List.of(
             new RecipientRefDto("USER", null, "a@x.com"),
-            new RecipientRefDto("DL",   dl.getId().toString(), null)));
+            new RecipientRefDto("DL",   dl.getDistributionListId(), null)));
 
         assertThat(out.emails()).containsExactly("a@x.com","b@x.com");  // dedup
-        assertThat(out.expandedDlIds()).containsExactly(dl.getId());
+        assertThat(out.expandedDlIds()).containsExactly(dl.getDistributionListId());
     }
 
     @Test void resolve_inactiveDl_skipsWithWarning()    { /* … */ }
