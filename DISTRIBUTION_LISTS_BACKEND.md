@@ -627,7 +627,7 @@ class RecipientSearchControllerTest {
 
 ---
 
-## 11. User Directory Search for SHARED Picker
+## 12. User Directory Search for SHARED Picker
 
 When a user creates/edits a DL with `visibility = SHARED`, the UI shows a
 second autocomplete to select **which org users** can see and use this DL.
@@ -682,3 +682,24 @@ public class UserDirectoryService {
 - `src/pages/SharedUserPicker.tsx` — autocomplete component (org users only).
 - `src/lib/distributionListStorage.ts` — `searchUsers()` + `getUsersByIds()` (swap with `fetch('/api/users/search?...')` for real backend).
 - `src/pages/DistributionLists.tsx` — renders the picker only when `visibility === 'SHARED'` and disables Save until at least one user is selected.
+
+---
+
+## 13. Frontend-Backend Contract Notes
+
+### Prefix Behaviour
+The `prefix` field is **server-controlled and readonly** in the UI. It is shown as a non-editable prefix addon before the name input (e.g. `DSPCH-TeamAlpha`). The frontend strips any user-typed prefix automatically. Backend should reject reserved prefixes (`SYS-`, `ADMIN-`) and fall back to `DSPCH-` when null.
+
+### Name Input Sanitisation
+The frontend enforces alphanumeric-only in real time (`/[^A-Za-z0-9]/g` stripped on every keystroke). The backend `@Pattern` validation acts as the authoritative guard.
+
+### Members Bulk Import
+The frontend accepts member emails via a `<textarea>` that bulk-parses on blur using separators `, ; \s \n`. Invalid entries are silently discarded. The backend still receives a structured `List<MemberDto>` in the upsert payload.
+
+### Save Button Guard (frontend)
+The **Create / Save** button is disabled until:
+- `name` is non-empty, alphanumeric, and unique per owner
+- `members` has ≥1 valid email
+- `visibility === 'SHARED'` ⇒ `sharedWith` has ≥1 selected user
+
+This mirrors the server-side validation rules in §9.
