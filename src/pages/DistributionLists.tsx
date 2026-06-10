@@ -59,10 +59,16 @@ const blankDraft = (): DraftDL => ({
   sharedWith: [],
 });
 
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
+
 export default function DistributionLists() {
   const { toast } = useToast();
-  const [lists, setLists] = useState<DistributionList[]>(() => listDistributionLists());
   const [search, setSearch] = useState("");
+  const [visibilityFilter, setVisibilityFilter] = useState<DLVisibilityFilter>("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
   const [sharedUsers, setSharedUsers] = useState<DirectoryUser[]>([]);
@@ -73,18 +79,20 @@ export default function DistributionLists() {
     [draft.membersRaw],
   );
 
-  const refresh = () => setLists(listDistributionLists());
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, visibilityFilter, pageSize]);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return lists;
-    const q = search.toLowerCase();
-    return lists.filter(
-      (dl) =>
-        dl.displayName.toLowerCase().includes(q) ||
-        dl.name.toLowerCase().includes(q) ||
-        dl.members.some((m) => m.email.toLowerCase().includes(q)),
-    );
-  }, [lists, search]);
+  const paged = useMemo(
+    () => listDistributionListsPaged({ page, pageSize, visibility: visibilityFilter, search }),
+    [page, pageSize, visibilityFilter, search, refreshKey],
+  );
+  const lists = paged.items;
+  const filtered = lists;
+
+  const refresh = () => setRefreshKey((k) => k + 1);
+
 
   const openCreate = () => {
     setDraft(blankDraft());
