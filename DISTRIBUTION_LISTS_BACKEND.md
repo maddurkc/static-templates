@@ -662,7 +662,8 @@ class DistributionListServiceTest {
     @Test void create_setsOwner_andDefaultPrefix() { /* … */ }
     @Test void update_otherOwner_throwsForbidden()  { /* … */ }
     @Test void delete_softDeletesOnly()             { /* … */ }
-    @Test void update_clearsAndReaddsMembers()      { /* orphanRemoval verified */ }
+    @Test void parseMembers_acceptsMixedSeparators()  { /* ", ; : space \n" */ }
+    @Test void upsert_rejectsBlankMembersRaw()        { /* 400 */ }
 }
 
 @ExtendWith(MockitoExtension.class)
