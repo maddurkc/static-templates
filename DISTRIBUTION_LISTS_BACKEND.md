@@ -1597,14 +1597,19 @@ export interface RecipientRef {
 }
 
 export interface ResolvedRecipients {
-  emails: string[];
+  /** v2: split per bucket — see §6 caller contract. */
+  toEmails: string[];
+  ccEmails: string[];
+  bccEmails: string[];
   expandedDlIds: string[];
   warnings: string[];
 }
 
 /**
  * POST /api/recipients/resolve  body: RecipientRef[]
- * Server-side mirror of `RecipientResolverService` (§6).
+ * Server-side mirror of `RecipientResolverService` (§6). v2 returns the
+ * bucket-split shape so callers can fan DL sub-buckets out into the matching
+ * outgoing To / CC / BCC field on the send payload.
  */
 export async function resolveRecipients(
   refs: RecipientRef[],
@@ -1618,15 +1623,16 @@ export async function resolveRecipients(
 
 ### 14.3 Page-level adjustments
 
-`resolveRecipients` is now **async**. Callers in `RunTemplates.tsx` (and
-anywhere else expanding DLs at send-time) must `await` it:
+`resolveRecipients` is now **async** AND returns split buckets. Callers in
+`RunTemplates.tsx` (and anywhere else expanding DLs at send-time) must
+`await` it and merge the sub-buckets:
 
 ```ts
-// before (demo, sync)
-const { emails, warnings } = resolveRecipients(refs);
-
-// after (real backend)
-const { emails, warnings } = await resolveRecipients(refs);
+// v2
+const r = await resolveRecipients(refs);
+const outTo  = r.toEmails;
+const outCc  = dedupe([...r.ccEmails]);
+const outBcc = dedupe([...r.bccEmails]);
 ```
 
 All other call sites in `DistributionLists.tsx` and `SharedUserPicker.tsx`
