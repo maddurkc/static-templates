@@ -1049,9 +1049,10 @@ Frontend then:
 |------|-------|----------|
 | DL name alphanumeric only (letters + numbers, no spaces/special chars) | `@Pattern` on DTO + service pre-check | 400 BAD_REQUEST |
 | DL name unique per owner | DB `uq_dl_owner_name` + service pre-check | 409 Conflict, friendly message |
-| `membersRaw` non-blank AND `parseMembers(raw)` returns ≥1 valid email | `@NotBlank` on DTO + `applyUpsert` guard | 400 BAD_REQUEST |
-| Email format (per token in `members_raw`) | `parseMembers()` regex filter — invalid tokens silently dropped | Soft (drop) |
-| `visibility=SHARED` ⇒ `sharedWith` non-empty | Service guard | 400 |
+| At least one valid email across `toRaw` / `ccRaw` / `bccRaw` combined | `applyUpsert` service guard | 400 BAD_REQUEST |
+| Email format (per token in to/cc/bcc blobs) | `parseMembers()` regex filter — invalid tokens silently dropped | Soft (drop) |
+| v2: `visibility ∈ {PRIVATE, PUBLIC}` only (SHARED removed) | DB CHECK + enum | 400 |
+| v2: Edit / Delete requires owner OR listed manager | `requireManage` service guard | 403 FORBIDDEN |
 | Reserved prefixes (`SYS-`, `ADMIN-`) | Service guard | 400 |
 | DL > 500 members | Soft warning returned in response | UI shows confirm dialog before send |
 | Cross-DL duplicate emails on send | `RecipientResolverService` LinkedHashSet | Silent dedupe; warning in response |
