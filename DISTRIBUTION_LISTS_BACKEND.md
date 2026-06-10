@@ -1135,8 +1135,9 @@ class RecipientResolverServiceTest {
     @Mock CurrentUserProvider currentUser;
     @InjectMocks RecipientResolverService svc;
 
-    @Test void resolve_dedupesAcrossDlAndUser() {
-        var dl = dlWith("a@x.com","b@x.com");
+    @Test void resolve_splitsDlBucketsAndDedupesUser() {
+        // v2: DL contributes to/cc/bcc separately; USER ref lands in toEmails.
+        var dl = dlWith(/* toRaw */ "a@x.com,b@x.com", /* ccRaw */ "c@x.com", /* bccRaw */ "");
         when(dlRepo.findById(dl.getDistributionListId())).thenReturn(Optional.of(dl));
         when(currentUser.id()).thenReturn("owner-1");
 
@@ -1144,7 +1145,9 @@ class RecipientResolverServiceTest {
             new RecipientRefDto("USER", null, "a@x.com"),
             new RecipientRefDto("DL",   dl.getDistributionListId(), null)));
 
-        assertThat(out.emails()).containsExactly("a@x.com","b@x.com");  // dedup
+        assertThat(out.toEmails()).containsExactly("a@x.com","b@x.com");   // user merged + DL toRaw, dedup
+        assertThat(out.ccEmails()).containsExactly("c@x.com");
+        assertThat(out.bccEmails()).isEmpty();
         assertThat(out.expandedDlIds()).containsExactly(dl.getDistributionListId());
     }
 
