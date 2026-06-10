@@ -60,12 +60,30 @@ CREATE TABLE dbo.distribution_list_member (
 CREATE INDEX ix_dlm_email ON dbo.distribution_list_member(email);
 CREATE INDEX ix_dlm_dl    ON dbo.distribution_list_member(dl_id);
 
+-- Raw textarea blob (verbatim list the user pasted). Optional, audit/round-trip only.
+ALTER TABLE dbo.distribution_list ADD members_raw NVARCHAR(MAX) NULL;
+
+-- =============================================================
+-- SHARED visibility: snapshot the FULL directory record for every
+-- shared user (id, elid, lanid, name, emailid, department).
+-- Snapshot semantics: rows survive even if a user is later removed
+-- from AD/SCIM, so audit history stays intact.
+-- =============================================================
 CREATE TABLE dbo.distribution_list_share (
-    dl_id   UNIQUEIDENTIFIER NOT NULL,
-    user_id NVARCHAR(100)    NOT NULL,
+    dl_id        UNIQUEIDENTIFIER NOT NULL,
+    user_id      NVARCHAR(100)    NOT NULL,   -- internal directory id
+    elid         NVARCHAR(50)     NULL,       -- enterprise / employee id
+    lanid        NVARCHAR(50)     NULL,       -- LAN / network id
+    name         NVARCHAR(150)    NOT NULL,
+    emailid      NVARCHAR(255)    NOT NULL,
+    department   NVARCHAR(150)    NULL,
     CONSTRAINT pk_dls PRIMARY KEY (dl_id, user_id),
     CONSTRAINT fk_dls_dl FOREIGN KEY (dl_id) REFERENCES dbo.distribution_list(id) ON DELETE CASCADE
 );
+
+CREATE INDEX ix_dls_user  ON dbo.distribution_list_share(user_id);
+CREATE INDEX ix_dls_lanid ON dbo.distribution_list_share(lanid);
+CREATE INDEX ix_dls_elid  ON dbo.distribution_list_share(elid);
 ```
 
 ---
