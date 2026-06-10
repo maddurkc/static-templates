@@ -189,8 +189,14 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
   if (idx === -1) throw new Error("Distribution list not found.");
   if (all[idx].ownerId !== CURRENT_USER) throw new Error("You can only edit your own distribution lists.");
 
-  const prefix = input.prefix ?? all[idx].prefix;
   const name = input.name.trim();
+  const dupe = all.find(
+    (d) => d.id !== id && d.ownerId === CURRENT_USER && d.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (dupe) throw new Error(`A distribution list named '${name}' already exists.`);
+
+  const prefix = input.prefix ?? all[idx].prefix;
+
   const updated: DistributionList = {
     ...all[idx],
     prefix,
