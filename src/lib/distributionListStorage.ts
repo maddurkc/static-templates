@@ -436,7 +436,7 @@ export function resolveRecipients(refs: RecipientRef[]): ResolvedRecipients {
         continue;
       }
       dl.members.forEach((m) => emails.add(m.email.toLowerCase()));
-      expandedDlIds.push(dl.id);
+      expandedDlIds.push(dl.distributionListId);
     } else if (ref.email) {
       emails.add(ref.email.toLowerCase().trim());
     }
