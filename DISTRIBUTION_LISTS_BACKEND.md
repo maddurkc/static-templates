@@ -461,7 +461,7 @@ public class RecipientSearchController {
             String visBadge = dl.getVisibility() == Visibility.SHARED ? " · shared"
                             : dl.getVisibility() == Visibility.PUBLIC ? " · public" : "";
             out.add(new RecipientSuggestionDto(
-                "DL", dl.getId().toString(), null,
+                "DL", dl.getDistributionListId(), null,
                 dl.getPrefix() + dl.getName(),
                 count + " members" + visBadge,
                 count));
