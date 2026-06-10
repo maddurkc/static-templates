@@ -305,7 +305,7 @@ export interface DirectoryUser {
 /** Convert a directory row → the persistence shape stored on the DL. */
 export function toSharedRef(u: DirectoryUser): SharedUserRef {
   return {
-    id: u.id,
+    userId: u.id,
     elid: u.elid,
     lanid: u.lanid,
     name: u.name,
@@ -317,7 +317,7 @@ export function toSharedRef(u: DirectoryUser): SharedUserRef {
 /** Convert a persisted shared-user record back to the directory shape used by the picker. */
 export function fromSharedRef(s: SharedUserRef): DirectoryUser {
   return {
-    id: s.id,
+    id: s.userId,
     elid: s.elid,
     lanid: s.lanid,
     name: s.name,
