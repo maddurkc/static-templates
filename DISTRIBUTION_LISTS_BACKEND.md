@@ -726,14 +726,27 @@ The picker calls a dedicated endpoint that only returns directory users
 ```
 GET /api/users/search?q={query}&limit=8
 ```
+The query matches against name, emailid, ELID, LANID, and department. Returns
+the **full directory record** — never a stripped/lite shape — because the
+frontend persists every returned field on the DL.
 
 ### Response
 ```json
 [
-  { "id": "u-12", "name": "Jane Smith", "email": "jane.smith@company.com", "department": "Design" },
-  ...
+  {
+    "id":         "u-12",
+    "elid":       "E10042",
+    "lanid":      "jsmith",
+    "name":       "Jane Smith",
+    "email":      "jane.smith@company.com",
+    "department": "Design"
+  }
 ]
 ```
+
+> ℹ️ The wire field is `email` for symmetry with AD/SCIM. The backend stores it
+> under the column name `emailid` (see `distribution_list_share.emailid`) and
+> exposes it as `emailid` in `SharedUserDto` on subsequent reads.
 
 ### Service Sketch
 ```java
@@ -746,30 +759,50 @@ public class UserDirectoryService {
         if (q == null || q.isBlank()) return List.of();
         String like = "%" + q.toLowerCase() + "%";
         return userRepo
-            .findTopByNameOrEmailOrDepartment(like, PageRequest.of(0, limit))
+            .findTopByNameOrEmailOrElidOrLanidOrDepartment(like, PageRequest.of(0, limit))
             .stream()
-            .map(u -> new DirectoryUserDto(u.getId(), u.getName(), u.getEmail(), u.getDepartment()))
+            .map(u -> new DirectoryUserDto(
+                u.getId(), u.getElid(), u.getLanid(),
+                u.getName(), u.getEmail(), u.getDepartment()))
             .toList();
     }
 }
+
+public record DirectoryUserDto(
+    String id, String elid, String lanid,
+    String name, String email, String department
+) {}
 ```
 
 ### How `sharedWith` Is Persisted
-1. Frontend sends `sharedWith: ["u-12", "u-34", ...]` (array of user ids) inside the DL upsert payload.
-2. `DistributionListService.upsert` clears the `distribution_list_share` rows for that `dl_id` and re-inserts the new set (collection-sync pattern).
-3. On any subsequent search/list query (§5), the WHERE clause `:uid member of dl.sharedWith` (or the equivalent JOIN on `distribution_list_share`) decides whether the requesting user sees the DL.
+1. Frontend sends the **full directory snapshot** for each selected user:
+   ```jsonc
+   "sharedWith": [
+     { "id": "u-12", "elid": "E10042", "lanid": "jsmith",
+       "name": "Jane Smith", "emailid": "jane.smith@company.com",
+       "department": "Design" }
+   ]
+   ```
+2. `DistributionListService.applyUpsert` clears all `distribution_list_share`
+   rows for that `dl_id` and re-inserts the new set (collection-sync pattern,
+   orphanRemoval handles deletes).
+3. Reads return the same `SharedUserDto` rows in `DistributionListDto.sharedWith`
+   so the UI can render names/elids/lanids without an extra directory call.
+4. Visibility checks (`findVisibleTo`, `requireReadAccess`, `RecipientResolverService.hasAccess`)
+   match against `distribution_list_share.user_id`.
 
 ### Validation Rules (server)
 | Rule | Code | Status |
 |------|------|--------|
 | `visibility = SHARED` requires non-empty `sharedWith` | `DistributionListService.validate` | 400 |
-| Each id in `sharedWith` must exist in user directory | `UserDirectoryService.assertExists(ids)` | 400 |
-| Owner is implicit — do **not** include `ownerId` in `sharedWith` | filter on save | — |
+| Each `sharedWith[].id` must exist in the user directory | `UserDirectoryService.assertExists(ids)` | 400 |
+| `sharedWith[].emailid` and `name` are required (NVARCHAR NOT NULL) | DB + DTO `@NotBlank` | 400 |
+| Owner is implicit — do **not** include `ownerId` in `sharedWith` | filter on save (skipped silently) | — |
 
 ### Frontend Files
-- `src/pages/SharedUserPicker.tsx` — autocomplete component (org users only).
-- `src/lib/distributionListStorage.ts` — `searchUsers()` + `getUsersByIds()` (swap with `fetch('/api/users/search?...')` for real backend).
-- `src/pages/DistributionLists.tsx` — renders the picker only when `visibility === 'SHARED'` and disables Save until at least one user is selected.
+- `src/pages/SharedUserPicker.tsx` — autocomplete (org users only). Renders LANID badge + ELID/department in subtitle.
+- `src/lib/distributionListStorage.ts` — `DirectoryUser` / `SharedUserRef` types, `searchUsers()`, `toSharedRef()`, `fromSharedRef()` (swap with `fetch('/api/users/search?...')` for real backend).
+- `src/pages/DistributionLists.tsx` — renders the picker only when `visibility === 'SHARED'`, converts picker rows to `SharedUserRef[]` on save, and disables Save until at least one user is selected.
 
 ---
 
@@ -781,13 +814,27 @@ The `prefix` field is **server-controlled and readonly** in the UI. It is shown 
 ### Name Input Sanitisation
 The frontend enforces alphanumeric-only in real time (`/[^A-Za-z0-9]/g` stripped on every keystroke). The backend `@Pattern` validation acts as the authoritative guard.
 
-### Members Bulk Import
-The frontend accepts member emails via a `<textarea>` that bulk-parses on blur using separators `, ; \s \n`. Invalid entries are silently discarded. The backend still receives a structured `List<MemberDto>` in the upsert payload.
+### Members Bulk Import (textarea, free-form)
+The Members field is a **`<textarea>`** — users paste any list of email addresses, separated by **any combination of `, ; : space newline`**. The frontend:
+
+1. Splits the textarea on the regex `/[,;:\s\n]+/` on blur.
+2. Lowercases + trims each token, drops anything that doesn't match a basic email regex.
+3. Sends two things to the backend in the upsert payload:
+   - `members`: a structured `List<MemberDto>` (deduped, validated).
+   - `membersRaw`: the **verbatim string** the user pasted (any format), stored in `distribution_list.members_raw` for audit / round-trip. The backend never re-parses this — it is treated as an opaque blob.
+
+This keeps the column model normalised (one row per email, with unique constraints) while still preserving the original free-form input the user supplied.
+
+### Shared Users Picker (autocomplete, rich snapshot)
+When `visibility === 'SHARED'`, the dialog renders `SharedUserPicker`, an autocomplete that queries `GET /api/users/search?q=...`. The frontend stores the **full directory record** for each selection (`id`, `elid`, `lanid`, `name`, `emailid`, `department`) — never just the id — and sends that as `sharedWith: SharedUserDto[]` on save. See §12 for the persistence flow.
 
 ### Save Button Guard (frontend)
 The **Create / Save** button is disabled until:
 - `name` is non-empty, alphanumeric, and unique per owner
 - `members` has ≥1 valid email
+- `visibility === 'SHARED'` ⇒ `sharedWith` has ≥1 selected user
+
+This mirrors the server-side validation rules in §9.
 - `visibility === 'SHARED'` ⇒ `sharedWith` has ≥1 selected user
 
 This mirrors the server-side validation rules in §9.
