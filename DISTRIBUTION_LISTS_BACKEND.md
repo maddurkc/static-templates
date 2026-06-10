@@ -311,11 +311,17 @@ public class DistributionListService {
     /* ------------- helpers ------------- */
 
     private void applyUpsert(DistributionList dl, DistributionListUpsertDto in) {
+        // Parse + validate members BEFORE persisting so we never store junk.
+        List<String> parsed = parseMembers(in.membersRaw());
+        if (parsed.isEmpty()) {
+            throw new BadRequestException("At least one valid member email is required.");
+        }
+
         dl.setName(in.name().trim());
         dl.setPrefix(StringUtils.hasText(in.prefix()) ? in.prefix() : "DSPCH-");
         dl.setDescription(in.description());
         dl.setVisibility(in.visibility());
-        dl.setMembersRaw(in.membersRaw());
+        dl.setMembersRaw(in.membersRaw());      // stored VERBATIM — no normalisation
 
         // ---- sharedWith: clear/addAll sync; orphanRemoval drops detached rows ----
         dl.getSharedWith().clear();
@@ -334,26 +340,31 @@ public class DistributionListService {
                 dl.getSharedWith().add(row);
             }
         }
+    }
 
-        // ---- members: same clear/addAll pattern ----
-        dl.getMembers().clear();
-        for (MemberDto m : in.members()) {
-            var entity = new DistributionListMember();
-            entity.setDistributionList(dl);
-            entity.setEmail(m.email().toLowerCase().trim());
-            entity.setDisplayName(m.displayName());
-            dl.getMembers().add(entity);
-        }
+    /**
+     * Single authoritative parser for the verbatim members_raw blob.
+     * Splits on `, ; : whitespace newline`, lowercases, dedupes, validates.
+     * Used by both `applyUpsert` (validation) and `toDto` (read projection).
+     */
+    public static List<String> parseMembers(String raw) {
+        if (raw == null || raw.isBlank()) return List.of();
+        return Arrays.stream(raw.split("[,;:\\s\\n]+"))
+            .map(String::trim).map(String::toLowerCase)
+            .filter(s -> !s.isEmpty())
+            .filter(s -> s.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
+            .distinct()
+            .toList();
     }
 
     private DistributionListDto toDto(DistributionList dl) {
+        List<String> emails = parseMembers(dl.getMembersRaw());
         return new DistributionListDto(
             dl.getId(), dl.getPrefix(), dl.getName(),
             dl.getPrefix() + dl.getName(),
             dl.getDescription(), dl.getVisibility().name(), dl.getOwnerId(),
-            dl.getMembers().size(),
-            dl.getMembers().stream()
-                .map(m -> new MemberDto(m.getEmail(), m.getDisplayName())).toList(),
+            emails.size(),
+            emails,
             dl.getMembersRaw(),
             dl.getSharedWith().stream()
                 .map(s -> new SharedUserDto(
