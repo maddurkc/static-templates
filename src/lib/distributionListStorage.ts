@@ -54,7 +54,7 @@ export interface RecipientSuggestion {
   memberCount?: number;       // DL only
 }
 
-const STORAGE_KEY = "smart_distribution_lists";
+const STORAGE_KEY = "smart_distribution_lists_v2";
 const DEFAULT_PREFIX = "DSPCH-";
 const RESERVED_PREFIXES = ["SYS-", "ADMIN-"];
 const CURRENT_USER = "me";   // demo placeholder
