@@ -1,13 +1,19 @@
 /**
- * Custom Smart Distribution Lists — frontend storage layer.
+ * Custom Smart Distribution Lists — frontend storage layer (v2).
  *
- * Mirrors the Spring Boot backend contract described in
- * DISTRIBUTION_LISTS_BACKEND.md. Persists DLs to localStorage so the demo
- * works without a server; swap the four exported async functions with
- * `fetch('/api/distribution-lists*')` calls when wiring real backend.
+ * v2 changes (mirrors the updated Spring Boot contract in
+ * DISTRIBUTION_LISTS_BACKEND.md):
+ *   • Visibility is binary: PRIVATE | PUBLIC (no SHARED).
+ *   • `distribution_list_share` rows now represent **MANAGERS** (can
+ *     edit / delete) and can exist on ANY visibility.
+ *   • New column `type` (always `CUSTOM` for now).
+ *   • New column `owner_lanid` stored alongside `owner_id` (AD ent id).
+ *   • Members are stored as THREE verbatim blobs: `to_raw`, `cc_raw`,
+ *     `bcc_raw` (instead of a single `members_raw`).
  */
 
-export type DLVisibility = "PRIVATE" | "SHARED" | "PUBLIC";
+export type DLVisibility = "PRIVATE" | "PUBLIC";
+export type DLType = "CUSTOM";
 
 export interface DLMember {
   email: string;
@@ -15,36 +21,21 @@ export interface DLMember {
 }
 
 /**
- * Rich shared-user record persisted on a DL when visibility = SHARED.
- * Mirrors a `distribution_list_share` row.
- *
- * `distributionListShareId` is the surrogate PK (UUID column, mapped to
- * `String` in JPA — server-generated). It is `undefined` on rows the user
- * has just added in the dialog and not yet persisted.
+ * Manager record — a user (besides the owner) authorised to edit / delete
+ * this DL. Mirrors a `distribution_list_share` row (the column names are
+ * unchanged for backward compatibility; semantics shifted from "viewer"
+ * to "manager" in v2).
  */
 export interface SharedUserRef {
-  distributionListShareId?: string; // surrogate PK; undefined until server-assigned
-  userId: string;                   // internal user id (unique per DL)
-  elid?: string;                    // enterprise id (e.g. AD upn / employee login id)
-  lanid?: string;                   // LAN / network id
+  distributionListShareId?: string;
+  userId: string;
+  elid?: string;
+  lanid?: string;
   name: string;
-  emailid: string;                  // canonical email
+  emailid: string;
   department?: string;
 }
 
-/**
- * The DL is persisted as a SINGLE row in `distribution_list`.
- * Member emails live entirely in the `members_raw` NVARCHAR(MAX) column
- * (verbatim free-form text the user pasted). The structured `members`
- * array below is **derived** on read via `parseMembersRaw()` and is
- * never written to storage / the DB.
- *
- * `distributionListId` matches the backend PK column `distribution_list_id`.
- * The DB column type is `UNIQUEIDENTIFIER` (UUID, generated server-side by
- * Hibernate `@GenericGenerator("uuid2")`), but the JPA entity / DTO / REST
- * payloads carry it as a plain `String` — so the frontend treats it as an
- * opaque string id and never tries to parse it.
- */
 export interface DistributionList {
   distributionListId: string;
   prefix: string;
@@ -52,13 +43,19 @@ export interface DistributionList {
   displayName: string;
   description?: string;
   visibility: DLVisibility;
-  ownerId: string;
-  /** Source of truth — the verbatim textarea string. */
-  membersRaw: string;
-  /** Derived from membersRaw on every read. Not persisted. */
-  members: DLMember[];
-  sharedWith: SharedUserRef[];
-  /** ISO LocalDateTime string (matches backend `LocalDateTime`). */
+  type: DLType;
+  ownerId: string;        // AD enterprise id of creator
+  ownerLanid?: string;    // LAN id of creator
+  /** Verbatim textarea blobs — single source of truth. */
+  toRaw: string;
+  ccRaw: string;
+  bccRaw: string;
+  /** Derived on read; not persisted. */
+  toMembers: DLMember[];
+  ccMembers: DLMember[];
+  bccMembers: DLMember[];
+  /** Managers (can edit/delete alongside the owner). */
+  managers: SharedUserRef[];
   createdAt: string;
   updatedAt: string;
 }
@@ -66,24 +63,20 @@ export interface DistributionList {
 export interface RecipientSuggestion {
   type: "USER" | "DL";
   id: string;
-  email?: string;             // USER only
+  email?: string;
   displayName: string;
   subtitle: string;
-  memberCount?: number;       // DL only
+  memberCount?: number;
 }
 
-const STORAGE_KEY = "smart_distribution_lists_v3";
+const STORAGE_KEY = "smart_distribution_lists_v4";
 const DEFAULT_PREFIX = "DSPCH-";
 const RESERVED_PREFIXES = ["SYS-", "ADMIN-"];
-const CURRENT_USER = "me";   // demo placeholder
+const CURRENT_USER = "me";
+const CURRENT_USER_LANID = "melanid";
 
-/* ---------- low-level persistence ---------- */
+/* ---------- parsing / hydration ---------- */
 
-/**
- * Parse the free-form textarea string into a deduped, validated email list.
- * Accepts `, ; : space newline` (any combination) as separators. Invalid
- * tokens are silently dropped.
- */
 export function parseMembersRaw(raw: string | undefined | null): DLMember[] {
   if (!raw) return [];
   const seen = new Set<string>();
@@ -99,9 +92,15 @@ export function parseMembersRaw(raw: string | undefined | null): DLMember[] {
   return out;
 }
 
-/** Hydrate a stored row → runtime shape (derives `members` from `membersRaw`). */
-function hydrate(row: Omit<DistributionList, "members">): DistributionList {
-  return { ...row, members: parseMembersRaw(row.membersRaw) };
+type StoredRow = Omit<DistributionList, "toMembers" | "ccMembers" | "bccMembers">;
+
+function hydrate(row: StoredRow): DistributionList {
+  return {
+    ...row,
+    toMembers: parseMembersRaw(row.toRaw),
+    ccMembers: parseMembersRaw(row.ccRaw),
+    bccMembers: parseMembersRaw(row.bccRaw),
+  };
 }
 
 function readAll(): DistributionList[] {
@@ -112,7 +111,7 @@ function readAll(): DistributionList[] {
       writeAll(seeded);
       return seeded;
     }
-    const stored = JSON.parse(raw) as Omit<DistributionList, "members">[];
+    const stored = JSON.parse(raw) as StoredRow[];
     return stored.map(hydrate);
   } catch {
     return [];
@@ -120,72 +119,87 @@ function readAll(): DistributionList[] {
 }
 
 function writeAll(lists: DistributionList[]): void {
-  // Strip the derived `members` field — `membersRaw` is the source of truth.
-  const stripped = lists.map(({ members, ...rest }) => rest);
+  const stripped = lists.map(({ toMembers, ccMembers, bccMembers, ...rest }) => rest);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stripped));
 }
 
 function seedDemoLists(): DistributionList[] {
   const now = new Date().toISOString();
-  const eng = "john.doe@company.com, jane.smith@company.com, mike.brown@company.com, emma.taylor@company.com";
-  const ir  = "bob.wilson@company.com; alice.johnson@company.com; sarah.davis@company.com";
+  const mk = (
+    id: string,
+    name: string,
+    desc: string,
+    visibility: DLVisibility,
+    toRaw: string,
+    ccRaw: string,
+    bccRaw: string,
+    managers: SharedUserRef[] = [],
+  ): DistributionList => ({
+    distributionListId: id,
+    prefix: DEFAULT_PREFIX,
+    name,
+    displayName: `${DEFAULT_PREFIX}${name}`,
+    description: desc,
+    visibility,
+    type: "CUSTOM",
+    ownerId: CURRENT_USER,
+    ownerLanid: CURRENT_USER_LANID,
+    toRaw,
+    ccRaw,
+    bccRaw,
+    toMembers: parseMembersRaw(toRaw),
+    ccMembers: parseMembersRaw(ccRaw),
+    bccMembers: parseMembersRaw(bccRaw),
+    managers,
+    createdAt: now,
+    updatedAt: now,
+  });
   return [
-    {
-      distributionListId: "dl-demo-eng",
-      prefix: DEFAULT_PREFIX,
-      name: "EngineeringTeam",
-      displayName: `${DEFAULT_PREFIX}EngineeringTeam`,
-      description: "Core engineering distribution",
-      visibility: "SHARED",
-      ownerId: CURRENT_USER,
-      membersRaw: eng,
-      members: parseMembersRaw(eng),
-      sharedWith: [],
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      distributionListId: "dl-demo-incident",
-      prefix: DEFAULT_PREFIX,
-      name: "IncidentResponders",
-      displayName: `${DEFAULT_PREFIX}IncidentResponders`,
-      description: "On-call incident responders",
-      visibility: "PRIVATE",
-      ownerId: CURRENT_USER,
-      membersRaw: ir,
-      members: parseMembersRaw(ir),
-      sharedWith: [],
-      createdAt: now,
-      updatedAt: now,
-    },
+    mk(
+      "dl-demo-eng",
+      "EngineeringTeam",
+      "Core engineering distribution",
+      "PUBLIC",
+      "john.doe@company.com, jane.smith@company.com, mike.brown@company.com",
+      "emma.taylor@company.com",
+      "",
+    ),
+    mk(
+      "dl-demo-incident",
+      "IncidentResponders",
+      "On-call incident responders",
+      "PRIVATE",
+      "bob.wilson@company.com; alice.johnson@company.com",
+      "",
+      "sarah.davis@company.com",
+    ),
   ];
+}
+
+/* ---------- permission helpers ---------- */
+
+/** True if user is the owner OR listed as a manager. */
+export function canManageDL(dl: DistributionList, userId: string = CURRENT_USER): boolean {
+  return dl.ownerId === userId || dl.managers.some((m) => m.userId === userId);
+}
+
+/** True if the user can see the DL on the listing page / drawer. */
+export function canViewDL(dl: DistributionList, userId: string = CURRENT_USER): boolean {
+  return dl.visibility === "PUBLIC" || canManageDL(dl, userId);
 }
 
 /* ---------- CRUD ---------- */
 
 export function listDistributionLists(): DistributionList[] {
-  return readAll().filter(
-    (dl) =>
-      dl.ownerId === CURRENT_USER ||
-      dl.visibility === "PUBLIC" ||
-      dl.sharedWith.some((s) => s.userId === CURRENT_USER),
-  );
+  return readAll().filter((dl) => canViewDL(dl));
 }
 
-/**
- * Visibility filter for the DL listing page.
- * `ALL` = no filter (still subject to the visibility predicate above).
- */
 export type DLVisibilityFilter = "ALL" | DLVisibility;
 
 export interface ListDLsQuery {
-  /** 1-based page index. Default 1. */
   page?: number;
-  /** Items per page. Default 10. */
   pageSize?: number;
-  /** Visibility filter. Default "ALL". */
   visibility?: DLVisibilityFilter;
-  /** Optional free-text search (name / displayName / member email). */
   search?: string;
 }
 
@@ -197,10 +211,6 @@ export interface PagedResult<T> {
   totalPages: number;
 }
 
-/**
- * Paginated + filtered DL listing.
- * Mirrors backend `GET /api/distribution-lists?page=&pageSize=&visibility=&search=`.
- */
 export function listDistributionListsPaged(q: ListDLsQuery = {}): PagedResult<DistributionList> {
   const page = Math.max(1, q.page ?? 1);
   const pageSize = Math.max(1, q.pageSize ?? 10);
@@ -214,7 +224,9 @@ export function listDistributionListsPaged(q: ListDLsQuery = {}): PagedResult<Di
       (dl) =>
         dl.displayName.toLowerCase().includes(search) ||
         dl.name.toLowerCase().includes(search) ||
-        dl.members.some((m) => m.email.toLowerCase().includes(search)),
+        [...dl.toMembers, ...dl.ccMembers, ...dl.bccMembers].some((m) =>
+          m.email.toLowerCase().includes(search),
+        ),
     );
   }
   const total = rows.length;
@@ -239,41 +251,35 @@ export interface DLUpsertInput {
   prefix?: string;
   description?: string;
   visibility: DLVisibility;
-  /**
-   * Verbatim textarea content — the ONLY persisted source of members.
-   * Server / storage layer parses this via `parseMembersRaw()`; there is
-   * no separate normalised member table.
-   */
-  membersRaw: string;
-  sharedWith?: SharedUserRef[];
+  toRaw: string;
+  ccRaw?: string;
+  bccRaw?: string;
+  /** Managers — users authorised to edit / delete alongside the owner. */
+  managers?: SharedUserRef[];
 }
 
-function validate(input: DLUpsertInput): { error: string | null; members: DLMember[] } {
+function validate(input: DLUpsertInput): { error: string | null } {
   const name = input.name.trim();
-  if (!name) return { error: "Name is required.", members: [] };
+  if (!name) return { error: "Name is required." };
   if (!/^[A-Za-z0-9]+$/.test(name)) {
-    return {
-      error: "Name can only contain letters and numbers — no spaces or special characters.",
-      members: [],
-    };
+    return { error: "Name can only contain letters and numbers — no spaces or special characters." };
   }
-  const members = parseMembersRaw(input.membersRaw);
-  if (members.length === 0) {
-    return { error: "At least one valid member email is required.", members };
+  const total =
+    parseMembersRaw(input.toRaw).length +
+    parseMembersRaw(input.ccRaw).length +
+    parseMembersRaw(input.bccRaw).length;
+  if (total === 0) {
+    return { error: "At least one valid email across To / CC / BCC is required." };
   }
   const prefix = input.prefix ?? DEFAULT_PREFIX;
   if (RESERVED_PREFIXES.some((p) => prefix.toUpperCase().startsWith(p))) {
-    return { error: `Prefix '${prefix}' is reserved.`, members };
+    return { error: `Prefix '${prefix}' is reserved.` };
   }
-  if (input.visibility === "SHARED" && (!input.sharedWith || input.sharedWith.length === 0)) {
-    return { error: "SHARED visibility requires at least one shared user.", members };
-  }
-  return { error: null, members };
+  return { error: null };
 }
 
-
 export function createDistributionList(input: DLUpsertInput): DistributionList {
-  const { error, members } = validate(input);
+  const { error } = validate(input);
   if (error) throw new Error(error);
 
   const all = readAll();
@@ -285,6 +291,9 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
   const prefix = input.prefix ?? DEFAULT_PREFIX;
   const name = input.name.trim();
   const now = new Date().toISOString();
+  const toRaw = input.toRaw ?? "";
+  const ccRaw = input.ccRaw ?? "";
+  const bccRaw = input.bccRaw ?? "";
   const dl: DistributionList = {
     distributionListId: `dl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     prefix,
@@ -292,10 +301,16 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
     displayName: `${prefix}${name}`,
     description: input.description?.trim() || undefined,
     visibility: input.visibility,
+    type: "CUSTOM",
     ownerId: CURRENT_USER,
-    membersRaw: input.membersRaw,
-    members,
-    sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
+    ownerLanid: CURRENT_USER_LANID,
+    toRaw,
+    ccRaw,
+    bccRaw,
+    toMembers: parseMembersRaw(toRaw),
+    ccMembers: parseMembersRaw(ccRaw),
+    bccMembers: parseMembersRaw(bccRaw),
+    managers: input.managers ?? [],
     createdAt: now,
     updatedAt: now,
   };
@@ -304,21 +319,29 @@ export function createDistributionList(input: DLUpsertInput): DistributionList {
 }
 
 export function updateDistributionList(id: string, input: DLUpsertInput): DistributionList {
-  const { error, members } = validate(input);
+  const { error } = validate(input);
   if (error) throw new Error(error);
 
   const all = readAll();
   const idx = all.findIndex((d) => d.distributionListId === id);
   if (idx === -1) throw new Error("Distribution list not found.");
-  if (all[idx].ownerId !== CURRENT_USER) throw new Error("You can only edit your own distribution lists.");
+  if (!canManageDL(all[idx])) {
+    throw new Error("You don't have permission to edit this distribution list.");
+  }
 
   const name = input.name.trim();
   const dupe = all.find(
-    (d) => d.distributionListId !== id && d.ownerId === CURRENT_USER && d.name.toLowerCase() === name.toLowerCase(),
+    (d) =>
+      d.distributionListId !== id &&
+      d.ownerId === all[idx].ownerId &&
+      d.name.toLowerCase() === name.toLowerCase(),
   );
   if (dupe) throw new Error(`A distribution list named '${name}' already exists.`);
 
   const prefix = input.prefix ?? all[idx].prefix;
+  const toRaw = input.toRaw ?? "";
+  const ccRaw = input.ccRaw ?? "";
+  const bccRaw = input.bccRaw ?? "";
 
   const updated: DistributionList = {
     ...all[idx],
@@ -327,9 +350,13 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
     displayName: `${prefix}${name}`,
     description: input.description?.trim() || undefined,
     visibility: input.visibility,
-    membersRaw: input.membersRaw,
-    members,
-    sharedWith: input.visibility === "SHARED" ? input.sharedWith ?? [] : [],
+    toRaw,
+    ccRaw,
+    bccRaw,
+    toMembers: parseMembersRaw(toRaw),
+    ccMembers: parseMembersRaw(ccRaw),
+    bccMembers: parseMembersRaw(bccRaw),
+    managers: input.managers ?? [],
     updatedAt: new Date().toISOString(),
   };
   all[idx] = updated;
@@ -339,11 +366,14 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
 
 export function deleteDistributionList(id: string): void {
   const all = readAll();
-  const filtered = all.filter((d) => d.distributionListId !== id);
-  writeAll(filtered);
+  const target = all.find((d) => d.distributionListId === id);
+  if (target && !canManageDL(target)) {
+    throw new Error("You don't have permission to delete this distribution list.");
+  }
+  writeAll(all.filter((d) => d.distributionListId !== id));
 }
 
-/* ---------- unified recipient search ---------- */
+/* ---------- directory ---------- */
 
 const MOCK_USER_DIRECTORY: DirectoryUser[] = [
   { id: "u-1",  elid: "E10001", lanid: "jdoe",      name: "John Doe",        email: "john.doe@company.com",       department: "Engineering" },
@@ -358,17 +388,15 @@ const MOCK_USER_DIRECTORY: DirectoryUser[] = [
   { id: "u-10", elid: "E10010", lanid: "lmartinez", name: "Lisa Martinez",   email: "lisa.martinez@company.com",  department: "Legal" },
 ];
 
-/** Lightweight shape returned by the share-user picker. */
 export interface DirectoryUser {
   id: string;
-  elid?: string;     // enterprise / employee id
-  lanid?: string;    // LAN / network id
+  elid?: string;
+  lanid?: string;
   name: string;
-  email: string;     // canonical email (mapped to `emailid` when persisted)
+  email: string;
   department?: string;
 }
 
-/** Convert a directory row → the persistence shape stored on the DL. */
 export function toSharedRef(u: DirectoryUser): SharedUserRef {
   return {
     userId: u.id,
@@ -380,7 +408,6 @@ export function toSharedRef(u: DirectoryUser): SharedUserRef {
   };
 }
 
-/** Convert a persisted shared-user record back to the directory shape used by the picker. */
 export function fromSharedRef(s: SharedUserRef): DirectoryUser {
   return {
     id: s.userId,
@@ -392,10 +419,6 @@ export function fromSharedRef(s: SharedUserRef): DirectoryUser {
   };
 }
 
-/**
- * Search the org directory for users to share a DL with.
- * Backend equivalent: GET /api/users/search?q=...
- */
 export async function searchUsers(query: string, limit = 8): Promise<DirectoryUser[]> {
   await new Promise((r) => setTimeout(r, 120));
   const q = query.toLowerCase().trim();
@@ -410,46 +433,36 @@ export async function searchUsers(query: string, limit = 8): Promise<DirectoryUs
   ).slice(0, limit);
 }
 
-/** Resolve a list of user ids back to directory rows (for edit rehydration). */
 export function getUsersByIds(ids: string[]): DirectoryUser[] {
   const set = new Set(ids);
   return MOCK_USER_DIRECTORY.filter((u) => set.has(u.id));
 }
 
-/**
- * Unified search across DLs and the user directory.
- * Backend equivalent: GET /api/recipients/search?q=...
- * DLs ranked first so prefix matches surface above identically-named people.
- */
 export async function searchRecipients(query: string, limit = 10): Promise<RecipientSuggestion[]> {
-  // Simulated network latency
   await new Promise((r) => setTimeout(r, 150 + Math.random() * 200));
-
   const q = query.toLowerCase().trim();
   if (!q) return [];
 
   const out: RecipientSuggestion[] = [];
 
-  // DL matches
   const dls = listDistributionLists().filter((dl) => {
+    const all = [...dl.toMembers, ...dl.ccMembers, ...dl.bccMembers];
     if (dl.displayName.toLowerCase().includes(q)) return true;
     if (dl.name.toLowerCase().includes(q)) return true;
-    if (dl.members.some((m) => m.email.toLowerCase().includes(q))) return true;
+    if (all.some((m) => m.email.toLowerCase().includes(q))) return true;
     return false;
   });
   for (const dl of dls.slice(0, Math.max(1, Math.floor(limit / 2)))) {
-    const visBadge =
-      dl.visibility === "SHARED" ? " · shared" : dl.visibility === "PUBLIC" ? " · public" : "";
+    const memberCount = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
     out.push({
       type: "DL",
       id: dl.distributionListId,
       displayName: dl.displayName,
-      subtitle: `${dl.members.length} members${visBadge}`,
-      memberCount: dl.members.length,
+      subtitle: `${memberCount} members · ${dl.visibility.toLowerCase()}`,
+      memberCount,
     });
   }
 
-  // User matches
   const users = MOCK_USER_DIRECTORY.filter(
     (u) =>
       u.email.toLowerCase().includes(q) ||
@@ -469,14 +482,10 @@ export async function searchRecipients(query: string, limit = 10): Promise<Recip
   return out;
 }
 
-/**
- * Expand a mixed list of USER+DL recipient refs into a deduplicated email list.
- * Mirrors the backend RecipientResolverService.
- */
 export interface RecipientRef {
   type: "USER" | "DL";
-  id?: string;       // DL uuid for DL refs
-  email?: string;    // raw email for USER refs
+  id?: string;
+  email?: string;
 }
 
 export interface ResolvedRecipients {
@@ -485,6 +494,11 @@ export interface ResolvedRecipients {
   warnings: string[];
 }
 
+/**
+ * Backwards-compatible resolver. For v2 DLs this only expands the TO bucket
+ * (CC/BCC are handled separately by the run-template flow when a DL is
+ * applied via the drawer).
+ */
 export function resolveRecipients(refs: RecipientRef[]): ResolvedRecipients {
   const emails = new Set<string>();
   const expandedDlIds: string[] = [];
@@ -497,11 +511,12 @@ export function resolveRecipients(refs: RecipientRef[]): ResolvedRecipients {
         warnings.push(`Distribution list ${ref.id} is no longer available — skipped.`);
         continue;
       }
-      if (dl.members.length === 0) {
+      const all = [...dl.toMembers, ...dl.ccMembers, ...dl.bccMembers];
+      if (all.length === 0) {
         warnings.push(`DL '${dl.displayName}' is empty.`);
         continue;
       }
-      dl.members.forEach((m) => emails.add(m.email.toLowerCase()));
+      all.forEach((m) => emails.add(m.email.toLowerCase()));
       expandedDlIds.push(dl.distributionListId);
     } else if (ref.email) {
       emails.add(ref.email.toLowerCase().trim());

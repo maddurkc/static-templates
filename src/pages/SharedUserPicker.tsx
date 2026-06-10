@@ -19,7 +19,7 @@ interface Props {
 export const SharedUserPicker: React.FC<Props> = ({
   selected,
   onChange,
-  placeholder = "Search users by name, email, ELID, LANID, or department...",
+  placeholder = "Search users to add as managers (can edit / delete)...",
 }) => {
   const [input, setInput] = useState("");
   const [results, setResults] = useState<DirectoryUser[]>([]);
@@ -125,12 +125,6 @@ export const SharedUserPicker: React.FC<Props> = ({
         </div>
       )}
 
-      {selected.length === 0 && (
-        <div className={styles.shareInlineError}>
-          <AlertCircle size={14} />
-          <span>Select at least one user — only they will see this list in Run Templates.</span>
-        </div>
-      )}
     </div>
   );
 };

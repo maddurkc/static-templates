@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Users, Trash2, Edit3, X, Search, Lock, Globe, Share2 } from "lucide-react";
+import { Plus, Users, Trash2, Edit3, X, Search, Lock, Globe, ShieldCheck } from "lucide-react";
 import {
   listDistributionLists,
   listDistributionListsPaged,
@@ -9,6 +9,7 @@ import {
   getUsersByIds,
   toSharedRef,
   parseMembersRaw,
+  canManageDL,
   type DistributionList,
   type DLVisibility,
   type DLVisibilityFilter,
@@ -46,9 +47,10 @@ interface DraftDL {
   name: string;
   description: string;
   visibility: DLVisibility;
-  /** Verbatim textarea contents — single source of truth for members. */
-  membersRaw: string;
-  sharedWith: SharedUserRef[];
+  toRaw: string;
+  ccRaw: string;
+  bccRaw: string;
+  managers: SharedUserRef[];
 }
 
 const blankDraft = (): DraftDL => ({
@@ -56,8 +58,10 @@ const blankDraft = (): DraftDL => ({
   name: "",
   description: "",
   visibility: "PRIVATE",
-  membersRaw: "",
-  sharedWith: [],
+  toRaw: "",
+  ccRaw: "",
+  bccRaw: "",
+  managers: [],
 });
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
@@ -72,15 +76,13 @@ export default function DistributionLists() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
-  const [sharedUsers, setSharedUsers] = useState<DirectoryUser[]>([]);
+  const [managerUsers, setManagerUsers] = useState<DirectoryUser[]>([]);
 
-  /** Live-parsed chip preview of whatever is currently in the textarea. */
-  const parsedMembers = useMemo<DLMember[]>(
-    () => parseMembersRaw(draft.membersRaw),
-    [draft.membersRaw],
-  );
+  const toMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.toRaw),  [draft.toRaw]);
+  const ccMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.ccRaw),  [draft.ccRaw]);
+  const bccMembers  = useMemo<DLMember[]>(() => parseMembersRaw(draft.bccRaw), [draft.bccRaw]);
+  const totalMembers = toMembers.length + ccMembers.length + bccMembers.length;
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
   }, [search, visibilityFilter, pageSize]);
@@ -90,16 +92,13 @@ export default function DistributionLists() {
     [page, pageSize, visibilityFilter, search, refreshKey],
   );
   const lists = paged.items;
-  const filtered = lists;
   const allLists = useMemo(() => listDistributionLists(), [refreshKey]);
 
   const refresh = () => setRefreshKey((k) => k + 1);
 
-
-
   const openCreate = () => {
     setDraft(blankDraft());
-    setSharedUsers([]);
+    setManagerUsers([]);
     setDialogOpen(true);
   };
 
@@ -110,34 +109,35 @@ export default function DistributionLists() {
       name: dl.name,
       description: dl.description ?? "",
       visibility: dl.visibility,
-      membersRaw: dl.membersRaw ?? dl.members.map((m) => m.email).join(", "),
-      sharedWith: [...dl.sharedWith],
+      toRaw: dl.toRaw,
+      ccRaw: dl.ccRaw,
+      bccRaw: dl.bccRaw,
+      managers: [...dl.managers],
     });
-    setSharedUsers(getUsersByIds(dl.sharedWith.map((s) => s.userId)));
+    setManagerUsers(getUsersByIds(dl.managers.map((s) => s.userId)));
     setDialogOpen(true);
   };
 
-  const removeMember = (email: string) => {
-    // Strip the email (and any surrounding separators) from the raw blob.
-    const next = draft.membersRaw
+  const removeFromBucket = (bucket: "toRaw" | "ccRaw" | "bccRaw", email: string) => {
+    const next = draft[bucket]
       .split(/([,;:\s\n]+)/)
       .filter((tok) => tok.trim().toLowerCase() !== email)
       .join("")
       .replace(/^[,;:\s\n]+|[,;:\s\n]+$/g, "");
-    setDraft({ ...draft, membersRaw: next });
+    setDraft({ ...draft, [bucket]: next });
   };
 
   const save = () => {
-    const effectiveSharedWith: SharedUserRef[] =
-      draft.visibility === "SHARED" ? sharedUsers.map(toSharedRef) : [];
     try {
       const payload = {
         name: draft.name,
         prefix: draft.prefix,
         description: draft.description,
         visibility: draft.visibility,
-        membersRaw: draft.membersRaw,
-        sharedWith: effectiveSharedWith,
+        toRaw: draft.toRaw,
+        ccRaw: draft.ccRaw,
+        bccRaw: draft.bccRaw,
+        managers: managerUsers.map(toSharedRef),
       };
       if (draft.distributionListId) {
         updateDistributionList(draft.distributionListId, payload);
@@ -159,13 +159,34 @@ export default function DistributionLists() {
 
   const remove = (dl: DistributionList) => {
     if (!confirm(`Delete distribution list "${dl.displayName}"?`)) return;
-    deleteDistributionList(dl.distributionListId);
-    refresh();
-    toast({ title: "Distribution list deleted" });
+    try {
+      deleteDistributionList(dl.distributionListId);
+      refresh();
+      toast({ title: "Distribution list deleted" });
+    } catch (err) {
+      toast({
+        title: "Failed to delete",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
   };
 
   const visIcon = (v: DLVisibility) =>
-    v === "PRIVATE" ? <Lock size={12} /> : v === "PUBLIC" ? <Globe size={12} /> : <Share2 size={12} />;
+    v === "PRIVATE" ? <Lock size={12} /> : <Globe size={12} />;
+
+  const renderChips = (bucket: "toRaw" | "ccRaw" | "bccRaw", members: DLMember[]) => (
+    <div className={styles.memberChips}>
+      {members.map((m) => (
+        <span key={m.email} className={styles.memberChip}>
+          {m.email}
+          <button onClick={() => removeFromBucket(bucket, m.email)} aria-label={`Remove ${m.email}`}>
+            <X size={11} />
+          </button>
+        </span>
+      ))}
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -174,8 +195,8 @@ export default function DistributionLists() {
           <h1 className={styles.title}>Distribution Lists</h1>
           <p className={styles.subtitle}>
             Create reusable groups of recipients with the{" "}
-            <code className={styles.codeChip}>{DEFAULT_PREFIX}</code> prefix. Use them anywhere in
-            Run Templates To / CC / BCC.
+            <code className={styles.codeChip}>{DEFAULT_PREFIX}</code> prefix. Split members into
+            To / CC / BCC and grant edit access to additional managers.
           </p>
         </div>
         <Button onClick={openCreate} className={styles.newBtn}>
@@ -195,7 +216,7 @@ export default function DistributionLists() {
         </div>
 
         <div className={styles.filterTabs} role="tablist" aria-label="Visibility filter">
-          {(["ALL", "PUBLIC", "PRIVATE", "SHARED"] as DLVisibilityFilter[]).map((v) => (
+          {(["ALL", "PUBLIC", "PRIVATE"] as DLVisibilityFilter[]).map((v) => (
             <button
               key={v}
               role="tab"
@@ -203,7 +224,7 @@ export default function DistributionLists() {
               className={`${styles.filterTab} ${visibilityFilter === v ? styles.filterTabActive : ""}`}
               onClick={() => setVisibilityFilter(v)}
             >
-              {v === "ALL" ? <Users size={12} /> : v === "PUBLIC" ? <Globe size={12} /> : v === "PRIVATE" ? <Lock size={12} /> : <Share2 size={12} />}
+              {v === "ALL" ? <Users size={12} /> : v === "PUBLIC" ? <Globe size={12} /> : <Lock size={12} />}
               <span>{v.charAt(0) + v.slice(1).toLowerCase()}</span>
             </button>
           ))}
@@ -219,7 +240,7 @@ export default function DistributionLists() {
       </div>
 
       <div className={styles.grid}>
-        {filtered.length === 0 ? (
+        {lists.length === 0 ? (
           <div className={styles.empty}>
             <Users size={32} className={styles.emptyIcon} />
             <p>No distribution lists match your filters.</p>
@@ -228,41 +249,63 @@ export default function DistributionLists() {
             </Button>
           </div>
         ) : (
-          filtered.map((dl) => (
-            <div key={dl.distributionListId} className={styles.card}>
-              <div className={styles.cardHead}>
-                <span className={styles.dlName}>
-                  <Users size={14} className={styles.dlNameIcon} />
-                  {dl.displayName}
-                </span>
-                <span className={styles.vis}>
-                  {visIcon(dl.visibility)} {dl.visibility.toLowerCase()}
-                </span>
+          lists.map((dl) => {
+            const memberCount = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
+            const canEdit = canManageDL(dl);
+            return (
+              <div key={dl.distributionListId} className={styles.card}>
+                <div className={styles.cardHead}>
+                  <span className={styles.dlName}>
+                    <Users size={14} className={styles.dlNameIcon} />
+                    {dl.displayName}
+                  </span>
+                  <span className={styles.vis}>
+                    {visIcon(dl.visibility)} {dl.visibility.toLowerCase()}
+                  </span>
+                </div>
+
+                {dl.description && <p className={styles.desc}>{dl.description}</p>}
+
+                <div className={styles.memberCount}>
+                  {memberCount} member{memberCount === 1 ? "" : "s"}
+                  {" · "}To {dl.toMembers.length}
+                  {" / CC "}{dl.ccMembers.length}
+                  {" / BCC "}{dl.bccMembers.length}
+                </div>
+
+                {dl.managers.length > 0 && (
+                  <div className={styles.managerBadge}>
+                    <ShieldCheck size={11} /> {dl.managers.length} manager{dl.managers.length === 1 ? "" : "s"}
+                  </div>
+                )}
+
+                <ul className={styles.memberPreview}>
+                  {[...dl.toMembers, ...dl.ccMembers, ...dl.bccMembers].slice(0, 4).map((m) => (
+                    <li key={m.email}>{m.email}</li>
+                  ))}
+                  {memberCount > 4 && <li className={styles.more}>+{memberCount - 4} more</li>}
+                </ul>
+
+                <div className={styles.cardActions}>
+                  <button
+                    className={styles.actionBtn}
+                    onClick={() => openEdit(dl)}
+                    disabled={!canEdit}
+                    title={canEdit ? "" : "Only the owner and managers can edit"}
+                  >
+                    <Edit3 size={14} /> Edit
+                  </button>
+                  <button
+                    className={`${styles.actionBtn} ${styles.danger}`}
+                    onClick={() => remove(dl)}
+                    disabled={!canEdit}
+                  >
+                    <Trash2 size={14} /> Delete
+                  </button>
+                </div>
               </div>
-
-              {dl.description && <p className={styles.desc}>{dl.description}</p>}
-
-              <div className={styles.memberCount}>
-                {dl.members.length} member{dl.members.length === 1 ? "" : "s"}
-              </div>
-
-              <ul className={styles.memberPreview}>
-                {dl.members.slice(0, 4).map((m) => (
-                  <li key={m.email}>{m.email}</li>
-                ))}
-                {dl.members.length > 4 && <li className={styles.more}>+{dl.members.length - 4} more</li>}
-              </ul>
-
-              <div className={styles.cardActions}>
-                <button className={styles.actionBtn} onClick={() => openEdit(dl)}>
-                  <Edit3 size={14} /> Edit
-                </button>
-                <button className={`${styles.actionBtn} ${styles.danger}`} onClick={() => remove(dl)}>
-                  <Trash2 size={14} /> Delete
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -304,7 +347,6 @@ export default function DistributionLists() {
         </div>
       )}
 
-
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className={styles.dialog}>
           <DialogHeader>
@@ -320,7 +362,7 @@ export default function DistributionLists() {
                   {draft.prefix}
                   {draft.name || "<name>"}
                 </strong>
-                <span className={styles.previewCount}>{parsedMembers.length} members</span>
+                <span className={styles.previewCount}>{totalMembers} members</span>
               </div>
             </div>
 
@@ -361,7 +403,6 @@ export default function DistributionLists() {
               </div>
             </div>
 
-
             <div className={styles.field}>
               <Label>Description</Label>
               <Textarea
@@ -382,48 +423,58 @@ export default function DistributionLists() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PRIVATE">Private — only you can use</SelectItem>
-                  <SelectItem value="SHARED">Shared — visible to selected users</SelectItem>
+                  <SelectItem value="PRIVATE">Private — only you (and managers) can see / use</SelectItem>
                   <SelectItem value="PUBLIC">Public — visible to everyone</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {draft.visibility === "SHARED" && (
-              <div className={styles.field}>
-                <Label>Share with users *</Label>
-                <SharedUserPicker
-                  selected={sharedUsers}
-                  onChange={setSharedUsers}
-                />
-              </div>
-            )}
-
             <div className={styles.field}>
-              <Label>Members ({parsedMembers.length})</Label>
-              <Textarea
-                value={draft.membersRaw}
-                onChange={(e) => setDraft({ ...draft, membersRaw: e.target.value })}
-                placeholder={
-                  "Paste or type email addresses separated by commas, colons, semicolons, spaces, or new lines.\n" +
-                  "e.g. alice@company.com, bob@company.com; carol@company.com : dan@company.com"
-                }
-                rows={5}
+              <Label>Managers (optional)</Label>
+              <SharedUserPicker
+                selected={managerUsers}
+                onChange={setManagerUsers}
+                placeholder="Search users to add as managers (can edit / delete)..."
               />
               <span className={styles.fieldHint}>
-                Stored verbatim as a single text blob. Accepts <code>, ; : space newline</code> as separators —
-                invalid entries are ignored in the chip preview below.
+                Managers can edit and delete this list alongside you, regardless of visibility.
               </span>
-              <div className={styles.memberChips}>
-                {parsedMembers.map((m) => (
-                  <span key={m.email} className={styles.memberChip}>
-                    {m.email}
-                    <button onClick={() => removeMember(m.email)} aria-label={`Remove ${m.email}`}>
-                      <X size={11} />
-                    </button>
-                  </span>
-                ))}
-              </div>
+            </div>
+
+            <div className={styles.field}>
+              <Label>To ({toMembers.length})</Label>
+              <Textarea
+                value={draft.toRaw}
+                onChange={(e) => setDraft({ ...draft, toRaw: e.target.value })}
+                placeholder="alice@company.com, bob@company.com"
+                rows={3}
+              />
+              {renderChips("toRaw", toMembers)}
+            </div>
+
+            <div className={styles.field}>
+              <Label>CC ({ccMembers.length})</Label>
+              <Textarea
+                value={draft.ccRaw}
+                onChange={(e) => setDraft({ ...draft, ccRaw: e.target.value })}
+                placeholder="carol@company.com"
+                rows={2}
+              />
+              {renderChips("ccRaw", ccMembers)}
+            </div>
+
+            <div className={styles.field}>
+              <Label>BCC ({bccMembers.length})</Label>
+              <Textarea
+                value={draft.bccRaw}
+                onChange={(e) => setDraft({ ...draft, bccRaw: e.target.value })}
+                placeholder="dan@company.com"
+                rows={2}
+              />
+              {renderChips("bccRaw", bccMembers)}
+              <span className={styles.fieldHint}>
+                Accepts <code>, ; : space newline</code> as separators. Invalid entries are ignored in the chip preview.
+              </span>
             </div>
           </div>
 
@@ -435,13 +486,12 @@ export default function DistributionLists() {
               onClick={save}
               disabled={
                 !draft.name.trim() ||
-                parsedMembers.length === 0 ||
+                totalMembers === 0 ||
                 allLists.some(
                   (l) =>
                     l.distributionListId !== draft.distributionListId &&
                     l.name.toLowerCase() === draft.name.trim().toLowerCase(),
-                ) ||
-                (draft.visibility === "SHARED" && sharedUsers.length === 0)
+                )
               }
             >
               {draft.distributionListId ? "Save Changes" : "Create"}
