@@ -45,9 +45,10 @@ const buildRecipientPayload = (users: User[]): { refs: RecipientRef[]; emails: s
   for (const u of users) {
     if (u.kind === "DL") {
       refs.push({ type: "DL", id: u.id });
+      const dlForExpand = getDistributionList(u.id);
       const members = u.dlMembers && u.dlMembers.length > 0
         ? u.dlMembers
-        : (getDistributionList(u.id)?.members.map(m => m.email) ?? []);
+        : (dlForExpand ? [...dlForExpand.toMembers, ...dlForExpand.ccMembers, ...dlForExpand.bccMembers].map(m => m.email) : []);
       for (const em of members) {
         const lower = em.toLowerCase();
         if (!seen.has(lower)) { seen.add(lower); emails.push(lower); }
@@ -74,10 +75,11 @@ const refsToUsers = (refs: RecipientRef[] | undefined): User[] | null => {
           kind: "DL", memberCount: 0, dlMembers: [],
         };
       }
+      const allMembers = [...dl.toMembers, ...dl.ccMembers, ...dl.bccMembers];
       return {
         id: dl.distributionListId, email: "", name: dl.displayName,
-        kind: "DL", memberCount: dl.members.length,
-        dlMembers: dl.members.map(m => m.email),
+        kind: "DL", memberCount: allMembers.length,
+        dlMembers: allMembers.map(m => m.email),
       };
     }
     const email = ref.email || "";

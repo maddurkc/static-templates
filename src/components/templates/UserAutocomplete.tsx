@@ -107,7 +107,7 @@ export const UserAutocomplete: React.FC<UserAutocompleteProps> = ({
           name: s.displayName,
           kind: "DL",
           memberCount: s.memberCount,
-          dlMembers: dl?.members.map((m) => m.email) ?? [],
+          dlMembers: dl ? [...dl.toMembers, ...dl.ccMembers, ...dl.bccMembers].map((m) => m.email) : [],
         };
         onChange([...value, user]);
       });
