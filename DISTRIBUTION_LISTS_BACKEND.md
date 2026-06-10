@@ -302,9 +302,8 @@ public class DistributionListService {
     @Transactional
     public DistributionListDto create(DistributionListUpsertDto in) {
         var dl = new DistributionList();
-        // Application-generated id (matches frontend `dl-<ts>-<rand>` pattern).
-        dl.setDistributionListId("dl-" + System.currentTimeMillis() + "-"
-            + Long.toString((long)(Math.random() * 0xffffff), 36));
+        // distributionListId is assigned by Hibernate (@GenericGenerator "uuid2")
+        // on flush — do NOT set it manually.
         dl.setOwnerId(currentUser.id());
         applyUpsert(dl, in);
         return toDto(repo.save(dl));
