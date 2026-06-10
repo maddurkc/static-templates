@@ -62,7 +62,7 @@ CREATE INDEX ix_dl_active    ON dbo.distribution_list(is_active) INCLUDE (owner_
 -- from AD/SCIM, so audit history stays intact.
 -- =============================================================
 CREATE TABLE dbo.distribution_list_share (
-    distribution_list_id  NVARCHAR(64)     NOT NULL,
+    distribution_list_id  UNIQUEIDENTIFIER NOT NULL,    -- FK → distribution_list.distribution_list_id (UUID column)
     user_id               NVARCHAR(100)    NOT NULL,   -- internal directory id
     elid                  NVARCHAR(50)     NULL,       -- enterprise / employee id
     lanid                 NVARCHAR(50)     NULL,       -- LAN / network id
