@@ -519,7 +519,7 @@ public class RecipientResolverService {
     private boolean hasAccess(DistributionList dl, String uid) {
         return dl.getOwnerId().equals(uid)
             || dl.getVisibility() == Visibility.PUBLIC
-            || dl.getSharedWith().contains(uid);
+            || dl.getSharedWith().stream().anyMatch(s -> uid.equals(s.getUserId()));
     }
 }
 ```
