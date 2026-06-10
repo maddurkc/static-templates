@@ -315,7 +315,7 @@ public class DistributionListShareEntity {
     @Column(length = 50)                    private String lanid;      // LAN / network id
     @Column(nullable = false, length = 150) private String name;
     @Column(nullable = false, length = 255) private String emailid;
-    @Column(length = 150)                   private String department;
+    // v2: `department` field removed — see §1 share-table comment.
 }
 ```
 
