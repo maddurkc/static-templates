@@ -568,6 +568,16 @@ GET  /api/recipients/search?q=dsp     -> RecipientSuggestionDto[]
 ## 6. RecipientResolverService — DL Expansion at Send Time
 
 ```java
+// ===== imports =====
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import com.example.dl.DistributionListEntity.Visibility;
+
 @Service
 @RequiredArgsConstructor
 public class RecipientResolverService {
