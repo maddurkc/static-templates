@@ -176,7 +176,7 @@ public class DistributionListShare {
 
 ```java
 public record DistributionListDto(
-    UUID id,
+    String distributionListId,
     String prefix,
     String name,
     String displayName,                 // prefix + name -> "DSPCH-TeamAlpha"
@@ -186,12 +186,14 @@ public record DistributionListDto(
     int memberCount,                    // derived: parseMembers(membersRaw).size()
     List<String> memberEmails,          // derived: parsed, deduped, validated emails
     String membersRaw,                  // SOURCE OF TRUTH — verbatim textarea blob
-    List<SharedUserDto> sharedWith      // FULL directory snapshot
+    List<SharedUserDto> sharedWith,     // FULL directory snapshot
+    LocalDateTime createdAt,
+    LocalDateTime updatedAt
 ) {}
 
 /** Full directory snapshot stored on a SHARED DL. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
-    String id,            // internal directory id (== user_id PK column)
+    String userId,        // internal directory id (== user_id PK column)
     String elid,          // enterprise / employee id  (nullable)
     String lanid,         // LAN / network id          (nullable)
     String name,
@@ -217,7 +219,7 @@ public record DistributionListUpsertDto(
 /** Unified result returned by /recipients/search. type=USER | DL. */
 public record RecipientSuggestionDto(
     String type,
-    String id,
+    String id,              // distributionListId for DL, directory user id for USER
     String email,           // USER only
     String displayName,     // user name OR "DSPCH-TeamAlpha"
     String subtitle,        // user email/department OR "12 members · shared"
@@ -227,7 +229,7 @@ public record RecipientSuggestionDto(
 /** Payload entry sent by frontend in to/cc/bcc lists. */
 public record RecipientRefDto(
     String type,            // "USER" | "DL"
-    String id,              // DL uuid (for DL)
+    String id,              // distributionListId (for DL)
     String email            // raw email (for USER) — falls back to id for free-typed entries
 ) {}
 ```
