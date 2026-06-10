@@ -129,47 +129,49 @@ ALTER TABLE dbo.distribution_list DROP COLUMN members_raw;
 
 CREATE TABLE dbo.distribution_list (
     distribution_list_id  UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dl PRIMARY KEY DEFAULT NEWID(),
-                                                                    -- DB column type is UNIQUEIDENTIFIER (UUID); the JPA
-                                                                    -- entity maps it to `String` via @GenericGenerator("uuid2").
+                                                                    -- JPA maps to `String` via @GenericGenerator("uuid2").
     name                  NVARCHAR(150)    NOT NULL,                -- "TeamAlpha" (no prefix)
     prefix                NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_prefix DEFAULT 'DSPCH-',
     description           NVARCHAR(500)    NULL,
-    owner_id              NVARCHAR(100)    NOT NULL,                -- AD/SSO user id of creator
+    owner_id              NVARCHAR(100)    NOT NULL,                -- AD enterprise id of creator
+    owner_lanid           NVARCHAR(50)     NULL,                    -- LAN id of creator (v2)
     visibility            NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_vis DEFAULT 'PRIVATE',
-                                                                    -- PRIVATE | SHARED | PUBLIC
-    -- Verbatim textarea blob the user pasted. SINGLE source of truth for members —
-    -- there is intentionally NO separate `distribution_list_member` table. The app
-    -- parses this string on read via `parseMembersRaw()` (frontend) / the matching
-    -- service helper (backend) using separators: , ; : space newline.
-    members_raw           NVARCHAR(MAX)    NULL,
+                                                                    -- v2: PRIVATE | PUBLIC (SHARED removed)
+    type                  NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_type DEFAULT 'CUSTOM',
+                                                                    -- v2: CUSTOM (reserved for future system DLs)
+    -- Verbatim textarea blobs — SINGLE source of truth for recipients.
+    -- Parsed on read via parseMembersRaw() using separators , ; : space newline.
+    to_raw                NVARCHAR(MAX)    NULL,
+    cc_raw                NVARCHAR(MAX)    NULL,
+    bcc_raw               NVARCHAR(MAX)    NULL,
     is_active             BIT              NOT NULL CONSTRAINT df_dl_act DEFAULT 1,
     created_at            DATETIME2        NOT NULL CONSTRAINT df_dl_cat DEFAULT SYSUTCDATETIME(),
     updated_at            DATETIME2        NOT NULL CONSTRAINT df_dl_uat DEFAULT SYSUTCDATETIME(),
     CONSTRAINT uq_dl_owner_name UNIQUE (owner_id, name),
-    CONSTRAINT ck_dl_visibility CHECK (visibility IN ('PRIVATE','SHARED','PUBLIC'))
+    CONSTRAINT ck_dl_visibility CHECK (visibility IN ('PRIVATE','PUBLIC')),
+    CONSTRAINT ck_dl_type       CHECK (type IN ('CUSTOM'))
 );
 
 CREATE INDEX ix_dl_name      ON dbo.distribution_list(name);
 CREATE INDEX ix_dl_active    ON dbo.distribution_list(is_active) INCLUDE (owner_id, visibility);
 
 -- =============================================================
--- SHARED visibility: snapshot the FULL directory record for every
--- shared user (user_id, elid, lanid, name, emailid, department).
+-- v2: distribution_list_share rows now represent MANAGERS — users
+-- (besides the owner) authorised to EDIT / DELETE the DL. Managers
+-- can be attached to any visibility (PUBLIC or PRIVATE).
 -- Snapshot semantics: rows survive even if a user is later removed
 -- from AD/SCIM, so audit history stays intact.
 -- =============================================================
 CREATE TABLE dbo.distribution_list_share (
     distribution_list_share_id  UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dls PRIMARY KEY DEFAULT NEWID(),
-                                                                    -- Surrogate PK. DB type UNIQUEIDENTIFIER (UUID);
-                                                                    -- JPA maps to `String` via @GenericGenerator("uuid2").
-    distribution_list_id        UNIQUEIDENTIFIER NOT NULL,          -- FK → distribution_list.distribution_list_id (UUID column)
+    distribution_list_id        UNIQUEIDENTIFIER NOT NULL,          -- FK → distribution_list.distribution_list_id
     user_id                     NVARCHAR(100)    NOT NULL,          -- internal directory id
     elid                        NVARCHAR(50)     NULL,              -- enterprise / employee id
     lanid                       NVARCHAR(50)     NULL,              -- LAN / network id
     name                        NVARCHAR(150)    NOT NULL,
     emailid                     NVARCHAR(255)    NOT NULL,
     department                  NVARCHAR(150)    NULL,
-    CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one share row per (DL, user)
+    CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one manager row per (DL, user)
     CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
         REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
 );
