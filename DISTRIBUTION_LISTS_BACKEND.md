@@ -21,34 +21,101 @@ Display convention: every DL is shown with a configurable prefix (default **`DSP
 
 ---
 
-## Visibility Rules (Card listing on `/distribution-lists`)
+## ⚠️ v2 Refactor (canonical — overrides any conflicting detail below)
 
-A user `U` sees a DL card if and only if **one** of these is true:
+The following changes are **authoritative**. Where the rest of this document still references the v1 model (single `members_raw` blob, `SHARED` visibility, "shared viewers"), interpret it through the v2 lens below.
 
+### 1. Visibility is binary
 | Visibility | Visible to |
 |------------|------------|
 | `PUBLIC`   | Everyone (any authenticated user) |
-| `PRIVATE`  | **Only** the creator (`owner_id = U`) |
-| `SHARED`   | The creator **and** every user listed in `distribution_list_share` (`owner_id = U` OR `share.user_id = U`) |
+| `PRIVATE`  | Owner only — **plus any user listed as a manager** |
 
-Edit / delete remain owner-only regardless of visibility (enforced in `DistributionListService` via `ForbiddenException`).
+The `SHARED` enum value is **removed**.
 
-**Single source of truth for filtering:**
-- Backend: `DistributionListRepository.findVisibleTo(:uid)` — see §6.
-- Frontend: `listDistributionLists()` in `src/lib/distributionListStorage.ts` — mirrors the same predicate for the local/demo store and simply renders whatever `GET /api/distribution-lists` returns when wired to the backend (§14).
+### 2. Management (formerly "sharing") is independent of visibility
+`distribution_list_share` rows now represent **managers** — users (besides the owner) who can **edit and delete** the DL. Managers can exist on **any** visibility (PUBLIC *or* PRIVATE). Column names are unchanged for backward compatibility.
 
-The SQL predicate is canonical:
+### 3. New columns on `distribution_list`
+| Column | Type | Purpose |
+|--------|------|---------|
+| `type` | `NVARCHAR(20) NOT NULL DEFAULT 'CUSTOM'` | Reserved for future system DLs. Currently always `CUSTOM`. CHECK constraint `IN ('CUSTOM')`. |
+| `owner_lanid` | `NVARCHAR(50) NULL` | LAN id of the creator, persisted alongside `owner_id` (AD enterprise id). |
+
+### 4. Members split into To / CC / BCC
+`members_raw` is **dropped**. Replaced with three verbatim NVARCHAR(MAX) blobs:
+- `to_raw`
+- `cc_raw`
+- `bcc_raw`
+
+All three use the same parsing rules (`, ; : space newline` separators, email regex filter). The `parseMembers()` helper now runs three times — once per bucket.
+
+### 5. Canonical SQL predicates
 
 ```sql
-WHERE dl.is_active = 1
-  AND ( dl.owner_id = :uid
-        OR dl.visibility = 'PUBLIC'
-        OR EXISTS (SELECT 1 FROM dbo.distribution_list_share s
-                   WHERE s.distribution_list_id = dl.distribution_list_id
-                     AND s.user_id = :uid) )
+-- VISIBLE TO :uid
+dl.is_active = 1
+ AND ( dl.visibility = 'PUBLIC'
+       OR dl.owner_id = :uid
+       OR EXISTS (SELECT 1 FROM dbo.distribution_list_share s
+                  WHERE s.distribution_list_id = dl.distribution_list_id
+                    AND s.user_id = :uid) )
+
+-- CAN MANAGE (edit / delete) by :uid
+dl.owner_id = :uid
+ OR EXISTS (SELECT 1 FROM dbo.distribution_list_share s
+            WHERE s.distribution_list_id = dl.distribution_list_id
+              AND s.user_id = :uid)
 ```
 
+`DistributionListService` MUST use the *manage* predicate (not just `owner_id`) when checking edit/delete permission.
+
+### 6. Run Templates "DL drawer"
+The Run Templates page now exposes a "DLs" button next to the **To** field. It opens a right-side drawer listing all DLs visible to the current user (via the predicate above). Clicking a DL **appends** its `to_raw / cc_raw / bcc_raw` parsed emails into the corresponding To / CC / BCC fields of the run template (dedup on lowercase). No backend changes are required — the drawer reuses `GET /api/distribution-lists` and `GET /api/distribution-lists/{id}`.
+
+### 7. Migration notes (existing data)
+```sql
+-- Add new columns
+ALTER TABLE dbo.distribution_list ADD type         NVARCHAR(20)  NOT NULL CONSTRAINT df_dl_type DEFAULT 'CUSTOM';
+ALTER TABLE dbo.distribution_list ADD owner_lanid  NVARCHAR(50)  NULL;
+ALTER TABLE dbo.distribution_list ADD to_raw       NVARCHAR(MAX) NULL;
+ALTER TABLE dbo.distribution_list ADD cc_raw       NVARCHAR(MAX) NULL;
+ALTER TABLE dbo.distribution_list ADD bcc_raw      NVARCHAR(MAX) NULL;
+
+-- Backfill existing rows: treat the old single blob as the To bucket
+UPDATE dbo.distribution_list SET to_raw = members_raw WHERE members_raw IS NOT NULL;
+
+-- Tighten visibility CHECK (drop SHARED → rewrite as PRIVATE)
+UPDATE dbo.distribution_list SET visibility = 'PRIVATE' WHERE visibility = 'SHARED';
+ALTER TABLE dbo.distribution_list DROP CONSTRAINT ck_dl_visibility;
+ALTER TABLE dbo.distribution_list ADD  CONSTRAINT ck_dl_visibility CHECK (visibility IN ('PUBLIC','PRIVATE'));
+ALTER TABLE dbo.distribution_list ADD  CONSTRAINT ck_dl_type       CHECK (type IN ('CUSTOM'));
+
+-- Finally drop the legacy column
+ALTER TABLE dbo.distribution_list DROP COLUMN members_raw;
+```
+
+### 8. JPA / DTO impact (apply to entity/DTO blocks further below)
+- `DistributionListEntity`: drop `membersRaw`; add `type` (enum `Type { CUSTOM }` mapped to `NVARCHAR(20)`), `ownerLanid` (`String`), `toRaw`, `ccRaw`, `bccRaw` (each `@Column(columnDefinition = "NVARCHAR(MAX)")`). Rename collection field `sharedWith` → `managers` (column unchanged).
+- `Visibility` enum: `{ PRIVATE, PUBLIC }`.
+- `DistributionListDto` / `DistributionListUpsertDto`: replace `membersRaw` with `toRaw`, `ccRaw`, `bccRaw`; add `type`, `ownerLanid`; rename `sharedWith` → `managers`. `@NotBlank` moves from `membersRaw` to a service-level guard requiring **at least one** valid email across the three buckets.
+- `DistributionListService`:
+  - `applyUpsert` writes the three raw blobs + sets `type = CUSTOM` + persists `ownerLanid` from the authenticated principal.
+  - Permission check helper `canManage(dl, uid) = dl.ownerId.equals(uid) || dl.managers.stream().anyMatch(m -> m.userId.equals(uid))` — called by `update` and `delete`. Throws `ForbiddenException` otherwise.
+  - Drop the "SHARED requires non-empty sharedWith" validation; managers are optional on every DL.
+- `DistributionListRepository.findVisibleTo` / `findVisibleToFiltered`: use the predicate in §5.
+
+### 9. Frontend storage mapping
+`src/lib/distributionListStorage.ts` mirrors v2 1:1:
+- `DLVisibility = "PRIVATE" | "PUBLIC"`
+- `DistributionList.type: "CUSTOM"`, `ownerLanid?: string`
+- `toRaw / ccRaw / bccRaw` + derived `toMembers / ccMembers / bccMembers`
+- `managers: SharedUserRef[]` (was `sharedWith`)
+- Helpers `canViewDL(dl, uid)` and `canManageDL(dl, uid)` match the SQL predicates above.
+
 ---
+
+
 
 
 ## 1. SQL Migration (MS SQL Server)
