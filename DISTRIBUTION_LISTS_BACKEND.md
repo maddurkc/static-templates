@@ -89,7 +89,7 @@ CREATE INDEX ix_dls_elid  ON dbo.distribution_list_share(elid);
 ```java
 @Entity @Table(name = "distribution_list")
 @Getter @Setter @NoArgsConstructor
-public class DistributionList {
+public class DistributionListEntity {
     /**
      * Primary key. The DB column is `UNIQUEIDENTIFIER` (UUID), but in JPA we
      * map it to `String` so DTOs / REST paths / JSON payloads stay portable
@@ -143,7 +143,7 @@ public class DistributionList {
      * audit history survives if the user is later removed from the directory.
      */
     @OneToMany(mappedBy = "distributionList", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<DistributionListShare> sharedWith = new ArrayList<>();
+    private List<DistributionListShareEntity> sharedWith = new ArrayList<>();
 
     @PreUpdate void touch() { this.updatedAt = LocalDateTime.now(); }
 
@@ -156,10 +156,10 @@ public class DistributionList {
         name = "uq_dls_dl_user",
         columnNames = {"distribution_list_id", "user_id"}))
 @Getter @Setter @NoArgsConstructor
-public class DistributionListShare {
+public class DistributionListShareEntity {
     /**
      * Surrogate primary key. DB column is `UNIQUEIDENTIFIER` (UUID); mapped
-     * here as `String` for the same portability reasons as {@link DistributionList}.
+     * here as `String` for the same portability reasons as {@link DistributionListEntity}.
      * Generated server-side by Hibernate `@GenericGenerator("uuid2")` — never
      * set manually on create.
      */
@@ -171,7 +171,7 @@ public class DistributionListShare {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "distribution_list_id", nullable = false)
-    private DistributionList distributionList;
+    private DistributionListEntity distributionList;
 
     @Column(name = "user_id", nullable = false, length = 100)
     private String userId;                  // internal directory id
@@ -254,18 +254,18 @@ public record RecipientRefDto(
 ## 4. Repositories, Service, Controller (CRUD)
 
 ```java
-public interface DistributionListRepository extends JpaRepository<DistributionList, String> {
+public interface DistributionListRepository extends JpaRepository<DistributionListEntity, String> {
 
     @Query("""
-        select dl from DistributionList dl
+        select dl from DistributionListEntity dl
         where dl.active = true
           and (dl.ownerId = :uid
                or dl.visibility = 'PUBLIC'
-               or exists (select 1 from DistributionListShare s
+               or exists (select 1 from DistributionListShareEntity s
                             where s.distributionList = dl and s.userId = :uid))
         order by dl.name
     """)
-    List<DistributionList> findVisibleTo(@Param("uid") String userId);
+    List<DistributionListEntity> findVisibleTo(@Param("uid") String userId);
 
     /**
      * Used by the unified search. LIKE pattern must be pre-wrapped with %...%.
@@ -284,7 +284,7 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
              OR LOWER(dl.members_raw)        LIKE :q )
         ORDER BY dl.name
     """, nativeQuery = true)
-    List<DistributionList> searchVisibleTo(@Param("uid") String userId,
+    List<DistributionListEntity> searchVisibleTo(@Param("uid") String userId,
                                            @Param("q") String like,
                                            @Param("lim") int limit);
 }
@@ -312,7 +312,7 @@ public class DistributionListService {
 
     @Transactional
     public DistributionListDto create(DistributionListUpsertDto in) {
-        var dl = new DistributionList();
+        var dl = new DistributionListEntity();
         // distributionListId is assigned by Hibernate (@GenericGenerator "uuid2")
         // on flush — do NOT set it manually.
         dl.setOwnerId(currentUser.id());
@@ -338,7 +338,7 @@ public class DistributionListService {
 
     /* ------------- helpers ------------- */
 
-    private void applyUpsert(DistributionList dl, DistributionListUpsertDto in) {
+    private void applyUpsert(DistributionListEntity dl, DistributionListUpsertDto in) {
         // Parse + validate members BEFORE persisting so we never store junk.
         List<String> parsed = parseMembers(in.membersRaw());
         if (parsed.isEmpty()) {
@@ -357,7 +357,7 @@ public class DistributionListService {
             String ownerId = dl.getOwnerId();
             for (SharedUserDto s : in.sharedWith()) {
                 if (s.userId() == null || s.userId().equals(ownerId)) continue;  // owner is implicit
-                var row = new DistributionListShare();
+                var row = new DistributionListShareEntity();
                 row.setDistributionList(dl);
                 row.setUserId(s.userId());
                 row.setElid(s.elid());
@@ -385,7 +385,7 @@ public class DistributionListService {
             .toList();
     }
 
-    private DistributionListDto toDto(DistributionList dl) {
+    private DistributionListDto toDto(DistributionListEntity dl) {
         List<String> emails = parseMembers(dl.getMembersRaw());
         return new DistributionListDto(
             dl.getDistributionListId(), dl.getPrefix(), dl.getName(),
@@ -405,10 +405,10 @@ public class DistributionListService {
         );
     }
 
-    private void requireOwner(DistributionList dl) {
+    private void requireOwner(DistributionListEntity dl) {
         if (!dl.getOwnerId().equals(currentUser.id())) throw new ForbiddenException();
     }
-    private void requireReadAccess(DistributionList dl) {
+    private void requireReadAccess(DistributionListEntity dl) {
         var uid = currentUser.id();
         if (!dl.getOwnerId().equals(uid)
             && dl.getVisibility() != Visibility.PUBLIC
@@ -548,7 +548,7 @@ public class RecipientResolverService {
         return new Resolved(new ArrayList<>(emails), dlIds, warns);
     }
 
-    private boolean hasAccess(DistributionList dl, String uid) {
+    private boolean hasAccess(DistributionListEntity dl, String uid) {
         return dl.getOwnerId().equals(uid)
             || dl.getVisibility() == Visibility.PUBLIC
             || dl.getSharedWith().stream().anyMatch(s -> uid.equals(s.getUserId()));
@@ -679,7 +679,7 @@ class DistributionListRepositoryTest {
         var dl = saveDl("TeamAlpha", "DSPCH-", "owner-1", Visibility.PRIVATE,
                         List.of("a@x.com","b@x.com"));
         var hits = repo.searchVisibleTo("owner-1", "%dspch-team%", 10);
-        assertThat(hits).extracting(DistributionList::getDistributionListId).contains(dl.getDistributionListId());
+        assertThat(hits).extracting(DistributionListEntity::getDistributionListId).contains(dl.getDistributionListId());
     }
     @Test void searchVisibleTo_matchesMemberEmail() { /* … */ }
     @Test void searchVisibleTo_excludesOthersPrivate() { /* … */ }
