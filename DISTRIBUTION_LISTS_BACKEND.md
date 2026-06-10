@@ -497,6 +497,15 @@ public class DistributionListController {
 `GET /api/recipients/search?q=dsp&limit=10` — used by `UserAutocomplete` in To/CC/BCC.
 
 ```java
+// ===== imports =====
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import lombok.RequiredArgsConstructor;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
+import com.example.dl.DistributionListEntity.Visibility;
+
 @RestController
 @RequestMapping("/api/recipients")
 @RequiredArgsConstructor
