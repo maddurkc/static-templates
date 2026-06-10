@@ -21,6 +21,36 @@ Display convention: every DL is shown with a configurable prefix (default **`DSP
 
 ---
 
+## Visibility Rules (Card listing on `/distribution-lists`)
+
+A user `U` sees a DL card if and only if **one** of these is true:
+
+| Visibility | Visible to |
+|------------|------------|
+| `PUBLIC`   | Everyone (any authenticated user) |
+| `PRIVATE`  | **Only** the creator (`owner_id = U`) |
+| `SHARED`   | The creator **and** every user listed in `distribution_list_share` (`owner_id = U` OR `share.user_id = U`) |
+
+Edit / delete remain owner-only regardless of visibility (enforced in `DistributionListService` via `ForbiddenException`).
+
+**Single source of truth for filtering:**
+- Backend: `DistributionListRepository.findVisibleTo(:uid)` — see §6.
+- Frontend: `listDistributionLists()` in `src/lib/distributionListStorage.ts` — mirrors the same predicate for the local/demo store and simply renders whatever `GET /api/distribution-lists` returns when wired to the backend (§14).
+
+The SQL predicate is canonical:
+
+```sql
+WHERE dl.is_active = 1
+  AND ( dl.owner_id = :uid
+        OR dl.visibility = 'PUBLIC'
+        OR EXISTS (SELECT 1 FROM dbo.distribution_list_share s
+                   WHERE s.distribution_list_id = dl.distribution_list_id
+                     AND s.user_id = :uid) )
+```
+
+---
+
+
 ## 1. SQL Migration (MS SQL Server)
 
 `V20260610__create_distribution_lists.sql`
