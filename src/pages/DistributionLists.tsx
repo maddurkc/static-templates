@@ -117,6 +117,8 @@ export default function DistributionLists() {
   };
 
   const save = () => {
+    const effectiveSharedWith =
+      draft.visibility === "SHARED" ? sharedUsers.map((u) => u.id) : [];
     try {
       if (draft.id) {
         updateDistributionList(draft.id, {
@@ -125,7 +127,7 @@ export default function DistributionLists() {
           description: draft.description,
           visibility: draft.visibility,
           members: draft.members,
-          sharedWith: draft.sharedWith,
+          sharedWith: effectiveSharedWith,
         });
         toast({ title: "Distribution list updated" });
       } else {
@@ -135,7 +137,7 @@ export default function DistributionLists() {
           description: draft.description,
           visibility: draft.visibility,
           members: draft.members,
-          sharedWith: draft.sharedWith,
+          sharedWith: effectiveSharedWith,
         });
         toast({ title: "Distribution list created" });
       }
