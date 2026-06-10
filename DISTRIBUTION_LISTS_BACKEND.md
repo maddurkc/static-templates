@@ -664,7 +664,7 @@ class DistributionListRepositoryTest {
         var dl = saveDl("TeamAlpha", "DSPCH-", "owner-1", Visibility.PRIVATE,
                         List.of("a@x.com","b@x.com"));
         var hits = repo.searchVisibleTo("owner-1", "%dspch-team%", 10);
-        assertThat(hits).extracting(DistributionList::getId).contains(dl.getId());
+        assertThat(hits).extracting(DistributionList::getDistributionListId).contains(dl.getDistributionListId());
     }
     @Test void searchVisibleTo_matchesMemberEmail() { /* … */ }
     @Test void searchVisibleTo_excludesOthersPrivate() { /* … */ }
