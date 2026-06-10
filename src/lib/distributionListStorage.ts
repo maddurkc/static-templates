@@ -34,8 +34,11 @@ export interface SharedUserRef {
  * array below is **derived** on read via `parseMembersRaw()` and is
  * never written to storage / the DB.
  *
- * `distributionListId` matches the backend PK column `distribution_list_id`
- * (string, application-generated — NOT a UUID/@GeneratedValue).
+ * `distributionListId` matches the backend PK column `distribution_list_id`.
+ * The DB column type is `UNIQUEIDENTIFIER` (UUID, generated server-side by
+ * Hibernate `@GenericGenerator("uuid2")`), but the JPA entity / DTO / REST
+ * payloads carry it as a plain `String` — so the frontend treats it as an
+ * opaque string id and never tries to parse it.
  */
 export interface DistributionList {
   distributionListId: string;
