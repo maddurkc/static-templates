@@ -376,7 +376,7 @@ export async function searchRecipients(query: string, limit = 10): Promise<Recip
       dl.visibility === "SHARED" ? " · shared" : dl.visibility === "PUBLIC" ? " · public" : "";
     out.push({
       type: "DL",
-      id: dl.id,
+      id: dl.distributionListId,
       displayName: dl.displayName,
       subtitle: `${dl.members.length} members${visBadge}`,
       memberCount: dl.members.length,
