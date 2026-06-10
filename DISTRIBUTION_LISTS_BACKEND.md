@@ -1114,3 +1114,349 @@ The **Create / Save** button is disabled until:
 - `visibility === 'SHARED'` ⇒ `sharedWith` has ≥1 selected user
 
 This mirrors the server-side validation rules in §9.
+
+---
+
+## 14. Frontend Code — Real Backend API Calls
+
+This section ports the demo `localStorage` implementation in
+`src/lib/distributionListStorage.ts` to **real `fetch` calls** against the
+Spring Boot endpoints defined above. Drop these files in as-is once the
+backend is deployed; the page components (`DistributionLists.tsx`,
+`RunTemplates.tsx`, `SharedUserPicker.tsx`) consume the same exported
+function names, so no UI changes are required.
+
+### 14.1 `src/lib/apiClient.ts` — thin fetch wrapper
+
+```ts
+/**
+ * Shared fetch wrapper for all backend calls.
+ * - Prefixes `VITE_API_BASE_URL` (e.g. `https://api.company.com`).
+ * - Sends cookies for session auth (`credentials: 'include'`).
+ * - Throws an `ApiError` with the server's `{ status, error, message }`
+ *   shape produced by `GlobalExceptionHandler` (§4a).
+ */
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+
+export class ApiError extends Error {
+  status: number;
+  payload?: unknown;
+  constructor(status: number, message: string, payload?: unknown) {
+    super(message);
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(init.headers ?? {}),
+    },
+    ...init,
+  });
+
+  if (res.status === 204) return undefined as T;
+
+  const body = await res.json().catch(() => undefined);
+  if (!res.ok) {
+    const msg =
+      (body as { message?: string } | undefined)?.message ??
+      `${res.status} ${res.statusText}`;
+    throw new ApiError(res.status, msg, body);
+  }
+  return body as T;
+}
+```
+
+Add to `.env`:
+
+```
+VITE_API_BASE_URL=https://api.company.com
+```
+
+### 14.2 `src/lib/distributionListStorage.ts` — backend-wired version
+
+Drop-in replacement for the demo file. Public function names
+(`listDistributionLists`, `getDistributionList`, `createDistributionList`,
+`updateDistributionList`, `deleteDistributionList`, `searchUsers`,
+`searchRecipients`, `resolveRecipients`, `parseMembersRaw`, `toSharedRef`,
+`fromSharedRef`, `getUsersByIds`) and their type signatures are unchanged
+so the existing pages compile without edits — only `localStorage` reads
+are swapped for `apiFetch(...)` calls.
+
+```ts
+import { apiFetch } from "./apiClient";
+
+/* ---------- Types (mirror backend DTOs) ---------- */
+
+export type DLVisibility = "PRIVATE" | "SHARED" | "PUBLIC";
+
+export interface DLMember {
+  email: string;
+  displayName?: string;
+}
+
+/** Mirrors backend `SharedUserDto`. */
+export interface SharedUserRef {
+  distributionListShareId?: string; // surrogate PK, server-assigned
+  userId: string;
+  elid?: string;
+  lanid?: string;
+  name: string;
+  emailid: string;
+  department?: string;
+}
+
+/** Mirrors backend `DistributionListDto`. */
+export interface DistributionList {
+  distributionListId: string;
+  prefix: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  visibility: DLVisibility;
+  ownerId: string;
+  membersRaw: string;
+  members: DLMember[];      // derived from membersRaw
+  sharedWith: SharedUserRef[];
+  createdAt: string;        // ISO LocalDateTime
+  updatedAt: string;
+}
+
+export interface RecipientSuggestion {
+  type: "USER" | "DL";
+  id: string;
+  email?: string;
+  displayName: string;
+  subtitle: string;
+  memberCount?: number;
+}
+
+export interface DirectoryUser {
+  id: string;
+  elid?: string;
+  lanid?: string;
+  name: string;
+  email: string;
+  department?: string;
+}
+
+export interface DLUpsertInput {
+  name: string;
+  prefix?: string;
+  description?: string;
+  visibility: DLVisibility;
+  membersRaw: string;
+  sharedWith?: SharedUserRef[];
+}
+
+/* ---------- Shared parser (also used for live chip preview) ---------- */
+
+export function parseMembersRaw(raw: string | undefined | null): DLMember[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const out: DLMember[] = [];
+  for (const tok of raw.split(/[,;:\s\n]+/)) {
+    const e = tok.trim().toLowerCase();
+    if (!e) continue;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) continue;
+    if (seen.has(e)) continue;
+    seen.add(e);
+    out.push({ email: e });
+  }
+  return out;
+}
+
+/** Backend returns `memberEmails: string[]`; hydrate to `{ email }[]`. */
+interface RawDLDto extends Omit<DistributionList, "members"> {
+  memberEmails?: string[];
+}
+function hydrate(dto: RawDLDto): DistributionList {
+  const members =
+    dto.memberEmails?.map((email) => ({ email })) ?? parseMembersRaw(dto.membersRaw);
+  return { ...dto, members };
+}
+
+/* ---------- CRUD — REST calls ---------- */
+
+/** GET /api/distribution-lists  (visible to current user) */
+export async function listDistributionLists(): Promise<DistributionList[]> {
+  const rows = await apiFetch<RawDLDto[]>("/api/distribution-lists");
+  return rows.map(hydrate);
+}
+
+/** GET /api/distribution-lists/{id} */
+export async function getDistributionList(
+  id: string,
+): Promise<DistributionList | null> {
+  try {
+    const dto = await apiFetch<RawDLDto>(`/api/distribution-lists/${id}`);
+    return hydrate(dto);
+  } catch (e) {
+    if (e instanceof Error && "status" in e && (e as { status: number }).status === 404) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+/** POST /api/distribution-lists  body: DistributionListUpsertRequest */
+export async function createDistributionList(
+  input: DLUpsertInput,
+): Promise<DistributionList> {
+  const dto = await apiFetch<RawDLDto>("/api/distribution-lists", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return hydrate(dto);
+}
+
+/** PUT /api/distribution-lists/{id} */
+export async function updateDistributionList(
+  id: string,
+  input: DLUpsertInput,
+): Promise<DistributionList> {
+  const dto = await apiFetch<RawDLDto>(`/api/distribution-lists/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+  return hydrate(dto);
+}
+
+/** DELETE /api/distribution-lists/{id} */
+export async function deleteDistributionList(id: string): Promise<void> {
+  await apiFetch<void>(`/api/distribution-lists/${id}`, { method: "DELETE" });
+}
+
+/* ---------- Shared-user picker helpers ---------- */
+
+export function toSharedRef(u: DirectoryUser): SharedUserRef {
+  return {
+    userId: u.id,
+    elid: u.elid,
+    lanid: u.lanid,
+    name: u.name,
+    emailid: u.email,
+    department: u.department,
+  };
+}
+
+export function fromSharedRef(s: SharedUserRef): DirectoryUser {
+  return {
+    id: s.userId,
+    elid: s.elid,
+    lanid: s.lanid,
+    name: s.name,
+    email: s.emailid,
+    department: s.department,
+  };
+}
+
+/** GET /api/users/search?q=...&limit=... */
+export async function searchUsers(
+  query: string,
+  limit = 8,
+): Promise<DirectoryUser[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const params = new URLSearchParams({ q, limit: String(limit) });
+  return apiFetch<DirectoryUser[]>(`/api/users/search?${params}`);
+}
+
+/** GET /api/users?ids=u-1,u-2  (for edit-mode rehydration) */
+export async function getUsersByIds(ids: string[]): Promise<DirectoryUser[]> {
+  if (ids.length === 0) return [];
+  const params = new URLSearchParams({ ids: ids.join(",") });
+  return apiFetch<DirectoryUser[]>(`/api/users?${params}`);
+}
+
+/* ---------- Unified recipient search ---------- */
+
+/** GET /api/recipients/search?q=...&limit=... */
+export async function searchRecipients(
+  query: string,
+  limit = 10,
+): Promise<RecipientSuggestion[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const params = new URLSearchParams({ q, limit: String(limit) });
+  return apiFetch<RecipientSuggestion[]>(`/api/recipients/search?${params}`);
+}
+
+/* ---------- Recipient resolution (send-time DL expansion) ---------- */
+
+export interface RecipientRef {
+  type: "USER" | "DL";
+  id?: string;
+  email?: string;
+}
+
+export interface ResolvedRecipients {
+  emails: string[];
+  expandedDlIds: string[];
+  warnings: string[];
+}
+
+/**
+ * POST /api/recipients/resolve  body: RecipientRef[]
+ * Server-side mirror of `RecipientResolverService` (§6).
+ */
+export async function resolveRecipients(
+  refs: RecipientRef[],
+): Promise<ResolvedRecipients> {
+  return apiFetch<ResolvedRecipients>("/api/recipients/resolve", {
+    method: "POST",
+    body: JSON.stringify(refs),
+  });
+}
+```
+
+### 14.3 Page-level adjustments
+
+`resolveRecipients` is now **async**. Callers in `RunTemplates.tsx` (and
+anywhere else expanding DLs at send-time) must `await` it:
+
+```ts
+// before (demo, sync)
+const { emails, warnings } = resolveRecipients(refs);
+
+// after (real backend)
+const { emails, warnings } = await resolveRecipients(refs);
+```
+
+All other call sites in `DistributionLists.tsx` and `SharedUserPicker.tsx`
+already `await` the storage functions, so no further changes are needed.
+
+### 14.4 Endpoint ↔ Frontend Function Map
+
+| Frontend function                              | HTTP                                           | Backend handler (§)                       |
+| ---------------------------------------------- | ---------------------------------------------- | ----------------------------------------- |
+| `listDistributionLists()`                      | `GET /api/distribution-lists`                  | `DistributionListController.list` (§4)    |
+| `getDistributionList(id)`                      | `GET /api/distribution-lists/{id}`             | `DistributionListController.get` (§4)     |
+| `createDistributionList(input)`                | `POST /api/distribution-lists`                 | `DistributionListController.create` (§4)  |
+| `updateDistributionList(id, input)`            | `PUT /api/distribution-lists/{id}`             | `DistributionListController.update` (§4)  |
+| `deleteDistributionList(id)`                   | `DELETE /api/distribution-lists/{id}`          | `DistributionListController.delete` (§4)  |
+| `searchUsers(q, limit)`                        | `GET /api/users/search?q&limit`                | `RecipientSearchController` (§12)         |
+| `getUsersByIds(ids)`                           | `GET /api/users?ids`                           | `RecipientSearchController` (§12)         |
+| `searchRecipients(q, limit)`                   | `GET /api/recipients/search?q&limit`           | `RecipientSearchController` (§5)          |
+| `resolveRecipients(refs)`                      | `POST /api/recipients/resolve`                 | `RecipientResolverService` (§6)           |
+
+### 14.5 Error Handling Convention
+
+The backend's `GlobalExceptionHandler` (§4a) returns:
+
+```json
+{ "status": 404, "error": "NOT_FOUND", "message": "...", "path": "...", "timestamp": "..." }
+```
+
+`apiFetch` parses that body and throws `ApiError(status, message, payload)`.
+Dialogs surface `err.message` via `toast.error(...)`; the Save button
+guards listed in §13 still run client-side first so most validation errors
+never reach the network.
