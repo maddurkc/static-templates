@@ -31,8 +31,9 @@ Display convention: every DL is shown with a configurable prefix (default **`DSP
 -- =============================================================
 
 CREATE TABLE dbo.distribution_list (
-    distribution_list_id  NVARCHAR(64)     NOT NULL CONSTRAINT pk_dl PRIMARY KEY,
-                                                                    -- application-generated string id (e.g. "dl-<ts>-<rand>")
+    distribution_list_id  UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dl PRIMARY KEY DEFAULT NEWID(),
+                                                                    -- DB column type is UNIQUEIDENTIFIER (UUID); the JPA
+                                                                    -- entity maps it to `String` via @GenericGenerator("uuid2").
     name                  NVARCHAR(150)    NOT NULL,                -- "TeamAlpha" (no prefix)
     prefix                NVARCHAR(20)     NOT NULL CONSTRAINT df_dl_prefix DEFAULT 'DSPCH-',
     description           NVARCHAR(500)    NULL,
