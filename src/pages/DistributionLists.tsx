@@ -1,8 +1,20 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Plus, Users, Trash2, Edit3, X, Search, Lock, Globe, Share2 } from "lucide-react";
 import {
-  listDistributionLists,
+  listDistributionListsPaged,
   createDistributionList,
+  updateDistributionList,
+  deleteDistributionList,
+  getUsersByIds,
+  toSharedRef,
+  parseMembersRaw,
+  type DistributionList,
+  type DLVisibility,
+  type DLVisibilityFilter,
+  type DLMember,
+  type DirectoryUser,
+  type SharedUserRef,
+} from "@/lib/distributionListStorage";
   updateDistributionList,
   deleteDistributionList,
   getUsersByIds,
