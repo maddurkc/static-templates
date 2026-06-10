@@ -289,6 +289,12 @@ public record RecipientRefDto(
 ## 4. Repositories, Service, Controller (CRUD)
 
 ```java
+// ===== imports =====
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 public interface DistributionListRepository extends JpaRepository<DistributionListEntity, String> {
 
     @Query("""
