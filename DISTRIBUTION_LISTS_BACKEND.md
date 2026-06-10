@@ -215,6 +215,15 @@ public class DistributionListShareEntity {
 ## 3. DTOs
 
 ```java
+// ===== imports =====
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import java.time.LocalDateTime;
+import java.util.List;
+import com.example.dl.DistributionListEntity.Visibility;  // enum lives on the entity
+
 public record DistributionListDto(
     String distributionListId,
     String prefix,
