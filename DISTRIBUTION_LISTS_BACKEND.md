@@ -883,7 +883,12 @@ GET  /api/recipients/search?q=dsp     -> RecipientSuggestionDto[]
 
 ---
 
-## 6. RecipientResolverService — DL Expansion at Send Time
+## 6. RecipientResolverService — DL Expansion at Send Time (v2)
+
+**v2 changes:**
+- Reads from the three verbatim buckets (`toRaw`, `ccRaw`, `bccRaw`) instead of the removed `membersRaw`.
+- Returns a richer `Resolved` record that preserves the bucket split, so callers can append a DL's emails into the **matching** To/CC/BCC bucket on the send payload (mirrors the frontend "DLs" drawer behaviour in Run Templates).
+- Visibility check uses the v2 predicate: `PUBLIC` OR owner OR present in `managers` (renamed from `sharedWith`).
 
 ```java
 // ===== imports =====
@@ -903,14 +908,33 @@ public class RecipientResolverService {
     private final DistributionListRepository dlRepo;
     private final CurrentUserProvider currentUser;
 
-    public record Resolved(List<String> emails, List<String> expandedDlIds, List<String> warnings) {}
+    /**
+     * Resolved recipients for ONE bucket on the send payload. The three
+     * sub-buckets (toEmails / ccEmails / bccEmails) carry the emails that
+     * came from any expanded DL split by its own To/CC/BCC, so the caller
+     * can merge them into the matching outgoing bucket.
+     */
+    public record Resolved(
+            List<String> toEmails,
+            List<String> ccEmails,
+            List<String> bccEmails,
+            List<String> expandedDlIds,
+            List<String> warnings) {}
 
     /**
-     * Expand a mixed list of USER + DL refs into a deduplicated, validated email list.
+     * Expand a mixed list of USER + DL refs.
+     *  • USER refs always contribute to `toEmails` of the returned record
+     *    (the bucket they were dropped into is decided by the caller — this
+     *    method is invoked once per outgoing bucket).
+     *  • DL refs contribute their `toRaw` → toEmails, `ccRaw` → ccEmails,
+     *    `bccRaw` → bccEmails. Caller is responsible for merging those
+     *    sub-buckets into the matching outgoing bucket(s).
      * Silently skips DLs the caller cannot access (logs a warning).
      */
     public Resolved resolve(List<RecipientRefDto> refs) {
-        Set<String> emails  = new LinkedHashSet<>();
+        Set<String> to  = new LinkedHashSet<>();
+        Set<String> cc  = new LinkedHashSet<>();
+        Set<String> bcc = new LinkedHashSet<>();
         List<String> dlIds  = new ArrayList<>();
         List<String> warns  = new ArrayList<>();
         String uid = currentUser.id();
@@ -927,27 +951,34 @@ public class RecipientResolverService {
                     warns.add("You no longer have access to DL '" + dl.getPrefix() + dl.getName() + "' — skipped.");
                     continue;
                 }
-                List<String> memberEmails = DistributionListService.parseMembers(dl.getMembersRaw());
-                if (memberEmails.isEmpty()) {
+                var dlTo  = DistributionListService.parseMembers(dl.getToRaw());
+                var dlCc  = DistributionListService.parseMembers(dl.getCcRaw());
+                var dlBcc = DistributionListService.parseMembers(dl.getBccRaw());
+                if (dlTo.isEmpty() && dlCc.isEmpty() && dlBcc.isEmpty()) {
                     warns.add("DL '" + dl.getPrefix() + dl.getName() + "' is empty.");
                     continue;
                 }
-                emails.addAll(memberEmails);
+                to.addAll(dlTo);
+                cc.addAll(dlCc);
+                bcc.addAll(dlBcc);
                 dlIds.add(distributionListId);
             } else {
-                if (StringUtils.hasText(r.email())) emails.add(r.email().toLowerCase().trim());
+                if (StringUtils.hasText(r.email())) to.add(r.email().toLowerCase().trim());
             }
         }
-        return new Resolved(new ArrayList<>(emails), dlIds, warns);
+        return new Resolved(new ArrayList<>(to), new ArrayList<>(cc), new ArrayList<>(bcc), dlIds, warns);
     }
 
+    /** v2 predicate — PUBLIC, owner, or one of the DL's managers. */
     private boolean hasAccess(DistributionListEntity dl, String uid) {
-        return dl.getOwnerId().equals(uid)
-            || dl.getVisibility() == Visibility.PUBLIC
-            || dl.getSharedWith().stream().anyMatch(s -> uid.equals(s.getUserId()));
+        return dl.getVisibility() == Visibility.PUBLIC
+            || dl.getOwnerId().equals(uid)
+            || dl.getManagers().stream().anyMatch(s -> uid.equals(s.getUserId()));
     }
 }
 ```
+
+> **Caller contract (see §7):** the send service invokes `resolve()` **once per outgoing bucket** (To, CC, BCC). For each call it merges the returned `toEmails`/`ccEmails`/`bccEmails` into the matching outgoing bucket — i.e. a DL placed in the outgoing **CC** field still contributes its own `toRaw` to CC, its `ccRaw` to CC, and its `bccRaw` to BCC of the final email (same fan-out behaviour as the frontend drawer). Implementations that want strict 1:1 mapping (DL-To → outgoing To only) can ignore `ccEmails`/`bccEmails` from the resolver result.
 
 ---
 
@@ -974,12 +1005,18 @@ Service:
 ```java
 @Transactional
 public SentMessageDto send(String templateId, SendRequestDto req) {
+    // v2: resolver returns a bucket-split record; fan DL sub-buckets out into
+    // the matching outgoing bucket (mirrors the FE "DLs" drawer behaviour).
     var to  = resolver.resolve(req.to());
     var cc  = resolver.resolve(req.cc());
     var bcc = resolver.resolve(req.bcc());
 
+    List<String> outTo  = mergeDistinct(to.toEmails());
+    List<String> outCc  = mergeDistinct(to.ccEmails(),  cc.toEmails(), cc.ccEmails());
+    List<String> outBcc = mergeDistinct(to.bccEmails(), cc.bccEmails(), bcc.toEmails(), bcc.ccEmails(), bcc.bccEmails());
+
     mailer.send(SendMail.builder()
-        .to(to.emails()).cc(cc.emails()).bcc(bcc.emails())
+        .to(outTo).cc(outCc).bcc(outBcc)
         .subject(req.subjectContent())
         .htmlBody(req.bodyContent())
         .build());
@@ -987,8 +1024,8 @@ public SentMessageDto send(String templateId, SendRequestDto req) {
     // Persist BOTH the original refs (for resend re-expansion) AND the resolved emails (for audit).
     var sent = SentMessage.builder()
         .templateId(templateId)
-        .toRefs(req.to())      .ccRefs(req.cc())   .bccRefs(req.bcc())
-        .toEmails(to.emails()) .ccEmails(cc.emails()).bccEmails(bcc.emails())
+        .toRefs(req.to())   .ccRefs(req.cc())   .bccRefs(req.bcc())
+        .toEmails(outTo)    .ccEmails(outCc)    .bccEmails(outBcc)
         .expandedDlIds(union(to.expandedDlIds(), cc.expandedDlIds(), bcc.expandedDlIds()))
         .subjectContent(req.subjectContent())
         .renderedSubject(req.subjectContent())
@@ -1098,8 +1135,9 @@ class RecipientResolverServiceTest {
     @Mock CurrentUserProvider currentUser;
     @InjectMocks RecipientResolverService svc;
 
-    @Test void resolve_dedupesAcrossDlAndUser() {
-        var dl = dlWith("a@x.com","b@x.com");
+    @Test void resolve_splitsDlBucketsAndDedupesUser() {
+        // v2: DL contributes to/cc/bcc separately; USER ref lands in toEmails.
+        var dl = dlWith(/* toRaw */ "a@x.com,b@x.com", /* ccRaw */ "c@x.com", /* bccRaw */ "");
         when(dlRepo.findById(dl.getDistributionListId())).thenReturn(Optional.of(dl));
         when(currentUser.id()).thenReturn("owner-1");
 
@@ -1107,7 +1145,9 @@ class RecipientResolverServiceTest {
             new RecipientRefDto("USER", null, "a@x.com"),
             new RecipientRefDto("DL",   dl.getDistributionListId(), null)));
 
-        assertThat(out.emails()).containsExactly("a@x.com","b@x.com");  // dedup
+        assertThat(out.toEmails()).containsExactly("a@x.com","b@x.com");   // user merged + DL toRaw, dedup
+        assertThat(out.ccEmails()).containsExactly("c@x.com");
+        assertThat(out.bccEmails()).isEmpty();
         assertThat(out.expandedDlIds()).containsExactly(dl.getDistributionListId());
     }
 
@@ -1557,14 +1597,19 @@ export interface RecipientRef {
 }
 
 export interface ResolvedRecipients {
-  emails: string[];
+  /** v2: split per bucket — see §6 caller contract. */
+  toEmails: string[];
+  ccEmails: string[];
+  bccEmails: string[];
   expandedDlIds: string[];
   warnings: string[];
 }
 
 /**
  * POST /api/recipients/resolve  body: RecipientRef[]
- * Server-side mirror of `RecipientResolverService` (§6).
+ * Server-side mirror of `RecipientResolverService` (§6). v2 returns the
+ * bucket-split shape so callers can fan DL sub-buckets out into the matching
+ * outgoing To / CC / BCC field on the send payload.
  */
 export async function resolveRecipients(
   refs: RecipientRef[],
@@ -1578,15 +1623,16 @@ export async function resolveRecipients(
 
 ### 14.3 Page-level adjustments
 
-`resolveRecipients` is now **async**. Callers in `RunTemplates.tsx` (and
-anywhere else expanding DLs at send-time) must `await` it:
+`resolveRecipients` is now **async** AND returns split buckets. Callers in
+`RunTemplates.tsx` (and anywhere else expanding DLs at send-time) must
+`await` it and merge the sub-buckets:
 
 ```ts
-// before (demo, sync)
-const { emails, warnings } = resolveRecipients(refs);
-
-// after (real backend)
-const { emails, warnings } = await resolveRecipients(refs);
+// v2
+const r = await resolveRecipients(refs);
+const outTo  = r.toEmails;
+const outCc  = dedupe([...r.ccEmails]);
+const outBcc = dedupe([...r.bccEmails]);
 ```
 
 All other call sites in `DistributionLists.tsx` and `SharedUserPicker.tsx`
