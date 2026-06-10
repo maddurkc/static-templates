@@ -492,7 +492,186 @@ public class DistributionListController {
 
 ---
 
+## 4a. Exception Classes & Global Handler
+
+Place under `com.bank.notifications.distributionlists.exception` (or your shared `com.bank.notifications.common.exception` package if you already have one — keep it consistent across modules).
+
+### `NotFoundException.java`
+
+```java
+package com.bank.notifications.common.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class NotFoundException extends RuntimeException {
+    public NotFoundException(String message) {
+        super(message);
+    }
+
+    public NotFoundException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+```
+
+### `BadRequestException.java`
+
+```java
+package com.bank.notifications.common.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public class BadRequestException extends RuntimeException {
+    public BadRequestException(String message) {
+        super(message);
+    }
+
+    public BadRequestException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+```
+
+### `ForbiddenException.java`
+
+```java
+package com.bank.notifications.common.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.FORBIDDEN)
+public class ForbiddenException extends RuntimeException {
+    public ForbiddenException() {
+        super("You are not allowed to perform this action.");
+    }
+
+    public ForbiddenException(String message) {
+        super(message);
+    }
+
+    public ForbiddenException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+```
+
+### `ConflictException.java` (optional — useful for unique-name / duplicate-share collisions)
+
+```java
+package com.bank.notifications.common.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.CONFLICT)
+public class ConflictException extends RuntimeException {
+    public ConflictException(String message) {
+        super(message);
+    }
+
+    public ConflictException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+```
+
+### `GlobalExceptionHandler.java`
+
+Centralises error responses so the React frontend always gets a consistent JSON shape: `{ "status": <int>, "error": <reason>, "message": <human-readable>, "path": <request-uri>, "timestamp": <ISO> }`.
+
+```java
+package com.bank.notifications.common.exception;
+
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex, HttpServletRequest req) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "Data integrity violation (likely duplicate or constraint).", req);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
+        String msg = ex.getBindingResult().getFieldErrors().stream()
+                .map(this::formatFieldError)
+                .collect(Collectors.joining("; "));
+        return build(HttpStatus.BAD_REQUEST, msg.isBlank() ? "Validation failed." : msg, req);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex, HttpServletRequest req) {
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error: " + ex.getMessage(), req);
+    }
+
+    private String formatFieldError(FieldError fe) {
+        return fe.getField() + " " + (fe.getDefaultMessage() == null ? "is invalid" : fe.getDefaultMessage());
+    }
+
+    private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message, HttpServletRequest req) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", message);
+        body.put("path", req.getRequestURI());
+        return ResponseEntity.status(status).body(body);
+    }
+}
+```
+
+### Where each exception is thrown
+
+| Exception            | Thrown from                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
+| `NotFoundException`  | `DistributionListService.get/update/delete` when `repo.findById(...)` is empty                       |
+| `BadRequestException`| `DistributionListService.create/update` when members list parses to zero valid emails                |
+| `ForbiddenException` | `DistributionListService` ownership checks (non-owner trying to update/delete/share)                 |
+| `ConflictException`  | Optional — wrap `DataIntegrityViolationException` when DL name collides per owner, or duplicate share|
+
+---
+
 ## 5. Unified Recipient Search Endpoint
+
 
 `GET /api/recipients/search?q=dsp&limit=10` — used by `UserAutocomplete` in To/CC/BCC.
 
