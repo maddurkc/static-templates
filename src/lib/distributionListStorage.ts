@@ -127,7 +127,7 @@ export function listDistributionLists(): DistributionList[] {
     (dl) =>
       dl.ownerId === CURRENT_USER ||
       dl.visibility === "PUBLIC" ||
-      dl.sharedWith.includes(CURRENT_USER),
+      dl.sharedWith.some((s) => s.id === CURRENT_USER),
   );
 }
 
