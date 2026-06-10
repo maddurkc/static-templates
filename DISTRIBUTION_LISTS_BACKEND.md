@@ -1814,7 +1814,7 @@ focused) opens a right-side **Details Drawer** (`Sheet` from
 
 - Header: name + visibility + `type` + `ownerLanid`
 - Description (if any)
-- Managers list (name, email, department)
+- Managers list (name, email — LAN id badge from snapshot; department is fetched live from directory only if shown)
 - **To** recipients — full list, scrollable
 - **CC** recipients — full list, scrollable
 - **BCC** recipients — full list, scrollable
