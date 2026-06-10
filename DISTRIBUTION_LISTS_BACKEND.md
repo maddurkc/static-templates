@@ -502,11 +502,12 @@ public class RecipientResolverService {
                     warns.add("You no longer have access to DL '" + dl.getPrefix() + dl.getName() + "' — skipped.");
                     continue;
                 }
-                if (dl.getMembers().isEmpty()) {
+                List<String> memberEmails = DistributionListService.parseMembers(dl.getMembersRaw());
+                if (memberEmails.isEmpty()) {
                     warns.add("DL '" + dl.getPrefix() + dl.getName() + "' is empty.");
                     continue;
                 }
-                dl.getMembers().forEach(m -> emails.add(m.getEmail().toLowerCase()));
+                emails.addAll(memberEmails);
                 dlIds.add(id);
             } else {
                 if (StringUtils.hasText(r.email())) emails.add(r.email().toLowerCase().trim());
