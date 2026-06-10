@@ -207,12 +207,13 @@ public record DistributionListDto(
 
 /** Full directory snapshot stored on a SHARED DL. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
-    String userId,        // internal directory id (== user_id PK column)
-    String elid,          // enterprise / employee id  (nullable)
-    String lanid,         // LAN / network id          (nullable)
+    String distributionListShareId, // surrogate PK (UUID, server-generated); null on create
+    String userId,                  // internal directory id (unique per DL)
+    String elid,                    // enterprise / employee id  (nullable)
+    String lanid,                   // LAN / network id          (nullable)
     String name,
     String emailid,
-    String department     // nullable
+    String department               // nullable
 ) {}
 
 public record DistributionListUpsertDto(
