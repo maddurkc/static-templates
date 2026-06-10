@@ -337,17 +337,23 @@ public record DistributionListDto(
     String name,
     String displayName,                 // prefix + name -> "DSPCH-TeamAlpha"
     String description,
-    String visibility,
+    String visibility,                  // v2: PRIVATE | PUBLIC
+    String type,                        // v2: CUSTOM
     String ownerId,
-    int memberCount,                    // derived: parseMembers(membersRaw).size()
-    List<String> memberEmails,          // derived: parsed, deduped, validated emails
-    String membersRaw,                  // SOURCE OF TRUTH — verbatim textarea blob
-    List<SharedUserDto> sharedWith,     // FULL directory snapshot
+    String ownerLanid,                  // v2
+    int memberCount,                    // derived: sum of parseMembers across to/cc/bcc
+    List<String> toEmails,              // v2: derived from toRaw
+    List<String> ccEmails,              // v2: derived from ccRaw
+    List<String> bccEmails,             // v2: derived from bccRaw
+    String toRaw,                       // v2: SOURCE OF TRUTH — verbatim To blob
+    String ccRaw,                       // v2: SOURCE OF TRUTH — verbatim CC blob
+    String bccRaw,                      // v2: SOURCE OF TRUTH — verbatim BCC blob
+    List<SharedUserDto> managers,       // v2: full directory snapshot (was sharedWith)
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {}
 
-/** Full directory snapshot stored on a SHARED DL. Mirrors `distribution_list_share`. */
+/** Full directory snapshot of a manager. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
     String distributionListShareId, // surrogate PK (UUID, server-generated); null on create
     String userId,                  // internal directory id (unique per DL)
@@ -364,13 +370,16 @@ public record DistributionListUpsertDto(
     String name,
     @Size(max = 20)             String prefix,        // typically readonly / server-controlled; null -> default DSPCH-
     @Size(max = 500)            String description,
-    @NotNull                    Visibility visibility,
+    @NotNull                    Visibility visibility,// v2: PRIVATE | PUBLIC
     /**
-     * Verbatim textarea blob — the ONLY accepted form of members on upsert.
-     * Server parses with `parseMembers()` and rejects when the parsed list is empty.
+     * v2: Verbatim textarea blobs split into three buckets. The service requires
+     * at least ONE valid email across the three combined; individual buckets
+     * may be blank. `type` defaults to CUSTOM on the server.
      */
-    @NotBlank                   String membersRaw,
-    List<SharedUserDto>         sharedWith            // ignored unless visibility=SHARED; full rows required
+                                String toRaw,
+                                String ccRaw,
+                                String bccRaw,
+    List<SharedUserDto>         managers              // v2: optional on ANY visibility (was sharedWith)
 ) {}
 
 /** Unified result returned by /recipients/search. type=USER | DL. */
@@ -379,9 +388,10 @@ public record RecipientSuggestionDto(
     String id,              // distributionListId for DL, directory user id for USER
     String email,           // USER only
     String displayName,     // user name OR "DSPCH-TeamAlpha"
-    String subtitle,        // user email/department OR "12 members · shared"
+    String subtitle,        // user email/department OR "12 members · public"
     Integer memberCount     // DL only
 ) {}
+
 
 /** Payload entry sent by frontend in to/cc/bcc lists. */
 public record RecipientRefDto(
