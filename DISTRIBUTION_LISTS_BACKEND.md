@@ -239,9 +239,16 @@ public class DistributionListEntity {
     @Column(name = "owner_id", nullable = false, length = 100)
     private String ownerId;
 
+    @Column(name = "owner_lanid", length = 50)
+    private String ownerLanid;                              // v2
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Visibility visibility = Visibility.PRIVATE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Type type = Type.CUSTOM;                        // v2
 
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
@@ -253,26 +260,27 @@ public class DistributionListEntity {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     /**
-     * Verbatim textarea content the user pasted. SINGLE source of truth for
-     * members — there is intentionally NO normalised `DistributionListMember`
-     * entity. Parse this string on read with `DistributionListService.parseMembers`
+     * v2: Verbatim textarea content split into three buckets (To / CC / BCC).
+     * SINGLE source of truth for recipients — no normalised member entity.
+     * Parse on read with `DistributionListService.parseMembers`
      * (separators: `, ; : space newline`).
      */
-    @Column(name = "members_raw", columnDefinition = "NVARCHAR(MAX)")
-    private String membersRaw;
+    @Column(name = "to_raw",  columnDefinition = "NVARCHAR(MAX)") private String toRaw;
+    @Column(name = "cc_raw",  columnDefinition = "NVARCHAR(MAX)") private String ccRaw;
+    @Column(name = "bcc_raw", columnDefinition = "NVARCHAR(MAX)") private String bccRaw;
 
     /**
-     * Snapshot of every directory user the owner shared this DL with.
-     * Stored as full rows (user_id, elid, lanid, name, emailid, department)
-     * so the UI never has to round-trip back to AD for rendering, and so
-     * audit history survives if the user is later removed from the directory.
+     * v2: Managers — users (besides the owner) authorised to edit / delete
+     * this DL. Stored as full directory snapshots so the UI never has to
+     * round-trip back to AD for rendering, and so audit history survives.
      */
     @OneToMany(mappedBy = "distributionList", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<DistributionListShareEntity> sharedWith = new ArrayList<>();
+    private List<DistributionListShareEntity> managers = new ArrayList<>();
 
     @PreUpdate void touch() { this.updatedAt = LocalDateTime.now(); }
 
-    public enum Visibility { PRIVATE, SHARED, PUBLIC }
+    public enum Visibility { PRIVATE, PUBLIC }              // v2: SHARED removed
+    public enum Type       { CUSTOM }                       // v2
 }
 
 @Entity @Table(
