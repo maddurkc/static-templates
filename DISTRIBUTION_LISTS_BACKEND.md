@@ -332,6 +332,15 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
 ```
 
 ```java
+// ===== imports =====
+import java.util.Arrays;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import com.example.dl.DistributionListEntity.Visibility;
+
 @Service
 @RequiredArgsConstructor
 public class DistributionListService {
