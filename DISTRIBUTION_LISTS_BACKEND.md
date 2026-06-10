@@ -62,14 +62,17 @@ CREATE INDEX ix_dl_active    ON dbo.distribution_list(is_active) INCLUDE (owner_
 -- from AD/SCIM, so audit history stays intact.
 -- =============================================================
 CREATE TABLE dbo.distribution_list_share (
-    distribution_list_id  UNIQUEIDENTIFIER NOT NULL,    -- FK → distribution_list.distribution_list_id (UUID column)
-    user_id               NVARCHAR(100)    NOT NULL,   -- internal directory id
-    elid                  NVARCHAR(50)     NULL,       -- enterprise / employee id
-    lanid                 NVARCHAR(50)     NULL,       -- LAN / network id
-    name                  NVARCHAR(150)    NOT NULL,
-    emailid               NVARCHAR(255)    NOT NULL,
-    department            NVARCHAR(150)    NULL,
-    CONSTRAINT pk_dls PRIMARY KEY (distribution_list_id, user_id),
+    distribution_list_share_id  UNIQUEIDENTIFIER NOT NULL CONSTRAINT pk_dls PRIMARY KEY DEFAULT NEWID(),
+                                                                    -- Surrogate PK. DB type UNIQUEIDENTIFIER (UUID);
+                                                                    -- JPA maps to `String` via @GenericGenerator("uuid2").
+    distribution_list_id        UNIQUEIDENTIFIER NOT NULL,          -- FK → distribution_list.distribution_list_id (UUID column)
+    user_id                     NVARCHAR(100)    NOT NULL,          -- internal directory id
+    elid                        NVARCHAR(50)     NULL,              -- enterprise / employee id
+    lanid                       NVARCHAR(50)     NULL,              -- LAN / network id
+    name                        NVARCHAR(150)    NOT NULL,
+    emailid                     NVARCHAR(255)    NOT NULL,
+    department                  NVARCHAR(150)    NULL,
+    CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one share row per (DL, user)
     CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
         REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
 );
@@ -147,16 +150,29 @@ public class DistributionList {
     public enum Visibility { PRIVATE, SHARED, PUBLIC }
 }
 
-@Entity @Table(name = "distribution_list_share")
-@IdClass(DistributionListShare.PK.class)
+@Entity @Table(
+    name = "distribution_list_share",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uq_dls_dl_user",
+        columnNames = {"distribution_list_id", "user_id"}))
 @Getter @Setter @NoArgsConstructor
 public class DistributionListShare {
+    /**
+     * Surrogate primary key. DB column is `UNIQUEIDENTIFIER` (UUID); mapped
+     * here as `String` for the same portability reasons as {@link DistributionList}.
+     * Generated server-side by Hibernate `@GenericGenerator("uuid2")` — never
+     * set manually on create.
+     */
     @Id
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "uuid2")
+    @Column(name = "distribution_list_share_id", nullable = false, updatable = false, length = 36)
+    private String distributionListShareId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "distribution_list_id", nullable = false)
     private DistributionList distributionList;
 
-    @Id
     @Column(name = "user_id", nullable = false, length = 100)
     private String userId;                  // internal directory id
 
@@ -165,12 +181,6 @@ public class DistributionListShare {
     @Column(nullable = false, length = 150) private String name;
     @Column(nullable = false, length = 255) private String emailid;
     @Column(length = 150)                   private String department;
-
-    @Data @NoArgsConstructor @AllArgsConstructor
-    public static class PK implements Serializable {
-        private String distributionList;    // matches DistributionList#distributionListId
-        private String userId;
-    }
 }
 ```
 
@@ -197,12 +207,13 @@ public record DistributionListDto(
 
 /** Full directory snapshot stored on a SHARED DL. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
-    String userId,        // internal directory id (== user_id PK column)
-    String elid,          // enterprise / employee id  (nullable)
-    String lanid,         // LAN / network id          (nullable)
+    String distributionListShareId, // surrogate PK (UUID, server-generated); null on create
+    String userId,                  // internal directory id (unique per DL)
+    String elid,                    // enterprise / employee id  (nullable)
+    String lanid,                   // LAN / network id          (nullable)
     String name,
     String emailid,
-    String department     // nullable
+    String department               // nullable
 ) {}
 
 public record DistributionListUpsertDto(
@@ -385,6 +396,7 @@ public class DistributionListService {
             dl.getMembersRaw(),
             dl.getSharedWith().stream()
                 .map(s -> new SharedUserDto(
+                    s.getDistributionListShareId(),
                     s.getUserId(), s.getElid(), s.getLanid(),
                     s.getName(), s.getEmailid(), s.getDepartment()))
                 .toList(),
