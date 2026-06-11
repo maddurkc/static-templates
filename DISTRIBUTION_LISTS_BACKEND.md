@@ -173,6 +173,11 @@ CREATE TABLE dbo.distribution_list_share (
     -- v2: `department` column removed. Department is a directory attribute,
     -- not a snapshot field — it is fetched fresh from the user directory
     -- when the picker / drawer needs to display it.
+    -- v3 (delegate audit): track WHO added a delegate and WHEN, so we can
+    -- answer "who gave Bob edit rights?" — populated by the
+    -- POST /api/distribution-lists/{id}/delegates endpoint.
+    added_by                    NVARCHAR(100)    NULL,              -- ownerId/lanid of the user who added this delegate
+    added_at                    DATETIME2        NULL CONSTRAINT df_dls_added_at DEFAULT SYSUTCDATETIME(),
     CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one manager row per (DL, user)
     CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
         REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
