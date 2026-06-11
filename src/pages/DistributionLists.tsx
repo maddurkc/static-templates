@@ -111,7 +111,6 @@ export default function DistributionLists() {
 
   const openCreate = () => {
     setDraft(blankDraft());
-    setManagerUsers([]);
     setDialogOpen(true);
   };
 
@@ -125,9 +124,7 @@ export default function DistributionLists() {
       toRaw: dl.toRaw,
       ccRaw: dl.ccRaw,
       bccRaw: dl.bccRaw,
-      managers: [...dl.managers],
     });
-    setManagerUsers(getUsersByIds(dl.managers.map((s) => s.userId)));
     setDialogOpen(true);
   };
 
@@ -142,6 +139,8 @@ export default function DistributionLists() {
 
   const save = () => {
     try {
+      // managers intentionally omitted — storage preserves existing managers
+      // on update; delegates are managed via the dedicated dialog.
       const payload = {
         name: draft.name,
         prefix: draft.prefix,
@@ -150,7 +149,6 @@ export default function DistributionLists() {
         toRaw: draft.toRaw,
         ccRaw: draft.ccRaw,
         bccRaw: draft.bccRaw,
-        managers: managerUsers.map(toSharedRef),
       };
       if (draft.distributionListId) {
         updateDistributionList(draft.distributionListId, payload);
