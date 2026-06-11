@@ -441,21 +441,13 @@ export default function DistributionLists() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PRIVATE">Private — only you (and managers) can see / use</SelectItem>
+                  <SelectItem value="PRIVATE">Private — only you (and delegates) can see / use</SelectItem>
                   <SelectItem value="PUBLIC">Public — visible to everyone</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className={styles.field}>
-              <Label>Managers (optional)</Label>
-              <SharedUserPicker
-                selected={managerUsers}
-                onChange={setManagerUsers}
-                placeholder="Search users to add as managers (can edit / delete)..."
-              />
               <span className={styles.fieldHint}>
-                Managers can edit and delete this list alongside you, regardless of visibility.
+                Need to let teammates edit this list? Save first, then use the{" "}
+                <strong>Delegates</strong> button on the list card.
               </span>
             </div>
 
