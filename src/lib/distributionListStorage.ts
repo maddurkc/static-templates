@@ -368,7 +368,63 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
     toMembers: parseMembersRaw(toRaw),
     ccMembers: parseMembersRaw(ccRaw),
     bccMembers: parseMembersRaw(bccRaw),
-    managers: input.managers ?? [],
+    // Managers are managed via the dedicated delegates dialog/endpoints —
+    // preserve existing unless explicitly provided.
+    managers: input.managers ?? all[idx].managers,
+    updatedAt: new Date().toISOString(),
+  };
+  all[idx] = updated;
+  writeAll(all);
+  return updated;
+}
+
+/* ---------- delegates (managers) ---------- */
+
+/**
+ * Add one or more delegates to a DL. Owner-only. De-duplicates by userId.
+ * Mirrors backend `POST /api/distribution-lists/{id}/delegates`.
+ */
+export function addDelegatesToDL(id: string, users: DirectoryUser[]): DistributionList {
+  const all = readAll();
+  const idx = all.findIndex((d) => d.distributionListId === id);
+  if (idx === -1) throw new Error("Distribution list not found.");
+  if (!canManageDelegates(all[idx])) {
+    throw new Error("Only the owner can manage delegates.");
+  }
+  const existing = new Set(all[idx].managers.map((m) => m.userId));
+  const now = new Date().toISOString();
+  const fresh = users
+    .filter((u) => !existing.has(u.id))
+    .map<SharedUserRef>((u) => ({
+      ...toSharedRef(u),
+      addedBy: CURRENT_USER,
+      addedAt: now,
+    }));
+  if (fresh.length === 0) return all[idx];
+  const updated: DistributionList = {
+    ...all[idx],
+    managers: [...all[idx].managers, ...fresh],
+    updatedAt: now,
+  };
+  all[idx] = updated;
+  writeAll(all);
+  return updated;
+}
+
+/**
+ * Remove a single delegate by userId. Owner-only.
+ * Mirrors backend `DELETE /api/distribution-lists/{id}/delegates/{userId}`.
+ */
+export function removeDelegateFromDL(id: string, userId: string): DistributionList {
+  const all = readAll();
+  const idx = all.findIndex((d) => d.distributionListId === id);
+  if (idx === -1) throw new Error("Distribution list not found.");
+  if (!canManageDelegates(all[idx])) {
+    throw new Error("Only the owner can manage delegates.");
+  }
+  const updated: DistributionList = {
+    ...all[idx],
+    managers: all[idx].managers.filter((m) => m.userId !== userId),
     updatedAt: new Date().toISOString(),
   };
   all[idx] = updated;
