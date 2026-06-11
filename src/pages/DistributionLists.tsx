@@ -299,7 +299,7 @@ export default function DistributionLists() {
 
                 {dl.managers.length > 0 && (
                   <div className={styles.managerBadge}>
-                    <ShieldCheck size={11} /> {dl.managers.length} manager{dl.managers.length === 1 ? "" : "s"}
+                    <ShieldCheck size={11} /> {dl.managers.length} delegate{dl.managers.length === 1 ? "" : "s"}
                   </div>
                 )}
 
@@ -308,9 +308,21 @@ export default function DistributionLists() {
                     className={styles.actionBtn}
                     onClick={(e) => { e.stopPropagation(); openEdit(dl); }}
                     disabled={!canEdit}
-                    title={canEdit ? "" : "Only the owner and managers can edit"}
+                    title={canEdit ? "" : "Only the owner and delegates can edit"}
                   >
                     <Edit3 size={14} /> Edit
+                  </button>
+                  <button
+                    className={styles.actionBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDelegatePicks([]);
+                      setDelegatesDL(dl);
+                    }}
+                    disabled={!canManageDelegates(dl)}
+                    title={canManageDelegates(dl) ? "Manage delegates" : "Only the owner can manage delegates"}
+                  >
+                    <UserPlus size={14} /> Delegates
                   </button>
                   <button
                     className={`${styles.actionBtn} ${styles.danger}`}
