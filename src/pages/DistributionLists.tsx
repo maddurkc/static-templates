@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Users, Trash2, Edit3, X, Search, Lock, Globe, ShieldCheck } from "lucide-react";
+import { Plus, Users, Trash2, Edit3, X, Search, Lock, Globe, ShieldCheck, UserPlus } from "lucide-react";
 import {
   listDistributionLists,
   listDistributionListsPaged,
@@ -7,9 +7,13 @@ import {
   updateDistributionList,
   deleteDistributionList,
   getUsersByIds,
+  getDistributionList,
+  addDelegatesToDL,
+  removeDelegateFromDL,
   toSharedRef,
   parseMembersRaw,
   canManageDL,
+  canManageDelegates,
   type DistributionList,
   type DLVisibility,
   type DLVisibilityFilter,
