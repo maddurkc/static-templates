@@ -547,19 +547,61 @@ export default function DistributionLists() {
                   </section>
                 )}
 
-                {detailsDL.managers.length > 0 && (
-                  <section className={styles.detailsSection}>
-                    <h4><ShieldCheck size={12} /> Managers ({detailsDL.managers.length})</h4>
+                <section className={styles.detailsSection}>
+                  <h4>
+                    <ShieldCheck size={12} /> Delegates ({detailsDL.managers.length})
+                    {canManageDelegates(detailsDL) && (
+                      <button
+                        type="button"
+                        className={styles.inlineAddBtn}
+                        onClick={() => {
+                          setDelegatePicks([]);
+                          setDelegatesDL(detailsDL);
+                        }}
+                        title="Add delegates"
+                      >
+                        <UserPlus size={12} /> Add
+                      </button>
+                    )}
+                  </h4>
+                  {detailsDL.managers.length === 0 ? (
+                    <p className={styles.detailsEmpty}>No delegates yet.</p>
+                  ) : (
                     <ul className={styles.detailsList}>
                       {detailsDL.managers.map((m) => (
-                        <li key={m.userId}>
-                          <strong>{m.name}</strong> <span>{m.emailid}</span>
-                          {m.lanid && <em> · {m.lanid}</em>}
+                        <li key={m.userId} className={styles.delegateRow}>
+                          <span>
+                            <strong>{m.name}</strong> <span>{m.emailid}</span>
+                            {m.lanid && <em> · {m.lanid}</em>}
+                          </span>
+                          {canManageDelegates(detailsDL) && (
+                            <button
+                              type="button"
+                              className={styles.removeDelegateBtn}
+                              onClick={() => {
+                                try {
+                                  const updated = removeDelegateFromDL(detailsDL.distributionListId, m.userId);
+                                  setDetailsDL(updated);
+                                  refresh();
+                                  toast({ title: "Delegate removed" });
+                                } catch (err) {
+                                  toast({
+                                    title: "Failed to remove delegate",
+                                    description: err instanceof Error ? err.message : "Unknown error",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              aria-label={`Remove ${m.name}`}
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
                         </li>
                       ))}
                     </ul>
-                  </section>
-                )}
+                  )}
+                </section>
 
                 {(["toMembers","ccMembers","bccMembers"] as const).map((key) => {
                   const label = key === "toMembers" ? "To" : key === "ccMembers" ? "CC" : "BCC";
