@@ -182,9 +182,17 @@ function seedDemoLists(): DistributionList[] {
 
 /* ---------- permission helpers ---------- */
 
-/** True if user is the owner OR listed as a manager. */
+/** True if user is the owner OR listed as a manager (delegate). */
 export function canManageDL(dl: DistributionList, userId: string = CURRENT_USER): boolean {
   return dl.ownerId === userId || dl.managers.some((m) => m.userId === userId);
+}
+
+/**
+ * Only the OWNER can add/remove delegates. Delegates can edit DL content
+ * but cannot escalate by adding more delegates.
+ */
+export function canManageDelegates(dl: DistributionList, userId: string = CURRENT_USER): boolean {
+  return dl.ownerId === userId;
 }
 
 /** True if the user can see the DL on the listing page / drawer. */
