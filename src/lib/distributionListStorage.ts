@@ -35,6 +35,9 @@ export interface SharedUserRef {
   emailid: string;
   // v2: `department` removed — not stored on distribution_list_share.
   // UIs that need it look it up live from the directory.
+  // v3 (delegates UX): audit who added the delegate and when.
+  addedBy?: string;   // owner_id / lanid of the user who added this delegate
+  addedAt?: string;   // ISO timestamp
 }
 
 export interface DistributionList {
