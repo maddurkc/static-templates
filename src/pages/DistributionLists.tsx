@@ -624,6 +624,106 @@ export default function DistributionLists() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Delegates dialog — owner-only add/remove */}
+      <Dialog open={!!delegatesDL} onOpenChange={(o) => !o && setDelegatesDL(null)}>
+        <DialogContent className={styles.dialog}>
+          <DialogHeader>
+            <DialogTitle>
+              <ShieldCheck size={16} style={{ marginRight: 6, verticalAlign: "-2px" }} />
+              Delegates · {delegatesDL?.displayName}
+            </DialogTitle>
+          </DialogHeader>
+
+          {delegatesDL && (
+            <div className={styles.dialogBody}>
+              <div className={styles.field}>
+                <Label>Current delegates ({delegatesDL.managers.length})</Label>
+                {delegatesDL.managers.length === 0 ? (
+                  <p className={styles.detailsEmpty}>No delegates yet.</p>
+                ) : (
+                  <ul className={styles.detailsList}>
+                    {delegatesDL.managers.map((m) => (
+                      <li key={m.userId} className={styles.delegateRow}>
+                        <span>
+                          <strong>{m.name}</strong> <span>{m.emailid}</span>
+                          {m.lanid && <em> · {m.lanid}</em>}
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.removeDelegateBtn}
+                          onClick={() => {
+                            try {
+                              const updated = removeDelegateFromDL(delegatesDL.distributionListId, m.userId);
+                              setDelegatesDL(updated);
+                              if (detailsDL?.distributionListId === updated.distributionListId) {
+                                setDetailsDL(updated);
+                              }
+                              refresh();
+                            } catch (err) {
+                              toast({
+                                title: "Failed to remove delegate",
+                                description: err instanceof Error ? err.message : "Unknown error",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          aria-label={`Remove ${m.name}`}
+                        >
+                          <X size={12} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <Label>Add delegates</Label>
+                <SharedUserPicker
+                  selected={delegatePicks}
+                  onChange={setDelegatePicks}
+                  placeholder="Search users to add as delegates..."
+                />
+                <span className={styles.fieldHint}>
+                  Delegates can edit and delete this distribution list. Only the owner
+                  can add or remove delegates.
+                </span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDelegatesDL(null)}>
+              Close
+            </Button>
+            <Button
+              disabled={delegatePicks.length === 0}
+              onClick={() => {
+                if (!delegatesDL) return;
+                try {
+                  const updated = addDelegatesToDL(delegatesDL.distributionListId, delegatePicks);
+                  setDelegatesDL(updated);
+                  setDelegatePicks([]);
+                  if (detailsDL?.distributionListId === updated.distributionListId) {
+                    setDetailsDL(updated);
+                  }
+                  refresh();
+                  toast({ title: "Delegates added" });
+                } catch (err) {
+                  toast({
+                    title: "Failed to add delegates",
+                    description: err instanceof Error ? err.message : "Unknown error",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Add Selected
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
