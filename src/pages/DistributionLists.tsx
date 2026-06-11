@@ -1,21 +1,21 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Users, Trash2, Edit3, X, Search, Lock, Globe, ShieldCheck } from "lucide-react";
+import { Plus, Users, Trash2, Edit3, X, Search, Lock, Globe, ShieldCheck, UserPlus } from "lucide-react";
 import {
   listDistributionLists,
   listDistributionListsPaged,
   createDistributionList,
   updateDistributionList,
   deleteDistributionList,
-  getUsersByIds,
-  toSharedRef,
+  addDelegatesToDL,
+  removeDelegateFromDL,
   parseMembersRaw,
   canManageDL,
+  canManageDelegates,
   type DistributionList,
   type DLVisibility,
   type DLVisibilityFilter,
   type DLMember,
   type DirectoryUser,
-  type SharedUserRef,
 } from "@/lib/distributionListStorage";
 import { SharedUserPicker } from "./SharedUserPicker";
 import { Button } from "@/components/ui/button";
@@ -57,7 +57,6 @@ interface DraftDL {
   toRaw: string;
   ccRaw: string;
   bccRaw: string;
-  managers: SharedUserRef[];
 }
 
 const blankDraft = (): DraftDL => ({
@@ -68,7 +67,6 @@ const blankDraft = (): DraftDL => ({
   toRaw: "",
   ccRaw: "",
   bccRaw: "",
-  managers: [],
 });
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
@@ -83,8 +81,11 @@ export default function DistributionLists() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
-  const [managerUsers, setManagerUsers] = useState<DirectoryUser[]>([]);
   const [detailsDL, setDetailsDL] = useState<DistributionList | null>(null);
+
+  // Delegates dialog state
+  const [delegatesDL, setDelegatesDL] = useState<DistributionList | null>(null);
+  const [delegatePicks, setDelegatePicks] = useState<DirectoryUser[]>([]);
 
   const toMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.toRaw),  [draft.toRaw]);
   const ccMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.ccRaw),  [draft.ccRaw]);
@@ -106,7 +107,6 @@ export default function DistributionLists() {
 
   const openCreate = () => {
     setDraft(blankDraft());
-    setManagerUsers([]);
     setDialogOpen(true);
   };
 
@@ -120,9 +120,7 @@ export default function DistributionLists() {
       toRaw: dl.toRaw,
       ccRaw: dl.ccRaw,
       bccRaw: dl.bccRaw,
-      managers: [...dl.managers],
     });
-    setManagerUsers(getUsersByIds(dl.managers.map((s) => s.userId)));
     setDialogOpen(true);
   };
 
@@ -137,6 +135,8 @@ export default function DistributionLists() {
 
   const save = () => {
     try {
+      // managers intentionally omitted — storage preserves existing managers
+      // on update; delegates are managed via the dedicated dialog.
       const payload = {
         name: draft.name,
         prefix: draft.prefix,
@@ -145,7 +145,6 @@ export default function DistributionLists() {
         toRaw: draft.toRaw,
         ccRaw: draft.ccRaw,
         bccRaw: draft.bccRaw,
-        managers: managerUsers.map(toSharedRef),
       };
       if (draft.distributionListId) {
         updateDistributionList(draft.distributionListId, payload);
@@ -296,7 +295,7 @@ export default function DistributionLists() {
 
                 {dl.managers.length > 0 && (
                   <div className={styles.managerBadge}>
-                    <ShieldCheck size={11} /> {dl.managers.length} manager{dl.managers.length === 1 ? "" : "s"}
+                    <ShieldCheck size={11} /> {dl.managers.length} delegate{dl.managers.length === 1 ? "" : "s"}
                   </div>
                 )}
 
@@ -305,9 +304,21 @@ export default function DistributionLists() {
                     className={styles.actionBtn}
                     onClick={(e) => { e.stopPropagation(); openEdit(dl); }}
                     disabled={!canEdit}
-                    title={canEdit ? "" : "Only the owner and managers can edit"}
+                    title={canEdit ? "" : "Only the owner and delegates can edit"}
                   >
                     <Edit3 size={14} /> Edit
+                  </button>
+                  <button
+                    className={styles.actionBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDelegatePicks([]);
+                      setDelegatesDL(dl);
+                    }}
+                    disabled={!canManageDelegates(dl)}
+                    title={canManageDelegates(dl) ? "Manage delegates" : "Only the owner can manage delegates"}
+                  >
+                    <UserPlus size={14} /> Delegates
                   </button>
                   <button
                     className={`${styles.actionBtn} ${styles.danger}`}
@@ -438,21 +449,13 @@ export default function DistributionLists() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PRIVATE">Private — only you (and managers) can see / use</SelectItem>
+                  <SelectItem value="PRIVATE">Private — only you (and delegates) can see / use</SelectItem>
                   <SelectItem value="PUBLIC">Public — visible to everyone</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className={styles.field}>
-              <Label>Managers (optional)</Label>
-              <SharedUserPicker
-                selected={managerUsers}
-                onChange={setManagerUsers}
-                placeholder="Search users to add as managers (can edit / delete)..."
-              />
               <span className={styles.fieldHint}>
-                Managers can edit and delete this list alongside you, regardless of visibility.
+                Need to let teammates edit this list? Save first, then use the{" "}
+                <strong>Delegates</strong> button on the list card.
               </span>
             </div>
 
@@ -540,19 +543,61 @@ export default function DistributionLists() {
                   </section>
                 )}
 
-                {detailsDL.managers.length > 0 && (
-                  <section className={styles.detailsSection}>
-                    <h4><ShieldCheck size={12} /> Managers ({detailsDL.managers.length})</h4>
+                <section className={styles.detailsSection}>
+                  <h4>
+                    <ShieldCheck size={12} /> Delegates ({detailsDL.managers.length})
+                    {canManageDelegates(detailsDL) && (
+                      <button
+                        type="button"
+                        className={styles.inlineAddBtn}
+                        onClick={() => {
+                          setDelegatePicks([]);
+                          setDelegatesDL(detailsDL);
+                        }}
+                        title="Add delegates"
+                      >
+                        <UserPlus size={12} /> Add
+                      </button>
+                    )}
+                  </h4>
+                  {detailsDL.managers.length === 0 ? (
+                    <p className={styles.detailsEmpty}>No delegates yet.</p>
+                  ) : (
                     <ul className={styles.detailsList}>
                       {detailsDL.managers.map((m) => (
-                        <li key={m.userId}>
-                          <strong>{m.name}</strong> <span>{m.emailid}</span>
-                          {m.lanid && <em> · {m.lanid}</em>}
+                        <li key={m.userId} className={styles.delegateRow}>
+                          <span>
+                            <strong>{m.name}</strong> <span>{m.emailid}</span>
+                            {m.lanid && <em> · {m.lanid}</em>}
+                          </span>
+                          {canManageDelegates(detailsDL) && (
+                            <button
+                              type="button"
+                              className={styles.removeDelegateBtn}
+                              onClick={() => {
+                                try {
+                                  const updated = removeDelegateFromDL(detailsDL.distributionListId, m.userId);
+                                  setDetailsDL(updated);
+                                  refresh();
+                                  toast({ title: "Delegate removed" });
+                                } catch (err) {
+                                  toast({
+                                    title: "Failed to remove delegate",
+                                    description: err instanceof Error ? err.message : "Unknown error",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              aria-label={`Remove ${m.name}`}
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
                         </li>
                       ))}
                     </ul>
-                  </section>
-                )}
+                  )}
+                </section>
 
                 {(["toMembers","ccMembers","bccMembers"] as const).map((key) => {
                   const label = key === "toMembers" ? "To" : key === "ccMembers" ? "CC" : "BCC";
@@ -575,6 +620,106 @@ export default function DistributionLists() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Delegates dialog — owner-only add/remove */}
+      <Dialog open={!!delegatesDL} onOpenChange={(o) => !o && setDelegatesDL(null)}>
+        <DialogContent className={styles.dialog}>
+          <DialogHeader>
+            <DialogTitle>
+              <ShieldCheck size={16} style={{ marginRight: 6, verticalAlign: "-2px" }} />
+              Delegates · {delegatesDL?.displayName}
+            </DialogTitle>
+          </DialogHeader>
+
+          {delegatesDL && (
+            <div className={styles.dialogBody}>
+              <div className={styles.field}>
+                <Label>Current delegates ({delegatesDL.managers.length})</Label>
+                {delegatesDL.managers.length === 0 ? (
+                  <p className={styles.detailsEmpty}>No delegates yet.</p>
+                ) : (
+                  <ul className={styles.detailsList}>
+                    {delegatesDL.managers.map((m) => (
+                      <li key={m.userId} className={styles.delegateRow}>
+                        <span>
+                          <strong>{m.name}</strong> <span>{m.emailid}</span>
+                          {m.lanid && <em> · {m.lanid}</em>}
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.removeDelegateBtn}
+                          onClick={() => {
+                            try {
+                              const updated = removeDelegateFromDL(delegatesDL.distributionListId, m.userId);
+                              setDelegatesDL(updated);
+                              if (detailsDL?.distributionListId === updated.distributionListId) {
+                                setDetailsDL(updated);
+                              }
+                              refresh();
+                            } catch (err) {
+                              toast({
+                                title: "Failed to remove delegate",
+                                description: err instanceof Error ? err.message : "Unknown error",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          aria-label={`Remove ${m.name}`}
+                        >
+                          <X size={12} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <Label>Add delegates</Label>
+                <SharedUserPicker
+                  selected={delegatePicks}
+                  onChange={setDelegatePicks}
+                  placeholder="Search users to add as delegates..."
+                />
+                <span className={styles.fieldHint}>
+                  Delegates can edit and delete this distribution list. Only the owner
+                  can add or remove delegates.
+                </span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDelegatesDL(null)}>
+              Close
+            </Button>
+            <Button
+              disabled={delegatePicks.length === 0}
+              onClick={() => {
+                if (!delegatesDL) return;
+                try {
+                  const updated = addDelegatesToDL(delegatesDL.distributionListId, delegatePicks);
+                  setDelegatesDL(updated);
+                  setDelegatePicks([]);
+                  if (detailsDL?.distributionListId === updated.distributionListId) {
+                    setDetailsDL(updated);
+                  }
+                  refresh();
+                  toast({ title: "Delegates added" });
+                } catch (err) {
+                  toast({
+                    title: "Failed to add delegates",
+                    description: err instanceof Error ? err.message : "Unknown error",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Add Selected
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

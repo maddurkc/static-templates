@@ -173,6 +173,11 @@ CREATE TABLE dbo.distribution_list_share (
     -- v2: `department` column removed. Department is a directory attribute,
     -- not a snapshot field — it is fetched fresh from the user directory
     -- when the picker / drawer needs to display it.
+    -- v3 (delegate audit): track WHO added a delegate and WHEN, so we can
+    -- answer "who gave Bob edit rights?" — populated by the
+    -- POST /api/distribution-lists/{id}/delegates endpoint.
+    added_by                    NVARCHAR(100)    NULL,              -- ownerId/lanid of the user who added this delegate
+    added_at                    DATETIME2        NULL CONSTRAINT df_dls_added_at DEFAULT SYSUTCDATETIME(),
     CONSTRAINT uq_dls_dl_user UNIQUE (distribution_list_id, user_id),  -- one manager row per (DL, user)
     CONSTRAINT fk_dls_dl FOREIGN KEY (distribution_list_id)
         REFERENCES dbo.distribution_list(distribution_list_id) ON DELETE CASCADE
@@ -1836,3 +1841,151 @@ required — the change is purely a frontend rendering optimisation.
 | `src/pages/DistributionLists.tsx` | Card is now a clickable `role="button"`; removed `<ul>` of member emails; added `Sheet`-based details drawer driven by `detailsDL` state. |
 | `src/pages/DistributionLists.module.scss` | Added `.detailsSheet`, `.detailsTitle`, `.detailsBody`, `.detailsSection`, `.detailsList`, `.detailsEmpty`; set `.card { cursor: pointer; }`. |
 
+
+---
+
+## 17. Delegates UX (v3) — Dedicated Add/Remove Endpoints
+
+### Motivation
+
+In v2 the "managers" picker lived inside the DL create/edit dialog. Two
+problems emerged:
+
+1. Editing recipients required round-tripping the entire `managers` array
+   on every save, multiplying lock contention on `distribution_list_share`.
+2. Any user with edit access could escalate by adding themselves more
+   delegates — there was no concept of "owner-only" actions.
+
+v3 splits delegate management into its own UX surface and its own pair
+of endpoints, gated to the **owner only**.
+
+### Permission rule (canonical)
+
+```text
+canManageDelegates(dl, uid) := (dl.owner_id = uid)
+```
+
+Note this is **strictly stricter** than `canManage`:
+
+| Action                         | Owner | Delegate | Public viewer |
+|--------------------------------|:-----:|:--------:|:-------------:|
+| View DL (if PUBLIC or owner/delegate) | ✓ | ✓ | ✓ (PUBLIC only) |
+| Edit name / recipients / visibility   | ✓ | ✓ | – |
+| Delete DL                              | ✓ | ✓ | – |
+| **Add / remove delegates**             | ✓ | **✗** | **✗** |
+
+Delegates can edit content but cannot escalate by adding more delegates.
+
+### New endpoints
+
+```
+POST   /api/distribution-lists/{id}/delegates
+Body:  { "users": [ SharedUserDto, ... ] }   // full directory snapshots
+200:   DistributionListDto                    // refreshed DL with all managers
+
+DELETE /api/distribution-lists/{id}/delegates/{userId}
+200:   DistributionListDto                    // refreshed DL after removal
+```
+
+Both endpoints:
+
+- Throw `403 Forbidden` if the caller is not `dl.owner_id`.
+- The `POST` is **idempotent per (dl_id, user_id)** — duplicates are
+  silently skipped (the `uq_dls_dl_user` constraint guards the DB).
+- Populate `added_by = authPrincipal.userId` and
+  `added_at = SYSUTCDATETIME()` on each new row.
+- The legacy `PUT /api/distribution-lists/{id}` **ignores** any
+  `managers` field in the payload from v3 onward — to mutate delegates
+  callers MUST use the dedicated endpoints. (The form no longer sends
+  `managers`; see "Frontend impact" below.)
+
+### Spring controller sketch
+
+```java
+@PostMapping("/{id}/delegates")
+public DistributionListDto addDelegates(@PathVariable UUID id,
+                                        @RequestBody @Valid AddDelegatesRequest req,
+                                        AuthPrincipal me) {
+    DistributionListEntity dl = repo.findById(id).orElseThrow(NotFoundException::new);
+    if (!dl.getOwnerId().equals(me.userId())) throw new ForbiddenException("Owner-only");
+    return service.addDelegates(dl, req.users(), me);
+}
+
+@DeleteMapping("/{id}/delegates/{userId}")
+public DistributionListDto removeDelegate(@PathVariable UUID id,
+                                          @PathVariable String userId,
+                                          AuthPrincipal me) {
+    DistributionListEntity dl = repo.findById(id).orElseThrow(NotFoundException::new);
+    if (!dl.getOwnerId().equals(me.userId())) throw new ForbiddenException("Owner-only");
+    return service.removeDelegate(dl, userId);
+}
+```
+
+### `DistributionListShareEntity` additions
+
+```java
+@Column(name = "added_by", length = 100)
+private String addedBy;
+
+@Column(name = "added_at")
+private OffsetDateTime addedAt;
+```
+
+### DTO additions
+
+```java
+public record SharedUserDto(
+    String  userId,
+    String  elid,
+    String  lanid,
+    String  name,
+    String  emailid,
+    String  addedBy,        // v3
+    String  addedAt         // v3 — ISO-8601
+) {}
+```
+
+### Frontend impact
+
+| File | Change |
+|---|---|
+| `src/lib/distributionListStorage.ts` | Added `addDelegatesToDL(id, users)`, `removeDelegateFromDL(id, userId)`, `canManageDelegates(dl)`. `SharedUserRef` gained `addedBy?` / `addedAt?`. `updateDistributionList` no longer overwrites `managers` when `input.managers` is undefined — preserves existing. |
+| `src/pages/DistributionLists.tsx` | Removed the "Managers" `SharedUserPicker` section from the create/edit dialog. Added a **Delegates** action button on each card (owner-only) that opens a dedicated dialog with a `SharedUserPicker` + current-delegates list with × remove. The details drawer also renders the delegates section with inline × remove + "Add" button that reopens the same dialog. |
+| `src/pages/DistributionLists.module.scss` | Added `.delegateRow`, `.removeDelegateBtn`, `.inlineAddBtn`. |
+
+### TS contract mirror
+
+```ts
+// In src/lib/distributionListStorage.ts
+export function canManageDelegates(dl: DistributionList, userId?: string): boolean;
+export function addDelegatesToDL(id: string, users: DirectoryUser[]): DistributionList;
+export function removeDelegateFromDL(id: string, userId: string): DistributionList;
+
+export interface SharedUserRef {
+  distributionListShareId?: string;
+  userId: string;
+  elid?: string;
+  lanid?: string;
+  name: string;
+  emailid: string;
+  addedBy?: string;   // v3
+  addedAt?: string;   // v3 ISO timestamp
+}
+```
+
+### Migration note for existing v2 deployments
+
+```sql
+ALTER TABLE dbo.distribution_list_share
+    ADD added_by NVARCHAR(100) NULL,
+        added_at DATETIME2     NULL CONSTRAINT df_dls_added_at DEFAULT SYSUTCDATETIME();
+
+-- Backfill: assume the DL owner provisioned every existing delegate row
+UPDATE s
+   SET s.added_by = dl.owner_id,
+       s.added_at = dl.created_at
+  FROM dbo.distribution_list_share s
+  JOIN dbo.distribution_list       dl
+    ON dl.distribution_list_id = s.distribution_list_id
+ WHERE s.added_by IS NULL;
+```

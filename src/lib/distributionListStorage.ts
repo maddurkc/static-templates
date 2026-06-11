@@ -35,6 +35,9 @@ export interface SharedUserRef {
   emailid: string;
   // v2: `department` removed — not stored on distribution_list_share.
   // UIs that need it look it up live from the directory.
+  // v3 (delegates UX): audit who added the delegate and when.
+  addedBy?: string;   // owner_id / lanid of the user who added this delegate
+  addedAt?: string;   // ISO timestamp
 }
 
 export interface DistributionList {
@@ -179,9 +182,17 @@ function seedDemoLists(): DistributionList[] {
 
 /* ---------- permission helpers ---------- */
 
-/** True if user is the owner OR listed as a manager. */
+/** True if user is the owner OR listed as a manager (delegate). */
 export function canManageDL(dl: DistributionList, userId: string = CURRENT_USER): boolean {
   return dl.ownerId === userId || dl.managers.some((m) => m.userId === userId);
+}
+
+/**
+ * Only the OWNER can add/remove delegates. Delegates can edit DL content
+ * but cannot escalate by adding more delegates.
+ */
+export function canManageDelegates(dl: DistributionList, userId: string = CURRENT_USER): boolean {
+  return dl.ownerId === userId;
 }
 
 /** True if the user can see the DL on the listing page / drawer. */
@@ -357,7 +368,63 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
     toMembers: parseMembersRaw(toRaw),
     ccMembers: parseMembersRaw(ccRaw),
     bccMembers: parseMembersRaw(bccRaw),
-    managers: input.managers ?? [],
+    // Managers are managed via the dedicated delegates dialog/endpoints —
+    // preserve existing unless explicitly provided.
+    managers: input.managers ?? all[idx].managers,
+    updatedAt: new Date().toISOString(),
+  };
+  all[idx] = updated;
+  writeAll(all);
+  return updated;
+}
+
+/* ---------- delegates (managers) ---------- */
+
+/**
+ * Add one or more delegates to a DL. Owner-only. De-duplicates by userId.
+ * Mirrors backend `POST /api/distribution-lists/{id}/delegates`.
+ */
+export function addDelegatesToDL(id: string, users: DirectoryUser[]): DistributionList {
+  const all = readAll();
+  const idx = all.findIndex((d) => d.distributionListId === id);
+  if (idx === -1) throw new Error("Distribution list not found.");
+  if (!canManageDelegates(all[idx])) {
+    throw new Error("Only the owner can manage delegates.");
+  }
+  const existing = new Set(all[idx].managers.map((m) => m.userId));
+  const now = new Date().toISOString();
+  const fresh = users
+    .filter((u) => !existing.has(u.id))
+    .map<SharedUserRef>((u) => ({
+      ...toSharedRef(u),
+      addedBy: CURRENT_USER,
+      addedAt: now,
+    }));
+  if (fresh.length === 0) return all[idx];
+  const updated: DistributionList = {
+    ...all[idx],
+    managers: [...all[idx].managers, ...fresh],
+    updatedAt: now,
+  };
+  all[idx] = updated;
+  writeAll(all);
+  return updated;
+}
+
+/**
+ * Remove a single delegate by userId. Owner-only.
+ * Mirrors backend `DELETE /api/distribution-lists/{id}/delegates/{userId}`.
+ */
+export function removeDelegateFromDL(id: string, userId: string): DistributionList {
+  const all = readAll();
+  const idx = all.findIndex((d) => d.distributionListId === id);
+  if (idx === -1) throw new Error("Distribution list not found.");
+  if (!canManageDelegates(all[idx])) {
+    throw new Error("Only the owner can manage delegates.");
+  }
+  const updated: DistributionList = {
+    ...all[idx],
+    managers: all[idx].managers.filter((m) => m.userId !== userId),
     updatedAt: new Date().toISOString(),
   };
   all[idx] = updated;
