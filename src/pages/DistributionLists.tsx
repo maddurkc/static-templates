@@ -61,7 +61,6 @@ interface DraftDL {
   toRaw: string;
   ccRaw: string;
   bccRaw: string;
-  managers: SharedUserRef[];
 }
 
 const blankDraft = (): DraftDL => ({
@@ -72,7 +71,6 @@ const blankDraft = (): DraftDL => ({
   toRaw: "",
   ccRaw: "",
   bccRaw: "",
-  managers: [],
 });
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
@@ -87,8 +85,11 @@ export default function DistributionLists() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDL>(blankDraft());
-  const [managerUsers, setManagerUsers] = useState<DirectoryUser[]>([]);
   const [detailsDL, setDetailsDL] = useState<DistributionList | null>(null);
+
+  // Delegates dialog state
+  const [delegatesDL, setDelegatesDL] = useState<DistributionList | null>(null);
+  const [delegatePicks, setDelegatePicks] = useState<DirectoryUser[]>([]);
 
   const toMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.toRaw),  [draft.toRaw]);
   const ccMembers   = useMemo<DLMember[]>(() => parseMembersRaw(draft.ccRaw),  [draft.ccRaw]);
