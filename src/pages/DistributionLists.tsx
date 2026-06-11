@@ -6,11 +6,8 @@ import {
   createDistributionList,
   updateDistributionList,
   deleteDistributionList,
-  getUsersByIds,
-  getDistributionList,
   addDelegatesToDL,
   removeDelegateFromDL,
-  toSharedRef,
   parseMembersRaw,
   canManageDL,
   canManageDelegates,
@@ -19,7 +16,6 @@ import {
   type DLVisibilityFilter,
   type DLMember,
   type DirectoryUser,
-  type SharedUserRef,
 } from "@/lib/distributionListStorage";
 import { SharedUserPicker } from "./SharedUserPicker";
 import { Button } from "@/components/ui/button";
