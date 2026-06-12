@@ -507,6 +507,7 @@ import com.example.dl.DistributionListEntity.Visibility;
 public class DistributionListService {
 
     private final DistributionListRepository repo;
+    private final DistributionListShareRepository shareRepo;  // v3
     private final CurrentUserProvider currentUser;
 
     @Transactional(readOnly = true)
