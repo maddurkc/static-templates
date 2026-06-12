@@ -658,7 +658,9 @@ public class DistributionListService {
                 .map(s -> new SharedUserDto(
                     s.getDistributionListShareId(),
                     s.getUserId(), s.getElid(), s.getLanid(),
-                    s.getName(), s.getEmailid()))
+                    s.getName(), s.getEmailid(),
+                    s.getAddedBy(),                                                  // v3
+                    s.getAddedAt() == null ? null : s.getAddedAt().toString()))      // v3 ISO-8601
                 .toList(),
             dl.getCreatedAt(),
             dl.getUpdatedAt()
