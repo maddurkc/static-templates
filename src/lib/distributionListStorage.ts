@@ -188,11 +188,13 @@ export function canManageDL(dl: DistributionList, userId: string = CURRENT_USER)
 }
 
 /**
- * Only the OWNER can add/remove delegates. Delegates can edit DL content
- * but cannot escalate by adding more delegates.
+ * Owner OR any existing delegate can add/remove delegates. Mirrors the
+ * backend `requireDelegateManage` gate in DistributionListService (§4).
+ * Delegates may add more delegates, remove other delegates, or self-leave;
+ * the owner can never be added or removed via this path.
  */
 export function canManageDelegates(dl: DistributionList, userId: string = CURRENT_USER): boolean {
-  return dl.ownerId === userId;
+  return canManageDL(dl, userId);
 }
 
 /** True if the user can see the DL on the listing page / drawer. */
