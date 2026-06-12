@@ -703,8 +703,8 @@ export default function DistributionLists() {
                   placeholder="Search users to add as delegates..."
                 />
                 <span className={styles.fieldHint}>
-                  Delegates can edit and delete this distribution list. Only the owner
-                  can add or remove delegates.
+                  Delegates can edit and delete this distribution list.
+                  The owner or any existing delegate can add or remove delegates.
                 </span>
               </div>
             </div>
