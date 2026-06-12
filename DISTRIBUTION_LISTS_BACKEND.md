@@ -550,12 +550,18 @@ public class DistributionListService {
 
     /* ------------- helpers ------------- */
 
-    /** v2 permission gate: owner or one of the managers. */
+    /** v2 permission gate: owner or one of the managers. Used for edit/delete content. */
     private void requireManage(DistributionListEntity dl) {
         String uid = currentUser.id();
         boolean ok = dl.getOwnerId().equals(uid)
                   || dl.getManagers().stream().anyMatch(m -> uid.equals(m.getUserId()));
         if (!ok) throw new ForbiddenException("You don't have permission to modify this distribution list.");
+    }
+
+    /** v3 permission gate: ONLY the owner can add or remove delegates. */
+    private void requireOwner(DistributionListEntity dl) {
+        if (!dl.getOwnerId().equals(currentUser.id()))
+            throw new ForbiddenException("Only the owner can manage delegates.");
     }
 
     private void applyUpsert(DistributionListEntity dl, DistributionListUpsertDto in) {
@@ -578,24 +584,45 @@ public class DistributionListService {
         dl.setCcRaw(in.ccRaw());
         dl.setBccRaw(in.bccRaw());
 
-        // ---- managers: clear/addAll sync; orphanRemoval drops detached rows.
-        // v2: managers are optional and allowed on ANY visibility.
-        dl.getManagers().clear();
-        if (in.managers() != null) {
-            String ownerId = dl.getOwnerId();
-            for (SharedUserDto s : in.managers()) {
-                if (s.userId() == null || s.userId().equals(ownerId)) continue;  // owner is implicit
-                var row = new DistributionListShareEntity();
-                row.setDistributionList(dl);
-                row.setUserId(s.userId());
-                row.setElid(s.elid());
-                row.setLanid(s.lanid());
-                row.setName(s.name());
-                row.setEmailid(s.emailid().toLowerCase().trim());
-                // v2: department no longer persisted on the share row.
-                dl.getManagers().add(row);
-            }
+        // v3: managers are NOT mutated here. The upsert DTO no longer
+        // carries a `managers` field; delegate changes flow through
+        // addDelegates() / removeDelegate() (see §17). Existing
+        // managers on `dl` are left untouched.
+    }
+
+    /* ---------- v3 delegate endpoints (see §17) ---------- */
+
+    @Transactional
+    public DistributionListDto addDelegates(DistributionListEntity dl,
+                                            List<SharedUserDto> users,
+                                            String actorUserId) {
+        requireOwner(dl);
+        if (users == null) users = List.of();
+        String ownerId = dl.getOwnerId();
+        var now = LocalDateTime.now();
+        for (SharedUserDto s : users) {
+            if (s.userId() == null || s.userId().equals(ownerId)) continue;     // owner is implicit
+            if (shareRepo.existsByDistributionList_DistributionListIdAndUserId(
+                    dl.getDistributionListId(), s.userId())) continue;          // idempotent
+            var row = new DistributionListShareEntity();
+            row.setDistributionList(dl);
+            row.setUserId(s.userId());
+            row.setElid(s.elid());
+            row.setLanid(s.lanid());
+            row.setName(s.name());
+            row.setEmailid(s.emailid().toLowerCase().trim());
+            row.setAddedBy(actorUserId);
+            row.setAddedAt(now);
+            dl.getManagers().add(row);
         }
+        return toDto(repo.save(dl));
+    }
+
+    @Transactional
+    public DistributionListDto removeDelegate(DistributionListEntity dl, String userId) {
+        requireOwner(dl);
+        dl.getManagers().removeIf(m -> userId.equals(m.getUserId()));
+        return toDto(repo.save(dl));
     }
 
     /**
