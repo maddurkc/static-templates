@@ -550,6 +550,24 @@ public class DistributionListService {
 
     /* ------------- helpers ------------- */
 
+    /**
+     * Loads a DL by id or throws {@link NotFoundException}.
+     * Exposed as `public` so the controller can fetch the entity once
+     * (for delegate endpoints) and hand it to the service mutators
+     * without re-querying. All permission checks still run inside
+     * the mutator methods ({@link #addDelegates}, {@link #removeDelegate}).
+     */
+    @Transactional(readOnly = true)
+    public DistributionListEntity loadOrThrow(String distributionListId) {
+        return repo.findById(distributionListId)
+            .orElseThrow(() -> new NotFoundException("DL not found"));
+    }
+
+    /** Exposes the current authenticated user id to controllers (used to stamp `added_by` on delegate rows). */
+    public String currentUserId() {
+        return currentUser.id();
+    }
+
     /** v2 permission gate: owner or one of the managers. Used for edit/delete content. */
     private void requireManage(DistributionListEntity dl) {
         String uid = currentUser.id();
@@ -557,6 +575,7 @@ public class DistributionListService {
                   || dl.getManagers().stream().anyMatch(m -> uid.equals(m.getUserId()));
         if (!ok) throw new ForbiddenException("You don't have permission to modify this distribution list.");
     }
+
 
     /**
      * v3 (updated): permission gate for delegate add/remove.
