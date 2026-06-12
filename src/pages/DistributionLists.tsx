@@ -43,6 +43,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import styles from "./DistributionLists.module.scss";
 
@@ -246,7 +247,7 @@ export default function DistributionLists() {
         </span>
       </div>
 
-      <div className={styles.listView}>
+      <div className={styles.accordionWrap}>
         {lists.length === 0 ? (
           <div className={styles.empty}>
             <Users size={32} className={styles.emptyIcon} />
@@ -256,102 +257,156 @@ export default function DistributionLists() {
             </Button>
           </div>
         ) : (
-          <>
-            <div className={`${styles.listRow} ${styles.listHeader}`} aria-hidden>
-              <div className={styles.colName}>Name</div>
-              <div className={styles.colVis}>Visibility</div>
-              <div className={styles.colMembers}>Members</div>
-              <div className={styles.colDelegates}>Delegates</div>
-              <div className={styles.colActions}>Actions</div>
-            </div>
+          <Accordion type="multiple" className={styles.accordionRoot}>
             {lists.map((dl) => {
               const memberCount = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
               const canEdit = canManageDL(dl);
+              const canDelegate = canManageDelegates(dl);
               return (
-                <div
+                <AccordionItem
                   key={dl.distributionListId}
-                  className={styles.listRow}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setDetailsDL(dl)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setDetailsDL(dl);
-                    }
-                  }}
-                  title="Click to view full details"
+                  value={dl.distributionListId}
+                  className={styles.accordionItem}
                 >
-                  <div className={styles.colName}>
-                    <span className={styles.dlName}>
-                      <Users size={14} className={styles.dlNameIcon} />
-                      {dl.displayName}
-                    </span>
-                    {dl.description && <p className={styles.descInline}>{dl.description}</p>}
-                  </div>
-
-                  <div className={styles.colVis}>
-                    <span className={styles.vis}>
-                      {visIcon(dl.visibility)} {dl.visibility.toLowerCase()}
-                    </span>
-                  </div>
-
-                  <div className={styles.colMembers}>
-                    <strong>{memberCount}</strong>
-                    <span className={styles.memberSplit}>
-                      To {dl.toMembers.length} · CC {dl.ccMembers.length} · BCC {dl.bccMembers.length}
-                    </span>
-                  </div>
-
-                  <div className={styles.colDelegates}>
-                    {dl.managers.length === 0 ? (
-                      <span className={styles.delegateEmpty}>—</span>
-                    ) : (
-                      <div className={styles.delegatePreview}>
+                  <AccordionTrigger className={styles.accordionTrigger}>
+                    <div className={styles.summary}>
+                      <span className={styles.dlName}>
+                        <Users size={14} className={styles.dlNameIcon} />
+                        {dl.displayName}
+                      </span>
+                      <span className={styles.vis}>
+                        {visIcon(dl.visibility)} {dl.visibility.toLowerCase()}
+                      </span>
+                      <span className={styles.summaryMeta}>
+                        <strong>{memberCount}</strong> member{memberCount === 1 ? "" : "s"}
+                        <span className={styles.memberSplit}>
+                          {" "}· To {dl.toMembers.length} · CC {dl.ccMembers.length} · BCC {dl.bccMembers.length}
+                        </span>
+                      </span>
+                      {dl.managers.length > 0 && (
                         <span className={styles.managerBadgeInline}>
-                          <ShieldCheck size={11} /> {dl.managers.length}
+                          <ShieldCheck size={11} /> {dl.managers.length} delegate{dl.managers.length === 1 ? "" : "s"}
                         </span>
-                        <span className={styles.delegateNames}>
-                          {dl.managers.slice(0, 2).map((m) => m.name).join(", ")}
-                          {dl.managers.length > 2 && ` +${dl.managers.length - 2}`}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  </AccordionTrigger>
 
-                  <div className={styles.colActions}>
-                    <button
-                      className={styles.actionBtn}
-                      onClick={(e) => { e.stopPropagation(); openEdit(dl); }}
-                      disabled={!canEdit}
-                      title={canEdit ? "" : "Only the owner and delegates can edit"}
-                    >
-                      <Edit3 size={14} /> Edit
-                    </button>
-                    <button
-                      className={styles.actionBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDelegatePicks([]);
-                        setDelegatesDL(dl);
-                      }}
-                      disabled={!canManageDelegates(dl)}
-                      title={canManageDelegates(dl) ? "Manage delegates" : "Only the owner or an existing delegate can manage delegates"}
-                    >
-                      <UserPlus size={14} /> Delegates
-                    </button>
-                    <button
-                      className={`${styles.actionBtn} ${styles.danger}`}
-                      onClick={(e) => { e.stopPropagation(); remove(dl); }}
-                      disabled={!canEdit}
-                    >
-                      <Trash2 size={14} /> Delete
-                    </button>
-                  </div>
-                </div>
+                  <AccordionContent className={styles.accordionContent}>
+                    {dl.description && (
+                      <section className={styles.detailsSection}>
+                        <h4>Description</h4>
+                        <p className={styles.desc}>{dl.description}</p>
+                      </section>
+                    )}
+
+                    <section className={styles.detailsSection}>
+                      <h4>
+                        <ShieldCheck size={12} /> Delegates ({dl.managers.length})
+                        {canDelegate && (
+                          <button
+                            type="button"
+                            className={styles.inlineAddBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDelegatePicks([]);
+                              setDelegatesDL(dl);
+                            }}
+                            title="Add delegates"
+                          >
+                            <UserPlus size={12} /> Add
+                          </button>
+                        )}
+                      </h4>
+                      {dl.managers.length === 0 ? (
+                        <p className={styles.detailsEmpty}>No delegates yet.</p>
+                      ) : (
+                        <ul className={styles.detailsList}>
+                          {dl.managers.map((m) => (
+                            <li key={m.userId} className={styles.delegateRow}>
+                              <span>
+                                <strong>{m.name}</strong> <span>{m.emailid}</span>
+                                {m.lanid && <em> · {m.lanid}</em>}
+                              </span>
+                              {canDelegate && (
+                                <button
+                                  type="button"
+                                  className={styles.removeDelegateBtn}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      removeDelegateFromDL(dl.distributionListId, m.userId);
+                                      refresh();
+                                      toast({ title: "Delegate removed" });
+                                    } catch (err) {
+                                      toast({
+                                        title: "Failed to remove delegate",
+                                        description: err instanceof Error ? err.message : "Unknown error",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                  aria-label={`Remove ${m.name}`}
+                                >
+                                  <X size={12} />
+                                </button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+
+                    {(["toMembers", "ccMembers", "bccMembers"] as const).map((key) => {
+                      const label = key === "toMembers" ? "To" : key === "ccMembers" ? "CC" : "BCC";
+                      const arr = dl[key];
+                      return (
+                        <section key={key} className={styles.detailsSection}>
+                          <h4>{label} ({arr.length})</h4>
+                          {arr.length === 0 ? (
+                            <p className={styles.detailsEmpty}>No recipients.</p>
+                          ) : (
+                            <ul className={styles.detailsList}>
+                              {arr.map((m) => <li key={m.email}>{m.email}</li>)}
+                            </ul>
+                          )}
+                        </section>
+                      );
+                    })}
+
+                    <div className={styles.accordionActions}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEdit(dl)}
+                        disabled={!canEdit}
+                        title={canEdit ? "" : "Only the owner and delegates can edit"}
+                      >
+                        <Edit3 size={14} /> Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setDelegatePicks([]); setDelegatesDL(dl); }}
+                        disabled={!canDelegate}
+                        title={canDelegate ? "Manage delegates" : "Only the owner or an existing delegate can manage delegates"}
+                      >
+                        <UserPlus size={14} /> Manage Delegates
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => remove(dl)}
+                        disabled={!canEdit}
+                        className={styles.dangerBtn}
+                      >
+                        <Trash2 size={14} /> Delete
+                      </Button>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               );
             })}
-          </>
+          </Accordion>
         )}
       </div>
 
