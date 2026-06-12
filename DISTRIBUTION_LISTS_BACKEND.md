@@ -474,6 +474,10 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
     List<DistributionListEntity> searchVisibleTo(@Param("uid") String userId,
                                            @Param("q") String like,
                                            @Param("lim") int limit);
+
+    // v3 — delegate idempotency helper used by addDelegates() in §17.
+    boolean existsByDistributionList_DistributionListIdAndUserId_AndUserId(
+        String distributionListId, String userId);
 }
 ```
 
