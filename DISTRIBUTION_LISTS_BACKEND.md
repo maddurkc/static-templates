@@ -697,7 +697,7 @@ public class DistributionListService {
     }
 
     /** v2: any logged-in user can READ a PUBLIC list; otherwise must be owner or manager. */
-    private void requireReadAccess(DistributionListEntity dl) {
+    public void requireReadAccess(DistributionListEntity dl) {
         var uid = currentUser.id();
         if (dl.getVisibility() == Visibility.PUBLIC) return;
         if (dl.getOwnerId().equals(uid)) return;
@@ -2087,7 +2087,12 @@ public List<SharedUserDto> getDelegates(@PathVariable String id) {
     var dl = service.loadOrThrow(id);
     service.requireReadAccess(dl);          // 403 if caller cannot view this DL
     return dl.getManagers().stream()
-               .map(mapper::toSharedUserDto)
+               .map(s -> new SharedUserDto(
+                   s.getDistributionListShareId(),
+                   s.getUserId(), s.getElid(), s.getLanid(),
+                   s.getName(), s.getEmailid(),
+                   s.getAddedBy(),
+                   s.getAddedAt() == null ? null : s.getAddedAt().toString()))
                .toList();
 }
 
