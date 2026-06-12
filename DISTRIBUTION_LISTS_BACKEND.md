@@ -321,6 +321,13 @@ public class DistributionListShareEntity {
     @Column(nullable = false, length = 150) private String name;
     @Column(nullable = false, length = 255) private String emailid;
     // v2: `department` field removed — see §1 share-table comment.
+
+    // v3 (delegate audit): populated by addDelegates() — see §17 + §4.
+    @Column(name = "added_by", length = 100)
+    private String addedBy;
+
+    @Column(name = "added_at")
+    private LocalDateTime addedAt;
 }
 ```
 
