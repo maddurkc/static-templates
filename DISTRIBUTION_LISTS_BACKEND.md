@@ -367,14 +367,16 @@ public record DistributionListDto(
     LocalDateTime updatedAt
 ) {}
 
-/** Full snapshot of a manager. Mirrors `distribution_list_share`. */
+/** Full snapshot of a manager/delegate. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
     String distributionListShareId, // surrogate PK (UUID, server-generated); null on create
     String userId,                  // internal directory id (unique per DL)
     String elid,                    // enterprise / employee id  (nullable)
     String lanid,                   // LAN / network id          (nullable)
     String name,
-    String emailid
+    String emailid,
+    String addedBy,                 // v3 — userId of whoever provisioned this delegate
+    String addedAt                  // v3 — ISO-8601 timestamp
     // v2: `department` removed — not persisted on the share row. UIs that
     // need it should fetch from the directory (DirectoryUserDto / §11).
 ) {}
@@ -390,11 +392,21 @@ public record DistributionListUpsertDto(
      * v2: Verbatim textarea blobs split into three buckets. The service requires
      * at least ONE valid email across the three combined; individual buckets
      * may be blank. `type` defaults to CUSTOM on the server.
+     *
+     * v3: `managers` is NO LONGER part of the upsert payload. Delegate
+     * mutations go through the dedicated endpoints (see §17):
+     *   POST   /api/distribution-lists/{id}/delegates
+     *   DELETE /api/distribution-lists/{id}/delegates/{userId}
+     * The service IGNORES any `managers` field if a v2 client still sends it.
      */
                                 String toRaw,
                                 String ccRaw,
-                                String bccRaw,
-    List<SharedUserDto>         managers              // v2: optional on ANY visibility (was sharedWith)
+                                String bccRaw
+) {}
+
+/** v3 — body for POST /api/distribution-lists/{id}/delegates */
+public record AddDelegatesRequest(
+    @NotNull List<SharedUserDto> users   // directory snapshots; addedBy/addedAt may be null (server fills)
 ) {}
 
 /** Unified result returned by /recipients/search. type=USER | DL. */
