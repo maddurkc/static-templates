@@ -448,6 +448,7 @@ export function getDelegatesForDL(id: string): SharedUserRef[] {
   return dl.managers;
 }
 
+export function deleteDistributionList(id: string): void {
   const all = readAll();
   const target = all.find((d) => d.distributionListId === id);
   if (target && !canManageDL(target)) {
