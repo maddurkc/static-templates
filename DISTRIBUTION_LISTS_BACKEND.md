@@ -1771,7 +1771,64 @@ already `await` the storage functions, so no further changes are needed.
 | `searchRecipients(q, limit)`                   | `GET /api/recipients/search?q&limit`           | `RecipientSearchController` (§5)          |
 | `resolveRecipients(refs)`                      | `POST /api/recipients/resolve`                 | `RecipientResolverService` (§6)           |
 
-### 14.5 Error Handling Convention
+### 14.5 Delegate Management — Frontend Flow (v3)
+
+The Distribution Lists page (`src/pages/DistributionLists.tsx`) renders each
+DL as a **row in a list view** (replaced the prior card grid in v3 — denser,
+sortable-friendly, mirrors Outlook-style management tables). Each row shows:
+
+| Column      | Source                                                                                |
+|-------------|---------------------------------------------------------------------------------------|
+| Name        | `dl.displayName` + inline `dl.description`                                            |
+| Visibility  | `dl.visibility` (`PUBLIC` / `PRIVATE`)                                                |
+| Members     | sum of `toMembers.length + ccMembers.length + bccMembers.length`, split inline        |
+| Delegates   | `dl.managers.length` badge + first 2 names + `+N` overflow                            |
+| Actions     | Edit · Delegates · Delete (gated by `canManageDL` / `canManageDelegates`)             |
+
+Clicking a row opens the right-hand **details drawer** (`<Sheet side="right">`)
+which lists the delegates with their `name`, `emailid`, `lanid`, plus an inline
+**Add** affordance (visible when `canManageDelegates(dl)` is true) and per-row
+remove (✕) buttons. The drawer is read-while-you-manage: every delegate
+mutation re-syncs both `detailsDL` and the row list via `refresh()`.
+
+The **Delegates dialog** (`Dialog` open on row's "Delegates" button) wraps the
+two delegate-only API calls:
+
+```ts
+// Adding — fires when "Add Selected" is pressed with N picks in the
+// SharedUserPicker. De-duplicates by userId server-side; client also
+// guards via canManageDelegates() before the call.
+const updated = addDelegatesToDL(delegatesDL.distributionListId, delegatePicks);
+//        ↳ HTTP: POST /api/distribution-lists/{id}/delegates
+//          body: { users: [{ userId, elid?, lanid?, name, emailid }] }
+//          200:  full DistributionListDto (managers[] now includes new rows
+//                with addedBy = caller, addedAt = server time)
+//          403:  ForbiddenException — caller is neither owner nor delegate
+//          404:  NotFoundException — DL id not found / inactive
+
+// Removing — fires from the ✕ button in either the drawer or the dialog.
+const updated = removeDelegateFromDL(delegatesDL.distributionListId, m.userId);
+//        ↳ HTTP: DELETE /api/distribution-lists/{id}/delegates/{userId}
+//          200:  full DistributionListDto (managers[] minus removed user)
+//          400:  BadRequestException — caller is the owner trying to
+//                self-remove (owners are not in the managers table)
+//          403:  ForbiddenException — caller is neither owner nor delegate
+//          404:  NotFoundException — DL or delegate row not found
+```
+
+Both calls **return the freshly hydrated DL** so the page can update
+`delegatesDL`, `detailsDL` (when the drawer is open on the same row), and
+trigger `refresh()` to re-render the list — no second `GET` round-trip.
+
+Authorization recap (matches §4 `requireDelegateManage`):
+
+| Caller is…        | Can add delegates | Can remove delegates                       |
+|-------------------|-------------------|--------------------------------------------|
+| Owner             | ✅                | ✅ (anyone except self)                    |
+| Existing delegate | ✅                | ✅ (anyone including self → "leave")       |
+| Anyone else       | ❌ 403            | ❌ 403                                     |
+
+### 14.6 Error Handling Convention
 
 The backend's `GlobalExceptionHandler` (§4a) returns:
 
