@@ -2149,6 +2149,7 @@ public record SharedUserDto(
 
 ```ts
 // In src/lib/distributionListStorage.ts
+export function getDelegatesForDL(id: string): SharedUserRef[];
 export function canManageDelegates(dl: DistributionList, userId?: string): boolean;
 export function addDelegatesToDL(id: string, users: DirectoryUser[]): DistributionList;
 export function removeDelegateFromDL(id: string, userId: string): DistributionList;
