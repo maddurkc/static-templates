@@ -628,6 +628,8 @@ public class DistributionListService {
     @Transactional
     public DistributionListDto removeDelegate(DistributionListEntity dl, String userId) {
         requireDelegateManage(dl);
+        if (dl.getOwnerId().equals(userId))
+            throw new BadRequestException("Owner cannot be removed as a delegate.");
         dl.getManagers().removeIf(m -> userId.equals(m.getUserId()));
         return toDto(repo.save(dl));
     }
