@@ -2081,6 +2081,15 @@ Both endpoints:
 ### Spring controller sketch
 
 ```java
+@GetMapping("/{id}/delegates")
+public List<SharedUserDto> getDelegates(@PathVariable String id) {
+    var dl = service.loadOrThrow(id);
+    service.requireReadAccess(dl);          // 403 if caller cannot view this DL
+    return dl.getManagers().stream()
+               .map(mapper::toSharedUserDto)
+               .toList();
+}
+
 @PostMapping("/{id}/delegates")
 public DistributionListDto addDelegates(@PathVariable String id,
                                         @RequestBody @Valid AddDelegatesRequest req) {
