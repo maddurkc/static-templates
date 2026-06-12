@@ -558,10 +558,17 @@ public class DistributionListService {
         if (!ok) throw new ForbiddenException("You don't have permission to modify this distribution list.");
     }
 
-    /** v3 permission gate: ONLY the owner can add or remove delegates. */
-    private void requireOwner(DistributionListEntity dl) {
-        if (!dl.getOwnerId().equals(currentUser.id()))
-            throw new ForbiddenException("Only the owner can manage delegates.");
+    /**
+     * v3 (updated): permission gate for delegate add/remove.
+     * Allowed for the OWNER or any user already listed as a delegate.
+     * Same predicate as {@link #requireManage}, kept as a distinct method
+     * so we can tighten it independently in the future without grepping.
+     */
+    private void requireDelegateManage(DistributionListEntity dl) {
+        String uid = currentUser.id();
+        boolean ok = dl.getOwnerId().equals(uid)
+                  || dl.getManagers().stream().anyMatch(m -> uid.equals(m.getUserId()));
+        if (!ok) throw new ForbiddenException("Only the owner or an existing delegate can manage delegates.");
     }
 
     private void applyUpsert(DistributionListEntity dl, DistributionListUpsertDto in) {
