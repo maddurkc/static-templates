@@ -707,7 +707,7 @@ public class DistributionListController {
                                                                                    @Valid @RequestBody DistributionListUpsertDto in)          { return service.update(distributionListId, in); }
     @DeleteMapping("/{distributionListId}") public void                     delete(@PathVariable String distributionListId)                    { service.delete(distributionListId); }
 
-    /* ---------- v3 delegate endpoints (owner-only, see §17) ---------- */
+    /* ---------- v3 delegate endpoints (owner OR existing delegate, see §17) ---------- */
 
     @PostMapping("/{distributionListId}/delegates")
     public DistributionListDto addDelegates(@PathVariable String distributionListId,
