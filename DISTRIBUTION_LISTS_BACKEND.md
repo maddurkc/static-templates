@@ -1735,6 +1735,8 @@ already `await` the storage functions, so no further changes are needed.
 | `createDistributionList(input)`                | `POST /api/distribution-lists`                 | `DistributionListController.create` (§4)  |
 | `updateDistributionList(id, input)`            | `PUT /api/distribution-lists/{id}`             | `DistributionListController.update` (§4)  |
 | `deleteDistributionList(id)`                   | `DELETE /api/distribution-lists/{id}`          | `DistributionListController.delete` (§4)  |
+| `addDelegatesToDL(id, users)`                  | `POST /api/distribution-lists/{id}/delegates`  | `DistributionListController.addDelegates` (§4, §17) |
+| `removeDelegateFromDL(id, userId)`             | `DELETE /api/distribution-lists/{id}/delegates/{userId}` | `DistributionListController.removeDelegate` (§4, §17) |
 | `searchUsers(q, limit)`                        | `GET /api/users/search?q&limit`                | `RecipientSearchController` (§12)         |
 | `getUsersByIds(ids)`                           | `GET /api/users?ids`                           | `RecipientSearchController` (§12)         |
 | `searchRecipients(q, limit)`                   | `GET /api/recipients/search?q&limit`           | `RecipientSearchController` (§5)          |
