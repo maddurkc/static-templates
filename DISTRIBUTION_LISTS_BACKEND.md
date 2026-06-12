@@ -1764,6 +1764,7 @@ already `await` the storage functions, so no further changes are needed.
 | `createDistributionList(input)`                | `POST /api/distribution-lists`                 | `DistributionListController.create` (§4)  |
 | `updateDistributionList(id, input)`            | `PUT /api/distribution-lists/{id}`             | `DistributionListController.update` (§4)  |
 | `deleteDistributionList(id)`                   | `DELETE /api/distribution-lists/{id}`          | `DistributionListController.delete` (§4)  |
+| `getDelegatesForDL(id)`                        | `GET /api/distribution-lists/{id}/delegates`   | `DistributionListController.getDelegates` (§17) |
 | `addDelegatesToDL(id, users)`                  | `POST /api/distribution-lists/{id}/delegates`  | `DistributionListController.addDelegates` (§4, §17) |
 | `removeDelegateFromDL(id, userId)`             | `DELETE /api/distribution-lists/{id}/delegates/{userId}` | `DistributionListController.removeDelegate` (§4, §17) |
 | `searchUsers(q, limit)`                        | `GET /api/users/search?q&limit`                | `RecipientSearchController` (§12)         |
@@ -2052,6 +2053,9 @@ remove other delegates, including themselves (self-leave).
 ### New endpoints
 
 ```
+GET    /api/distribution-lists/{id}/delegates
+200:   List<SharedUserDto>                    // current delegates for this DL
+
 POST   /api/distribution-lists/{id}/delegates
 Body:  { "users": [ SharedUserDto, ... ] }   // full directory snapshots
 200:   DistributionListDto                    // refreshed DL with all managers
@@ -2078,6 +2082,15 @@ Both endpoints:
 ### Spring controller sketch
 
 ```java
+@GetMapping("/{id}/delegates")
+public List<SharedUserDto> getDelegates(@PathVariable String id) {
+    var dl = service.loadOrThrow(id);
+    service.requireReadAccess(dl);          // 403 if caller cannot view this DL
+    return dl.getManagers().stream()
+               .map(mapper::toSharedUserDto)
+               .toList();
+}
+
 @PostMapping("/{id}/delegates")
 public DistributionListDto addDelegates(@PathVariable String id,
                                         @RequestBody @Valid AddDelegatesRequest req) {
@@ -2128,7 +2141,7 @@ public record SharedUserDto(
 
 | File | Change |
 |---|---|
-| `src/lib/distributionListStorage.ts` | Added `addDelegatesToDL(id, users)`, `removeDelegateFromDL(id, userId)`, `canManageDelegates(dl)`. `SharedUserRef` gained `addedBy?` / `addedAt?`. `updateDistributionList` no longer overwrites `managers` when `input.managers` is undefined — preserves existing. |
+| `src/lib/distributionListStorage.ts` | Added `getDelegatesForDL(id)` (returns `SharedUserRef[]`), `addDelegatesToDL(id, users)`, `removeDelegateFromDL(id, userId)`, `canManageDelegates(dl)`. `SharedUserRef` gained `addedBy?` / `addedAt?`. `updateDistributionList` no longer overwrites `managers` when `input.managers` is undefined — preserves existing. |
 | `src/pages/DistributionLists.tsx` | Removed the "Managers" `SharedUserPicker` section from the create/edit dialog. Added a **Delegates** action button on each card (visible to the owner **and to any existing delegate**) that opens a dedicated dialog with a `SharedUserPicker` + current-delegates list with × remove. The details drawer also renders the delegates section with inline × remove + "Add" button that reopens the same dialog. |
 | `src/pages/DistributionLists.module.scss` | Added `.delegateRow`, `.removeDelegateBtn`, `.inlineAddBtn`. |
 
@@ -2136,6 +2149,7 @@ public record SharedUserDto(
 
 ```ts
 // In src/lib/distributionListStorage.ts
+export function getDelegatesForDL(id: string): SharedUserRef[];
 export function canManageDelegates(dl: DistributionList, userId?: string): boolean;
 export function addDelegatesToDL(id: string, users: DirectoryUser[]): DistributionList;
 export function removeDelegateFromDL(id: string, userId: string): DistributionList;

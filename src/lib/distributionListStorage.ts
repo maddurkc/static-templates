@@ -434,6 +434,20 @@ export function removeDelegateFromDL(id: string, userId: string): DistributionLi
   return updated;
 }
 
+/**
+ * Get the delegate (manager) list for a DL.
+ * Mirrors backend `GET /api/distribution-lists/{id}/delegates`.
+ * Throws if the DL does not exist or the caller cannot view it.
+ */
+export function getDelegatesForDL(id: string): SharedUserRef[] {
+  const dl = getDistributionList(id);
+  if (!dl) throw new Error("Distribution list not found.");
+  if (!canViewDL(dl)) {
+    throw new Error("You don't have permission to view this distribution list.");
+  }
+  return dl.managers;
+}
+
 export function deleteDistributionList(id: string): void {
   const all = readAll();
   const target = all.find((d) => d.distributionListId === id);
