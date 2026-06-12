@@ -517,7 +517,7 @@ public class DistributionListService {
 
     @Transactional(readOnly = true)
     public DistributionListDto get(String distributionListId) {
-        var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
+        var dl = loadOrThrow(distributionListId);
         requireReadAccess(dl);
         return toDto(dl);
     }
@@ -534,7 +534,7 @@ public class DistributionListService {
 
     @Transactional
     public DistributionListDto update(String distributionListId, DistributionListUpsertDto in) {
-        var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
+        var dl = loadOrThrow(distributionListId);
         requireManage(dl);                          // v2: owner OR manager
         applyUpsert(dl, in);
         return toDto(repo.save(dl));
@@ -542,11 +542,12 @@ public class DistributionListService {
 
     @Transactional
     public void delete(String distributionListId) {
-        var dl = repo.findById(distributionListId).orElseThrow(() -> new NotFoundException("DL not found"));
+        var dl = loadOrThrow(distributionListId);
         requireManage(dl);                          // v2: owner OR manager
         dl.setActive(false);                        // soft delete preserves audit trail of past sends
         repo.save(dl);
     }
+
 
     /* ------------- helpers ------------- */
 
