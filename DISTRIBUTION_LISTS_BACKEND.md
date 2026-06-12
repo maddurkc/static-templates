@@ -321,6 +321,13 @@ public class DistributionListShareEntity {
     @Column(nullable = false, length = 150) private String name;
     @Column(nullable = false, length = 255) private String emailid;
     // v2: `department` field removed — see §1 share-table comment.
+
+    // v3 (delegate audit): populated by addDelegates() — see §17 + §4.
+    @Column(name = "added_by", length = 100)
+    private String addedBy;
+
+    @Column(name = "added_at")
+    private LocalDateTime addedAt;
 }
 ```
 
@@ -360,14 +367,16 @@ public record DistributionListDto(
     LocalDateTime updatedAt
 ) {}
 
-/** Full snapshot of a manager. Mirrors `distribution_list_share`. */
+/** Full snapshot of a manager/delegate. Mirrors `distribution_list_share`. */
 public record SharedUserDto(
     String distributionListShareId, // surrogate PK (UUID, server-generated); null on create
     String userId,                  // internal directory id (unique per DL)
     String elid,                    // enterprise / employee id  (nullable)
     String lanid,                   // LAN / network id          (nullable)
     String name,
-    String emailid
+    String emailid,
+    String addedBy,                 // v3 — userId of whoever provisioned this delegate
+    String addedAt                  // v3 — ISO-8601 timestamp
     // v2: `department` removed — not persisted on the share row. UIs that
     // need it should fetch from the directory (DirectoryUserDto / §11).
 ) {}
@@ -383,11 +392,21 @@ public record DistributionListUpsertDto(
      * v2: Verbatim textarea blobs split into three buckets. The service requires
      * at least ONE valid email across the three combined; individual buckets
      * may be blank. `type` defaults to CUSTOM on the server.
+     *
+     * v3: `managers` is NO LONGER part of the upsert payload. Delegate
+     * mutations go through the dedicated endpoints (see §17):
+     *   POST   /api/distribution-lists/{id}/delegates
+     *   DELETE /api/distribution-lists/{id}/delegates/{userId}
+     * The service IGNORES any `managers` field if a v2 client still sends it.
      */
                                 String toRaw,
                                 String ccRaw,
-                                String bccRaw,
-    List<SharedUserDto>         managers              // v2: optional on ANY visibility (was sharedWith)
+                                String bccRaw
+) {}
+
+/** v3 — body for POST /api/distribution-lists/{id}/delegates */
+public record AddDelegatesRequest(
+    @NotNull List<SharedUserDto> users   // directory snapshots; addedBy/addedAt may be null (server fills)
 ) {}
 
 /** Unified result returned by /recipients/search. type=USER | DL. */
@@ -455,6 +474,21 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
     List<DistributionListEntity> searchVisibleTo(@Param("uid") String userId,
                                            @Param("q") String like,
                                            @Param("lim") int limit);
+
+}
+
+/**
+ * v3 — companion repository for the share table. Used by the delegate
+ * endpoints (§17) to add/remove rows without round-tripping the parent DL.
+ */
+public interface DistributionListShareRepository
+        extends JpaRepository<DistributionListShareEntity, String> {
+
+    boolean existsByDistributionList_DistributionListIdAndUserId(
+        String distributionListId, String userId);
+
+    long deleteByDistributionList_DistributionListIdAndUserId(
+        String distributionListId, String userId);
 }
 ```
 
@@ -473,6 +507,7 @@ import com.example.dl.DistributionListEntity.Visibility;
 public class DistributionListService {
 
     private final DistributionListRepository repo;
+    private final DistributionListShareRepository shareRepo;  // v3
     private final CurrentUserProvider currentUser;
 
     @Transactional(readOnly = true)
@@ -515,12 +550,18 @@ public class DistributionListService {
 
     /* ------------- helpers ------------- */
 
-    /** v2 permission gate: owner or one of the managers. */
+    /** v2 permission gate: owner or one of the managers. Used for edit/delete content. */
     private void requireManage(DistributionListEntity dl) {
         String uid = currentUser.id();
         boolean ok = dl.getOwnerId().equals(uid)
                   || dl.getManagers().stream().anyMatch(m -> uid.equals(m.getUserId()));
         if (!ok) throw new ForbiddenException("You don't have permission to modify this distribution list.");
+    }
+
+    /** v3 permission gate: ONLY the owner can add or remove delegates. */
+    private void requireOwner(DistributionListEntity dl) {
+        if (!dl.getOwnerId().equals(currentUser.id()))
+            throw new ForbiddenException("Only the owner can manage delegates.");
     }
 
     private void applyUpsert(DistributionListEntity dl, DistributionListUpsertDto in) {
@@ -543,24 +584,45 @@ public class DistributionListService {
         dl.setCcRaw(in.ccRaw());
         dl.setBccRaw(in.bccRaw());
 
-        // ---- managers: clear/addAll sync; orphanRemoval drops detached rows.
-        // v2: managers are optional and allowed on ANY visibility.
-        dl.getManagers().clear();
-        if (in.managers() != null) {
-            String ownerId = dl.getOwnerId();
-            for (SharedUserDto s : in.managers()) {
-                if (s.userId() == null || s.userId().equals(ownerId)) continue;  // owner is implicit
-                var row = new DistributionListShareEntity();
-                row.setDistributionList(dl);
-                row.setUserId(s.userId());
-                row.setElid(s.elid());
-                row.setLanid(s.lanid());
-                row.setName(s.name());
-                row.setEmailid(s.emailid().toLowerCase().trim());
-                // v2: department no longer persisted on the share row.
-                dl.getManagers().add(row);
-            }
+        // v3: managers are NOT mutated here. The upsert DTO no longer
+        // carries a `managers` field; delegate changes flow through
+        // addDelegates() / removeDelegate() (see §17). Existing
+        // managers on `dl` are left untouched.
+    }
+
+    /* ---------- v3 delegate endpoints (see §17) ---------- */
+
+    @Transactional
+    public DistributionListDto addDelegates(DistributionListEntity dl,
+                                            List<SharedUserDto> users,
+                                            String actorUserId) {
+        requireOwner(dl);
+        if (users == null) users = List.of();
+        String ownerId = dl.getOwnerId();
+        var now = LocalDateTime.now();
+        for (SharedUserDto s : users) {
+            if (s.userId() == null || s.userId().equals(ownerId)) continue;     // owner is implicit
+            if (shareRepo.existsByDistributionList_DistributionListIdAndUserId(
+                    dl.getDistributionListId(), s.userId())) continue;          // idempotent
+            var row = new DistributionListShareEntity();
+            row.setDistributionList(dl);
+            row.setUserId(s.userId());
+            row.setElid(s.elid());
+            row.setLanid(s.lanid());
+            row.setName(s.name());
+            row.setEmailid(s.emailid().toLowerCase().trim());
+            row.setAddedBy(actorUserId);
+            row.setAddedAt(now);
+            dl.getManagers().add(row);
         }
+        return toDto(repo.save(dl));
+    }
+
+    @Transactional
+    public DistributionListDto removeDelegate(DistributionListEntity dl, String userId) {
+        requireOwner(dl);
+        dl.getManagers().removeIf(m -> userId.equals(m.getUserId()));
+        return toDto(repo.save(dl));
     }
 
     /**
@@ -596,7 +658,9 @@ public class DistributionListService {
                 .map(s -> new SharedUserDto(
                     s.getDistributionListShareId(),
                     s.getUserId(), s.getElid(), s.getLanid(),
-                    s.getName(), s.getEmailid()))
+                    s.getName(), s.getEmailid(),
+                    s.getAddedBy(),                                                  // v3
+                    s.getAddedAt() == null ? null : s.getAddedAt().toString()))      // v3 ISO-8601
                 .toList(),
             dl.getCreatedAt(),
             dl.getUpdatedAt()
@@ -633,6 +697,22 @@ public class DistributionListController {
     @PutMapping("/{distributionListId}") public DistributionListDto         update(@PathVariable String distributionListId,
                                                                                    @Valid @RequestBody DistributionListUpsertDto in)          { return service.update(distributionListId, in); }
     @DeleteMapping("/{distributionListId}") public void                     delete(@PathVariable String distributionListId)                    { service.delete(distributionListId); }
+
+    /* ---------- v3 delegate endpoints (owner-only, see §17) ---------- */
+
+    @PostMapping("/{distributionListId}/delegates")
+    public DistributionListDto addDelegates(@PathVariable String distributionListId,
+                                            @Valid @RequestBody AddDelegatesRequest req) {
+        var dl = service.loadOrThrow(distributionListId);
+        return service.addDelegates(dl, req.users(), service.currentUserId());
+    }
+
+    @DeleteMapping("/{distributionListId}/delegates/{userId}")
+    public DistributionListDto removeDelegate(@PathVariable String distributionListId,
+                                              @PathVariable String userId) {
+        var dl = service.loadOrThrow(distributionListId);
+        return service.removeDelegate(dl, userId);
+    }
 }
 ```
 
@@ -1655,6 +1735,8 @@ already `await` the storage functions, so no further changes are needed.
 | `createDistributionList(input)`                | `POST /api/distribution-lists`                 | `DistributionListController.create` (§4)  |
 | `updateDistributionList(id, input)`            | `PUT /api/distribution-lists/{id}`             | `DistributionListController.update` (§4)  |
 | `deleteDistributionList(id)`                   | `DELETE /api/distribution-lists/{id}`          | `DistributionListController.delete` (§4)  |
+| `addDelegatesToDL(id, users)`                  | `POST /api/distribution-lists/{id}/delegates`  | `DistributionListController.addDelegates` (§4, §17) |
+| `removeDelegateFromDL(id, userId)`             | `DELETE /api/distribution-lists/{id}/delegates/{userId}` | `DistributionListController.removeDelegate` (§4, §17) |
 | `searchUsers(q, limit)`                        | `GET /api/users/search?q&limit`                | `RecipientSearchController` (§12)         |
 | `getUsersByIds(ids)`                           | `GET /api/users?ids`                           | `RecipientSearchController` (§12)         |
 | `searchRecipients(q, limit)`                   | `GET /api/recipients/search?q&limit`           | `RecipientSearchController` (§5)          |
