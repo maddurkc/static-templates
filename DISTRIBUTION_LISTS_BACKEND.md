@@ -697,6 +697,22 @@ public class DistributionListController {
     @PutMapping("/{distributionListId}") public DistributionListDto         update(@PathVariable String distributionListId,
                                                                                    @Valid @RequestBody DistributionListUpsertDto in)          { return service.update(distributionListId, in); }
     @DeleteMapping("/{distributionListId}") public void                     delete(@PathVariable String distributionListId)                    { service.delete(distributionListId); }
+
+    /* ---------- v3 delegate endpoints (owner-only, see §17) ---------- */
+
+    @PostMapping("/{distributionListId}/delegates")
+    public DistributionListDto addDelegates(@PathVariable String distributionListId,
+                                            @Valid @RequestBody AddDelegatesRequest req) {
+        var dl = service.loadOrThrow(distributionListId);
+        return service.addDelegates(dl, req.users(), service.currentUserId());
+    }
+
+    @DeleteMapping("/{distributionListId}/delegates/{userId}")
+    public DistributionListDto removeDelegate(@PathVariable String distributionListId,
+                                              @PathVariable String userId) {
+        var dl = service.loadOrThrow(distributionListId);
+        return service.removeDelegate(dl, userId);
+    }
 }
 ```
 
