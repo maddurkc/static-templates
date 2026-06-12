@@ -1937,33 +1937,38 @@ required — the change is purely a frontend rendering optimisation.
 
 ### Motivation
 
-In v2 the "managers" picker lived inside the DL create/edit dialog. Two
-problems emerged:
-
-1. Editing recipients required round-tripping the entire `managers` array
-   on every save, multiplying lock contention on `distribution_list_share`.
-2. Any user with edit access could escalate by adding themselves more
-   delegates — there was no concept of "owner-only" actions.
+In v2 the "managers" picker lived inside the DL create/edit dialog.
+Editing recipients required round-tripping the entire `managers` array
+on every save, multiplying lock contention on `distribution_list_share`.
 
 v3 splits delegate management into its own UX surface and its own pair
-of endpoints, gated to the **owner only**.
+of endpoints. Any existing delegate (or the owner) can grow the
+delegate set — this matches how shared mailboxes / shared DLs work in
+Outlook, where co-owners can co-administer.
 
-### Permission rule (canonical)
+### Permission rule (canonical — updated)
 
 ```text
-canManageDelegates(dl, uid) := (dl.owner_id = uid)
+canManageDelegates(dl, uid) :=
+       dl.owner_id = uid
+    OR EXISTS (SELECT 1 FROM distribution_list_share s
+                WHERE s.distribution_list_id = dl.distribution_list_id
+                  AND s.user_id = uid)
 ```
 
-Note this is **strictly stricter** than `canManage`:
+This is the **same** predicate as `canManage` (edit/delete content);
+delegates are first-class co-managers.
 
-| Action                         | Owner | Delegate | Public viewer |
-|--------------------------------|:-----:|:--------:|:-------------:|
+| Action                                | Owner | Delegate | Public viewer |
+|---------------------------------------|:-----:|:--------:|:-------------:|
 | View DL (if PUBLIC or owner/delegate) | ✓ | ✓ | ✓ (PUBLIC only) |
 | Edit name / recipients / visibility   | ✓ | ✓ | – |
 | Delete DL                              | ✓ | ✓ | – |
-| **Add / remove delegates**             | ✓ | **✗** | **✗** |
+| **Add / remove delegates**             | ✓ | ✓ | – |
 
-Delegates can edit content but cannot escalate by adding more delegates.
+A delegate cannot remove the owner (the owner is never present in the
+`distribution_list_share` table — they are implicit). A delegate CAN
+remove other delegates, including themselves (self-leave).
 
 ### New endpoints
 
@@ -1978,7 +1983,10 @@ DELETE /api/distribution-lists/{id}/delegates/{userId}
 
 Both endpoints:
 
-- Throw `403 Forbidden` if the caller is not `dl.owner_id`.
+- Throw `403 Forbidden` unless the caller is `dl.owner_id` OR already
+  present in `distribution_list_share` for this DL.
+- Reject any attempt to add/remove `dl.owner_id` itself with `400
+  BAD_REQUEST` ("Owner cannot be added or removed as a delegate.").
 - The `POST` is **idempotent per (dl_id, user_id)** — duplicates are
   silently skipped (the `uq_dls_dl_user` constraint guards the DB).
 - Populate `added_by = authPrincipal.userId` and
@@ -1992,22 +2000,25 @@ Both endpoints:
 
 ```java
 @PostMapping("/{id}/delegates")
-public DistributionListDto addDelegates(@PathVariable UUID id,
-                                        @RequestBody @Valid AddDelegatesRequest req,
-                                        AuthPrincipal me) {
-    DistributionListEntity dl = repo.findById(id).orElseThrow(NotFoundException::new);
-    if (!dl.getOwnerId().equals(me.userId())) throw new ForbiddenException("Owner-only");
-    return service.addDelegates(dl, req.users(), me);
+public DistributionListDto addDelegates(@PathVariable String id,
+                                        @RequestBody @Valid AddDelegatesRequest req) {
+    var dl = service.loadOrThrow(id);
+    // requireDelegateManage() inside the service rejects non-owner /
+    // non-delegate callers with 403 — see §4 service block.
+    return service.addDelegates(dl, req.users(), service.currentUserId());
 }
 
 @DeleteMapping("/{id}/delegates/{userId}")
-public DistributionListDto removeDelegate(@PathVariable UUID id,
-                                          @PathVariable String userId,
-                                          AuthPrincipal me) {
-    DistributionListEntity dl = repo.findById(id).orElseThrow(NotFoundException::new);
-    if (!dl.getOwnerId().equals(me.userId())) throw new ForbiddenException("Owner-only");
+public DistributionListDto removeDelegate(@PathVariable String id,
+                                          @PathVariable String userId) {
+    var dl = service.loadOrThrow(id);
     return service.removeDelegate(dl, userId);
 }
+```
+
+The authorization check (`owner OR delegate`) lives in
+`DistributionListService.requireDelegateManage(dl)` — the controller
+stays a thin pass-through so the rule is testable in one place.
 ```
 
 ### `DistributionListShareEntity` additions
