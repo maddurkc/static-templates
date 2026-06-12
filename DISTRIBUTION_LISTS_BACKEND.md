@@ -2052,6 +2052,9 @@ remove other delegates, including themselves (self-leave).
 ### New endpoints
 
 ```
+GET    /api/distribution-lists/{id}/delegates
+200:   List<SharedUserDto>                    // current delegates for this DL
+
 POST   /api/distribution-lists/{id}/delegates
 Body:  { "users": [ SharedUserDto, ... ] }   // full directory snapshots
 200:   DistributionListDto                    // refreshed DL with all managers
