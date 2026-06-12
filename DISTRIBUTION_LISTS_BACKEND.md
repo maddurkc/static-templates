@@ -2141,7 +2141,7 @@ public record SharedUserDto(
 
 | File | Change |
 |---|---|
-| `src/lib/distributionListStorage.ts` | Added `addDelegatesToDL(id, users)`, `removeDelegateFromDL(id, userId)`, `canManageDelegates(dl)`. `SharedUserRef` gained `addedBy?` / `addedAt?`. `updateDistributionList` no longer overwrites `managers` when `input.managers` is undefined — preserves existing. |
+| `src/lib/distributionListStorage.ts` | Added `getDelegatesForDL(id)` (returns `SharedUserRef[]`), `addDelegatesToDL(id, users)`, `removeDelegateFromDL(id, userId)`, `canManageDelegates(dl)`. `SharedUserRef` gained `addedBy?` / `addedAt?`. `updateDistributionList` no longer overwrites `managers` when `input.managers` is undefined — preserves existing. |
 | `src/pages/DistributionLists.tsx` | Removed the "Managers" `SharedUserPicker` section from the create/edit dialog. Added a **Delegates** action button on each card (visible to the owner **and to any existing delegate**) that opens a dedicated dialog with a `SharedUserPicker` + current-delegates list with × remove. The details drawer also renders the delegates section with inline × remove + "Add" button that reopens the same dialog. |
 | `src/pages/DistributionLists.module.scss` | Added `.delegateRow`, `.removeDelegateBtn`, `.inlineAddBtn`. |
 
