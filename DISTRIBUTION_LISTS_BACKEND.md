@@ -475,8 +475,19 @@ public interface DistributionListRepository extends JpaRepository<DistributionLi
                                            @Param("q") String like,
                                            @Param("lim") int limit);
 
-    // v3 — delegate idempotency helper used by addDelegates() in §17.
-    boolean existsByDistributionList_DistributionListIdAndUserId_AndUserId(
+}
+
+/**
+ * v3 — companion repository for the share table. Used by the delegate
+ * endpoints (§17) to add/remove rows without round-tripping the parent DL.
+ */
+public interface DistributionListShareRepository
+        extends JpaRepository<DistributionListShareEntity, String> {
+
+    boolean existsByDistributionList_DistributionListIdAndUserId(
+        String distributionListId, String userId);
+
+    long deleteByDistributionList_DistributionListIdAndUserId(
         String distributionListId, String userId);
 }
 ```
