@@ -603,7 +603,7 @@ public class DistributionListService {
     public DistributionListDto addDelegates(DistributionListEntity dl,
                                             List<SharedUserDto> users,
                                             String actorUserId) {
-        requireOwner(dl);
+        requireDelegateManage(dl);
         if (users == null) users = List.of();
         String ownerId = dl.getOwnerId();
         var now = LocalDateTime.now();
@@ -627,7 +627,7 @@ public class DistributionListService {
 
     @Transactional
     public DistributionListDto removeDelegate(DistributionListEntity dl, String userId) {
-        requireOwner(dl);
+        requireDelegateManage(dl);
         dl.getManagers().removeIf(m -> userId.equals(m.getUserId()));
         return toDto(repo.save(dl));
     }
