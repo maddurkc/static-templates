@@ -6,8 +6,7 @@ import {
   createDistributionList,
   updateDistributionList,
   deleteDistributionList,
-  addDelegatesToDL,
-  removeDelegateFromDL,
+  syncDelegatesForDL,
   parseMembersRaw,
   canManageDL,
   canManageDelegates,
@@ -596,18 +595,21 @@ export default function DistributionLists() {
                               type="button"
                               className={styles.removeDelegateBtn}
                               onClick={() => {
-                                try {
-                                  const updated = removeDelegateFromDL(detailsDL.distributionListId, m.userId);
-                                  setDetailsDL(updated);
-                                  refresh();
-                                  toast({ title: "Delegate removed" });
-                                } catch (err) {
-                                  toast({
-                                    title: "Failed to remove delegate",
-                                    description: err instanceof Error ? err.message : "Unknown error",
-                                    variant: "destructive",
-                                  });
-                                }
+                            const remaining = detailsDL.managers
+                              .filter((x) => x.userId !== m.userId)
+                              .map((x) => x.userId);
+                            try {
+                              const updated = syncDelegatesForDL(detailsDL.distributionListId, remaining);
+                              setDetailsDL(updated);
+                              refresh();
+                              toast({ title: "Delegate removed" });
+                            } catch (err) {
+                              toast({
+                                title: "Failed to remove delegate",
+                                description: err instanceof Error ? err.message : "Unknown error",
+                                variant: "destructive",
+                              });
+                            }
                               }}
                               aria-label={`Remove ${m.name}`}
                             >
@@ -670,8 +672,11 @@ export default function DistributionLists() {
                           type="button"
                           className={styles.removeDelegateBtn}
                           onClick={() => {
+                            const remaining = delegatesDL.managers
+                              .filter((x) => x.userId !== m.userId)
+                              .map((x) => x.userId);
                             try {
-                              const updated = removeDelegateFromDL(delegatesDL.distributionListId, m.userId);
+                              const updated = syncDelegatesForDL(delegatesDL.distributionListId, remaining);
                               setDelegatesDL(updated);
                               if (detailsDL?.distributionListId === updated.distributionListId) {
                                 setDetailsDL(updated);
@@ -719,24 +724,28 @@ export default function DistributionLists() {
               onClick={() => {
                 if (!delegatesDL) return;
                 try {
-                  const updated = addDelegatesToDL(delegatesDL.distributionListId, delegatePicks);
+                  const desired = [
+                    ...delegatesDL.managers.map((m) => m.userId),
+                    ...delegatePicks.map((u) => u.id),
+                  ];
+                  const updated = syncDelegatesForDL(delegatesDL.distributionListId, desired);
                   setDelegatesDL(updated);
                   setDelegatePicks([]);
                   if (detailsDL?.distributionListId === updated.distributionListId) {
                     setDetailsDL(updated);
                   }
                   refresh();
-                  toast({ title: "Delegates added" });
+                  toast({ title: "Delegates updated" });
                 } catch (err) {
                   toast({
-                    title: "Failed to add delegates",
+                    title: "Failed to update delegates",
                     description: err instanceof Error ? err.message : "Unknown error",
                     variant: "destructive",
                   });
                 }
               }}
             >
-              Add Selected
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>

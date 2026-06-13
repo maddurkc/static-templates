@@ -1686,6 +1686,29 @@ export async function deleteDistributionList(id: string): Promise<void> {
   await apiFetch<void>(`/api/distribution-lists/${id}`, { method: "DELETE" });
 }
 
+/* ---------- Delegates (managers) — single sync endpoint ---------- */
+
+/** GET /api/distribution-lists/{id}/delegates */
+export async function getDelegatesForDL(id: string): Promise<SharedUserRef[]> {
+  return apiFetch<SharedUserRef[]>(`/api/distribution-lists/${id}/delegates`);
+}
+
+/**
+ * POST /api/distribution-lists/{id}/delegates
+ * Sync the FULL desired delegate set. The backend diffs and applies
+ * minimal INSERT / DELETE in one transaction.
+ */
+export async function syncDelegatesForDL(
+  id: string,
+  userIds: string[],
+): Promise<DistributionList> {
+  const dto = await apiFetch<RawDLDto>(`/api/distribution-lists/${id}/delegates`, {
+    method: "POST",
+    body: JSON.stringify({ userIds }),
+  });
+  return hydrate(dto);
+}
+
 /* ---------- Shared-user picker helpers ---------- */
 
 export function toSharedRef(u: DirectoryUser): SharedUserRef {
@@ -1828,28 +1851,34 @@ remove (✕) buttons. The drawer is read-while-you-manage: every delegate
 mutation re-syncs both `detailsDL` and the row list via `refresh()`.
 
 The **Delegates dialog** (`Dialog` open on row's "Delegates" button) wraps the
-two delegate-only API calls:
+delegate sync API:
 
 ```ts
-// Adding — fires when "Add Selected" is pressed with N picks in the
-// SharedUserPicker. De-duplicates by userId server-side; client also
-// guards via canManageDelegates() before the call.
-const updated = addDelegatesToDL(delegatesDL.distributionListId, delegatePicks);
+// Removing a delegate — fires from the ✕ button in either the drawer or the dialog.
+// Compute the remaining userIds and sync.
+const remaining = dl.managers
+  .filter((x) => x.userId !== removedUserId)
+  .map((x) => x.userId);
+const updated = syncDelegatesForDL(dl.distributionListId, remaining);
 //        ↳ HTTP: POST /api/distribution-lists/{id}/delegates
-//          body: { users: [{ userId, elid?, lanid?, name, emailid }] }
-//          200:  full DistributionListDto (managers[] now includes new rows
-//                with addedBy = caller, addedAt = server time)
+//          body: { "userIds": ["u-2", "u-5"] }   // FULL desired set minus removed
+//          200:  full DistributionListDto (managers[] reconciled by server)
 //          403:  ForbiddenException — caller is neither owner nor delegate
 //          404:  NotFoundException — DL id not found / inactive
 
-// Removing — fires from the ✕ button in either the drawer or the dialog.
-const updated = removeDelegateFromDL(delegatesDL.distributionListId, m.userId);
-//        ↳ HTTP: DELETE /api/distribution-lists/{id}/delegates/{userId}
-//          200:  full DistributionListDto (managers[] minus removed user)
-//          400:  BadRequestException — caller is the owner trying to
-//                self-remove (owners are not in the managers table)
+// Adding delegates — fires when "Save Changes" is pressed with picks in the
+// SharedUserPicker. The client appends new ids to the existing set and sends
+// the complete list.
+const desired = [
+  ...delegatesDL.managers.map((m) => m.userId),
+  ...delegatePicks.map((u) => u.id),
+];
+const updated = syncDelegatesForDL(delegatesDL.distributionListId, desired);
+//        ↳ HTTP: POST /api/distribution-lists/{id}/delegates
+//          body: { "userIds": ["u-1", "u-2", "u-5", "u-8"] }  // FULL desired set
+//          200:  full DistributionListDto (new rows stamped with addedBy/addedAt)
 //          403:  ForbiddenException — caller is neither owner nor delegate
-//          404:  NotFoundException — DL or delegate row not found
+//          404:  NotFoundException — DL id not found / inactive
 ```
 
 Both calls **return the freshly hydrated DL** so the page can update
@@ -2199,8 +2228,8 @@ public record SharedUserDto(
 
 | File | Change |
 |---|---|
-| `src/lib/distributionListStorage.ts` | Added `getDelegatesForDL(id)` (returns `SharedUserRef[]`), `addDelegatesToDL(id, users)`, `removeDelegateFromDL(id, userId)`, `canManageDelegates(dl)`. `SharedUserRef` gained `addedBy?` / `addedAt?`. `updateDistributionList` no longer overwrites `managers` when `input.managers` is undefined — preserves existing. |
-| `src/pages/DistributionLists.tsx` | Removed the "Managers" `SharedUserPicker` section from the create/edit dialog. Added a **Delegates** action button on each card (visible to the owner **and to any existing delegate**) that opens a dedicated dialog with a `SharedUserPicker` + current-delegates list with × remove. The details drawer also renders the delegates section with inline × remove + "Add" button that reopens the same dialog. |
+| `src/lib/distributionListStorage.ts` | Added `getDelegatesForDL(id)` (returns `SharedUserRef[]`) and `syncDelegatesForDL(id, userIds)` (single sync endpoint replacing separate add/remove). Removed `addDelegatesToDL` and `removeDelegateFromDL`. `SharedUserRef` gained `addedBy?` / `addedAt?`. `updateDistributionList` no longer overwrites `managers` when `input.managers` is undefined — preserves existing. |
+| `src/pages/DistributionLists.tsx` | Removed the "Managers" `SharedUserPicker` section from the create/edit dialog. Added a **Delegates** action button on each list row (visible to the owner **and to any existing delegate**) that opens a dedicated dialog with a `SharedUserPicker` + current-delegates list with × remove. The details drawer also renders the delegates section with inline × remove + "Add" button that reopens the same dialog. All delegate mutations now call `syncDelegatesForDL(id, userIds)` with the full desired set. |
 | `src/pages/DistributionLists.module.scss` | Added `.delegateRow`, `.removeDelegateBtn`, `.inlineAddBtn`. |
 
 ### TS contract mirror
@@ -2209,8 +2238,16 @@ public record SharedUserDto(
 // In src/lib/distributionListStorage.ts
 export function getDelegatesForDL(id: string): SharedUserRef[];
 export function canManageDelegates(dl: DistributionList, userId?: string): boolean;
-export function addDelegatesToDL(id: string, users: DirectoryUser[]): DistributionList;
-export function removeDelegateFromDL(id: string, userId: string): DistributionList;
+
+/**
+ * Sync the full delegate set. Pass the COMPLETE desired userIds;
+ * the service diffs against existing rows and applies minimal
+ * INSERT / DELETE in one transaction.
+ */
+export function syncDelegatesForDL(
+  id: string,
+  userIds: string[]
+): DistributionList;
 
 export interface SharedUserRef {
   distributionListShareId?: string;

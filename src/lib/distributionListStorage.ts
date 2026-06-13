@@ -380,54 +380,47 @@ export function updateDistributionList(id: string, input: DLUpsertInput): Distri
   return updated;
 }
 
-/* ---------- delegates (managers) ---------- */
+/* ---------- delegates (managers) — sync pattern ---------- */
 
 /**
- * Add one or more delegates to a DL. Owner-only. De-duplicates by userId.
+ * Sync the full delegate set for a DL.
+ * Pass the COMPLETE desired list of userIds; the function diffs against
+ * existing managers and applies adds/removes locally.
  * Mirrors backend `POST /api/distribution-lists/{id}/delegates`.
  */
-export function addDelegatesToDL(id: string, users: DirectoryUser[]): DistributionList {
+export function syncDelegatesForDL(id: string, userIds: string[]): DistributionList {
   const all = readAll();
   const idx = all.findIndex((d) => d.distributionListId === id);
   if (idx === -1) throw new Error("Distribution list not found.");
   if (!canManageDelegates(all[idx])) {
-    throw new Error("Only the owner can manage delegates.");
+    throw new Error("Only the owner or an existing delegate can manage delegates.");
   }
-  const existing = new Set(all[idx].managers.map((m) => m.userId));
-  const now = new Date().toISOString();
-  const fresh = users
-    .filter((u) => !existing.has(u.id))
-    .map<SharedUserRef>((u) => ({
-      ...toSharedRef(u),
-      addedBy: CURRENT_USER,
-      addedAt: now,
-    }));
-  if (fresh.length === 0) return all[idx];
-  const updated: DistributionList = {
-    ...all[idx],
-    managers: [...all[idx].managers, ...fresh],
-    updatedAt: now,
-  };
-  all[idx] = updated;
-  writeAll(all);
-  return updated;
-}
 
-/**
- * Remove a single delegate by userId. Owner-only.
- * Mirrors backend `DELETE /api/distribution-lists/{id}/delegates/{userId}`.
- */
-export function removeDelegateFromDL(id: string, userId: string): DistributionList {
-  const all = readAll();
-  const idx = all.findIndex((d) => d.distributionListId === id);
-  if (idx === -1) throw new Error("Distribution list not found.");
-  if (!canManageDelegates(all[idx])) {
-    throw new Error("Only the owner can manage delegates.");
-  }
+  const dl = all[idx];
+  const desired = [...new Set(userIds.filter((uid) => uid && uid !== dl.ownerId))];
+  const existingMap = new Map(dl.managers.map((m) => [m.userId, m]));
+  const now = new Date().toISOString();
+
+  const nextManagers: SharedUserRef[] = desired
+    .map((uid) => {
+      if (existingMap.has(uid)) {
+        return existingMap.get(uid)!; // keep existing row (preserves addedBy/addedAt)
+      }
+      // New addition — look up in mock directory
+      const dirUser = MOCK_USER_DIRECTORY.find((u) => u.id === uid);
+      if (!dirUser) return null;
+      return {
+        ...toSharedRef(dirUser),
+        addedBy: CURRENT_USER,
+        addedAt: now,
+      };
+    })
+    .filter((m): m is SharedUserRef => m !== null);
+
   const updated: DistributionList = {
-    ...all[idx],
-    managers: all[idx].managers.filter((m) => m.userId !== userId),
-    updatedAt: new Date().toISOString(),
+    ...dl,
+    managers: nextManagers,
+    updatedAt: now,
   };
   all[idx] = updated;
   writeAll(all);
