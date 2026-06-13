@@ -2086,34 +2086,53 @@ A delegate cannot remove the owner (the owner is never present in the
 `distribution_list_share` table — they are implicit). A delegate CAN
 remove other delegates, including themselves (self-leave).
 
-### New endpoints
+### Endpoints (v3.1 — single sync endpoint)
 
 ```
 GET    /api/distribution-lists/{id}/delegates
-200:   List<SharedUserDto>                    // current delegates for this DL
+200:   List<SharedUserDto>                      // current delegates for this DL
 
-POST   /api/distribution-lists/{id}/delegates
-Body:  { "users": [ SharedUserDto, ... ] }   // full directory snapshots
-200:   DistributionListDto                    // refreshed DL with all managers
-
-DELETE /api/distribution-lists/{id}/delegates/{userId}
-200:   DistributionListDto                    // refreshed DL after removal
+POST   /api/distribution-lists/{id}/delegates  // SYNC: add + update + remove
+Body:  { "userIds": ["u-1", "u-2", "u-5"] }    // FULL desired delegate set
+200:   DistributionListDto                      // refreshed DL after reconciliation
 ```
 
-Both endpoints:
+There is **no separate `DELETE /delegates/{userId}` endpoint** any more.
+The single `POST` is the only mutation entry point — to remove a
+delegate the client simply omits that user id from the next sync
+payload, and to add one the client appends the new id. This makes the
+frontend trivially correct (it always sends the full desired list) and
+keeps the server logic in one place.
 
-- Throw `403 Forbidden` unless the caller is `dl.owner_id` OR already
-  present in `distribution_list_share` for this DL.
-- Reject any attempt to add/remove `dl.owner_id` itself with `400
-  BAD_REQUEST` ("Owner cannot be added or removed as a delegate.").
-- The `POST` is **idempotent per (dl_id, user_id)** — duplicates are
-  silently skipped (the `uq_dls_dl_user` constraint guards the DB).
-- Populate `added_by = authPrincipal.userId` and
-  `added_at = SYSUTCDATETIME()` on each new row.
-- The legacy `PUT /api/distribution-lists/{id}` **ignores** any
-  `managers` field in the payload from v3 onward — to mutate delegates
-  callers MUST use the dedicated endpoints. (The form no longer sends
-  `managers`; see "Frontend impact" below.)
+Sync algorithm executed by the server (see
+`DistributionListService.syncDelegates` in §4):
+
+1. Authorize: caller MUST be `dl.owner_id` OR already in
+   `distribution_list_share` for this DL — otherwise `403 Forbidden`.
+2. Load the current delegate rows for the DL (already hydrated on the
+   entity).
+3. Compute `desired = payload.userIds − {dl.owner_id} − duplicates − nulls`.
+   (The owner is implicit and is silently filtered out — never stored.)
+4. **Remove**: delete every existing `distribution_list_share` row
+   whose `user_id` is NOT in `desired`. `orphanRemoval = true` on the
+   entity collection issues the `DELETE`s automatically.
+5. **Add**: for every id in `desired` not already in the existing set,
+   look up the directory snapshot (`name`, `email`, `elid`, `lanid`)
+   and INSERT a new row stamped with `added_by = authPrincipal.userId`
+   and `added_at = SYSUTCDATETIME()`. The `uq_dls_dl_user` unique
+   constraint guards against races.
+6. **Keep**: ids present in both sets are no-ops — existing rows
+   (including their `added_by` / `added_at` audit columns) are
+   preserved untouched.
+7. Persist and return the refreshed `DistributionListDto`.
+
+The whole reconciliation runs in a single `@Transactional` unit so the
+DL is never observable in a half-synced state.
+
+The legacy `PUT /api/distribution-lists/{id}` **ignores** any
+`managers` field in the payload from v3 onward — to mutate delegates
+callers MUST use the sync endpoint above. (The edit dialog no longer
+sends `managers`; see "Frontend impact" below.)
 
 ### Spring controller sketch
 
@@ -2132,20 +2151,19 @@ public List<SharedUserDto> getDelegates(@PathVariable String id) {
                .toList();
 }
 
+/**
+ * Single endpoint for add / update / remove. Body carries the FULL
+ * desired list of delegate user ids; the service diffs it against
+ * existing rows and applies the minimal set of INSERT / DELETE
+ * statements in one transaction.
+ */
 @PostMapping("/{id}/delegates")
-public DistributionListDto addDelegates(@PathVariable String id,
-                                        @RequestBody @Valid AddDelegatesRequest req) {
+public DistributionListDto syncDelegates(@PathVariable String id,
+                                         @RequestBody @Valid SyncDelegatesRequest req) {
     var dl = service.loadOrThrow(id);
     // requireDelegateManage() inside the service rejects non-owner /
     // non-delegate callers with 403 — see §4 service block.
-    return service.addDelegates(dl, req.users(), service.currentUserId());
-}
-
-@DeleteMapping("/{id}/delegates/{userId}")
-public DistributionListDto removeDelegate(@PathVariable String id,
-                                          @PathVariable String userId) {
-    var dl = service.loadOrThrow(id);
-    return service.removeDelegate(dl, userId);
+    return service.syncDelegates(dl, req.userIds(), service.currentUserId());
 }
 ```
 
