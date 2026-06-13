@@ -1686,6 +1686,29 @@ export async function deleteDistributionList(id: string): Promise<void> {
   await apiFetch<void>(`/api/distribution-lists/${id}`, { method: "DELETE" });
 }
 
+/* ---------- Delegates (managers) — single sync endpoint ---------- */
+
+/** GET /api/distribution-lists/{id}/delegates */
+export async function getDelegatesForDL(id: string): Promise<SharedUserRef[]> {
+  return apiFetch<SharedUserRef[]>(`/api/distribution-lists/${id}/delegates`);
+}
+
+/**
+ * POST /api/distribution-lists/{id}/delegates
+ * Sync the FULL desired delegate set. The backend diffs and applies
+ * minimal INSERT / DELETE in one transaction.
+ */
+export async function syncDelegatesForDL(
+  id: string,
+  userIds: string[],
+): Promise<DistributionList> {
+  const dto = await apiFetch<RawDLDto>(`/api/distribution-lists/${id}/delegates`, {
+    method: "POST",
+    body: JSON.stringify({ userIds }),
+  });
+  return hydrate(dto);
+}
+
 /* ---------- Shared-user picker helpers ---------- */
 
 export function toSharedRef(u: DirectoryUser): SharedUserRef {
