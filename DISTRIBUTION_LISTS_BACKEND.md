@@ -765,20 +765,18 @@ public class DistributionListController {
                                                                                    @Valid @RequestBody DistributionListUpsertDto in)          { return service.update(distributionListId, in); }
     @DeleteMapping("/{distributionListId}") public void                     delete(@PathVariable String distributionListId)                    { service.delete(distributionListId); }
 
-    /* ---------- v3 delegate endpoints (owner OR existing delegate, see §17) ---------- */
+    /* ---------- v3.1 delegate SYNC endpoint (owner OR existing delegate, see §17) ---------- */
 
+    /**
+     * Single endpoint used by the frontend for ANY delegate mutation —
+     * add, update or remove. The body is the FULL desired set of
+     * delegate user ids; the server diffs it against existing rows.
+     */
     @PostMapping("/{distributionListId}/delegates")
-    public DistributionListDto addDelegates(@PathVariable String distributionListId,
-                                            @Valid @RequestBody AddDelegatesRequest req) {
+    public DistributionListDto syncDelegates(@PathVariable String distributionListId,
+                                             @Valid @RequestBody SyncDelegatesRequest req) {
         var dl = service.loadOrThrow(distributionListId);
-        return service.addDelegates(dl, req.users(), service.currentUserId());
-    }
-
-    @DeleteMapping("/{distributionListId}/delegates/{userId}")
-    public DistributionListDto removeDelegate(@PathVariable String distributionListId,
-                                              @PathVariable String userId) {
-        var dl = service.loadOrThrow(distributionListId);
-        return service.removeDelegate(dl, userId);
+        return service.syncDelegates(dl, req.userIds(), service.currentUserId());
     }
 }
 ```
