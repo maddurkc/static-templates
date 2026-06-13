@@ -626,40 +626,69 @@ public class DistributionListService {
         // managers on `dl` are left untouched.
     }
 
-    /* ---------- v3 delegate endpoints (see §17) ---------- */
+    /* ---------- v3.1 delegate sync endpoint (see §17) ---------- */
 
+    /**
+     * Reconciles the delegate set for a DL against the supplied list of
+     * user ids. Single entry point used by the frontend for add / update /
+     * remove — the controller does NOT expose separate verbs.
+     *
+     * Algorithm:
+     *   1. Load existing managers for `dl` (already hydrated on the entity).
+     *   2. Build sets of existing user ids and desired user ids.
+     *   3. For each desired id not in existing → look up directory snapshot
+     *      and INSERT a new {@code distribution_list_share} row stamped
+     *      with `addedBy = actorUserId` and `addedAt = now`.
+     *   4. For each existing manager whose user id is NOT in the desired
+     *      set → remove the row (orphanRemoval cascades the delete).
+     *   5. Owner id is filtered out of `desiredIds` defensively — the
+     *      owner is implicit and must never be stored as a delegate.
+     *
+     * The whole reconciliation runs in one @Transactional unit so the DL
+     * is never observed in a half-synced state.
+     */
     @Transactional
-    public DistributionListDto addDelegates(DistributionListEntity dl,
-                                            List<SharedUserDto> users,
-                                            String actorUserId) {
+    public DistributionListDto syncDelegates(DistributionListEntity dl,
+                                             List<String> desiredUserIds,
+                                             String actorUserId) {
         requireDelegateManage(dl);
-        if (users == null) users = List.of();
+        if (desiredUserIds == null) desiredUserIds = List.of();
         String ownerId = dl.getOwnerId();
-        var now = LocalDateTime.now();
-        for (SharedUserDto s : users) {
-            if (s.userId() == null || s.userId().equals(ownerId)) continue;     // owner is implicit
-            if (shareRepo.existsByDistributionList_DistributionListIdAndUserId(
-                    dl.getDistributionListId(), s.userId())) continue;          // idempotent
-            var row = new DistributionListShareEntity();
-            row.setDistributionList(dl);
-            row.setUserId(s.userId());
-            row.setElid(s.elid());
-            row.setLanid(s.lanid());
-            row.setName(s.name());
-            row.setEmailid(s.emailid().toLowerCase().trim());
-            row.setAddedBy(actorUserId);
-            row.setAddedAt(now);
-            dl.getManagers().add(row);
-        }
-        return toDto(repo.save(dl));
-    }
 
-    @Transactional
-    public DistributionListDto removeDelegate(DistributionListEntity dl, String userId) {
-        requireDelegateManage(dl);
-        if (dl.getOwnerId().equals(userId))
-            throw new BadRequestException("Owner cannot be removed as a delegate.");
-        dl.getManagers().removeIf(m -> userId.equals(m.getUserId()));
+        // Defensive: drop nulls, dedupe, and never allow the owner in the set.
+        var desired = desiredUserIds.stream()
+            .filter(Objects::nonNull)
+            .filter(id -> !id.equals(ownerId))
+            .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+
+        var existingById = dl.getManagers().stream()
+            .collect(java.util.stream.Collectors.toMap(
+                DistributionListShareEntity::getUserId, m -> m, (a, b) -> a));
+
+        // 1) Remove rows that are no longer desired.
+        dl.getManagers().removeIf(m -> !desired.contains(m.getUserId()));
+
+        // 2) Insert rows for newly added user ids (idempotent — skip existing).
+        var toAdd = desired.stream()
+            .filter(id -> !existingById.containsKey(id))
+            .toList();
+        if (!toAdd.isEmpty()) {
+            var snapshots = directory.findByIds(toAdd);       // DirectoryService lookup
+            var now = LocalDateTime.now();
+            for (var s : snapshots) {
+                var row = new DistributionListShareEntity();
+                row.setDistributionList(dl);
+                row.setUserId(s.id());
+                row.setElid(s.elid());
+                row.setLanid(s.lanid());
+                row.setName(s.name());
+                row.setEmailid(s.email().toLowerCase().trim());
+                row.setAddedBy(actorUserId);
+                row.setAddedAt(now);
+                dl.getManagers().add(row);
+            }
+        }
+
         return toDto(repo.save(dl));
     }
 
