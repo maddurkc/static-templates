@@ -595,18 +595,21 @@ export default function DistributionLists() {
                               type="button"
                               className={styles.removeDelegateBtn}
                               onClick={() => {
-                                try {
-                                  const updated = removeDelegateFromDL(detailsDL.distributionListId, m.userId);
-                                  setDetailsDL(updated);
-                                  refresh();
-                                  toast({ title: "Delegate removed" });
-                                } catch (err) {
-                                  toast({
-                                    title: "Failed to remove delegate",
-                                    description: err instanceof Error ? err.message : "Unknown error",
-                                    variant: "destructive",
-                                  });
-                                }
+                            const remaining = detailsDL.managers
+                              .filter((m) => m.userId !== userId)
+                              .map((m) => m.userId);
+                            try {
+                              const updated = syncDelegatesForDL(detailsDL.distributionListId, remaining);
+                              setDetailsDL(updated);
+                              refresh();
+                              toast({ title: "Delegate removed" });
+                            } catch (err) {
+                              toast({
+                                title: "Failed to remove delegate",
+                                description: err instanceof Error ? err.message : "Unknown error",
+                                variant: "destructive",
+                              });
+                            }
                               }}
                               aria-label={`Remove ${m.name}`}
                             >
