@@ -2205,8 +2205,8 @@ public record SharedUserDto(
 
 | File | Change |
 |---|---|
-| `src/lib/distributionListStorage.ts` | Added `getDelegatesForDL(id)` (returns `SharedUserRef[]`), `addDelegatesToDL(id, users)`, `removeDelegateFromDL(id, userId)`, `canManageDelegates(dl)`. `SharedUserRef` gained `addedBy?` / `addedAt?`. `updateDistributionList` no longer overwrites `managers` when `input.managers` is undefined — preserves existing. |
-| `src/pages/DistributionLists.tsx` | Removed the "Managers" `SharedUserPicker` section from the create/edit dialog. Added a **Delegates** action button on each card (visible to the owner **and to any existing delegate**) that opens a dedicated dialog with a `SharedUserPicker` + current-delegates list with × remove. The details drawer also renders the delegates section with inline × remove + "Add" button that reopens the same dialog. |
+| `src/lib/distributionListStorage.ts` | Added `getDelegatesForDL(id)` (returns `SharedUserRef[]`) and `syncDelegatesForDL(id, userIds)` (single sync endpoint replacing separate add/remove). Removed `addDelegatesToDL` and `removeDelegateFromDL`. `SharedUserRef` gained `addedBy?` / `addedAt?`. `updateDistributionList` no longer overwrites `managers` when `input.managers` is undefined — preserves existing. |
+| `src/pages/DistributionLists.tsx` | Removed the "Managers" `SharedUserPicker` section from the create/edit dialog. Added a **Delegates** action button on each list row (visible to the owner **and to any existing delegate**) that opens a dedicated dialog with a `SharedUserPicker` + current-delegates list with × remove. The details drawer also renders the delegates section with inline × remove + "Add" button that reopens the same dialog. All delegate mutations now call `syncDelegatesForDL(id, userIds)` with the full desired set. |
 | `src/pages/DistributionLists.module.scss` | Added `.delegateRow`, `.removeDelegateBtn`, `.inlineAddBtn`. |
 
 ### TS contract mirror
@@ -2215,8 +2215,16 @@ public record SharedUserDto(
 // In src/lib/distributionListStorage.ts
 export function getDelegatesForDL(id: string): SharedUserRef[];
 export function canManageDelegates(dl: DistributionList, userId?: string): boolean;
-export function addDelegatesToDL(id: string, users: DirectoryUser[]): DistributionList;
-export function removeDelegateFromDL(id: string, userId: string): DistributionList;
+
+/**
+ * Sync the full delegate set. Pass the COMPLETE desired userIds;
+ * the service diffs against existing rows and applies minimal
+ * INSERT / DELETE in one transaction.
+ */
+export function syncDelegatesForDL(
+  id: string,
+  userIds: string[]
+): DistributionList;
 
 export interface SharedUserRef {
   distributionListShareId?: string;
