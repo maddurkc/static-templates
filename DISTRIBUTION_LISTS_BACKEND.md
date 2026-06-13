@@ -394,9 +394,8 @@ public record DistributionListUpsertDto(
      * may be blank. `type` defaults to CUSTOM on the server.
      *
      * v3: `managers` is NO LONGER part of the upsert payload. Delegate
-     * mutations go through the dedicated endpoints (see §17):
-     *   POST   /api/distribution-lists/{id}/delegates
-     *   DELETE /api/distribution-lists/{id}/delegates/{userId}
+     * mutations go through the dedicated SYNC endpoint (see §17):
+     *   POST /api/distribution-lists/{id}/delegates   // full-list sync
      * The service IGNORES any `managers` field if a v2 client still sends it.
      */
                                 String toRaw,
@@ -404,9 +403,19 @@ public record DistributionListUpsertDto(
                                 String bccRaw
 ) {}
 
-/** v3 — body for POST /api/distribution-lists/{id}/delegates */
-public record AddDelegatesRequest(
-    @NotNull List<SharedUserDto> users   // directory snapshots; addedBy/addedAt may be null (server fills)
+/**
+ * v3.1 — body for POST /api/distribution-lists/{id}/delegates.
+ *
+ * Carries the FULL desired delegate set as a list of directory user ids.
+ * The server diffs this against the existing `distribution_list_share`
+ * rows for the DL and performs add/remove in a single transaction:
+ *   • userIds present in payload AND already in DB  → no-op
+ *   • userIds present in payload but NOT in DB      → INSERT share row
+ *   • userIds in DB but NOT in payload              → DELETE share row
+ * The owner is implicit and is never inserted/removed via this endpoint.
+ */
+public record SyncDelegatesRequest(
+    @NotNull List<String> userIds        // full desired set of delegate user ids
 ) {}
 
 /** Unified result returned by /recipients/search. type=USER | DL. */
