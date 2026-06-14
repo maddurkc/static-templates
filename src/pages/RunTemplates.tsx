@@ -114,6 +114,7 @@ const RunTemplates = () => {
   const [bccUsers, setBccUsers] = useState<User[]>([]);
   const [dlDrawerOpen, setDlDrawerOpen] = useState(false);
   const [dlDrawerSearch, setDlDrawerSearch] = useState("");
+  const [appliedDLs, setAppliedDLs] = useState<DistributionList[]>([]);
   const [viewMode, setViewMode] = useState<'template' | 'execution'>('template'); // New: toggle between template view and execution view
   const [executedOn, setExecutedOn] = useState<string>("");
   const [emailSubject, setEmailSubject] = useState<string>("");
@@ -2446,11 +2447,6 @@ const RunTemplates = () => {
               {/* To Field */}
               <div className={styles.emailFieldRow}>
                 <label>To:</label>
-                <UserAutocomplete
-                  value={toUsers}
-                  onChange={setToUsers}
-                  placeholder="Search and select recipients"
-                />
                 <Sheet open={dlDrawerOpen} onOpenChange={setDlDrawerOpen}>
                   <SheetTrigger asChild>
                     <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1">
@@ -2495,10 +2491,12 @@ const RunTemplates = () => {
                             const adds = emails.filter(e => !have.has(e.toLowerCase())).map(toUser);
                             return [...existing, ...adds];
                           };
+                          const appliedIds = new Set(appliedDLs.map(d => d.distributionListId));
                           const applyDL = (dl: DistributionList) => {
                             setToUsers((cur) => mergeBucket(cur, dl.toMembers.map(m => m.email)));
                             setCcUsers((cur) => mergeBucket(cur, dl.ccMembers.map(m => m.email)));
                             setBccUsers((cur) => mergeBucket(cur, dl.bccMembers.map(m => m.email)));
+                            setAppliedDLs((cur) => [...cur, dl]);
                             toast({
                               title: `Applied ${dl.displayName}`,
                               description: `To +${dl.toMembers.length} · CC +${dl.ccMembers.length} · BCC +${dl.bccMembers.length}`,
@@ -2507,12 +2505,19 @@ const RunTemplates = () => {
                           };
                           return dls.map((dl) => {
                             const total = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
+                            const alreadyApplied = appliedIds.has(dl.distributionListId);
                             return (
                               <button
                                 key={dl.distributionListId}
                                 type="button"
-                                onClick={() => applyDL(dl)}
-                                className="w-full text-left p-3 rounded-md border border-border hover:border-primary hover:bg-accent/50 transition-colors"
+                                disabled={alreadyApplied}
+                                title={alreadyApplied ? "Already selected" : undefined}
+                                onClick={() => !alreadyApplied && applyDL(dl)}
+                                className={`w-full text-left p-3 rounded-md border border-border transition-colors ${
+                                  alreadyApplied
+                                    ? "opacity-50 cursor-not-allowed bg-muted/40"
+                                    : "hover:border-primary hover:bg-accent/50"
+                                }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="font-semibold text-sm flex items-center gap-1.5">
@@ -2520,8 +2525,14 @@ const RunTemplates = () => {
                                     {dl.displayName}
                                   </span>
                                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-                                    {dl.visibility === "PUBLIC" ? <GlobeIcon size={10} /> : <LockIcon size={10} />}
-                                    {dl.visibility.toLowerCase()}
+                                    {alreadyApplied ? (
+                                      <span className="text-primary font-semibold normal-case">Already selected</span>
+                                    ) : (
+                                      <>
+                                        {dl.visibility === "PUBLIC" ? <GlobeIcon size={10} /> : <LockIcon size={10} />}
+                                        {dl.visibility.toLowerCase()}
+                                      </>
+                                    )}
                                   </span>
                                 </div>
                                 {dl.description && (
@@ -2538,7 +2549,61 @@ const RunTemplates = () => {
                     </ScrollArea>
                   </SheetContent>
                 </Sheet>
+
+                {/* Applied DL chips */}
+                {appliedDLs.map((dl) => {
+                  const removeDL = () => {
+                    const others = appliedDLs.filter(d => d.distributionListId !== dl.distributionListId);
+                    const keepEmails = (bucket: "to" | "cc" | "bcc") => {
+                      const s = new Set<string>();
+                      others.forEach(d => {
+                        const arr = bucket === "to" ? d.toMembers : bucket === "cc" ? d.ccMembers : d.bccMembers;
+                        arr.forEach(m => s.add(m.email.toLowerCase()));
+                      });
+                      return s;
+                    };
+                    const removeFrom = (
+                      cur: User[],
+                      emails: string[],
+                      keep: Set<string>,
+                    ) => {
+                      const drop = new Set(
+                        emails.map(e => e.toLowerCase()).filter(e => !keep.has(e)),
+                      );
+                      return cur.filter(u => u.kind !== "USER" || !u.email || !drop.has(u.email.toLowerCase()));
+                    };
+                    setToUsers((cur) => removeFrom(cur, dl.toMembers.map(m => m.email), keepEmails("to")));
+                    setCcUsers((cur) => removeFrom(cur, dl.ccMembers.map(m => m.email), keepEmails("cc")));
+                    setBccUsers((cur) => removeFrom(cur, dl.bccMembers.map(m => m.email), keepEmails("bcc")));
+                    setAppliedDLs(others);
+                  };
+                  return (
+                    <span
+                      key={dl.distributionListId}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-medium shrink-0"
+                      title={dl.description || dl.displayName}
+                    >
+                      <UsersIcon size={11} />
+                      {dl.displayName}
+                      <button
+                        type="button"
+                        onClick={removeDL}
+                        aria-label={`Remove ${dl.displayName}`}
+                        className="ml-0.5 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-indigo-200 text-indigo-600 hover:text-indigo-900"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+
+                <UserAutocomplete
+                  value={toUsers}
+                  onChange={setToUsers}
+                  placeholder="Search and select recipients"
+                />
               </div>
+
 
               {/* CC Field */}
               <div className={styles.emailFieldRow}>
