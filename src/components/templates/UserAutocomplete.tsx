@@ -26,6 +26,13 @@ export interface User {
   kind?: "USER" | "DL";
   memberCount?: number;
   dlMembers?: string[];     // resolved member emails (cached for send/preview)
+
+  /**
+   * IDs of Distribution Lists that contributed this user to the recipient bucket.
+   * Empty/undefined means the user was added manually. Used to safely remove
+   * DL-sourced emails when a DL chip is removed without affecting manual picks.
+   */
+  sourceDLIds?: string[];
 }
 
 interface UserAutocompleteProps {
