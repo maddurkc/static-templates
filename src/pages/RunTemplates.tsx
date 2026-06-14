@@ -114,6 +114,7 @@ const RunTemplates = () => {
   const [bccUsers, setBccUsers] = useState<User[]>([]);
   const [dlDrawerOpen, setDlDrawerOpen] = useState(false);
   const [dlDrawerSearch, setDlDrawerSearch] = useState("");
+  const [appliedDLs, setAppliedDLs] = useState<DistributionList[]>([]);
   const [viewMode, setViewMode] = useState<'template' | 'execution'>('template'); // New: toggle between template view and execution view
   const [executedOn, setExecutedOn] = useState<string>("");
   const [emailSubject, setEmailSubject] = useState<string>("");
