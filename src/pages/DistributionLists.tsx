@@ -255,102 +255,88 @@ export default function DistributionLists() {
             </Button>
           </div>
         ) : (
-          <>
-            <div className={`${styles.listRow} ${styles.listHeader}`} aria-hidden>
-              <div className={styles.colName}>Name</div>
-              <div className={styles.colVis}>Visibility</div>
-              <div className={styles.colMembers}>Members</div>
-              <div className={styles.colDelegates}>Delegates</div>
-              <div className={styles.colActions}>Actions</div>
-            </div>
-            {lists.map((dl) => {
-              const memberCount = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
-              const canEdit = canManageDL(dl);
-              return (
-                <div
-                  key={dl.distributionListId}
-                  className={styles.listRow}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setDetailsDL(dl)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setDetailsDL(dl);
-                    }
-                  }}
-                  title="Click to view full details"
-                >
-                  <div className={styles.colName}>
+          lists.map((dl) => {
+            const memberCount = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
+            const canEdit = canManageDL(dl);
+            return (
+              <div
+                key={dl.distributionListId}
+                className={styles.listItem}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailsDL(dl)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setDetailsDL(dl);
+                  }
+                }}
+                title="Click to view full details"
+              >
+                <div className={styles.itemMain}>
+                  <div className={styles.itemTop}>
                     <span className={styles.dlName}>
                       <Users size={14} className={styles.dlNameIcon} />
                       {dl.displayName}
                     </span>
-                    {dl.description && <p className={styles.descInline}>{dl.description}</p>}
-                  </div>
-
-                  <div className={styles.colVis}>
                     <span className={styles.vis}>
                       {visIcon(dl.visibility)} {dl.visibility.toLowerCase()}
                     </span>
                   </div>
-
-                  <div className={styles.colMembers}>
-                    <strong>{memberCount}</strong>
-                    <span className={styles.memberSplit}>
-                      To {dl.toMembers.length} · CC {dl.ccMembers.length} · BCC {dl.bccMembers.length}
+                  {dl.description && <p className={styles.descInline}>{dl.description}</p>}
+                  <div className={styles.itemMeta}>
+                    <span className={styles.metaBlock}>
+                      <strong>{memberCount}</strong> members
+                      <span className={styles.memberSplit}>
+                        (To {dl.toMembers.length} · CC {dl.ccMembers.length} · BCC {dl.bccMembers.length})
+                      </span>
                     </span>
-                  </div>
-
-                  <div className={styles.colDelegates}>
-                    {dl.managers.length === 0 ? (
-                      <span className={styles.delegateEmpty}>—</span>
-                    ) : (
-                      <div className={styles.delegatePreview}>
+                    {dl.managers.length > 0 && (
+                      <span className={styles.metaBlock}>
                         <span className={styles.managerBadgeInline}>
-                          <ShieldCheck size={11} /> {dl.managers.length}
+                          <ShieldCheck size={11} /> {dl.managers.length} delegate{dl.managers.length > 1 ? "s" : ""}
                         </span>
                         <span className={styles.delegateNames}>
                           {dl.managers.slice(0, 2).map((m) => m.name).join(", ")}
                           {dl.managers.length > 2 && ` +${dl.managers.length - 2}`}
                         </span>
-                      </div>
+                      </span>
                     )}
                   </div>
-
-                  <div className={styles.colActions}>
-                    <button
-                      className={styles.actionBtn}
-                      onClick={(e) => { e.stopPropagation(); openEdit(dl); }}
-                      disabled={!canEdit}
-                      title={canEdit ? "" : "Only the owner and delegates can edit"}
-                    >
-                      <Edit3 size={14} /> Edit
-                    </button>
-                    <button
-                      className={styles.actionBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDelegatePicks([]);
-                        setDelegatesDL(dl);
-                      }}
-                      disabled={!canManageDelegates(dl)}
-                      title={canManageDelegates(dl) ? "Manage delegates" : "Only the owner or an existing delegate can manage delegates"}
-                    >
-                      <UserPlus size={14} /> Delegates
-                    </button>
-                    <button
-                      className={`${styles.actionBtn} ${styles.danger}`}
-                      onClick={(e) => { e.stopPropagation(); remove(dl); }}
-                      disabled={!canEdit}
-                    >
-                      <Trash2 size={14} /> Delete
-                    </button>
-                  </div>
                 </div>
-              );
-            })}
-          </>
+
+                <div className={styles.itemActions}>
+                  <button
+                    className={styles.actionBtn}
+                    onClick={(e) => { e.stopPropagation(); openEdit(dl); }}
+                    disabled={!canEdit}
+                    title={canEdit ? "" : "Only the owner and delegates can edit"}
+                  >
+                    <Edit3 size={14} /> Edit
+                  </button>
+                  <button
+                    className={styles.actionBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDelegatePicks([]);
+                      setDelegatesDL(dl);
+                    }}
+                    disabled={!canManageDelegates(dl)}
+                    title={canManageDelegates(dl) ? "Manage delegates" : "Only the owner or an existing delegate can manage delegates"}
+                  >
+                    <UserPlus size={14} /> Delegates
+                  </button>
+                  <button
+                    className={`${styles.actionBtn} ${styles.danger}`}
+                    onClick={(e) => { e.stopPropagation(); remove(dl); }}
+                    disabled={!canEdit}
+                  >
+                    <Trash2 size={14} /> Delete
+                  </button>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
