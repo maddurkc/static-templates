@@ -2444,9 +2444,9 @@ const RunTemplates = () => {
 
             {/* Email Fields */}
             <div className={styles.emailFieldsContainer}>
-              {/* To Field */}
+              {/* DL Row (above To/CC/BCC) */}
               <div className={styles.emailFieldRow}>
-                <label>To:</label>
+                <label>DL:</label>
                 <Sheet open={dlDrawerOpen} onOpenChange={setDlDrawerOpen}>
                   <SheetTrigger asChild>
                     <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1">
@@ -2551,58 +2551,65 @@ const RunTemplates = () => {
                 </Sheet>
 
                 {/* Applied DL chips */}
-                {appliedDLs.map((dl) => {
-                  const removeDL = () => {
-                    const others = appliedDLs.filter(d => d.distributionListId !== dl.distributionListId);
-                    const keepEmails = (bucket: "to" | "cc" | "bcc") => {
-                      const s = new Set<string>();
-                      others.forEach(d => {
-                        const arr = bucket === "to" ? d.toMembers : bucket === "cc" ? d.ccMembers : d.bccMembers;
-                        arr.forEach(m => s.add(m.email.toLowerCase()));
-                      });
-                      return s;
+                <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                  {appliedDLs.map((dl) => {
+                    const removeDL = () => {
+                      const others = appliedDLs.filter(d => d.distributionListId !== dl.distributionListId);
+                      const keepEmails = (bucket: "to" | "cc" | "bcc") => {
+                        const s = new Set<string>();
+                        others.forEach(d => {
+                          const arr = bucket === "to" ? d.toMembers : bucket === "cc" ? d.ccMembers : d.bccMembers;
+                          arr.forEach(m => s.add(m.email.toLowerCase()));
+                        });
+                        return s;
+                      };
+                      const removeFrom = (
+                        cur: User[],
+                        emails: string[],
+                        keep: Set<string>,
+                      ) => {
+                        const drop = new Set(
+                          emails.map(e => e.toLowerCase()).filter(e => !keep.has(e)),
+                        );
+                        return cur.filter(u => u.kind !== "USER" || !u.email || !drop.has(u.email.toLowerCase()));
+                      };
+                      setToUsers((cur) => removeFrom(cur, dl.toMembers.map(m => m.email), keepEmails("to")));
+                      setCcUsers((cur) => removeFrom(cur, dl.ccMembers.map(m => m.email), keepEmails("cc")));
+                      setBccUsers((cur) => removeFrom(cur, dl.bccMembers.map(m => m.email), keepEmails("bcc")));
+                      setAppliedDLs(others);
                     };
-                    const removeFrom = (
-                      cur: User[],
-                      emails: string[],
-                      keep: Set<string>,
-                    ) => {
-                      const drop = new Set(
-                        emails.map(e => e.toLowerCase()).filter(e => !keep.has(e)),
-                      );
-                      return cur.filter(u => u.kind !== "USER" || !u.email || !drop.has(u.email.toLowerCase()));
-                    };
-                    setToUsers((cur) => removeFrom(cur, dl.toMembers.map(m => m.email), keepEmails("to")));
-                    setCcUsers((cur) => removeFrom(cur, dl.ccMembers.map(m => m.email), keepEmails("cc")));
-                    setBccUsers((cur) => removeFrom(cur, dl.bccMembers.map(m => m.email), keepEmails("bcc")));
-                    setAppliedDLs(others);
-                  };
-                  return (
-                    <span
-                      key={dl.distributionListId}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-medium shrink-0"
-                      title={dl.description || dl.displayName}
-                    >
-                      <UsersIcon size={11} />
-                      {dl.displayName}
-                      <button
-                        type="button"
-                        onClick={removeDL}
-                        aria-label={`Remove ${dl.displayName}`}
-                        className="ml-0.5 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-indigo-200 text-indigo-600 hover:text-indigo-900"
+                    return (
+                      <span
+                        key={dl.distributionListId}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-medium shrink-0"
+                        title={dl.description || dl.displayName}
                       >
-                        ×
-                      </button>
-                    </span>
-                  );
-                })}
+                        <UsersIcon size={11} />
+                        {dl.displayName}
+                        <button
+                          type="button"
+                          onClick={removeDL}
+                          aria-label={`Remove ${dl.displayName}`}
+                          className="ml-0.5 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-indigo-200 text-indigo-600 hover:text-indigo-900"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
 
+              {/* To Field */}
+              <div className={styles.emailFieldRow}>
+                <label>To:</label>
                 <UserAutocomplete
                   value={toUsers}
                   onChange={setToUsers}
                   placeholder="Search and select recipients"
                 />
               </div>
+
 
 
               {/* CC Field */}
