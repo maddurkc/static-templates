@@ -2483,19 +2483,40 @@ const RunTemplates = () => {
                               </div>
                             );
                           }
-                          const toUser = (email: string): User => ({
-                            id: email, email, name: email, kind: "USER",
-                          });
-                          const mergeBucket = (existing: User[], emails: string[]) => {
-                            const have = new Set(existing.filter(u => u.kind === "USER" && u.email).map(u => u.email.toLowerCase()));
-                            const adds = emails.filter(e => !have.has(e.toLowerCase())).map(toUser);
-                            return [...existing, ...adds];
+                          const mergeBucket = (existing: User[], emails: string[], dlId: string): User[] => {
+                            const next = existing.map(u => ({ ...u }));
+                            const byEmail = new Map<string, User>();
+                            next.forEach(u => {
+                              if (u.kind === "USER" && u.email) byEmail.set(u.email.toLowerCase(), u);
+                            });
+                            emails.forEach(email => {
+                              const key = email.toLowerCase();
+                              const found = byEmail.get(key);
+                              if (found) {
+                                // If user was added manually (no sourceDLIds), leave it as manual.
+                                // If it was DL-sourced already, tag this DL too.
+                                if (found.sourceDLIds && found.sourceDLIds.length > 0) {
+                                  if (!found.sourceDLIds.includes(dlId)) {
+                                    found.sourceDLIds = [...found.sourceDLIds, dlId];
+                                  }
+                                }
+                              } else {
+                                const fresh: User = {
+                                  id: email, email, name: email, kind: "USER",
+                                  sourceDLIds: [dlId],
+                                };
+                                next.push(fresh);
+                                byEmail.set(key, fresh);
+                              }
+                            });
+                            return next;
                           };
                           const appliedIds = new Set(appliedDLs.map(d => d.distributionListId));
                           const applyDL = (dl: DistributionList) => {
-                            setToUsers((cur) => mergeBucket(cur, dl.toMembers.map(m => m.email)));
-                            setCcUsers((cur) => mergeBucket(cur, dl.ccMembers.map(m => m.email)));
-                            setBccUsers((cur) => mergeBucket(cur, dl.bccMembers.map(m => m.email)));
+                            const id = dl.distributionListId;
+                            setToUsers((cur) => mergeBucket(cur, dl.toMembers.map(m => m.email), id));
+                            setCcUsers((cur) => mergeBucket(cur, dl.ccMembers.map(m => m.email), id));
+                            setBccUsers((cur) => mergeBucket(cur, dl.bccMembers.map(m => m.email), id));
                             setAppliedDLs((cur) => [...cur, dl]);
                             toast({
                               title: `Applied ${dl.displayName}`,
