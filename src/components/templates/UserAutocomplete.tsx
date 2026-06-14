@@ -255,8 +255,8 @@ export const UserAutocomplete: React.FC<UserAutocompleteProps> = ({
               </button>
             </span>
           ) : (
-            <span key={`${u.id}-${i}`} className={styles.userPill}>
-              {u.email}
+            <span key={`${u.id}-${i}`} className={styles.userPill} title={u.email || u.name}>
+              {u.name || u.email}
               <button
                 type="button"
                 className={styles.removeChip}
@@ -264,7 +264,7 @@ export const UserAutocomplete: React.FC<UserAutocompleteProps> = ({
                   e.stopPropagation();
                   removeAt(i);
                 }}
-                aria-label={`Remove ${u.email}`}
+                aria-label={`Remove ${u.name || u.email}`}
               >
                 ×
               </button>

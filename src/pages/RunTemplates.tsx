@@ -2501,8 +2501,15 @@ const RunTemplates = () => {
                                   }
                                 }
                               } else {
+                                const displayName = email
+                                  .split("@")[0]
+                                  .replace(/[._-]/g, " ")
+                                  .split(" ")
+                                  .filter(Boolean)
+                                  .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                                  .join(" ");
                                 const fresh: User = {
-                                  id: email, email, name: email, kind: "USER",
+                                  id: email, email, name: displayName || email, kind: "USER",
                                   sourceDLIds: [dlId],
                                 };
                                 next.push(fresh);
