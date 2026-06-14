@@ -2575,29 +2575,26 @@ const RunTemplates = () => {
                 <div className="flex flex-wrap items-center gap-1.5 flex-1">
                   {appliedDLs.map((dl) => {
                     const removeDL = () => {
-                      const others = appliedDLs.filter(d => d.distributionListId !== dl.distributionListId);
-                      const keepEmails = (bucket: "to" | "cc" | "bcc") => {
-                        const s = new Set<string>();
-                        others.forEach(d => {
-                          const arr = bucket === "to" ? d.toMembers : bucket === "cc" ? d.ccMembers : d.bccMembers;
-                          arr.forEach(m => s.add(m.email.toLowerCase()));
-                        });
-                        return s;
-                      };
-                      const removeFrom = (
-                        cur: User[],
-                        emails: string[],
-                        keep: Set<string>,
-                      ) => {
-                        const drop = new Set(
-                          emails.map(e => e.toLowerCase()).filter(e => !keep.has(e)),
-                        );
-                        return cur.filter(u => u.kind !== "USER" || !u.email || !drop.has(u.email.toLowerCase()));
-                      };
-                      setToUsers((cur) => removeFrom(cur, dl.toMembers.map(m => m.email), keepEmails("to")));
-                      setCcUsers((cur) => removeFrom(cur, dl.ccMembers.map(m => m.email), keepEmails("cc")));
-                      setBccUsers((cur) => removeFrom(cur, dl.bccMembers.map(m => m.email), keepEmails("bcc")));
-                      setAppliedDLs(others);
+                      const dlId = dl.distributionListId;
+                      // Strip this DL id from each DL-sourced user. If a user's
+                      // sourceDLIds becomes empty, drop it (it was only there
+                      // because of this DL). Manual users (no sourceDLIds) are
+                      // never touched.
+                      const stripDl = (cur: User[]): User[] =>
+                        cur.reduce<User[]>((acc, u) => {
+                          if (u.kind !== "USER" || !u.sourceDLIds || u.sourceDLIds.length === 0) {
+                            acc.push(u);
+                            return acc;
+                          }
+                          const remaining = u.sourceDLIds.filter(id => id !== dlId);
+                          if (remaining.length === 0) return acc; // drop
+                          acc.push({ ...u, sourceDLIds: remaining });
+                          return acc;
+                        }, []);
+                      setToUsers(stripDl);
+                      setCcUsers(stripDl);
+                      setBccUsers(stripDl);
+                      setAppliedDLs(appliedDLs.filter(d => d.distributionListId !== dlId));
                     };
                     return (
                       <span
