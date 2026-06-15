@@ -1,95 +1,204 @@
-# Distribution Lists — Functional Refactor
 
-## Goals
+# Standard Distribution Lists — Feature Plan
 
-1. **Visibility** is now binary: `PUBLIC` or `PRIVATE` only (drop `SHARED`).
-2. **Management/Sharing** is now an independent concept — *any* DL (public or private) can have a list of "shared managers" who can **edit/delete** alongside the owner. Pure viewing of public DLs remains open to everyone.
-3. **Type** column added (`CUSTOM` for now; reserved for future system DLs).
-4. **Owner LAN ID** stored alongside `owner_id` (AD ent id).
-5. Members split into **To / CC / BCC** (three textareas, three raw blobs).
-6. In **Run Templates** add a "Distribution Lists" drawer trigger — lists DLs visible to current user; selecting one populates To/CC/BCC fields on the run template.
+A new top-level area, separate from the existing user-created "Distribution Lists". Admin / app users compose a **Standard DL** by selecting an **LOB** and a **CIO Direct**, the system fetches the org roster (App Managers, Alt App Managers, CIO-1, CIO-2, Business Manager, Alt Business Manager, etc.), and the user checks who should be included before saving.
 
 ---
 
-## Data Model Changes
+## 1. Navigation
 
-### `distribution_list`
-| column | change |
-|---|---|
-| `visibility` | CHECK now `('PUBLIC','PRIVATE')` only |
-| `type` | **NEW** `NVARCHAR(20) NOT NULL DEFAULT 'CUSTOM'`, CHECK `('CUSTOM')` |
-| `owner_id` | unchanged (AD ent id) |
-| `owner_lanid` | **NEW** `NVARCHAR(50) NULL` |
-| `members_raw` | **REMOVED** |
-| `to_raw` | **NEW** `NVARCHAR(MAX) NULL` |
-| `cc_raw` | **NEW** `NVARCHAR(MAX) NULL` |
-| `bcc_raw` | **NEW** `NVARCHAR(MAX) NULL` |
+Add a new sidebar entry under existing "Distribution Lists":
 
-### `distribution_list_share`
-Repurposed from "viewers" to **"managers"** (can edit/delete). Columns unchanged: `distribution_list_share_id, distribution_list_id, user_id, elid, lanid, name, emailid, department`.
+```text
+Sidebar
+├── Templates
+├── Run Templates
+├── Distribution Lists        ← existing (user-owned)
+└── Standard Distribution Lists  ← NEW
+```
 
-### Visibility / Management Predicate (canonical)
-```sql
--- VISIBLE TO U:
-dl.visibility = 'PUBLIC'
- OR dl.owner_id = :uid
- OR EXISTS (SELECT 1 FROM distribution_list_share s
-            WHERE s.distribution_list_id = dl.distribution_list_id
-              AND s.user_id = :uid)
+Route: `/standard-distribution-lists`
 
--- CAN MANAGE (edit/delete) by U:
-dl.owner_id = :uid
- OR EXISTS (SELECT 1 FROM distribution_list_share s
-            WHERE s.distribution_list_id = dl.distribution_list_id
-              AND s.user_id = :uid)
+Access: visible to all signed-in users; **create / edit / delete** gated to admin role (reuse existing role check pattern).
+
+---
+
+## 2. Page Layout
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│  Standard Distribution Lists           [ + New Standard DL ]     │
+│  Smart DLs auto-built from LOB + CIO org structure               │
+├──────────────────────────────────────────────────────────────────┤
+│  🔍 Search   | LOB ▾  | CIO ▾  | Owner ▾                         │
+├──────────────────────────────────────────────────────────────────┤
+│ • CCB-Risk-Leadership          LOB: CCB    CIO: J. Smith         │
+│   42 members · Updated 2d ago · Owner: admin@org                 │
+│   Roles: App Mgr (8), Alt App Mgr (6), CIO-1 (4), Biz Mgr (3)…   │
+│   [ View ] [ Edit ] [ Refresh from Source ] [ Delete ]           │
+│ • …                                                              │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+List view (consistent with the recently-redesigned DL page — no table headers, card rows).
+
+---
+
+## 3. Create / Edit Wizard (Dialog, 3 steps)
+
+### Step 1 — Basics
+- Name (required)
+- Description
+- Visibility: `PUBLIC` / `PRIVATE`
+
+### Step 2 — Org Selection
+- **LOB** dropdown (fetched from `/api/org/lobs`)
+- **CIO Direct** dropdown (fetched from `/api/org/cio-directs?lob=…`, depends on LOB)
+- "Load Members" button → calls backend with `{lob, cioDirect}`
+
+### Step 3 — Role-based Member Selection
+
+Backend returns grouped roster. Render each role as a collapsible section with a "Select all" checkbox plus per-user checkboxes.
+
+```text
+┌───────────────────────────────────────────────────────────┐
+│ ▾ App Managers                       [ ☑ Select all (12) ]│
+│   ☑ Alice Johnson   alice.j@org    SID: a12345            │
+│   ☑ Bob Lee         bob.lee@org    SID: b67890            │
+│   ☐ …                                                     │
+├───────────────────────────────────────────────────────────┤
+│ ▸ Alt App Managers                   [ ☐ Select all (8)  ]│
+├───────────────────────────────────────────────────────────┤
+│ ▸ CIO-1                              [ ☐ Select all (4)  ]│
+│ ▸ CIO-2                                                   │
+│ ▸ Business Managers                                       │
+│ ▸ Alt Business Managers                                   │
+└───────────────────────────────────────────────────────────┘
+Footer: Selected: 27 users across 6 roles    [ Back ] [ Save ]
+```
+
+Each selected user is tagged internally with the **role** they came from, so later we can show role breakdown and re-resolve on refresh.
+
+---
+
+## 4. Detail / View Drawer
+
+When clicking a Standard DL:
+- Header: name, LOB, CIO, owner, last refreshed
+- "Refresh from Source" button — re-queries backend; shows diff (added / removed) before applying
+- Members grouped by role, expandable; copy-emails button per group
+- Used in `N` templates (links to Run Templates)
+
+---
+
+## 5. Integration with Run Templates
+
+In the existing **DL drawer** on Run Templates, add a tab:
+
+```text
+[ My DLs ] [ Standard DLs ]
+```
+
+Selection behaviour identical to current DLs (chip + auto-populate To/CC/BCC, removal clears only that DL's emails — per `DL_RECIPIENT_REQUIREMENTS.md`). Chip is visually distinct (e.g. badge "STD").
+
+---
+
+## 6. Data Model (frontend mock first, mirrors future backend)
+
+```ts
+type OrgRole =
+  | "APP_MANAGER" | "ALT_APP_MANAGER"
+  | "CIO_1" | "CIO_2"
+  | "BUSINESS_MANAGER" | "ALT_BUSINESS_MANAGER";
+
+interface StandardDLMember {
+  lanid: string;
+  name: string;
+  email: string;
+  role: OrgRole;          // which bucket they came from
+  bucket: "TO"|"CC"|"BCC";// default TO; editable
+}
+
+interface StandardDistributionList {
+  id: string;
+  name: string;
+  description?: string;
+  visibility: "PUBLIC"|"PRIVATE";
+  lob: string;            // e.g. "CCB"
+  cioDirectLanid: string; // selected CIO direct
+  cioDirectName: string;
+  members: StandardDLMember[];
+  ownerLanid: string;
+  createdAt: string;
+  updatedAt: string;
+  lastRefreshedAt?: string;
+}
 ```
 
 ---
 
-## Backend (documented in `DISTRIBUTION_LISTS_BACKEND.md`)
+## 7. Backend Contract (to spec for Spring Boot side later)
 
-- Update §1 SQL migration: add `type`, `owner_lanid`, drop `members_raw`, add `to_raw/cc_raw/bcc_raw`, tighten visibility CHECK.
-- Add a separate migration note for existing rows (`UPDATE … SET to_raw = members_raw`).
-- Update `DistributionListEntity` (new fields, drop `membersRaw`).
-- Update `DistributionListDto` + `DistributionListUpsertDto` (3 raw fields, `type`, `ownerLanid`).
-- Update `DistributionListService`: permission check uses `owner OR isManager`; create persists `type='CUSTOM'`, `ownerLanid` from authenticated user.
-- Update `DistributionListRepository.findVisibleTo` — new predicate above.
-- Update §14 frontend wiring map.
-- Remove `SHARED` visibility throughout doc; rename the `SharedUserPicker` concept to "Managers".
+```text
+GET  /api/org/lobs                       -> [{code, name}]
+GET  /api/org/cio-directs?lob=CCB        -> [{lanid, name}]
+GET  /api/org/roster?lob=CCB&cio=js123   -> {
+        appManagers:[...], altAppManagers:[...],
+        cio1:[...], cio2:[...],
+        businessManagers:[...], altBusinessManagers:[...]
+     }
+
+GET    /api/standard-dls
+POST   /api/standard-dls
+GET    /api/standard-dls/{id}
+PUT    /api/standard-dls/{id}
+DELETE /api/standard-dls/{id}
+POST   /api/standard-dls/{id}/refresh    -> returns diff preview
+```
+
+MS SQL Server tables (per project conventions):
+
+```sql
+standard_distribution_list (
+  id UNIQUEIDENTIFIER PK,
+  name NVARCHAR(200), description NVARCHAR(1000),
+  visibility NVARCHAR(20), lob NVARCHAR(50),
+  cio_direct_lanid NVARCHAR(50), cio_direct_name NVARCHAR(200),
+  owner_lanid NVARCHAR(50),
+  created_at DATETIME2, updated_at DATETIME2, last_refreshed_at DATETIME2
+)
+standard_dl_member (
+  id UNIQUEIDENTIFIER PK,
+  std_dl_id UNIQUEIDENTIFIER FK,
+  lanid NVARCHAR(50), name NVARCHAR(200), email NVARCHAR(320),
+  role NVARCHAR(40), bucket NVARCHAR(10)
+)
+```
 
 ---
 
-## Frontend
+## 8. Frontend Build Steps
 
-### `src/lib/distributionListStorage.ts`
-- `DLVisibility = "PRIVATE" | "PUBLIC"`.
-- Add `type: "CUSTOM"`, `ownerLanid: string`.
-- Replace `membersRaw` with `toRaw`, `ccRaw`, `bccRaw`; expose derived `toMembers`, `ccMembers`, `bccMembers` arrays.
-- Rename `sharedWith` → `managers` (same `SharedUserRef` shape).
-- Update validation: at least one valid email across To/CC/BCC.
-- Update `listDistributionLists` predicate (PUBLIC OR owner OR manager).
-- `listDistributionListsPaged` visibility filter options: `ALL | PUBLIC | PRIVATE` (drop SHARED tab).
-- Re-seed demo data with new shape.
-
-### `src/pages/DistributionLists.tsx`
-- Visibility select: Private / Public only.
-- "Managers" section always visible (independent of visibility) with the existing user-picker UI; help text: "These users can edit/delete this list".
-- Members section becomes **three** textareas (To / CC / BCC) with chip previews per bucket.
-- Filter tabs: All / Public / Private.
-- Card preview shows To/CC/BCC counts and a "Managers: n" badge.
-
-### `src/pages/RunTemplates.tsx`
-- Add a "Distribution Lists" button near the To field that opens a right-side drawer (using `@/components/ui/sheet`).
-- Drawer lists DLs from `listDistributionLists()` with search; clicking a DL appends its `toRaw/ccRaw/bccRaw` content into the corresponding run-template To/CC/BCC fields (dedup).
-
-### `src/pages/SharedUserPicker.tsx`
-- Keep the component; relabel default placeholder to "Search users to add as managers…". No functional change to picker itself.
+1. `src/lib/standardDistributionListStorage.ts` — types, mock LOB / CIO / roster data, CRUD against localStorage (mirrors `distributionListStorage.ts`).
+2. `src/pages/StandardDistributionLists.tsx` + `.module.scss` — list view (cards, filters).
+3. `src/components/standardDL/StandardDLWizard.tsx` — 3-step dialog (Basics → Org Select → Role Picker).
+4. `src/components/standardDL/RoleMemberPicker.tsx` — collapsible role groups w/ select-all.
+5. `src/components/standardDL/StandardDLDetail.tsx` — view drawer + refresh diff.
+6. Update `AppSidebar.tsx` — add "Standard DLs" entry + icon (`Building2` or `Network`).
+7. Update Run Templates DL drawer — add tab; reuse existing chip + removal logic.
+8. Update `DL_RECIPIENT_REQUIREMENTS.md` to note Standard DLs follow identical chip-removal rules.
 
 ---
 
-## Out of Scope
-- No actual backend code execution (this project is FE-only); backend changes are documentation-only in the `.md` file.
-- No schema migration runs against any DB.
-- Existing API contract in §14 updated in-doc; no live network calls change.
+## 9. Out of Scope (this iteration)
+- Real backend wiring (mock data only; contract documented for backend team).
+- Scheduled auto-refresh of rosters (manual "Refresh from Source" only).
+- Per-member override notes / exclusions list.
 
-After approval I will edit: `DISTRIBUTION_LISTS_BACKEND.md`, `src/lib/distributionListStorage.ts`, `src/pages/DistributionLists.tsx`, `src/pages/DistributionLists.module.scss` (minor additions), `src/pages/SharedUserPicker.tsx` (label only), `src/pages/RunTemplates.tsx` (add drawer trigger + handler).
+---
+
+### Decisions needed before build
+1. Sidebar label: **"Standard DLs"** vs **"Standard Distribution Lists"** vs **"Smart DLs"**?
+2. Are the six roles fixed, or should role list be configurable (admin-managed)?
+3. On "Refresh from Source", default behaviour: auto-apply diff, or always require confirm?
+4. Should non-admin users be able to *use* Standard DLs in Run Templates but not create them? (assumed yes)
