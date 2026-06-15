@@ -17,6 +17,7 @@ import SettingsLayoutDemo from "./pages/SettingsLayoutDemo";
 import TemplateSettingsPage from "./pages/TemplateSettingsPage";
 import NotFound from "./pages/NotFound";
 import DistributionLists from "./pages/DistributionLists";
+import StandardDistributionLists from "./pages/StandardDistributionLists";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
                   <Route path="/run-templates" element={<RunTemplates />} />
                   <Route path="/run-templates/:id" element={<RunTemplates />} />
                   <Route path="/distribution-lists" element={<DistributionLists />} />
+                  <Route path="/standard-distribution-lists" element={<StandardDistributionLists />} />
                   <Route path="/database-schema" element={<DatabaseSchema />} />
                   <Route path="/er-diagram" element={<ERDiagram />} />
                   <Route path="/migrations" element={<MigrationGenerator />} />
