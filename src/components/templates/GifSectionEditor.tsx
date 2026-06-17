@@ -17,26 +17,11 @@ import { Section } from "@/types/section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UploadCloud, X, Image as ImageIcon } from "lucide-react";
+import { UploadCloud, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { uploadAttachment, RAW_MAX_BYTES } from "@/lib/attachmentUpload";
 
 const ACCEPTED = "image/gif,image/png,image/jpeg,image/webp";
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB safety cap for inline embedding
-
-const generateContentId = (fileName: string): string => {
-  // CID format mirrors Outlook: <something>@local — collision-resistant + email-safe.
-  const slug = fileName.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase().slice(0, 24) || "image";
-  const rand = Math.random().toString(36).slice(2, 10);
-  return `${slug}-${Date.now().toString(36)}-${rand}@inline`;
-};
-
-const readAsDataURL = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 
 interface GifSectionEditorProps {
   section: Section;
@@ -52,6 +37,7 @@ export const GifSectionEditor: React.FC<GifSectionEditorProps> = ({
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const vars = section.variables || {};
@@ -67,27 +53,34 @@ export const GifSectionEditor: React.FC<GifSectionEditorProps> = ({
         setError("Only image / GIF files are supported.");
         return;
       }
-      if (file.size > MAX_BYTES) {
-        setError("File is larger than 5 MB.");
+      if (file.size > RAW_MAX_BYTES) {
+        setError(`File is larger than ${RAW_MAX_BYTES / 1024 / 1024} MB.`);
         return;
       }
+      setIsUploading(true);
       try {
-        const dataUrl = await readAsDataURL(file);
-        const contentId = generateContentId(file.name);
+        // uploadAttachment compresses (when safe), uploads via multipart, and
+        // falls back to an inline base64 data URL when no backend endpoint is
+        // configured. Either way we end up with a stable URL + Content-ID.
+        const result = await uploadAttachment(file);
         onUpdate({
           ...section,
           variables: {
             ...section.variables,
-            gifSrc: dataUrl,
-            gifContentId: contentId,
-            gifFileName: file.name,
-            gifMimeType: file.type,
-            gifAlt: section.variables?.gifAlt || file.name,
+            gifSrc: result.url,
+            gifAttachmentId: (result as { id?: string }).id || "",
+            gifContentId: result.contentId,
+            gifFileName: result.fileName,
+            gifMimeType: result.mimeType,
+            gifSizeBytes: String(result.sizeBytes),
+            gifAlt: section.variables?.gifAlt || result.fileName,
             gifWidth: section.variables?.gifWidth || "300",
           },
         });
-      } catch {
-        setError("Failed to read file.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to upload file.");
+      } finally {
+        setIsUploading(false);
       }
     },
     [section, onUpdate]
@@ -183,6 +176,11 @@ export const GifSectionEditor: React.FC<GifSectionEditorProps> = ({
             >
               <X size={14} />
             </Button>
+          </>
+        ) : isUploading ? (
+          <>
+            <Loader2 size={28} className="animate-spin" style={{ opacity: 0.6, marginBottom: 6 }} />
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Uploading…</div>
           </>
         ) : (
           <>
