@@ -177,6 +177,11 @@ export const GifSectionEditor: React.FC<GifSectionEditorProps> = ({
               <X size={14} />
             </Button>
           </>
+        ) : isUploading ? (
+          <>
+            <Loader2 size={28} className="animate-spin" style={{ opacity: 0.6, marginBottom: 6 }} />
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Uploading…</div>
+          </>
         ) : (
           <>
             <UploadCloud size={28} style={{ opacity: 0.6, marginBottom: 6 }} />
