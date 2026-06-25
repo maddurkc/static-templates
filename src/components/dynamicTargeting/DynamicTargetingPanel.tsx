@@ -214,8 +214,15 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
       {/* 1. STICKY top — selected recipients summary */}
       <div className="border border-border rounded-md bg-gradient-to-b from-muted/60 to-muted/20 p-2.5 space-y-1.5 shrink-0">
         <div className="flex items-center justify-between">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Selected recipients
+          <div className="flex items-center gap-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Selected recipients
+            </div>
+            {totalSelected > 40 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 h-4 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                <AlertTriangle size={10} /> {totalSelected} total
+              </span>
+            )}
           </div>
           {totalSelected > 0 && (
             <button
@@ -227,10 +234,11 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
             </button>
           )}
         </div>
-        <SummaryRow label="To"  bucket="TO"  items={resolved.to}  />
-        <SummaryRow label="Cc"  bucket="CC"  items={resolved.cc}  />
-        <SummaryRow label="Bcc" bucket="BCC" items={resolved.bcc} />
+        <BucketSummary label="To"  bucket="TO"  items={grouped.TO}  onRemove={removeUser} />
+        <BucketSummary label="Cc"  bucket="CC"  items={grouped.CC}  onRemove={removeUser} />
+        <BucketSummary label="Bcc" bucket="BCC" items={grouped.BCC} onRemove={removeUser} />
       </div>
+
 
       {/* 2. Compact selectors row — LOB · Apps · CIO */}
       <div className="grid grid-cols-3 gap-2 mt-3 shrink-0">
