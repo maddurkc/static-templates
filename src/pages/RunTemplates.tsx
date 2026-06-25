@@ -32,7 +32,9 @@ import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/t
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
 import { getDistributionList, listDistributionLists, type RecipientRef, type DistributionList } from "@/lib/distributionListStorage";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Users as UsersIcon, Lock as LockIcon, Globe as GlobeIcon } from "lucide-react";
+import { Users as UsersIcon, Lock as LockIcon, Globe as GlobeIcon, Target as TargetIcon } from "lucide-react";
+import DynamicTargetingPanel, { type DynamicTargetingResolved } from "@/components/dynamicTargeting/DynamicTargetingPanel";
+import type { DynamicTargetingPayload } from "@/lib/dynamicTargetingData";
 
 /**
  * Convert recipient User[] (which may contain DLs) into:
@@ -115,6 +117,9 @@ const RunTemplates = () => {
   const [dlDrawerOpen, setDlDrawerOpen] = useState(false);
   const [dlDrawerSearch, setDlDrawerSearch] = useState("");
   const [appliedDLs, setAppliedDLs] = useState<DistributionList[]>([]);
+  // Dynamic Targeting (built in DL drawer's 2nd tab; sent in payload as `dynamicTargeting`).
+  const [dynamicTargeting, setDynamicTargeting] = useState<DynamicTargetingPayload | null>(null);
+  const DT_SOURCE_ID = "__dt__"; // pseudo sourceDLId used to tag DT-injected users for safe removal
   const [viewMode, setViewMode] = useState<'template' | 'execution'>('template'); // New: toggle between template view and execution view
   const [executedOn, setExecutedOn] = useState<string>("");
   const [emailSubject, setEmailSubject] = useState<string>("");
@@ -1748,6 +1753,9 @@ const RunTemplates = () => {
         subject_data: subjectData,
         body_data: bodyData
       },
+      // Dynamic Targeting JSON — backend persists to `dynamic_targetting` table
+      // and re-resolves on send so the email reflects current org roster.
+      dynamicTargeting: dynamicTargeting ?? null,
       renderedHtml: fullEmailHtml
     };
 
@@ -2453,128 +2461,179 @@ const RunTemplates = () => {
                       <UsersIcon size={14} /> DLs
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="right" className="w-[420px] sm:max-w-[420px] flex flex-col">
+                  <SheetContent side="right" className="w-[480px] sm:max-w-[480px] flex flex-col">
                     <SheetHeader>
                       <SheetTitle>Distribution Lists</SheetTitle>
                     </SheetHeader>
-                    <div className="mt-3">
-                      <Input
-                        value={dlDrawerSearch}
-                        onChange={(e) => setDlDrawerSearch(e.target.value)}
-                        placeholder="Search distribution lists..."
-                      />
-                    </div>
-                    <ScrollArea className="flex-1 mt-3 -mx-6 px-6">
-                      <div className="space-y-2 pb-4">
-                        {(() => {
-                          const q = dlDrawerSearch.trim().toLowerCase();
-                          const all = listDistributionLists();
-                          const dls = q
-                            ? all.filter(
-                                (d) =>
-                                  d.displayName.toLowerCase().includes(q) ||
-                                  d.name.toLowerCase().includes(q),
-                              )
-                            : all;
-                          if (dls.length === 0) {
-                            return (
-                              <div className="text-sm text-muted-foreground py-8 text-center">
-                                No distribution lists available.
-                              </div>
-                            );
-                          }
-                          const mergeBucket = (existing: User[], emails: string[], dlId: string): User[] => {
-                            const next = existing.map(u => ({ ...u }));
-                            const byEmail = new Map<string, User>();
-                            next.forEach(u => {
-                              if (u.kind === "USER" && u.email) byEmail.set(u.email.toLowerCase(), u);
-                            });
-                            emails.forEach(email => {
-                              const key = email.toLowerCase();
-                              const found = byEmail.get(key);
-                              if (found) {
-                                // If user was added manually (no sourceDLIds), leave it as manual.
-                                // If it was DL-sourced already, tag this DL too.
-                                if (found.sourceDLIds && found.sourceDLIds.length > 0) {
-                                  if (!found.sourceDLIds.includes(dlId)) {
-                                    found.sourceDLIds = [...found.sourceDLIds, dlId];
-                                  }
-                                }
-                              } else {
-                                const displayName = email
-                                  .split("@")[0]
-                                  .replace(/[._-]/g, " ")
-                                  .split(" ")
-                                  .filter(Boolean)
-                                  .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-                                  .join(" ");
-                                const fresh: User = {
-                                  id: email, email, name: displayName || email, kind: "USER",
-                                  sourceDLIds: [dlId],
-                                };
-                                next.push(fresh);
-                                byEmail.set(key, fresh);
+                    <Tabs defaultValue="custom" className="flex-1 flex flex-col mt-3 min-h-0">
+                      <TabsList className="grid grid-cols-2">
+                        <TabsTrigger value="custom">Custom Smart DL</TabsTrigger>
+                        <TabsTrigger value="dynamic">Dynamic Targeting</TabsTrigger>
+                      </TabsList>
+
+                      {/* --- Tab 1: existing custom smart DL list --- */}
+                      <TabsContent value="custom" className="flex-1 flex flex-col min-h-0 mt-3">
+                        <Input
+                          value={dlDrawerSearch}
+                          onChange={(e) => setDlDrawerSearch(e.target.value)}
+                          placeholder="Search distribution lists..."
+                        />
+                        <ScrollArea className="flex-1 mt-3 -mx-6 px-6">
+                          <div className="space-y-2 pb-4">
+                            {(() => {
+                              const q = dlDrawerSearch.trim().toLowerCase();
+                              const all = listDistributionLists();
+                              const dls = q
+                                ? all.filter(
+                                    (d) =>
+                                      d.displayName.toLowerCase().includes(q) ||
+                                      d.name.toLowerCase().includes(q),
+                                  )
+                                : all;
+                              if (dls.length === 0) {
+                                return (
+                                  <div className="text-sm text-muted-foreground py-8 text-center">
+                                    No distribution lists available.
+                                  </div>
+                                );
                               }
-                            });
-                            return next;
-                          };
-                          const appliedIds = new Set(appliedDLs.map(d => d.distributionListId));
-                          const applyDL = (dl: DistributionList) => {
-                            const id = dl.distributionListId;
-                            setToUsers((cur) => mergeBucket(cur, dl.toMembers.map(m => m.email), id));
-                            setCcUsers((cur) => mergeBucket(cur, dl.ccMembers.map(m => m.email), id));
-                            setBccUsers((cur) => mergeBucket(cur, dl.bccMembers.map(m => m.email), id));
-                            setAppliedDLs((cur) => [...cur, dl]);
+                              const mergeBucket = (existing: User[], emails: string[], dlId: string): User[] => {
+                                const next = existing.map(u => ({ ...u }));
+                                const byEmail = new Map<string, User>();
+                                next.forEach(u => {
+                                  if (u.kind === "USER" && u.email) byEmail.set(u.email.toLowerCase(), u);
+                                });
+                                emails.forEach(email => {
+                                  const key = email.toLowerCase();
+                                  const found = byEmail.get(key);
+                                  if (found) {
+                                    if (found.sourceDLIds && found.sourceDLIds.length > 0) {
+                                      if (!found.sourceDLIds.includes(dlId)) {
+                                        found.sourceDLIds = [...found.sourceDLIds, dlId];
+                                      }
+                                    }
+                                  } else {
+                                    const displayName = email
+                                      .split("@")[0]
+                                      .replace(/[._-]/g, " ")
+                                      .split(" ")
+                                      .filter(Boolean)
+                                      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                                      .join(" ");
+                                    const fresh: User = {
+                                      id: email, email, name: displayName || email, kind: "USER",
+                                      sourceDLIds: [dlId],
+                                    };
+                                    next.push(fresh);
+                                    byEmail.set(key, fresh);
+                                  }
+                                });
+                                return next;
+                              };
+                              const appliedIds = new Set(appliedDLs.map(d => d.distributionListId));
+                              const applyDL = (dl: DistributionList) => {
+                                const id = dl.distributionListId;
+                                setToUsers((cur) => mergeBucket(cur, dl.toMembers.map(m => m.email), id));
+                                setCcUsers((cur) => mergeBucket(cur, dl.ccMembers.map(m => m.email), id));
+                                setBccUsers((cur) => mergeBucket(cur, dl.bccMembers.map(m => m.email), id));
+                                setAppliedDLs((cur) => [...cur, dl]);
+                                toast({
+                                  title: `Applied ${dl.displayName}`,
+                                  description: `To +${dl.toMembers.length} · CC +${dl.ccMembers.length} · BCC +${dl.bccMembers.length}`,
+                                });
+                                setDlDrawerOpen(false);
+                              };
+                              return dls.map((dl) => {
+                                const total = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
+                                const alreadyApplied = appliedIds.has(dl.distributionListId);
+                                return (
+                                  <button
+                                    key={dl.distributionListId}
+                                    type="button"
+                                    disabled={alreadyApplied}
+                                    title={alreadyApplied ? "Already selected" : undefined}
+                                    onClick={() => !alreadyApplied && applyDL(dl)}
+                                    className={`w-full text-left p-3 rounded-md border border-border transition-colors ${
+                                      alreadyApplied
+                                        ? "opacity-50 cursor-not-allowed bg-muted/40"
+                                        : "hover:border-primary hover:bg-accent/50"
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-semibold text-sm flex items-center gap-1.5">
+                                        <UsersIcon size={13} />
+                                        {dl.displayName}
+                                      </span>
+                                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                                        {alreadyApplied ? (
+                                          <span className="text-primary font-semibold normal-case">Already selected</span>
+                                        ) : (
+                                          <>
+                                            {dl.visibility === "PUBLIC" ? <GlobeIcon size={10} /> : <LockIcon size={10} />}
+                                            {dl.visibility.toLowerCase()}
+                                          </>
+                                        )}
+                                      </span>
+                                    </div>
+                                    {dl.description && (
+                                      <div className="text-xs text-muted-foreground mt-1 line-clamp-1">{dl.description}</div>
+                                    )}
+                                    <div className="text-[11px] text-muted-foreground mt-1.5">
+                                      {total} member{total === 1 ? "" : "s"} · To {dl.toMembers.length} / CC {dl.ccMembers.length} / BCC {dl.bccMembers.length}
+                                    </div>
+                                  </button>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+
+                      {/* --- Tab 2: Dynamic Targeting --- */}
+                      <TabsContent value="dynamic" className="flex-1 flex flex-col min-h-0 mt-0">
+                        <DynamicTargetingPanel
+                          initial={dynamicTargeting}
+                          onClose={() => setDlDrawerOpen(false)}
+                          onApply={(payload, resolved: DynamicTargetingResolved) => {
+                            // Tag DT-sourced users so chip-removal can clean them up
+                            // without touching manually-typed or DL-sourced users.
+                            const inject = (cur: User[], items: { email: string; name?: string }[]): User[] => {
+                              const byEmail = new Map<string, User>();
+                              cur.forEach(u => { if (u.kind === "USER" && u.email) byEmail.set(u.email.toLowerCase(), u); });
+                              const next = [...cur];
+                              items.forEach(({ email, name }) => {
+                                const key = email.toLowerCase();
+                                const found = byEmail.get(key);
+                                if (found) {
+                                  if (found.sourceDLIds && found.sourceDLIds.length > 0) {
+                                    if (!found.sourceDLIds.includes(DT_SOURCE_ID)) {
+                                      found.sourceDLIds = [...found.sourceDLIds, DT_SOURCE_ID];
+                                    }
+                                  }
+                                } else {
+                                  next.push({
+                                    id: email, email,
+                                    name: name || email,
+                                    kind: "USER",
+                                    sourceDLIds: [DT_SOURCE_ID],
+                                  });
+                                }
+                              });
+                              return next;
+                            };
+                            setToUsers(cur  => inject(cur, resolved.to));
+                            setCcUsers(cur  => inject(cur, resolved.cc));
+                            setBccUsers(cur => inject(cur, resolved.bcc));
+                            setDynamicTargeting(payload);
                             toast({
-                              title: `Applied ${dl.displayName}`,
-                              description: `To +${dl.toMembers.length} · CC +${dl.ccMembers.length} · BCC +${dl.bccMembers.length}`,
+                              title: "Dynamic targeting applied",
+                              description: `To +${resolved.to.length} · CC +${resolved.cc.length} · BCC +${resolved.bcc.length}`,
                             });
                             setDlDrawerOpen(false);
-                          };
-                          return dls.map((dl) => {
-                            const total = dl.toMembers.length + dl.ccMembers.length + dl.bccMembers.length;
-                            const alreadyApplied = appliedIds.has(dl.distributionListId);
-                            return (
-                              <button
-                                key={dl.distributionListId}
-                                type="button"
-                                disabled={alreadyApplied}
-                                title={alreadyApplied ? "Already selected" : undefined}
-                                onClick={() => !alreadyApplied && applyDL(dl)}
-                                className={`w-full text-left p-3 rounded-md border border-border transition-colors ${
-                                  alreadyApplied
-                                    ? "opacity-50 cursor-not-allowed bg-muted/40"
-                                    : "hover:border-primary hover:bg-accent/50"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="font-semibold text-sm flex items-center gap-1.5">
-                                    <UsersIcon size={13} />
-                                    {dl.displayName}
-                                  </span>
-                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-                                    {alreadyApplied ? (
-                                      <span className="text-primary font-semibold normal-case">Already selected</span>
-                                    ) : (
-                                      <>
-                                        {dl.visibility === "PUBLIC" ? <GlobeIcon size={10} /> : <LockIcon size={10} />}
-                                        {dl.visibility.toLowerCase()}
-                                      </>
-                                    )}
-                                  </span>
-                                </div>
-                                {dl.description && (
-                                  <div className="text-xs text-muted-foreground mt-1 line-clamp-1">{dl.description}</div>
-                                )}
-                                <div className="text-[11px] text-muted-foreground mt-1.5">
-                                  {total} member{total === 1 ? "" : "s"} · To {dl.toMembers.length} / CC {dl.ccMembers.length} / BCC {dl.bccMembers.length}
-                                </div>
-                              </button>
-                            );
-                          });
-                        })()}
-                      </div>
-                    </ScrollArea>
+                          }}
+                        />
+                      </TabsContent>
+                    </Tabs>
                   </SheetContent>
                 </Sheet>
 
@@ -2622,6 +2681,38 @@ const RunTemplates = () => {
                       </span>
                     );
                   })}
+                  {dynamicTargeting && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium shrink-0"
+                      title={`Dynamic Targeting · LOB ${dynamicTargeting.lob}`}
+                    >
+                      <TargetIcon size={11} />
+                      Dynamic Targeting
+                      <button
+                        type="button"
+                        aria-label="Remove dynamic targeting"
+                        onClick={() => {
+                          const stripDt = (cur: User[]): User[] =>
+                            cur.reduce<User[]>((acc, u) => {
+                              if (u.kind !== "USER" || !u.sourceDLIds || u.sourceDLIds.length === 0) {
+                                acc.push(u); return acc;
+                              }
+                              const remaining = u.sourceDLIds.filter(id => id !== DT_SOURCE_ID);
+                              if (remaining.length === 0) return acc;
+                              acc.push({ ...u, sourceDLIds: remaining });
+                              return acc;
+                            }, []);
+                          setToUsers(stripDt);
+                          setCcUsers(stripDt);
+                          setBccUsers(stripDt);
+                          setDynamicTargeting(null);
+                        }}
+                        className="ml-0.5 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-emerald-200 text-emerald-600 hover:text-emerald-900"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
                 </div>
               </div>
 
