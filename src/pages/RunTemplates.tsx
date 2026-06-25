@@ -2681,6 +2681,38 @@ const RunTemplates = () => {
                       </span>
                     );
                   })}
+                  {dynamicTargeting && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium shrink-0"
+                      title={`Dynamic Targeting · LOB ${dynamicTargeting.lob}`}
+                    >
+                      <TargetIcon size={11} />
+                      Dynamic Targeting
+                      <button
+                        type="button"
+                        aria-label="Remove dynamic targeting"
+                        onClick={() => {
+                          const stripDt = (cur: User[]): User[] =>
+                            cur.reduce<User[]>((acc, u) => {
+                              if (u.kind !== "USER" || !u.sourceDLIds || u.sourceDLIds.length === 0) {
+                                acc.push(u); return acc;
+                              }
+                              const remaining = u.sourceDLIds.filter(id => id !== DT_SOURCE_ID);
+                              if (remaining.length === 0) return acc;
+                              acc.push({ ...u, sourceDLIds: remaining });
+                              return acc;
+                            }, []);
+                          setToUsers(stripDt);
+                          setCcUsers(stripDt);
+                          setBccUsers(stripDt);
+                          setDynamicTargeting(null);
+                        }}
+                        className="ml-0.5 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-emerald-200 text-emerald-600 hover:text-emerald-900"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
                 </div>
               </div>
 
