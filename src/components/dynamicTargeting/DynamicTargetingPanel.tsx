@@ -124,25 +124,56 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
     });
   };
 
-  /* live preview & resolved */
-  const resolved = useMemo<DynamicTargetingResolved>(() => {
-    const out: DynamicTargetingResolved = { to: [], cc: [], bcc: [] };
+  /** Remove a single user from a role's selection (works in ALL or FILTERED mode). */
+  const removeUser = (code: DTRoleCode, email: string) => {
+    updateSection(code, st => {
+      const users = roster[code] || [];
+      if (st.mode === "ALL") {
+        // Convert to FILTERED with everyone checked except this one.
+        const userChecked: Record<string, boolean> = {};
+        const userBuckets: Record<string, DTBucket> = {};
+        users.forEach(u => {
+          userChecked[u.email] = u.email !== email;
+          userBuckets[u.email] = st.bucket;
+        });
+        return { ...st, mode: "FILTERED", userChecked, userBuckets };
+      }
+      if (st.mode === "FILTERED") {
+        return {
+          ...st,
+          userChecked: { ...st.userChecked, [email]: false },
+        };
+      }
+      return st;
+    });
+  };
+
+  /* live preview & resolved (with role tagging for the summary UI) */
+  type ResolvedItem = { email: string; name?: string; roleCode: DTRoleCode; roleLabel: string };
+  const grouped = useMemo(() => {
+    const out: Record<DTBucket, ResolvedItem[]> = { TO: [], CC: [], BCC: [] };
     const seen = { TO: new Set<string>(), CC: new Set<string>(), BCC: new Set<string>() };
-    const push = (b: DTBucket, u: OrgUser) => {
-      const key = u.email.toLowerCase();
-      if (seen[b].has(key)) return;
-      seen[b].add(key);
-      (b === "TO" ? out.to : b === "CC" ? out.cc : out.bcc).push({ email: u.email, name: u.name });
-    };
-    DT_ROLES.forEach(({ code }) => {
+    DT_ROLES.forEach(({ code, label }) => {
       const s = sections[code];
       const users = roster[code] || [];
+      const push = (b: DTBucket, u: OrgUser) => {
+        const key = u.email.toLowerCase();
+        if (seen[b].has(key)) return;
+        seen[b].add(key);
+        out[b].push({ email: u.email, name: u.name, roleCode: code, roleLabel: label });
+      };
       if (s.mode === "ALL") users.forEach(u => push(s.bucket, u));
       else if (s.mode === "FILTERED")
         users.forEach(u => { if (s.userChecked[u.email]) push(s.userBuckets[u.email] || "TO", u); });
     });
     return out;
   }, [sections, roster]);
+
+  const resolved = useMemo<DynamicTargetingResolved>(() => ({
+    to:  grouped.TO.map(i  => ({ email: i.email, name: i.name })),
+    cc:  grouped.CC.map(i  => ({ email: i.email, name: i.name })),
+    bcc: grouped.BCC.map(i => ({ email: i.email, name: i.name })),
+  }), [grouped]);
 
   const buildPayload = (): DynamicTargetingPayload => {
     const out: DynamicTargetingPayload = { lob, apps, cioDirect, sections: {} };
@@ -175,6 +206,7 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
     DT_ROLES.forEach(r => init[r.code] = emptySection());
     setSections(init);
   };
+
 
   /* ---------- render ---------- */
   return (
