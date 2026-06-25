@@ -117,6 +117,9 @@ const RunTemplates = () => {
   const [dlDrawerOpen, setDlDrawerOpen] = useState(false);
   const [dlDrawerSearch, setDlDrawerSearch] = useState("");
   const [appliedDLs, setAppliedDLs] = useState<DistributionList[]>([]);
+  // Dynamic Targeting (built in DL drawer's 2nd tab; sent in payload as `dynamicTargeting`).
+  const [dynamicTargeting, setDynamicTargeting] = useState<DynamicTargetingPayload | null>(null);
+  const DT_SOURCE_ID = "__dt__"; // pseudo sourceDLId used to tag DT-injected users for safe removal
   const [viewMode, setViewMode] = useState<'template' | 'execution'>('template'); // New: toggle between template view and execution view
   const [executedOn, setExecutedOn] = useState<string>("");
   const [emailSubject, setEmailSubject] = useState<string>("");
