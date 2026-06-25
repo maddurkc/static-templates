@@ -34,7 +34,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Search, X } from "lucide-react";
+import {
+  AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Search, X,
+} from "lucide-react";
+
 
 export interface DynamicTargetingResolved {
   to:  { email: string; name?: string }[];
