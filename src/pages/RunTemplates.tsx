@@ -1753,6 +1753,9 @@ const RunTemplates = () => {
         subject_data: subjectData,
         body_data: bodyData
       },
+      // Dynamic Targeting JSON — backend persists to `dynamic_targetting` table
+      // and re-resolves on send so the email reflects current org roster.
+      dynamicTargeting: dynamicTargeting ?? null,
       renderedHtml: fullEmailHtml
     };
 
