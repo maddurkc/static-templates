@@ -32,7 +32,9 @@ import { subjectThymeleafToPlaceholder, processSubjectWithValues } from "@/lib/t
 import { UserAutocomplete, User } from "@/components/templates/UserAutocomplete";
 import { getDistributionList, listDistributionLists, type RecipientRef, type DistributionList } from "@/lib/distributionListStorage";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Users as UsersIcon, Lock as LockIcon, Globe as GlobeIcon } from "lucide-react";
+import { Users as UsersIcon, Lock as LockIcon, Globe as GlobeIcon, Target as TargetIcon } from "lucide-react";
+import DynamicTargetingPanel, { type DynamicTargetingResolved } from "@/components/dynamicTargeting/DynamicTargetingPanel";
+import type { DynamicTargetingPayload } from "@/lib/dynamicTargetingData";
 
 /**
  * Convert recipient User[] (which may contain DLs) into:
