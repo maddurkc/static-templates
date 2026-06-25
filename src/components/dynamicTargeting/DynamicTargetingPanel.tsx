@@ -462,25 +462,103 @@ const BUCKET_COLOR: Record<string, string> = {
   BCC: "bg-slate-200  text-slate-700  border-slate-300",
 };
 
-function SummaryRow({
-  label, bucket, items,
-}: { label: string; bucket: DTBucket; items: { email: string; name?: string }[] }) {
+type BucketSummaryItem = { email: string; name?: string; roleCode: DTRoleCode; roleLabel: string };
+
+function BucketSummary({
+  label, bucket, items, onRemove,
+}: {
+  label: string;
+  bucket: DTBucket;
+  items: BucketSummaryItem[];
+  onRemove: (code: DTRoleCode, email: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const empty = items.length === 0;
+  const PREVIEW = 2;
+  const previewNames = items.slice(0, PREVIEW).map(i => i.name || i.email);
+  const overflow = Math.max(0, items.length - PREVIEW);
+
+  // group by role for the expanded view
+  const groups = useMemo(() => {
+    const m = new Map<DTRoleCode, { label: string; users: BucketSummaryItem[] }>();
+    items.forEach(it => {
+      if (!m.has(it.roleCode)) m.set(it.roleCode, { label: it.roleLabel, users: [] });
+      m.get(it.roleCode)!.users.push(it);
+    });
+    return Array.from(m.entries()).map(([code, v]) => ({ code, ...v }));
+  }, [items]);
+
   return (
-    <div className="flex items-baseline gap-2 text-[11px] min-w-0">
-      <span className={`shrink-0 inline-flex items-center justify-center min-w-[28px] h-4 px-1 rounded text-[9px] font-bold border ${BUCKET_COLOR[bucket]}`}>
-        {label.toUpperCase()}
-      </span>
-      <span className="truncate text-foreground/90">
-        {items.length === 0
-          ? <span className="text-muted-foreground italic">none</span>
-          : items.map(i => i.name || i.email).join(", ")}
-      </span>
-      {items.length > 0 && (
-        <span className="ml-auto shrink-0 text-[10px] text-muted-foreground font-medium">{items.length}</span>
+    <div className={`rounded-md border ${empty ? "border-transparent" : "border-border/60 bg-background/60"}`}>
+      <button
+        type="button"
+        onClick={() => !empty && setOpen(o => !o)}
+        disabled={empty}
+        className={`w-full flex items-center gap-2 text-[11px] min-w-0 px-1.5 py-1 rounded-md ${
+          empty ? "cursor-default" : "hover:bg-muted/60 cursor-pointer"
+        }`}
+        aria-expanded={open}
+      >
+        <span className={`shrink-0 inline-flex items-center justify-center min-w-[28px] h-4 px-1 rounded text-[9px] font-bold border ${BUCKET_COLOR[bucket]}`}>
+          {label.toUpperCase()}
+        </span>
+        {empty ? (
+          <span className="text-muted-foreground italic flex-1 text-left">none</span>
+        ) : (
+          <>
+            <span className="truncate text-foreground/90 flex-1 text-left">
+              {previewNames.join(", ")}
+            </span>
+            {overflow > 0 && (
+              <span className="shrink-0 inline-flex items-center justify-center h-4 px-1.5 rounded-full bg-muted text-muted-foreground text-[10px] font-semibold">
+                +{overflow}
+              </span>
+            )}
+            <span className="shrink-0 text-[10px] text-muted-foreground font-semibold tabular-nums w-6 text-right">
+              {items.length}
+            </span>
+            {open
+              ? <ChevronUp size={12} className="shrink-0 text-muted-foreground" />
+              : <ChevronDown size={12} className="shrink-0 text-muted-foreground" />}
+          </>
+        )}
+      </button>
+
+      {open && !empty && (
+        <div className="border-t border-border/60 px-1.5 py-1.5 max-h-44 overflow-auto space-y-1.5">
+          {groups.map(g => (
+            <div key={g.code}>
+              <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-0.5 mb-0.5 flex items-center gap-1.5">
+                <span>{g.label}</span>
+                <span className="text-muted-foreground/70 font-medium">· {g.users.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {g.users.map(u => (
+                  <span
+                    key={`${g.code}-${u.email}`}
+                    className="inline-flex items-center gap-1 max-w-full pl-2 pr-1 h-5 rounded-full bg-muted/80 hover:bg-muted text-[10px] text-foreground/90 border border-border/60"
+                    title={u.email}
+                  >
+                    <span className="truncate max-w-[140px]">{u.name || u.email}</span>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(g.code, u.email)}
+                      className="shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-destructive/15 hover:text-destructive text-muted-foreground"
+                      aria-label={`Remove ${u.name || u.email}`}
+                    >
+                      <X size={9} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
 }
+
 
 function CompactSelect({
   label, value, onChange, placeholder, options, disabled,
