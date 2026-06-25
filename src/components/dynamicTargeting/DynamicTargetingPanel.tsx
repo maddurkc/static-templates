@@ -34,7 +34,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Search, X } from "lucide-react";
+import {
+  AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Search, X,
+} from "lucide-react";
+
 
 export interface DynamicTargetingResolved {
   to:  { email: string; name?: string }[];
@@ -121,25 +124,56 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
     });
   };
 
-  /* live preview & resolved */
-  const resolved = useMemo<DynamicTargetingResolved>(() => {
-    const out: DynamicTargetingResolved = { to: [], cc: [], bcc: [] };
+  /** Remove a single user from a role's selection (works in ALL or FILTERED mode). */
+  const removeUser = (code: DTRoleCode, email: string) => {
+    updateSection(code, st => {
+      const users = roster[code] || [];
+      if (st.mode === "ALL") {
+        // Convert to FILTERED with everyone checked except this one.
+        const userChecked: Record<string, boolean> = {};
+        const userBuckets: Record<string, DTBucket> = {};
+        users.forEach(u => {
+          userChecked[u.email] = u.email !== email;
+          userBuckets[u.email] = st.bucket;
+        });
+        return { ...st, mode: "FILTERED", userChecked, userBuckets };
+      }
+      if (st.mode === "FILTERED") {
+        return {
+          ...st,
+          userChecked: { ...st.userChecked, [email]: false },
+        };
+      }
+      return st;
+    });
+  };
+
+  /* live preview & resolved (with role tagging for the summary UI) */
+  type ResolvedItem = { email: string; name?: string; roleCode: DTRoleCode; roleLabel: string };
+  const grouped = useMemo(() => {
+    const out: Record<DTBucket, ResolvedItem[]> = { TO: [], CC: [], BCC: [] };
     const seen = { TO: new Set<string>(), CC: new Set<string>(), BCC: new Set<string>() };
-    const push = (b: DTBucket, u: OrgUser) => {
-      const key = u.email.toLowerCase();
-      if (seen[b].has(key)) return;
-      seen[b].add(key);
-      (b === "TO" ? out.to : b === "CC" ? out.cc : out.bcc).push({ email: u.email, name: u.name });
-    };
-    DT_ROLES.forEach(({ code }) => {
+    DT_ROLES.forEach(({ code, label }) => {
       const s = sections[code];
       const users = roster[code] || [];
+      const push = (b: DTBucket, u: OrgUser) => {
+        const key = u.email.toLowerCase();
+        if (seen[b].has(key)) return;
+        seen[b].add(key);
+        out[b].push({ email: u.email, name: u.name, roleCode: code, roleLabel: label });
+      };
       if (s.mode === "ALL") users.forEach(u => push(s.bucket, u));
       else if (s.mode === "FILTERED")
         users.forEach(u => { if (s.userChecked[u.email]) push(s.userBuckets[u.email] || "TO", u); });
     });
     return out;
   }, [sections, roster]);
+
+  const resolved = useMemo<DynamicTargetingResolved>(() => ({
+    to:  grouped.TO.map(i  => ({ email: i.email, name: i.name })),
+    cc:  grouped.CC.map(i  => ({ email: i.email, name: i.name })),
+    bcc: grouped.BCC.map(i => ({ email: i.email, name: i.name })),
+  }), [grouped]);
 
   const buildPayload = (): DynamicTargetingPayload => {
     const out: DynamicTargetingPayload = { lob, apps, cioDirect, sections: {} };
@@ -173,14 +207,22 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
     setSections(init);
   };
 
+
   /* ---------- render ---------- */
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* 1. STICKY top — selected recipients summary */}
       <div className="border border-border rounded-md bg-gradient-to-b from-muted/60 to-muted/20 p-2.5 space-y-1.5 shrink-0">
         <div className="flex items-center justify-between">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Selected recipients
+          <div className="flex items-center gap-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Selected recipients
+            </div>
+            {totalSelected > 40 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 h-4 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                <AlertTriangle size={10} /> {totalSelected} total
+              </span>
+            )}
           </div>
           {totalSelected > 0 && (
             <button
@@ -192,10 +234,11 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
             </button>
           )}
         </div>
-        <SummaryRow label="To"  bucket="TO"  items={resolved.to}  />
-        <SummaryRow label="Cc"  bucket="CC"  items={resolved.cc}  />
-        <SummaryRow label="Bcc" bucket="BCC" items={resolved.bcc} />
+        <BucketSummary label="To"  bucket="TO"  items={grouped.TO}  onRemove={removeUser} />
+        <BucketSummary label="Cc"  bucket="CC"  items={grouped.CC}  onRemove={removeUser} />
+        <BucketSummary label="Bcc" bucket="BCC" items={grouped.BCC} onRemove={removeUser} />
       </div>
+
 
       {/* 2. Compact selectors row — LOB · Apps · CIO */}
       <div className="grid grid-cols-3 gap-2 mt-3 shrink-0">
@@ -419,25 +462,103 @@ const BUCKET_COLOR: Record<string, string> = {
   BCC: "bg-slate-200  text-slate-700  border-slate-300",
 };
 
-function SummaryRow({
-  label, bucket, items,
-}: { label: string; bucket: DTBucket; items: { email: string; name?: string }[] }) {
+type BucketSummaryItem = { email: string; name?: string; roleCode: DTRoleCode; roleLabel: string };
+
+function BucketSummary({
+  label, bucket, items, onRemove,
+}: {
+  label: string;
+  bucket: DTBucket;
+  items: BucketSummaryItem[];
+  onRemove: (code: DTRoleCode, email: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const empty = items.length === 0;
+  const PREVIEW = 2;
+  const previewNames = items.slice(0, PREVIEW).map(i => i.name || i.email);
+  const overflow = Math.max(0, items.length - PREVIEW);
+
+  // group by role for the expanded view
+  const groups = useMemo(() => {
+    const m = new Map<DTRoleCode, { label: string; users: BucketSummaryItem[] }>();
+    items.forEach(it => {
+      if (!m.has(it.roleCode)) m.set(it.roleCode, { label: it.roleLabel, users: [] });
+      m.get(it.roleCode)!.users.push(it);
+    });
+    return Array.from(m.entries()).map(([code, v]) => ({ code, ...v }));
+  }, [items]);
+
   return (
-    <div className="flex items-baseline gap-2 text-[11px] min-w-0">
-      <span className={`shrink-0 inline-flex items-center justify-center min-w-[28px] h-4 px-1 rounded text-[9px] font-bold border ${BUCKET_COLOR[bucket]}`}>
-        {label.toUpperCase()}
-      </span>
-      <span className="truncate text-foreground/90">
-        {items.length === 0
-          ? <span className="text-muted-foreground italic">none</span>
-          : items.map(i => i.name || i.email).join(", ")}
-      </span>
-      {items.length > 0 && (
-        <span className="ml-auto shrink-0 text-[10px] text-muted-foreground font-medium">{items.length}</span>
+    <div className={`rounded-md border ${empty ? "border-transparent" : "border-border/60 bg-background/60"}`}>
+      <button
+        type="button"
+        onClick={() => !empty && setOpen(o => !o)}
+        disabled={empty}
+        className={`w-full flex items-center gap-2 text-[11px] min-w-0 px-1.5 py-1 rounded-md ${
+          empty ? "cursor-default" : "hover:bg-muted/60 cursor-pointer"
+        }`}
+        aria-expanded={open}
+      >
+        <span className={`shrink-0 inline-flex items-center justify-center min-w-[28px] h-4 px-1 rounded text-[9px] font-bold border ${BUCKET_COLOR[bucket]}`}>
+          {label.toUpperCase()}
+        </span>
+        {empty ? (
+          <span className="text-muted-foreground italic flex-1 text-left">none</span>
+        ) : (
+          <>
+            <span className="truncate text-foreground/90 flex-1 text-left">
+              {previewNames.join(", ")}
+            </span>
+            {overflow > 0 && (
+              <span className="shrink-0 inline-flex items-center justify-center h-4 px-1.5 rounded-full bg-muted text-muted-foreground text-[10px] font-semibold">
+                +{overflow}
+              </span>
+            )}
+            <span className="shrink-0 text-[10px] text-muted-foreground font-semibold tabular-nums w-6 text-right">
+              {items.length}
+            </span>
+            {open
+              ? <ChevronUp size={12} className="shrink-0 text-muted-foreground" />
+              : <ChevronDown size={12} className="shrink-0 text-muted-foreground" />}
+          </>
+        )}
+      </button>
+
+      {open && !empty && (
+        <div className="border-t border-border/60 px-1.5 py-1.5 max-h-44 overflow-auto space-y-1.5">
+          {groups.map(g => (
+            <div key={g.code}>
+              <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-0.5 mb-0.5 flex items-center gap-1.5">
+                <span>{g.label}</span>
+                <span className="text-muted-foreground/70 font-medium">· {g.users.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {g.users.map(u => (
+                  <span
+                    key={`${g.code}-${u.email}`}
+                    className="inline-flex items-center gap-1 max-w-full pl-2 pr-1 h-5 rounded-full bg-muted/80 hover:bg-muted text-[10px] text-foreground/90 border border-border/60"
+                    title={u.email}
+                  >
+                    <span className="truncate max-w-[140px]">{u.name || u.email}</span>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(g.code, u.email)}
+                      className="shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-destructive/15 hover:text-destructive text-muted-foreground"
+                      aria-label={`Remove ${u.name || u.email}`}
+                    >
+                      <X size={9} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
 }
+
 
 function CompactSelect({
   label, value, onChange, placeholder, options, disabled,
