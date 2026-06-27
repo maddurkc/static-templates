@@ -70,6 +70,75 @@ const emptySection = (): SectionState => ({
 
 const BUCKETS: DTBucket[] = ["TO", "CC", "BCC"];
 
+/** Short tokens used in the auto-generated record name. */
+const ROLE_ABBR: Record<DTRoleCode, string> = {
+  TECH_MANAGER: "TM",
+  ALT_TECH_MANAGER: "ATM",
+  BUSINESS_OWNER: "BO",
+  ALT_BUSINESS_OWNER: "ABO",
+  CIO1: "C1",
+  CIO2: "C2",
+};
+
+/**
+ * Build a human-readable name that encodes scope (LOB › Apps › CIO)
+ * and selection shape (which roles → which bucket, ALL vs partial).
+ * Examples:
+ *   "CCB › CCB-CARD-AUTH › Priya Raman › TM:TO, BO:CC"
+ *   "CCB › AllApps › NoCIO › TM:TO, BO:CC(2/3) · partial"
+ *   "CIB › CIB-TRADING+CIB-RISK › Sarah Connor › TM:TO, C1:BCC"
+ */
+function generateTargetName(args: {
+  lob: string;
+  apps: string[];
+  cioDirect: string;
+  sections: Record<DTRoleCode, SectionState>;
+  roster: DTRoster;
+  totalAppsForLob: number;
+  cioLabel: string;
+}): string {
+  const { lob, apps, cioDirect, sections, roster, totalAppsForLob, cioLabel } = args;
+  if (!lob) return "";
+
+  // Apps part
+  let appsPart: string;
+  if (apps.length === 0) appsPart = "NoApps";
+  else if (totalAppsForLob > 0 && apps.length === totalAppsForLob) appsPart = "AllApps";
+  else if (apps.length === 1) appsPart = apps[0];
+  else if (apps.length === 2) appsPart = `${apps[0]}+${apps[1]}`;
+  else appsPart = `${apps[0]} +${apps.length - 1}more`;
+
+  // CIO part
+  const cioPart = cioDirect ? cioLabel : "NoCIO";
+
+  // Roles part
+  let anyFiltered = false;
+  const roleTokens: string[] = [];
+  DT_ROLES.forEach(({ code }) => {
+    const s = sections[code];
+    const users = roster[code] || [];
+    if (s.mode === "ALL" && users.length > 0) {
+      roleTokens.push(`${ROLE_ABBR[code]}:${s.bucket}`);
+    } else if (s.mode === "FILTERED") {
+      const picked = users.filter(u => s.userChecked[u.email]);
+      if (picked.length === 0) return;
+      anyFiltered = true;
+      // bucket = most common bucket among picked
+      const counts: Record<string, number> = {};
+      picked.forEach(u => {
+        const b = s.userBuckets[u.email] || "TO";
+        counts[b] = (counts[b] || 0) + 1;
+      });
+      const bucket = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+      roleTokens.push(`${ROLE_ABBR[code]}:${bucket}(${picked.length}/${users.length})`);
+    }
+  });
+
+  const rolesPart = roleTokens.length ? roleTokens.join(", ") : "NoRoles";
+  const suffix = anyFiltered ? " · partial" : "";
+  return `${lob} › ${appsPart} › ${cioPart} › ${rolesPart}${suffix}`;
+}
+
 export default function DynamicTargetingPanel({ initial, onApply, onClose }: Props) {
   const [lob, setLob]             = useState<string>(initial?.lob ?? "");
   const [apps, setApps]           = useState<string[]>(initial?.apps ?? []);
@@ -175,6 +244,18 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
     bcc: grouped.BCC.map(i => ({ email: i.email, name: i.name })),
   }), [grouped]);
 
+  /* auto-generated name preview (user can override) */
+  const [customName, setCustomName] = useState<string>("");
+  const [nameEdited, setNameEdited] = useState(false);
+  const autoName = useMemo(() => generateTargetName({
+    lob, apps, cioDirect, sections, roster,
+    totalAppsForLob: appOpts.length,
+    cioLabel: cioOpts.find(c => c.code === cioDirect)?.label ?? "",
+  }), [lob, apps, cioDirect, sections, roster, appOpts, cioOpts]);
+  const effectiveName = nameEdited ? customName : autoName;
+
+
+
   const buildPayload = (): DynamicTargetingPayload => {
     const out: DynamicTargetingPayload = { lob, apps, cioDirect, sections: {} };
     DT_ROLES.forEach(({ code }) => {
@@ -237,7 +318,34 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
         <BucketSummary label="To"  bucket="TO"  items={grouped.TO}  onRemove={removeUser} />
         <BucketSummary label="Cc"  bucket="CC"  items={grouped.CC}  onRemove={removeUser} />
         <BucketSummary label="Bcc" bucket="BCC" items={grouped.BCC} onRemove={removeUser} />
+
+        {/* Auto-generated name preview — encodes scope + selection shape.
+            Updates live; user can override and reset to suggested. */}
+        <div className="pt-1.5 border-t border-border/60">
+          <div className="flex items-center justify-between mb-0.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Record name {nameEdited && <span className="ml-1 text-amber-700 normal-case font-medium">(edited)</span>}
+            </div>
+            {nameEdited && (
+              <button
+                type="button"
+                onClick={() => { setNameEdited(false); setCustomName(""); }}
+                className="text-[10px] text-primary hover:underline"
+              >
+                use suggested
+              </button>
+            )}
+          </div>
+          <Input
+            value={effectiveName}
+            onChange={(e) => { setNameEdited(true); setCustomName(e.target.value); }}
+            placeholder={lob ? "auto-generated as you select" : "Pick LOB to generate name"}
+            className="h-7 text-xs font-mono"
+            spellCheck={false}
+          />
+        </div>
       </div>
+
 
 
       {/* 2. Compact selectors row — LOB · Apps · CIO */}
