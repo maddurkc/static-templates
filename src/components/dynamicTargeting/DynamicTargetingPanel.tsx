@@ -318,7 +318,34 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
         <BucketSummary label="To"  bucket="TO"  items={grouped.TO}  onRemove={removeUser} />
         <BucketSummary label="Cc"  bucket="CC"  items={grouped.CC}  onRemove={removeUser} />
         <BucketSummary label="Bcc" bucket="BCC" items={grouped.BCC} onRemove={removeUser} />
+
+        {/* Auto-generated name preview — encodes scope + selection shape.
+            Updates live; user can override and reset to suggested. */}
+        <div className="pt-1.5 border-t border-border/60">
+          <div className="flex items-center justify-between mb-0.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Record name {nameEdited && <span className="ml-1 text-amber-700 normal-case font-medium">(edited)</span>}
+            </div>
+            {nameEdited && (
+              <button
+                type="button"
+                onClick={() => { setNameEdited(false); setCustomName(""); }}
+                className="text-[10px] text-primary hover:underline"
+              >
+                use suggested
+              </button>
+            )}
+          </div>
+          <Input
+            value={effectiveName}
+            onChange={(e) => { setNameEdited(true); setCustomName(e.target.value); }}
+            placeholder={lob ? "auto-generated as you select" : "Pick LOB to generate name"}
+            className="h-7 text-xs font-mono"
+            spellCheck={false}
+          />
+        </div>
       </div>
+
 
 
       {/* 2. Compact selectors row — LOB · Apps · CIO */}
