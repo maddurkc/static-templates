@@ -70,23 +70,31 @@ const emptySection = (): SectionState => ({
 
 const BUCKETS: DTBucket[] = ["TO", "CC", "BCC"];
 
-/** Short tokens used in the auto-generated record name. */
-const ROLE_ABBR: Record<DTRoleCode, string> = {
-  TECH_MANAGER: "TM",
-  ALT_TECH_MANAGER: "ATM",
-  BUSINESS_OWNER: "BO",
-  ALT_BUSINESS_OWNER: "ABO",
-  CIO1: "C1",
-  CIO2: "C2",
+/** Friendly role tokens used in the auto-generated DL-style name. */
+const ROLE_FRIENDLY: Record<DTRoleCode, string> = {
+  TECH_MANAGER:       "TechMgrs",
+  ALT_TECH_MANAGER:   "AltTechMgrs",
+  BUSINESS_OWNER:     "BizOwners",
+  ALT_BUSINESS_OWNER: "AltBizOwners",
+  CIO1:               "CIO1",
+  CIO2:               "CIO2",
 };
 
+const toPascal = (s: string) =>
+  s.replace(/[^a-zA-Z0-9]+/g, " ").trim().split(/\s+/)
+   .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+   .join("");
+
+/** Strip the leading "{LOB}-" prefix from an app code so the name stays compact. */
+const shortApp = (code: string, lob: string) =>
+  toPascal(code.replace(new RegExp(`^${lob}[-_]`, "i"), ""));
+
 /**
- * Build a human-readable name that encodes scope (LOB › Apps › CIO)
- * and selection shape (which roles → which bucket, ALL vs partial).
- * Examples:
- *   "CCB › CCB-CARD-AUTH › Priya Raman › TM:TO, BO:CC"
- *   "CCB › AllApps › NoCIO › TM:TO, BO:CC(2/3) · partial"
- *   "CIB › CIB-TRADING+CIB-RISK › Sarah Connor › TM:TO, C1:BCC"
+ * Build a DL-style record name (PascalCase, hyphen-joined parts), e.g.
+ *   "CCB-CardAuth-PriyaRaman-TechMgrs-BizOwners"
+ *   "CCB-AllApps-AllLeadership"
+ *   "CIB-Trading+Risk-SarahConnor-TechMgrs-CIO1-Custom"
+ *   "AWM-AdvisorPortal-TechMgrs"
  */
 function generateTargetName(args: {
   lob: string;
@@ -100,44 +108,49 @@ function generateTargetName(args: {
   const { lob, apps, cioDirect, sections, roster, totalAppsForLob, cioLabel } = args;
   if (!lob) return "";
 
-  // Apps part
-  let appsPart: string;
-  if (apps.length === 0) appsPart = "NoApps";
-  else if (totalAppsForLob > 0 && apps.length === totalAppsForLob) appsPart = "AllApps";
-  else if (apps.length === 1) appsPart = apps[0];
-  else if (apps.length === 2) appsPart = `${apps[0]}+${apps[1]}`;
-  else appsPart = `${apps[0]} +${apps.length - 1}more`;
+  const parts: string[] = [lob];
 
-  // CIO part
-  const cioPart = cioDirect ? cioLabel : "NoCIO";
+  // Apps
+  if (apps.length === 0) {
+    /* skip — no app scope */
+  } else if (totalAppsForLob > 0 && apps.length === totalAppsForLob) {
+    parts.push("AllApps");
+  } else if (apps.length === 1) {
+    parts.push(shortApp(apps[0], lob));
+  } else if (apps.length === 2) {
+    parts.push(`${shortApp(apps[0], lob)}+${shortApp(apps[1], lob)}`);
+  } else {
+    parts.push(`${shortApp(apps[0], lob)}+${apps.length - 1}more`);
+  }
 
-  // Roles part
+  // CIO Direct
+  if (cioDirect && cioLabel) parts.push(toPascal(cioLabel));
+
+  // Roles
   let anyFiltered = false;
-  const roleTokens: string[] = [];
+  const activeRoles: DTRoleCode[] = [];
   DT_ROLES.forEach(({ code }) => {
     const s = sections[code];
     const users = roster[code] || [];
     if (s.mode === "ALL" && users.length > 0) {
-      roleTokens.push(`${ROLE_ABBR[code]}:${s.bucket}`);
+      activeRoles.push(code);
     } else if (s.mode === "FILTERED") {
       const picked = users.filter(u => s.userChecked[u.email]);
-      if (picked.length === 0) return;
-      anyFiltered = true;
-      // bucket = most common bucket among picked
-      const counts: Record<string, number> = {};
-      picked.forEach(u => {
-        const b = s.userBuckets[u.email] || "TO";
-        counts[b] = (counts[b] || 0) + 1;
-      });
-      const bucket = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-      roleTokens.push(`${ROLE_ABBR[code]}:${bucket}(${picked.length}/${users.length})`);
+      if (picked.length > 0) { activeRoles.push(code); anyFiltered = true; }
     }
   });
 
-  const rolesPart = roleTokens.length ? roleTokens.join(", ") : "NoRoles";
-  const suffix = anyFiltered ? " · partial" : "";
-  return `${lob} › ${appsPart} › ${cioPart} › ${rolesPart}${suffix}`;
+  if (activeRoles.length === DT_ROLES.length) {
+    parts.push("AllLeadership");
+  } else if (activeRoles.length > 0) {
+    parts.push(activeRoles.map(c => ROLE_FRIENDLY[c]).join("-"));
+  }
+
+  if (anyFiltered) parts.push("Custom");
+
+  return parts.join("-");
 }
+
 
 export default function DynamicTargetingPanel({ initial, onApply, onClose }: Props) {
   const [lob, setLob]             = useState<string>(initial?.lob ?? "");
@@ -340,7 +353,7 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
             value={effectiveName}
             onChange={(e) => { setNameEdited(true); setCustomName(e.target.value); }}
             placeholder={lob ? "auto-generated as you select" : "Pick LOB to generate name"}
-            className="h-7 text-xs font-mono"
+            className="h-7 text-xs font-medium"
             spellCheck={false}
           />
         </div>
