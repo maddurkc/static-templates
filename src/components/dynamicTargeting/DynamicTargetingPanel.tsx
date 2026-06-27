@@ -353,7 +353,7 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
             value={effectiveName}
             onChange={(e) => { setNameEdited(true); setCustomName(e.target.value); }}
             placeholder={lob ? "auto-generated as you select" : "Pick LOB to generate name"}
-            className="h-7 text-xs font-mono"
+            className="h-7 text-xs font-medium"
             spellCheck={false}
           />
         </div>
