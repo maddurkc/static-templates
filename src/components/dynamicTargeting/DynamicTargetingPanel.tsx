@@ -244,6 +244,18 @@ export default function DynamicTargetingPanel({ initial, onApply, onClose }: Pro
     bcc: grouped.BCC.map(i => ({ email: i.email, name: i.name })),
   }), [grouped]);
 
+  /* auto-generated name preview (user can override) */
+  const [customName, setCustomName] = useState<string>("");
+  const [nameEdited, setNameEdited] = useState(false);
+  const autoName = useMemo(() => generateTargetName({
+    lob, apps, cioDirect, sections, roster,
+    totalAppsForLob: appOpts.length,
+    cioLabel: cioOpts.find(c => c.code === cioDirect)?.label ?? "",
+  }), [lob, apps, cioDirect, sections, roster, appOpts, cioOpts]);
+  const effectiveName = nameEdited ? customName : autoName;
+
+
+
   const buildPayload = (): DynamicTargetingPayload => {
     const out: DynamicTargetingPayload = { lob, apps, cioDirect, sections: {} };
     DT_ROLES.forEach(({ code }) => {
