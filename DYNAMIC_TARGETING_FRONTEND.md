@@ -226,3 +226,122 @@ public record DynamicTargetingDto(
 | `src/components/dynamicTargeting/DynamicTargetingPanel.tsx`         | **NEW** — the Dynamic Targeting tab UI. |
 | `src/pages/RunTemplates.tsx`                                        | Imports (33-37), state (117-120), drawer Tabs (~2464-2625), DT chip (~2684-2715), payload field (~1753). |
 | `DYNAMIC_TARGETING_FRONTEND.md`                                     | **NEW** — this document. |
+
+---
+
+## 8. Storage Strategy — Persist Intent, Resolve on Send
+
+The JSON in §4 captures the **selection intent** (LOB / Apps / CIO / role
+buckets), NOT a frozen list of email addresses. The backend stores this
+intent in a `dynamic_targetting` table and re-expands it against the
+live org roster every time a message is sent. This keeps payloads small
+(role labels instead of N hundred emails) and keeps recipients fresh as
+people join/leave roles.
+
+### 8.1 Tables
+
+```sql
+-- The reusable "saved dynamic target" definition.
+CREATE TABLE dynamic_targetting (
+  id              BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name            NVARCHAR(255) NOT NULL,   -- DL-style auto-generated name (see §9)
+  lob             NVARCHAR(64),
+  cio_direct      NVARCHAR(64),
+  apps_csv        NVARCHAR(2000),           -- denormalised for quick filter
+  payload_json    NVARCHAR(MAX) NOT NULL,   -- full intent JSON from §4
+  created_by      NVARCHAR(64) NOT NULL,
+  created_at      DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+
+-- Per-send snapshot — what the JSON actually resolved to at send time.
+-- Used for audit / "who got this email?" queries; never re-resolved.
+CREATE TABLE message_dynamic_targetting (
+  id                       BIGINT PRIMARY KEY AUTO_INCREMENT,
+  message_id               BIGINT NOT NULL,
+  dynamic_targetting_id    BIGINT NULL,         -- nullable if anonymous one-off
+  resolved_to_emails       NVARCHAR(MAX),
+  resolved_cc_emails       NVARCHAR(MAX),
+  resolved_bcc_emails      NVARCHAR(MAX),
+  resolved_at              DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT fk_mdt_message FOREIGN KEY (message_id) REFERENCES message(id),
+  CONSTRAINT fk_mdt_def     FOREIGN KEY (dynamic_targetting_id) REFERENCES dynamic_targetting(id)
+);
+```
+
+### 8.2 Send-time flow
+
+1. `MessageController.send(...)` receives `dynamicTargeting` (the §4
+   JSON) on the outbound payload.
+2. If present and not yet persisted, insert a row into
+   `dynamic_targetting`; otherwise reuse the existing id.
+3. `DynamicTargetingResolver.resolve(payloadJson)`:
+   - Walks each `sections[role]` entry.
+   - `mode: "ALL"`  → fetch all roster users for that role within
+     `{lob, apps, cioDirect}` and assign to the section's `bucket`.
+   - `mode: "FILTERED"` → take the explicit `users[]` list (matched
+     by `lanid` against the roster for stability across email changes).
+   - Dedupe across buckets: a user that lands in both TO and CC is
+     kept in the **highest priority bucket** (TO > CC > BCC).
+4. Merge resolved emails with the manually-typed recipients already
+   present on the message, then send.
+5. Snapshot resolved emails into `message_dynamic_targetting` for
+   audit before SMTP submission.
+
+### 8.3 Why not emails in the JSON?
+
+- Payload size — a single LOB can contain hundreds of role-holders;
+  inlining emails would routinely break the request size limit.
+- Freshness — the org graph changes; resolving at send time always
+  reflects the current roster.
+- Audit — `message_dynamic_targetting` preserves the historical
+  expansion without polluting the reusable definition.
+
+---
+
+## 9. Auto-Generated Record Name (DL-style)
+
+Every Dynamic Targeting record is named **like a distribution list**
+(PascalCase tokens joined by `-`) so users can recognise it in lists
+and reuse it. The preview updates live as the user changes any
+selection in the panel.
+
+### 9.1 Formula
+
+```
+{LOB}-{AppsPart}-{CIOPart?}-{RolesPart?}[-Custom]
+```
+
+| Token        | Rule |
+| ------------ | ---- |
+| `LOB`        | The selected LOB code as-is (`CCB`, `CIB`, …). |
+| `AppsPart`   | • all apps selected → `AllApps`<br>• 1 app → `AppShort` (LOB prefix stripped, PascalCased: `CCB-CARD-AUTH` → `CardAuth`)<br>• 2 apps → `A+B`<br>• 3+ apps → `A+Nmore`<br>• 0 apps → omitted |
+| `CIOPart`    | PascalCased CIO Direct name (`Priya Raman` → `PriyaRaman`); omitted if none. |
+| `RolesPart`  | • all 6 roles active → `AllLeadership`<br>• otherwise friendly tokens joined by `-`: `TechMgrs`, `AltTechMgrs`, `BizOwners`, `AltBizOwners`, `CIO1`, `CIO2`.<br>• omitted if no roles active. |
+| `-Custom`    | Appended when ANY role is in `FILTERED` mode (individual users picked rather than the whole role). Signals "this is not a clean role-level cut." |
+
+### 9.2 Examples
+
+| Selection                                                                  | Generated name                                    |
+| -------------------------------------------------------------------------- | ------------------------------------------------- |
+| CCB · 1 app (Card Auth) · CIO Priya Raman · all TMs + all BOs              | `CCB-CardAuth-PriyaRaman-TechMgrs-BizOwners`      |
+| CCB · all 4 apps · all 6 roles                                             | `CCB-AllApps-AllLeadership`                       |
+| CIB · 2 apps (Trading, Risk) · CIO Sarah Connor · all TMs + CIO1 + 2 of 3 BOs | `CIB-Trading+Risk-SarahConnor-TechMgrs-BizOwners-CIO1-Custom` |
+| AWM · 1 app (Advisor Portal) · no CIO · TMs only                           | `AWM-AdvisorPortal-TechMgrs`                      |
+| CCB · 5 apps · no CIO · all TMs                                            | `CCB-CardAuth+4more-TechMgrs`                     |
+
+### 9.3 Implementation
+
+**File:** `src/components/dynamicTargeting/DynamicTargetingPanel.tsx`
+
+| Lines     | What |
+| --------- | ---- |
+| 73–81     | `ROLE_FRIENDLY` map — role code → DL-style token. |
+| 83–86     | `toPascal` helper. |
+| 88–90     | `shortApp` — strips `{LOB}-` prefix and PascalCases the app code. |
+| 92–152    | `generateTargetName(...)` — implements the formula above. |
+| (header)  | Sticky header renders the name in an editable `<Input>`; user can override the suggestion or click **"use suggested"** to snap back to the generated value. The `nameEdited` flag stops the auto-name from clobbering a manual edit. |
+
+The name flows into the payload sent to `/api/distribution-targets`
+(or in-line with the message) as the `name` field on the
+`dynamic_targetting` row.
+
