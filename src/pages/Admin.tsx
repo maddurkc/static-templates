@@ -118,7 +118,7 @@ export function AdminSubPage({ title, description, children }: { title: string; 
 
 
 /* ==================== Template Variations ==================== */
-function VariationsTab() {
+export function VariationsTab() {
   const { toast } = useToast();
   const [items, setItems] = useState<TemplateVariation[]>([]);
   const [hfs, setHfs] = useState<HeaderFooter[]>([]);
@@ -268,7 +268,7 @@ function VariationsTab() {
 }
 
 /* ==================== Header & Footer ==================== */
-function HeaderFooterTab() {
+export function HeaderFooterTab() {
   const { toast } = useToast();
   const [items, setItems] = useState<HeaderFooter[]>([]);
   const [editing, setEditing] = useState<HeaderFooter | null>(null);
@@ -383,7 +383,7 @@ function HeaderFooterTab() {
 }
 
 /* ==================== Hero Metadata ==================== */
-function HeroTab() {
+export function HeroTab() {
   const { toast } = useToast();
   const [value, setValue] = useState("");
   const [savedAt, setSavedAt] = useState("");
@@ -440,7 +440,7 @@ function HeroTab() {
 }
 
 /* ==================== Operations ==================== */
-function OperationsTab() {
+export function OperationsTab() {
   const { toast } = useToast();
   const [token] = useState(getBearerToken());
   const [regions, setRegions] = useState<CacheRegion[]>([]);
