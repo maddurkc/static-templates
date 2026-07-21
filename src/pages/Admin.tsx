@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import styles from "./Admin.module.scss";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Layers, Layout, Home, Server, Plus, Edit3, Trash2, Copy, Eye, RefreshCw,
-  Trash, KeyRound, Database, Shield, Search,
+  Trash, KeyRound, Database, Shield, Search, ArrowLeft, ArrowRight,
 } from "lucide-react";
 import {
   getTemplateVariations, saveTemplateVariation, deleteTemplateVariation, type TemplateVariation,
@@ -31,10 +30,42 @@ import {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-const Admin = () => {
-  const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") ?? "variations";
+const ADMIN_CARDS = [
+  {
+    to: "/admin/variations",
+    icon: Layers,
+    title: "Template Variations",
+    desc: "Onboard reusable template variations and link them to header & footer layouts.",
+    accent: "from-sky-500/15 to-indigo-500/10",
+    iconTone: "text-sky-600 bg-sky-500/10",
+  },
+  {
+    to: "/admin/header-footer",
+    icon: Layout,
+    title: "Header & Footer",
+    desc: "Manage common email headers and footers assigned to template variations.",
+    accent: "from-violet-500/15 to-fuchsia-500/10",
+    iconTone: "text-violet-600 bg-violet-500/10",
+  },
+  {
+    to: "/admin/hero",
+    icon: Home,
+    title: "Hero Page Metadata",
+    desc: "Edit the JSON payload rendered on the app home page hero.",
+    accent: "from-emerald-500/15 to-teal-500/10",
+    iconTone: "text-emerald-600 bg-emerald-500/10",
+  },
+  {
+    to: "/admin/operations",
+    icon: Server,
+    title: "Operations",
+    desc: "Session token, cache regions, key inspection and eviction.",
+    accent: "from-amber-500/15 to-orange-500/10",
+    iconTone: "text-amber-600 bg-amber-500/10",
+  },
+];
 
+const Admin = () => {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
@@ -43,23 +74,48 @@ const Admin = () => {
           <p>Manage template variations, layouts, homepage metadata and runtime operations.</p>
         </div>
 
-        <Tabs value={tab} onValueChange={(v) => setParams({ tab: v })}>
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
-            <TabsTrigger value="variations" className="gap-2"><Layers className="h-4 w-4" />Template Variations</TabsTrigger>
-            <TabsTrigger value="headerfooter" className="gap-2"><Layout className="h-4 w-4" />Header &amp; Footer</TabsTrigger>
-            <TabsTrigger value="hero" className="gap-2"><Home className="h-4 w-4" />Hero Metadata</TabsTrigger>
-            <TabsTrigger value="ops" className="gap-2"><Server className="h-4 w-4" />Operations</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="variations"><VariationsTab /></TabsContent>
-          <TabsContent value="headerfooter"><HeaderFooterTab /></TabsContent>
-          <TabsContent value="hero"><HeroTab /></TabsContent>
-          <TabsContent value="ops"><OperationsTab /></TabsContent>
-        </Tabs>
+        <div className={styles.cardGrid}>
+          {ADMIN_CARDS.map(({ to, icon: Icon, title, desc, accent, iconTone }) => (
+            <Link to={to} key={to} className={styles.adminCard}>
+              <div className={`${styles.cardAccent} bg-gradient-to-br ${accent}`} />
+              <div className={styles.cardBody}>
+                <div className={`${styles.cardIcon} ${iconTone}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className={styles.cardText}>
+                  <h3>{title}</h3>
+                  <p>{desc}</p>
+                </div>
+                <ArrowRight className={styles.cardArrow} />
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );
 };
+
+export function AdminSubPage({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  const navigate = useNavigate();
+  return (
+    <div className={styles.page}>
+      <div className={styles.inner}>
+        <div className={styles.subHeader}>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />Admin
+          </Button>
+          <div>
+            <h1 className={styles.subTitle}>{title}</h1>
+            {description && <p className={styles.subDesc}>{description}</p>}
+          </div>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 
 /* ==================== Template Variations ==================== */
 function VariationsTab() {
