@@ -19,6 +19,10 @@ import NotFound from "./pages/NotFound";
 import DistributionLists from "./pages/DistributionLists";
 import StandardDistributionLists from "./pages/StandardDistributionLists";
 import Admin from "./pages/Admin";
+import AdminVariations from "./pages/admin/AdminVariations";
+import AdminHeaderFooter from "./pages/admin/AdminHeaderFooter";
+import AdminHero from "./pages/admin/AdminHero";
+import AdminOperations from "./pages/admin/AdminOperations";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +61,10 @@ const App = () => (
                   <Route path="/settings-demo" element={<SettingsLayoutDemo />} />
                   <Route path="/templates/settings" element={<TemplateSettingsPage />} />
                   <Route path="/admin" element={<Admin />} />
+                  <Route path="/admin/variations" element={<AdminVariations />} />
+                  <Route path="/admin/header-footer" element={<AdminHeaderFooter />} />
+                  <Route path="/admin/hero" element={<AdminHero />} />
+                  <Route path="/admin/operations" element={<AdminOperations />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
