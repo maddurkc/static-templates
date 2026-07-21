@@ -1,4 +1,4 @@
-import { Layers, FileText, PlayCircle, Database, Network, FileCode, Settings, Users, Building2 } from "lucide-react";
+import { Layers, FileText, PlayCircle, Database, Network, FileCode, Settings, Users, Building2, ShieldCheck } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -22,6 +22,7 @@ const menuItems = [
   { title: "ER Diagram", url: "/er-diagram", icon: Network },
   { title: "SQL Migrations", url: "/migrations", icon: FileCode },
   { title: "Settings Demo", url: "/settings-demo", icon: Settings },
+  { title: "Admin Console", url: "/admin", icon: ShieldCheck },
 ];
 
 
