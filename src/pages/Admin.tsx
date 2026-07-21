@@ -509,20 +509,20 @@ function OperationsTab() {
                           <span className={styles.keyName}>{k.key}</span>
                           <span className={styles.keyMeta}>{k.size} · TTL {k.ttl}</span>
                           <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-3.5 w-3.5 mr-1.5" />View
+                              </Button>
+                            </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle className="font-mono text-sm">{k.key}</DialogTitle>
+                                <DialogTitle className="font-mono text-sm break-all">{k.key}</DialogTitle>
                                 <DialogDescription>Region: {active.name}</DialogDescription>
                               </DialogHeader>
                               <pre className="bg-muted p-3 rounded text-xs overflow-auto max-h-96">
 {JSON.stringify({ key: k.key, size: k.size, ttl: k.ttl, sample: "// value payload preview" }, null, 2)}
                               </pre>
                             </DialogContent>
-                            <Button variant="ghost" size="sm" asChild>
-                              <label className="cursor-pointer">
-                                <Eye className="h-3.5 w-3.5 mr-1.5" />View
-                              </label>
-                            </Button>
                           </Dialog>
                           <Button variant="ghost" size="sm" onClick={() => deleteKey(active.name, k.key)}>
                             <Trash2 className="h-3.5 w-3.5 mr-1.5" />Delete
